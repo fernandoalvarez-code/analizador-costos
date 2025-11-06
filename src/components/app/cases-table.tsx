@@ -11,9 +11,12 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  getGroupedRowModel,
+  GroupingState,
+  getExpandedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { MoreHorizontal, PlusCircle, Search, Trash2, Eye } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Search, Trash2, Eye, ChevronDown, ChevronRight, GripVertical } from "lucide-react";
 import { collection } from "firebase/firestore";
 import Link from "next/link";
 
@@ -41,8 +44,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
-const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
+const formatCurrency = (value: number | undefined) => {
+    if (typeof value !== 'number' || !isFinite(value)) return 'N/A';
+    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
+}
 
 type CaseData = {
   id: string;
@@ -60,21 +67,41 @@ export const columns: ColumnDef<CaseData>[] = [
   {
     accessorKey: "name",
     header: "Nombre del Caso",
-    cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("name")}</div>
+    cell: ({ row, getValue }) => (
+      <div className={cn("font-medium", row.getCanExpand() && "pl-2")}>
+        {row.getCanExpand() ? (
+          <button
+            {...{
+              onClick: row.getToggleExpandedHandler(),
+              style: { cursor: 'pointer' },
+              className: "flex items-center gap-1"
+            }}
+          >
+            {row.getIsExpanded() ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            {getValue<string>()} ({row.subRows.length})
+          </button>
+        ) : (
+          getValue<string>()
+        )}
+      </div>
     ),
   },
   {
     accessorKey: "cliente",
     header: "Cliente",
+    cell: ({ getValue }) => getValue() || 'N/A',
+    enableGrouping: true,
   },
     {
     accessorKey: "operacion",
     header: "Operación",
+    cell: ({ getValue }) => getValue() || 'N/A',
   },
   {
     accessorKey: "material",
     header: "Material",
+    cell: ({ getValue }) => getValue() || 'N/A',
+    enableGrouping: true,
   },
   {
     accessorKey: "dateCreated",
@@ -87,7 +114,7 @@ export const columns: ColumnDef<CaseData>[] = [
   },
   {
     accessorKey: "annualSavings",
-    header: "Ahorro Anual",
+    header: () => <div className="text-right">Ahorro Anual</div>,
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("annualSavings"));
       return <div className="font-medium text-right">{formatCurrency(amount)}</div>;
@@ -95,23 +122,24 @@ export const columns: ColumnDef<CaseData>[] = [
   },
   {
     accessorKey: "roi",
-    header: "ROI",
+    header: () => <div className="text-center">ROI</div>,
     cell: ({ row }) => {
         const roi = parseFloat(row.getValue("roi"));
          if (!isFinite(roi)) {
-            return <div className="text-center"><Badge variant="default">∞</Badge></div>
+            return <div className="text-center"><Badge variant="secondary" className="text-xs">∞</Badge></div>
         }
         const getBadgeVariant = (roi: number) => {
             if (roi > 300) return "default";
             if (roi > 200) return "secondary";
             return "outline";
         }
-        return <div className="text-center"><Badge variant={getBadgeVariant(roi)}>{roi.toFixed(0)}%</Badge></div>
+        return <div className="text-center"><Badge variant={getBadgeVariant(roi)} className="text-xs">{roi.toFixed(0)}%</Badge></div>
     }
   },
   {
     id: "actions",
     cell: ({ row }) => {
+      if (row.getIsGrouped()) return null;
       const caseData = row.original;
       return (
         <div className="text-right">
@@ -157,20 +185,25 @@ export default function CasesTable() {
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
+  const [grouping, setGrouping] = React.useState<GroupingState>([]);
   
   const table = useReactTable({
     data: casesData || [],
     columns,
+    state: {
+      sorting,
+      globalFilter,
+      grouping,
+    },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
+    onGroupingChange: setGrouping,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    state: {
-      sorting,
-      globalFilter,
-    },
+    getGroupedRowModel: getGroupedRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
   });
   
   const handleNewCase = () => {
@@ -192,6 +225,11 @@ export default function CasesTable() {
                         className="pl-8 w-full md:w-1/2 lg:w-2/3"
                     />
                 </div>
+                 <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Agrupar por:</span>
+                    <Button variant={grouping.includes('cliente') ? 'secondary' : 'outline'} size="sm" onClick={() => table.setGrouping(g => g.includes('cliente') ? g.filter(i => i !== 'cliente') : [...g, 'cliente'])}>Cliente</Button>
+                    <Button variant={grouping.includes('material') ? 'secondary' : 'outline'} size="sm" onClick={() => table.setGrouping(g => g.includes('material') ? g.filter(i => i !== 'material') : [...g, 'material'])}>Material</Button>
+                </div>
                  <Button onClick={handleNewCase}>
                     <PlusCircle className="mr-2 h-4 w-4"/>
                     Nuevo Caso
@@ -204,12 +242,30 @@ export default function CasesTable() {
                     <TableRow key={headerGroup.id}>
                         {headerGroup.headers.map((header) => {
                         return (
-                            <TableHead key={header.id}>
-                            {header.isPlaceholder
-                                ? null
-                                : flexRender(
-                                    header.column.columnDef.header,
-                                    header.getContext()
+                            <TableHead key={header.id} className="p-2 text-xs h-10">
+                                {header.isPlaceholder ? null : (
+                                    <div className={cn("flex items-center gap-1", header.column.getCanSort() ? "cursor-pointer select-none" : "")}
+                                        onClick={header.column.getToggleSortingHandler()}>
+                                        {flexRender(
+                                            header.column.columnDef.header,
+                                            header.getContext()
+                                        )}
+                                        {{
+                                            asc: ' 🔼',
+                                            desc: ' 🔽',
+                                        }[header.column.getIsSorted() as string] ?? null}
+                                        {header.column.getCanGroup() ? (
+                                            <button {...{
+                                                onClick: (e) => {
+                                                    e.stopPropagation();
+                                                    header.column.getToggleGroupingHandler()();
+                                                },
+                                                className: "hover:bg-muted p-1 rounded-sm"
+                                            }}>
+                                                <GripVertical size={14} className={header.column.getIsGrouped() ? "text-primary" : ""} />
+                                            </button>
+                                        ) : null}{' '}
+                                    </div>
                                 )}
                             </TableHead>
                         );
@@ -221,7 +277,7 @@ export default function CasesTable() {
                     {isLoading ? (
                          Array.from({ length: 5 }).map((_, i) => (
                             <TableRow key={i}>
-                                <TableCell colSpan={columns.length}>
+                                <TableCell colSpan={columns.length} className="p-2">
                                     <Skeleton className="h-8 w-full" />
                                 </TableCell>
                             </TableRow>
@@ -233,7 +289,7 @@ export default function CasesTable() {
                         data-state={row.getIsSelected() && "selected"}
                         >
                         {row.getVisibleCells().map((cell) => (
-                            <TableCell key={cell.id}>
+                            <TableCell key={cell.id} className="p-2 text-xs">
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </TableCell>
                         ))}
