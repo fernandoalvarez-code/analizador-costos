@@ -127,7 +127,8 @@ export default function DashboardTabs() {
   });
 
   const watchedDiagnosisData = useWatch({ control: diagnosisForm.control });
-  
+  const watchedDetailedData = useWatch({ control: detailedForm.control });
+
   const parseTimeToMinutes = (min: number | undefined, sec: number | undefined) => {
     const minVal = min || 0;
     const secVal = sec || 0;
@@ -135,47 +136,37 @@ export default function DashboardTabs() {
   }
 
   // Sync Diagnosis -> Detailed
-  const syncDiagnosisToDetailed = useCallback(() => {
-    const { costoHoraMaquina, piezasAlMes, precioA, filosA, pzsPorFiloA, cicloMinA, cicloSegA, vcA, precioB, vcB, cicloMinB, cicloSegB, pzsPorFiloB } = diagnosisForm.getValues();
-  
-    detailedForm.setValue("machineHourlyRate", costoHoraMaquina, { shouldValidate: false });
-    detailedForm.setValue("piezasAlMes", piezasAlMes || 0, { shouldValidate: false });
-    detailedForm.setValue("precioA", precioA, { shouldValidate: false });
-    detailedForm.setValue("filosA", filosA, { shouldValidate: false });
-    detailedForm.setValue("piezasFiloA", pzsPorFiloA, { shouldValidate: false });
-    detailedForm.setValue("cicloMinA", cicloMinA, { shouldValidate: false });
-    detailedForm.setValue("cicloSegA", cicloSegA, { shouldValidate: false });
-    detailedForm.setValue("vcA", vcA, { shouldValidate: false });
-    detailedForm.setValue("precioB", precioB, { shouldValidate: false });
-    detailedForm.setValue("vcB", vcB, { shouldValidate: false });
-    detailedForm.setValue("cicloMinB", cicloMinB, { shouldValidate: false });
-    detailedForm.setValue("cicloSegB", cicloSegB, { shouldValidate: false });
-    detailedForm.setValue("filosB", filosA, { shouldValidate: false }); // Asumimos mismos filos
-    detailedForm.setValue("piezasFiloB", pzsPorFiloB, { shouldValidate: false });
-  }, [diagnosisForm, detailedForm]);
+   useEffect(() => {
+    const { costoHoraMaquina, piezasAlMes, precioA, filosA, pzsPorFiloA, cicloMinA, cicloSegA, vcA, precioB } = diagnosisForm.getValues();
+    const detailedValues = detailedForm.getValues();
 
-  useEffect(() => {
-    syncDiagnosisToDetailed();
-  }, [watchedDiagnosisData, syncDiagnosisToDetailed]);
+    if (detailedValues.machineHourlyRate !== costoHoraMaquina) detailedForm.setValue("machineHourlyRate", costoHoraMaquina);
+    if (detailedValues.piezasAlMes !== piezasAlMes) detailedForm.setValue("piezasAlMes", piezasAlMes || 0);
+    if (detailedValues.precioA !== precioA) detailedForm.setValue("precioA", precioA);
+    if (detailedValues.filosA !== filosA) detailedForm.setValue("filosA", filosA);
+    if (detailedValues.piezasFiloA !== pzsPorFiloA) detailedForm.setValue("piezasFiloA", pzsPorFiloA);
+    if (detailedValues.cicloMinA !== cicloMinA) detailedForm.setValue("cicloMinA", cicloMinA);
+    if (detailedValues.cicloSegA !== cicloSegA) detailedForm.setValue("cicloSegA", cicloSegA);
+    if (detailedValues.vcA !== vcA) detailedForm.setValue("vcA", vcA);
+    if (detailedValues.precioB !== precioB) detailedForm.setValue("precioB", precioB);
+
+  }, [watchedDiagnosisData, detailedForm]);
 
   // Sync Detailed -> Diagnosis
-  const syncDetailedToDiagnosis = useCallback(() => {
-    const { machineHourlyRate, piezasAlMes, precioA, filosA, piezasFiloA, cicloMinA, cicloSegA, vcA, precioB } = detailedForm.getValues();
-    diagnosisForm.setValue("costoHoraMaquina", machineHourlyRate, { shouldValidate: false });
-    diagnosisForm.setValue("piezasAlMes", piezasAlMes, { shouldValidate: false });
-    diagnosisForm.setValue("precioA", precioA, { shouldValidate: false });
-    diagnosisForm.setValue("filosA", filosA, { shouldValidate: false });
-    diagnosisForm.setValue("pzsPorFiloA", piezasFiloA, { shouldValidate: false });
-    diagnosisForm.setValue("cicloMinA", cicloMinA, { shouldValidate: false });
-    diagnosisForm.setValue("cicloSegA", cicloSegA, { shouldValidate: false });
-    diagnosisForm.setValue("vcA", vcA, { shouldValidate: false });
-    diagnosisForm.setValue("precioB", precioB, { shouldValidate: false });
-  }, [detailedForm, diagnosisForm]);
-
-  const watchedDetailedData = useWatch({ control: detailedForm.control });
   useEffect(() => {
-    syncDetailedToDiagnosis();
-  }, [watchedDetailedData, syncDetailedToDiagnosis]);
+    const { machineHourlyRate, piezasAlMes, precioA, filosA, piezasFiloA, cicloMinA, cicloSegA, vcA, precioB } = detailedForm.getValues();
+    const diagnosisValues = diagnosisForm.getValues();
+
+    if (diagnosisValues.costoHoraMaquina !== machineHourlyRate) diagnosisForm.setValue("costoHoraMaquina", machineHourlyRate);
+    if (diagnosisValues.piezasAlMes !== piezasAlMes) diagnosisForm.setValue("piezasAlMes", piezasAlMes);
+    if (diagnosisValues.precioA !== precioA) diagnosisForm.setValue("precioA", precioA);
+    if (diagnosisValues.filosA !== filosA) diagnosisForm.setValue("filosA", filosA);
+    if (diagnosisValues.pzsPorFiloA !== piezasFiloA) diagnosisForm.setValue("pzsPorFiloA", piezasFiloA);
+    if (diagnosisValues.cicloMinA !== cicloMinA) diagnosisForm.setValue("cicloMinA", cicloMinA);
+    if (diagnosisValues.cicloSegA !== cicloSegA) diagnosisForm.setValue("cicloSegA", cicloSegA);
+    if (diagnosisValues.vcA !== vcA) diagnosisForm.setValue("vcA", vcA);
+    if (diagnosisValues.precioB !== precioB) diagnosisForm.setValue("precioB", precioB);
+  }, [watchedDetailedData, diagnosisForm]);
 
 
   function onQuickSubmit(data: z.infer<typeof QuickDiagnosisSchema>) {
@@ -288,7 +279,11 @@ export default function DashboardTabs() {
     diagnosisForm.setValue("pzsPorFiloB", pzsPorFiloA + piezasMasReales);
     diagnosisForm.setValue("vcB", actualVcB);
 
-    syncDiagnosisToDetailed();
+    detailedForm.setValue("cicloMinB", newCicloMin);
+    detailedForm.setValue("cicloSegB", newCicloSeg);
+    detailedForm.setValue("piezasFiloB", pzsPorFiloA + piezasMasReales);
+    detailedForm.setValue("vcB", actualVcB);
+
   }
 
   function onDetailedSubmit(data: z.infer<typeof DetailedReportSchema>) {
@@ -639,3 +634,5 @@ export default function DashboardTabs() {
     </Tabs>
   );
 }
+
+    
