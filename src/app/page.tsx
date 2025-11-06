@@ -35,26 +35,14 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <header className="px-4 lg:px-6 h-16 flex items-center bg-background/80 backdrop-blur-sm fixed top-0 w-full z-50">
         <Link href="#" className="flex items-center justify-center">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-6 w-6 text-primary"
-          >
-            <path d="M9.52 3.48a2.29 2.29 0 0 1 4.96 0 2.29 2.29 0 0 1-4.96 0Z" />
-            <path d="M12 6.5v11.5" />
-            <path d="M6 18h12" />
-            <path d="M3 13a4 4 0 1 1 5.76-3.46" />
-            <path d="M21 13a4 4 0 1 0-5.76-3.46" />
-          </svg>
+           <Image 
+            src="/logo.png" 
+            alt="Logo de la empresa" 
+            width={150} 
+            height={40}
+            className="object-contain"
+          />
           <span className="sr-only">Analizador de Costos de Corte</span>
-          <span className="ml-2 font-headline text-lg font-bold">Analizador de Costos de Corte</span>
         </Link>
         <nav className="ml-auto flex gap-4 sm:gap-6">
           <Button asChild variant="ghost">

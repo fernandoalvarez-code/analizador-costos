@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BrainCircuit, FolderKanban, LayoutDashboard, Settings } from "lucide-react";
+import Image from "next/image";
 
 import { cn } from "@/lib/utils";
 import {
@@ -39,27 +40,20 @@ export default function AppNav() {
     <>
       <SidebarHeader>
         <Link href="/dashboard" className="flex items-center gap-2">
-           <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-6 w-6 text-primary"
-          >
-            <path d="M9.52 3.48a2.29 2.29 0 0 1 4.96 0 2.29 2.29 0 0 1-4.96 0Z" />
-            <path d="M12 6.5v11.5" />
-            <path d="M6 18h12" />
-            <path d="M3 13a4 4 0 1 1 5.76-3.46" />
-            <path d="M21 13a4 4 0 1 0-5.76-3.46" />
-          </svg>
-          <span className="font-headline text-lg font-bold text-primary group-data-[collapsible=icon]:hidden">
-            Analizador
-          </span>
+           <Image 
+            src="/logo.png" 
+            alt="Logo de la empresa" 
+            width={150} 
+            height={40}
+            className="object-contain group-data-[collapsible=icon]:hidden"
+          />
+           <Image 
+            src="/logo-icon.png" 
+            alt="Icono del logo de la empresa" 
+            width={32} 
+            height={32}
+            className="object-contain hidden group-data-[collapsible=icon]:block"
+          />
         </Link>
       </SidebarHeader>
       <SidebarContent>

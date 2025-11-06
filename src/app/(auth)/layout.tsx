@@ -15,25 +15,13 @@ export default function AuthLayout({
         <div className="mx-auto grid w-[350px] gap-6">
           <div className="grid gap-2 text-center">
             <Link href="/" className="flex items-center justify-center text-primary font-headline text-2xl font-bold">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-7 w-7 mr-2"
-              >
-                <path d="M9.52 3.48a2.29 2.29 0 0 1 4.96 0 2.29 2.29 0 0 1-4.96 0Z" />
-                <path d="M12 6.5v11.5" />
-                <path d="M6 18h12" />
-                <path d="M3 13a4 4 0 1 1 5.76-3.46" />
-                <path d="M21 13a4 4 0 1 0-5.76-3.46" />
-              </svg>
-              Analizador de Costos de Corte
+               <Image 
+                src="/logo.png" 
+                alt="Logo de la empresa" 
+                width={200} 
+                height={50} 
+                className="object-contain"
+              />
             </Link>
           </div>
           {children}
