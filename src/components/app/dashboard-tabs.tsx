@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
@@ -9,7 +9,7 @@ import { Download, Save } from "lucide-react";
 import { collection, serverTimestamp } from "firebase/firestore";
 
 
-import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -534,18 +534,7 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
       });
       return;
     }
-
-    const fullCaseData = {
-      ...detailedForm.getValues(),
-      results: detailedResult,
-      userId: user.uid,
-      name: caseName,
-      dateCreated: serverTimestamp(),
-      annualSavings: detailedResult.ahorroAnual,
-      roi: detailedResult.roi,
-    };
-
-    if (!firestore) {
+     if (!firestore) {
       toast({
         variant: "destructive",
         title: "Error de base de datos",
@@ -553,15 +542,51 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
       });
       return;
     }
-    const casesCollection = collection(firestore, "users", user.uid, "cuttingToolAnalyses");
-    addDocumentNonBlocking(casesCollection, fullCaseData);
+
+    const formValues = detailedForm.getValues();
+    const isExistingCase = !!initialData?.id;
+
+    const historyEntry = {
+      modifiedBy: user.uid,
+      modifiedAt: serverTimestamp(),
+      snapshot: formValues, // Snapshot of the form state
+    };
+    
+    const fullCaseData = {
+      ...formValues,
+      results: detailedResult,
+      userId: user.uid,
+      name: caseName,
+      annualSavings: detailedResult.ahorroAnual,
+      roi: detailedResult.roi,
+      ...(isExistingCase 
+        ? { 
+            dateModified: serverTimestamp(),
+            modifiedBy: user.uid,
+            history: [...(initialData.history || []), historyEntry],
+          } 
+        : { 
+            dateCreated: serverTimestamp(),
+            history: [historyEntry],
+          }),
+    };
+
+
+    if (isExistingCase) {
+      // Update existing document
+      const caseDocRef = collection(firestore, "users", user.uid, "cuttingToolAnalyses");
+      setDocumentNonBlocking(caseDocRef, fullCaseData);
+    } else {
+      // Create new document
+      const casesCollection = collection(firestore, "users", user.uid, "cuttingToolAnalyses");
+      addDocumentNonBlocking(casesCollection, fullCaseData);
+    }
     
     toast({
-      title: "Caso guardado",
-      description: `El caso "${caseName}" ha sido guardado con éxito.`,
+      title: `Caso ${isExistingCase ? 'actualizado' : 'guardado'}`,
+      description: `El caso "${caseName}" ha sido ${isExistingCase ? 'actualizado' : 'guardado'} con éxito.`,
     });
     setSaveAlertOpen(false);
-    saveCaseForm.reset();
   };
   
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
@@ -1196,3 +1221,5 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
     </Tabs>
   );
 }
+
+    
