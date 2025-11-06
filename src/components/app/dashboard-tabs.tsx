@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -206,12 +205,12 @@ export default function DashboardTabs() {
       if (detailValues.machineHourlyRate !== diagValues.costoHoraMaquina) newDiagValues.costoHoraMaquina = detailValues.machineHourlyRate;
       if (detailValues.piezasAlMes !== diagValues.piezasAlMes) newDiagValues.piezasAlMes = detailValues.piezasAlMes;
       if (detailValues.precioA !== diagValues.precioA) newDiagValues.precioA = detailValues.precioA;
+      if (detailValues.precioB !== diagValues.precioB) newDiagValues.precioB = detailValues.precioB;
       if (detailValues.filosA !== diagValues.filosA) newDiagValues.filosA = detailValues.filosA;
       if (detailValues.piezasFiloA !== diagValues.pzsPorFiloA) newDiagValues.pzsPorFiloA = detailValues.piezasFiloA;
       if (detailValues.cicloMinA !== diagValues.cicloMinA) newDiagValues.cicloMinA = detailValues.cicloMinA;
       if (detailValues.cicloSegA !== diagValues.cicloSegA) newDiagValues.cicloSegA = detailValues.cicloSegA;
       if (detailValues.vcA !== diagValues.vcA) newDiagValues.vcA = detailValues.vcA;
-      if (detailValues.precioB !== diagValues.precioB) newDiagValues.precioB = detailValues.precioB;
       if (detailValues.vcB !== diagValues.vcB) newDiagValues.vcB = detailValues.vcB;
 
        if (Object.keys(newDiagValues).length > 0) {
@@ -439,23 +438,6 @@ export default function DashboardTabs() {
   const watchedSimTimeMode = useWatch({ control: diagnosisForm.control, name: 'modoSimulacionTiempo' });
   const watchedModoVidaA = useWatch({ control: detailedForm.control, name: 'modoVidaA' });
   const watchedModoVidaB = useWatch({ control: detailedForm.control, name: 'modoVidaB' });
-  
-  const getBarHeights = (result: DetailedReportResult | null) => {
-    if (!result || result.cppA <= 0) return { hMaquinaA: 0, hHerramientaA: 0, hMaquinaB: 0, hHerramientaB: 0, alturaBarraA: 0, alturaBarraB: 0 };
-    const maxCosto = Math.max(result.cppA, result.cppB, 0.01);
-    const alturaBarraA = (result.cppA / maxCosto) * 100;
-    const alturaBarraB = (result.cppB / maxCosto) * 100;
-    
-    const hMaquinaA = (result.cppA > 0) ? (result.costoMaquinaA / result.cppA) * 100 : 0;
-    const hHerramientaA = (result.cppA > 0) ? (result.costoHerramientaA / result.cppA) * 100 : 0;
-    const hMaquinaB = (result.cppB > 0) ? (result.costoMaquinaB / result.cppB) * 100 : 0;
-    const hHerramientaB = (result.cppB > 0) ? (result.costoHerramientaB / result.cppB) * 100 : 0;
-
-    return { hMaquinaA, hHerramientaA, hMaquinaB, hHerramientaB, alturaBarraA, alturaBarraB };
-  };
-
-  const barHeights = getBarHeights(detailedResult);
-
 
   return (
     <Tabs defaultValue="quick" className="w-full">
@@ -723,40 +705,40 @@ export default function DashboardTabs() {
                     </div>
                     
                     <div className="mb-8">
-                        <h3 className="text-xl font-bold text-center mb-6">Comparativa de Costo Total por Pieza</h3>
-                        <div className="flex justify-around items-end h-80 px-4">
-                            {/* Barra A */}
-                            <div className="w-1/3 flex flex-col items-center">
-                                <div className="text-3xl font-bold text-destructive">{formatCurrency(detailedResult.cppA)}</div>
-                                <div className="text-lg font-semibold text-muted-foreground mb-2">Actual</div>
-                                <div className="w-full md:w-3/4 bg-muted rounded-t-lg" style={{ height: `${barHeights.alturaBarraA}%` }}>
-                                    <div className="flex flex-col-reverse rounded-t-lg overflow-hidden h-full">
-                                        <div style={{ height: `${barHeights.hHerramientaA}%` }} className="bg-destructive/40 flex items-center justify-center text-xs font-medium text-destructive-foreground p-1 text-center leading-tight overflow-hidden" title={`Herramienta ${formatCurrency(detailedResult.costoHerramientaA)}`}>
-                                            <span className="[writing-mode:vertical-rl] rotate-180">Herram.</span>
-                                        </div>
-                                        <div style={{ height: `${barHeights.hMaquinaA}%` }} className="bg-destructive flex items-center justify-center text-sm font-semibold text-destructive-foreground p-1 text-center leading-tight overflow-hidden" title={`Máquina ${formatCurrency(detailedResult.costoMaquinaA)}`}>
-                                            <span className="[writing-mode:vertical-rl] rotate-180">Máquina</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {/* Barra B */}
-                            <div className="w-1/3 flex flex-col items-center">
-                                <div className="text-3xl font-bold text-primary">{formatCurrency(detailedResult.cppB)}</div>
-                                <div className="text-lg font-semibold text-muted-foreground mb-2">Propuesta</div>
-                                <div className="w-full md:w-3/4 bg-muted rounded-t-lg" style={{ height: `${barHeights.alturaBarraB}%` }}>
-                                     <div className="flex flex-col-reverse rounded-t-lg overflow-hidden h-full">
-                                        <div style={{ height: `${barHeights.hHerramientaB}%` }} className="bg-primary/40 flex items-center justify-center text-xs font-medium text-primary-foreground p-1 text-center leading-tight overflow-hidden" title={`Herramienta ${formatCurrency(detailedResult.costoHerramientaB)}`}>
-                                            <span className="[writing-mode:vertical-rl] rotate-180">Herram.</span>
-                                        </div>
-                                        <div style={{ height: `${barHeights.hMaquinaB}%` }} className="bg-primary flex items-center justify-center text-sm font-semibold text-primary-foreground p-1 text-center leading-tight overflow-hidden" title={`Máquina ${formatCurrency(detailedResult.costoMaquinaB)}`}>
-                                            <span className="[writing-mode:vertical-rl] rotate-180">Máquina</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                      <h3 className="text-xl font-bold text-center mb-6">Comparativa de Costo Total por Pieza</h3>
+                      <div className="grid grid-cols-2 gap-4 md:gap-8 justify-items-center">
+                          {/* Columna Actual */}
+                          <div className="w-full max-w-xs flex flex-col items-center">
+                              <div className="text-3xl font-bold text-destructive">{formatCurrency(detailedResult.cppA)}</div>
+                              <div className="text-lg font-semibold text-muted-foreground mb-2">Actual</div>
+                              <div className="w-full rounded-lg overflow-hidden shadow-md">
+                                  <div className="bg-destructive text-white p-3 text-center">
+                                      <div className="font-bold">Máquina</div>
+                                      <div>{formatCurrency(detailedResult.costoMaquinaA)}</div>
+                                  </div>
+                                  <div className="bg-destructive/40 text-destructive-foreground p-3 text-center">
+                                      <div className="font-bold">Herram.</div>
+                                      <div>{formatCurrency(detailedResult.costoHerramientaA)}</div>
+                                  </div>
+                              </div>
+                          </div>
+                          {/* Columna Propuesta */}
+                          <div className="w-full max-w-xs flex flex-col items-center">
+                              <div className="text-3xl font-bold text-primary">{formatCurrency(detailedResult.cppB)}</div>
+                              <div className="text-lg font-semibold text-muted-foreground mb-2">Propuesta</div>
+                              <div className="w-full rounded-lg overflow-hidden shadow-md">
+                                  <div className="bg-primary text-primary-foreground p-3 text-center">
+                                      <div className="font-bold">Máquina</div>
+                                      <div>{formatCurrency(detailedResult.costoMaquinaB)}</div>
+                                  </div>
+                                  <div className="bg-primary/40 text-primary-foreground p-3 text-center">
+                                      <div className="font-bold">Herram.</div>
+                                      <div>{formatCurrency(detailedResult.costoHerramientaB)}</div>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
 
 
                     <div className="p-6 bg-muted rounded-lg">
@@ -841,8 +823,8 @@ export default function DashboardTabs() {
                                   <TableRow><TableCell>Descripción</TableCell><TableCell className="text-center">{detailedForm.getValues("descA")}</TableCell><TableCell className="text-center">{detailedForm.getValues("descB")}</TableCell></TableRow>
                                   <TableRow><TableCell>Precio del Inserto</TableCell><TableCell className="text-center">{formatCurrency(detailedForm.getValues("precioA"))}</TableCell><TableCell className="text-center">{formatCurrency(detailedForm.getValues("precioB"))}</TableCell></TableRow>
                                   <TableRow><TableCell>Filos por Inserto</TableCell><TableCell className="text-center">{detailedForm.getValues("filosA")}</TableCell><TableCell className="text-center">{detailedForm.getValues("filosB")}</TableCell></TableRow>
-                                  <TableRow><TableCell>Vida por Filo (Minutos)</TableCell><TableCell className="text-center">{detailedResult.minutosFiloA.toFixed(2)} (calc.)</TableCell><TableCell className="text-center">{detailedResult.minutosFiloB.toFixed(2)} (calc.)</TableCell></TableRow>
-                                  <TableRow><TableCell>Piezas por Filo</TableCell><TableCell className="text-center font-bold">{detailedForm.getValues("piezasFiloA").toFixed(2)} (input)</TableCell><TableCell className="text-center font-bold">{detailedForm.getValues("piezasFiloB").toFixed(2)} (input)</TableCell></TableRow>
+                                  <TableRow><TableCell>Vida por Filo (Minutos)</TableCell><TableCell className="text-center">{detailedResult.minutosFiloA.toFixed(2)} {detailedForm.getValues("modoVidaA") === 'minutos' ? '(input)' : '(calc.)'}</TableCell><TableCell className="text-center">{detailedResult.minutosFiloB.toFixed(2)} {detailedForm.getValues("modoVidaB") === 'minutos' ? '(input)' : '(calc.)'}</TableCell></TableRow>
+                                  <TableRow><TableCell>Piezas por Filo</TableCell><TableCell className="text-center font-bold">{detailedForm.getValues("piezasFiloA").toFixed(2)} {detailedForm.getValues("modoVidaA") === 'piezas' ? '(input)' : '(calc.)'}</TableCell><TableCell className="text-center font-bold">{detailedForm.getValues("piezasFiloB").toFixed(2)} {detailedForm.getValues("modoVidaB") === 'piezas' ? '(input)' : '(calc.)'}</TableCell></TableRow>
                                   <TableRow><TableCell>Piezas Totales / Inserto</TableCell><TableCell className="text-center font-semibold">{detailedResult.piezasTotalA.toFixed(0)}</TableCell><TableCell className="text-center font-semibold">{detailedResult.piezasTotalB.toFixed(0)}</TableCell></TableRow>
                                   <TableRow><TableCell>Insertos Requeridos / Mes</TableCell><TableCell className="text-center">{detailedResult.insertosNecesariosA.toFixed(2)} ({formatCurrency(detailedResult.costoTotalInsertosA)})</TableCell><TableCell className="text-center">{detailedResult.insertosNecesariosB.toFixed(2)} ({formatCurrency(detailedResult.costoTotalInsertosB)})</TableCell></TableRow>
                                   <TableRow className="bg-muted/50"><TableCell className="font-bold">Costo Herramienta / Pieza</TableCell><TableCell className="text-center font-bold text-destructive">{formatCurrency(detailedResult.costoHerramientaA)}</TableCell><TableCell className="text-center font-bold text-primary">{formatCurrency(detailedResult.costoHerramientaB)}</TableCell></TableRow>
@@ -868,3 +850,5 @@ export default function DashboardTabs() {
     </Tabs>
   );
 }
+
+    
