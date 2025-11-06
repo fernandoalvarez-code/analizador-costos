@@ -540,7 +540,7 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
 
     const historyEntry = {
       modifiedBy: user.uid,
-      modifiedAt: Timestamp.now(),
+      modifiedAt: new Date(), // Use client-side timestamp for history arrays
       snapshot: formValues, // Snapshot of the form state
     };
     
