@@ -61,6 +61,7 @@ export const DetailedReportSchema = z.object({
   // Herramienta A
   descA: z.string().optional(),
   precioA: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0, "El costo debe ser positivo.").optional(),
+  insertosPorHerramientaA: z.coerce.number().int().min(1, "Debe ser al menos 1.").default(1),
   filosA: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(1, "Debe ser al menos 1.").optional(),
   cicloMinA: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0, "Debe ser un valor positivo.").optional(),
   cicloSegA: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0).max(59, "No puede exceder 59 segundos.").optional(),
@@ -73,6 +74,7 @@ export const DetailedReportSchema = z.object({
   // Herramienta B
   descB: z.string().optional(),
   precioB: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0, "El costo debe ser positivo.").optional(),
+  insertosPorHerramientaB: z.coerce.number().int().min(1, "Debe ser al menos 1.").default(1),
   filosB: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(1, "Debe ser al menos 1.").optional(),
   cicloMinB: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0, "Debe ser un valor positivo.").optional(),
   cicloSegB: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0).max(59, "No puede exceder 59 segundos.").optional(),

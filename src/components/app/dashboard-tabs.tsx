@@ -1,13 +1,15 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Download, Save } from "lucide-react";
 import { collection, serverTimestamp } from "firebase/firestore";
 
 
+import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,7 +40,6 @@ import { Textarea } from "../ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { useFirestore, useUser } from "@/firebase/provider";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../ui/alert-dialog";
-import { addDocumentNonBlocking } from "@/firebase";
 
 type QuickDiagnosisResult = {
   breakEvenSeconds: number;
@@ -152,6 +153,7 @@ export default function DashboardTabs() {
       tiempoParada: 2,
       descA: "Herramienta Actual",
       precioA: '' as any,
+      insertosPorHerramientaA: 1,
       filosA: '' as any,
       cicloMinA: '' as any,
       cicloSegA: '' as any,
@@ -162,6 +164,7 @@ export default function DashboardTabs() {
       notasA: "",
       descB: "Herramienta Propuesta",
       precioB: '' as any,
+      insertosPorHerramientaB: 1,
       filosB: '' as any,
       cicloMinB: '' as any,
       cicloSegB: '' as any,
@@ -225,7 +228,7 @@ export default function DashboardTabs() {
 
   useEffect(() => {
     const subscription = diagnosisForm.watch((value, { name, type }) => {
-        if (type === 'change' && name && ['precioA', 'precioB'].includes(name)) {
+        if (type === 'change' && name && Object.keys(value).includes(name)) {
             syncForms('diag', value);
         }
     });
@@ -234,7 +237,7 @@ export default function DashboardTabs() {
 
   useEffect(() => {
     const subscription = detailedForm.watch((value, { name, type }) => {
-      if (type === 'change' && name && ['precioA', 'precioB'].includes(name)) {
+      if (type === 'change' && name && Object.keys(value).includes(name)) {
             syncForms('detail', value);
         }
     });
@@ -263,18 +266,20 @@ export default function DashboardTabs() {
     }
 
     if (deltaP <= 0) {
-      if (deltaP < 0) {
-        toast({ variant: "destructive", title: "Precio B es menor", description: "El Precio B es menor que el Precio A. No hay sobrecosto que justificar." });
-      }
-      setQuickResult({
-        breakEvenSeconds: 0,
-        breakEvenPieces: 0,
-        deltaP: deltaP,
-        tcA: tcA,
-        vcBTarget: vcA || 0,
-        newCycleTimeTarget: tcA,
-      });
-      return;
+        setQuickResult({
+            breakEvenSeconds: 0,
+            breakEvenPieces: 0,
+            deltaP: deltaP,
+            tcA: tcA,
+            vcBTarget: vcA || 0,
+            newCycleTimeTarget: tcA,
+        });
+        if (deltaP < 0) {
+            toast({ variant: "default", title: "Precio B es menor", description: "El Precio B es menor que el Precio A. No hay sobrecosto que justificar." });
+        } else {
+             toast({ variant: "default", title: "Mismo Precio", description: "No hay sobrecosto que justificar. Cualquier mejora será un ahorro directo." });
+        }
+        return;
     }
 
     const nB_target = precioB * nA / precioA;
@@ -397,7 +402,7 @@ export default function DashboardTabs() {
         minA = (data.piezasFiloA || 0) * tcA;
     }
     const piezasTotalA = (data.filosA || 1) * pzA;
-    const costoHerramientaA = piezasTotalA > 0 ? (data.precioA || 0) / piezasTotalA : 0;
+    const costoHerramientaA = piezasTotalA > 0 ? ((data.precioA || 0) * (data.insertosPorHerramientaA || 1)) / piezasTotalA : 0;
     const costoParadaA = pzA > 0 ? ((tiempoParada || 0) * costoMin) / pzA : 0;
     const costoMaquinaA = (tcA * costoMin) + costoParadaA;
     const cppA = costoHerramientaA + costoMaquinaA;
@@ -412,7 +417,7 @@ export default function DashboardTabs() {
         minB = (data.piezasFiloB || 0) * tcB;
     }
     const piezasTotalB = (data.filosB || 1) * pzB;
-    const costoHerramientaB = piezasTotalB > 0 ? (data.precioB || 0) / piezasTotalB : 0;
+    const costoHerramientaB = piezasTotalB > 0 ? ((data.precioB || 0) * (data.insertosPorHerramientaB || 1)) / piezasTotalB : 0;
     const costoParadaB = pzB > 0 ? ((tiempoParada || 0) * costoMin) / pzB : 0;
     const costoMaquinaB = (tcB * costoMin) + costoParadaB;
     const cppB = costoHerramientaB + costoMaquinaB;
@@ -498,7 +503,7 @@ export default function DashboardTabs() {
     }
   };
 
-  const handleSaveCase = async (caseName: string) => {
+  const handleSaveCase = (caseName: string) => {
     if (!detailedResult) {
       toast({
         variant: "destructive",
@@ -516,48 +521,33 @@ export default function DashboardTabs() {
       return;
     }
 
-    const {
-        currentToolCost,
-        proposedToolCost,
-        cycleTimeSavings,
-        performanceImprovement,
-        ...restOfDetailedResult
-    } = detailedResult;
-
-
-    const caseData = {
+    const fullCaseData = {
       ...detailedForm.getValues(),
-      ...restOfDetailedResult,
+      results: detailedResult,
       userId: user.uid,
       name: caseName,
       dateCreated: serverTimestamp(),
-      currentToolCost: restOfDetailedResult.costoHerramientaA,
-      proposedToolCost: restOfDetailedResult.costoHerramientaB,
-      cycleTimeSavings: restOfDetailedResult.timeReductionPercent,
-      performanceImprovement: restOfDetailedResult.totalCostReductionPercent,
+      annualSavings: detailedResult.ahorroAnual,
+      roi: detailedResult.roi,
     };
 
-    try {
-      if (!firestore) {
-        throw new Error("Firestore is not initialized");
-      }
-      const casesCollection = collection(firestore, "users", user.uid, "cuttingToolAnalyses");
-      addDocumentNonBlocking(casesCollection, caseData);
-      
-      toast({
-        title: "Caso guardado",
-        description: `El caso "${caseName}" ha sido guardado con éxito.`,
-      });
-      setSaveAlertOpen(false);
-      saveCaseForm.reset();
-    } catch (error) {
-      console.error("Error saving case: ", error);
+    if (!firestore) {
       toast({
         variant: "destructive",
-        title: "Error al guardar",
-        description: "Ocurrió un error al intentar guardar el caso.",
+        title: "Error de base de datos",
+        description: "No se pudo conectar a la base de datos.",
       });
+      return;
     }
+    const casesCollection = collection(firestore, "users", user.uid, "cuttingToolAnalyses");
+    addDocumentNonBlocking(casesCollection, fullCaseData);
+    
+    toast({
+      title: "Caso guardado",
+      description: `El caso "${caseName}" ha sido guardado con éxito.`,
+    });
+    setSaveAlertOpen(false);
+    saveCaseForm.reset();
   };
   
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
@@ -612,7 +602,7 @@ export default function DashboardTabs() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                        <div className="space-y-3">
                           <h4 className="font-medium text-primary mb-4">Datos Inserto A (Actual)</h4>
-                            <FormField control={diagnosisForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio A ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 100" /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={diagnosisForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio Inserto ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 100" /></FormControl><FormMessage /></FormItem>)} />
                             <div className="flex space-x-2">
                                <FormField control={diagnosisForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 4" /></FormControl><FormMessage /></FormItem>)} />
                                <FormField control={diagnosisForm.control} name="pzsPorFiloA" render={({ field }) => (<FormItem><FormLabel>Pzs/Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 20" /></FormControl><FormMessage /></FormItem>)} />
@@ -625,7 +615,7 @@ export default function DashboardTabs() {
                        </div>
                         <div className="space-y-3">
                           <h4 className="font-medium text-accent mb-4">Datos Inserto B (Propuesta)</h4>
-                            <FormField control={diagnosisForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio B ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 150" /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={diagnosisForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio Inserto ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 150" /></FormControl><FormMessage /></FormItem>)} />
                        </div>
                     </div>
                   </div>
@@ -799,7 +789,10 @@ export default function DashboardTabs() {
                         <CardContent className="p-6 space-y-4 pt-6">
                             <FormField control={detailedForm.control} name="descA" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Ej: Inserto de 4 filos..." {...field} /></FormControl></FormItem>)}/>
                             <FormField control={detailedForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio de Compra ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
-                            <FormField control={detailedForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Cant. de Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                            <div className="flex space-x-2">
+                                <FormField control={detailedForm.control} name="insertosPorHerramientaA" render={({ field }) => (<FormItem><FormLabel>Insertos/Herr.</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 1)}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos/Inserto</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                            </div>
                             <FormField control={detailedForm.control} name="modoVidaA" render={({ field }) => (<FormItem><FormLabel>Calcular Vida Útil por:</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="piezas">Piezas por Filo</SelectItem><SelectItem value="minutos">Minutos por Filo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
                             {watchedModoVidaA === 'piezas' ? (
                                 <FormField control={detailedForm.control} name="piezasFiloA" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
@@ -822,7 +815,10 @@ export default function DashboardTabs() {
                         <CardContent className="p-6 space-y-4 pt-6">
                             <FormField control={detailedForm.control} name="descB" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Ej: Inserto de alta vel..." {...field} /></FormControl></FormItem>)}/>
                             <FormField control={detailedForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio de Compra ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
-                            <FormField control={detailedForm.control} name="filosB" render={({ field }) => (<FormItem><FormLabel>Cant. de Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                            <div className="flex space-x-2">
+                                <FormField control={detailedForm.control} name="insertosPorHerramientaB" render={({ field }) => (<FormItem><FormLabel>Insertos/Herr.</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 1)}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="filosB" render={({ field }) => (<FormItem><FormLabel>Filos/Inserto</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                            </div>
                             <FormField control={detailedForm.control} name="modoVidaB" render={({ field }) => (<FormItem><FormLabel>Calcular Vida Útil por:</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="piezas">Piezas por Filo</SelectItem><SelectItem value="minutos">Minutos por Filo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
                             {watchedModoVidaB === 'piezas' ? (
                                 <FormField control={detailedForm.control} name="piezasFiloB" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
@@ -1142,3 +1138,4 @@ export default function DashboardTabs() {
     </Tabs>
   );
 }
+
