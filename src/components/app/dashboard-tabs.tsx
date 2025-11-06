@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -178,19 +179,23 @@ export default function DashboardTabs() {
             }
         }
         if (changed) {
-            detailedForm.reset({ ...detailValues, ...newDetailValues });
+            detailedForm.reset({ ...detailValues, ...newDetailValues }, { keepValues: true });
         }
     }
 
   }, [diagnosisForm, detailedForm]);
 
   useEffect(() => {
-    const subscription = diagnosisForm.watch(() => syncForms());
+    const subscription = diagnosisForm.watch((value, { name, type }) => {
+        if (type === 'change') syncForms();
+    });
     return () => subscription.unsubscribe();
   }, [diagnosisForm, syncForms]);
 
   useEffect(() => {
-    const subscription = detailedForm.watch((value) => {
+    const subscription = detailedForm.watch((value, { name, type }) => {
+      if (type !== 'change') return;
+
       const diagValues = diagnosisForm.getValues();
       const newDiagValues: Partial<z.infer<typeof QuickDiagnosisSchema>> = {};
 
@@ -213,7 +218,7 @@ export default function DashboardTabs() {
                 }
             }
             if (changed) {
-                diagnosisForm.reset({ ...diagValues, ...newDiagValues });
+                diagnosisForm.reset({ ...diagValues, ...newDiagValues }, { keepValues: true });
             }
         }
     });
@@ -424,6 +429,23 @@ export default function DashboardTabs() {
   const watchedSimTimeMode = useWatch({ control: diagnosisForm.control, name: 'modoSimulacionTiempo' });
   const watchedModoVidaA = useWatch({ control: detailedForm.control, name: 'modoVidaA' });
   const watchedModoVidaB = useWatch({ control: detailedForm.control, name: 'modoVidaB' });
+  
+  const getBarHeights = (result: DetailedReportResult | null) => {
+    if (!result || result.cppA <= 0) return { hMaquinaA: 0, hHerramientaA: 0, hMaquinaB: 0, hHerramientaB: 0, alturaBarraA: 0, alturaBarraB: 0 };
+    const maxCosto = Math.max(result.cppA, result.cppB, 0.01);
+    const alturaBarraA = (result.cppA / maxCosto) * 100;
+    const alturaBarraB = (result.cppB / maxCosto) * 100;
+    
+    const hMaquinaA = (result.cppA > 0) ? (result.costoMaquinaA / result.cppA) * 100 : 0;
+    const hHerramientaA = (result.cppA > 0) ? (result.costoHerramientaA / result.cppA) * 100 : 0;
+    const hMaquinaB = (result.cppB > 0) ? (result.costoMaquinaB / result.cppB) * 100 : 0;
+    const hHerramientaB = (result.cppB > 0) ? (result.costoHerramientaB / result.cppB) * 100 : 0;
+
+    return { hMaquinaA, hHerramientaA, hMaquinaB, hHerramientaB, alturaBarraA, alturaBarraB };
+  };
+
+  const barHeights = getBarHeights(detailedResult);
+
 
   return (
     <Tabs defaultValue="quick" className="w-full">
@@ -672,6 +694,7 @@ export default function DashboardTabs() {
                 
                 <div className="flex flex-wrap gap-4 justify-center">
                   <Button type="submit">Generar Informe</Button>
+                  <Button type="button" variant="secondary"><Save className="mr-2 h-4 w-4" />Guardar Caso</Button>
                   <Button type="button" variant="secondary"><Download className="mr-2 h-4 w-4" />Imprimir / Guardar PDF</Button>
                 </div>
               </form>
@@ -689,6 +712,43 @@ export default function DashboardTabs() {
                         </div>
                     </div>
                     
+                    <div className="mb-8">
+                        <h3 className="text-xl font-bold text-center mb-6">Comparativa de Costo Total por Pieza</h3>
+                        <div className="flex justify-around items-end h-80 px-4">
+                            {/* Barra A */}
+                            <div className="w-1/3 flex flex-col items-center">
+                                <div className="text-3xl font-bold text-destructive">{formatCurrency(detailedResult.cppA)}</div>
+                                <div className="text-lg font-semibold text-muted-foreground mb-2">Actual</div>
+                                <div className="w-full md:w-3/4 bg-muted rounded-t-lg" style={{ height: `${barHeights.alturaBarraA}%` }}>
+                                    <div className="flex flex-col-reverse rounded-t-lg overflow-hidden h-full">
+                                        <div style={{ height: `${barHeights.hHerramientaA}%` }} className="bg-destructive/40 flex items-center justify-center text-xs font-medium text-destructive-foreground p-1 text-center leading-tight overflow-hidden" title={`Herramienta ${formatCurrency(detailedResult.costoHerramientaA)}`}>
+                                            Herram.<br/>{formatCurrency(detailedResult.costoHerramientaA)}
+                                        </div>
+                                        <div style={{ height: `${barHeights.hMaquinaA}%` }} className="bg-destructive flex items-center justify-center text-sm font-semibold text-destructive-foreground p-1 text-center leading-tight overflow-hidden" title={`Máquina ${formatCurrency(detailedResult.costoMaquinaA)}`}>
+                                            Máquina<br/>{formatCurrency(detailedResult.costoMaquinaA)}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Barra B */}
+                            <div className="w-1/3 flex flex-col items-center">
+                                <div className="text-3xl font-bold text-primary">{formatCurrency(detailedResult.cppB)}</div>
+                                <div className="text-lg font-semibold text-muted-foreground mb-2">Propuesta</div>
+                                <div className="w-full md:w-3/4 bg-muted rounded-t-lg" style={{ height: `${barHeights.alturaBarraB}%` }}>
+                                    <div className="flex flex-col-reverse rounded-t-lg overflow-hidden h-full">
+                                        <div style={{ height: `${barHeights.hHerramientaB}%` }} className="bg-primary/40 flex items-center justify-center text-xs font-medium text-primary-foreground p-1 text-center leading-tight overflow-hidden" title={`Herramienta ${formatCurrency(detailedResult.costoHerramientaB)}`}>
+                                            Herram.<br/>{formatCurrency(detailedResult.costoHerramientaB)}
+                                        </div>
+                                        <div style={{ height: `${barHeights.hMaquinaB}%` }} className="bg-primary flex items-center justify-center text-sm font-semibold text-primary-foreground p-1 text-center leading-tight overflow-hidden" title={`Máquina ${formatCurrency(detailedResult.costoMaquinaB)}`}>
+                                            Máquina<br/>{formatCurrency(detailedResult.costoMaquinaB)}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
                     <div className="p-6 bg-muted rounded-lg">
                         <h3 className="text-2xl font-bold text-center mb-6">Análisis de Inversión vs. Ahorro</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
