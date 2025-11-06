@@ -1,3 +1,4 @@
+
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,7 @@ export default function Home() {
         <Link href="#" className="flex items-center justify-center">
            <Image 
             src="/logo.png" 
-            alt="Logo de la empresa" 
+            alt="Seco Cut Srl" 
             width={150} 
             height={40}
             className="object-contain"
