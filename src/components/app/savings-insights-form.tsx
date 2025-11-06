@@ -2,9 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useFormStatus } from "react-dom";
+import { useFormStatus, useActionState } from "react";
 import * as z from "zod";
-import React, { useActionState } from "react";
+import React from "react";
 import { Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
