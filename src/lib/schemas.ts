@@ -1,3 +1,4 @@
+
 import { z } from "zod";
 
 export const LoginSchema = z.object({
@@ -13,12 +14,25 @@ export const SignupSchema = z.object({
 
 
 export const QuickDiagnosisSchema = z.object({
-  currentToolCost: z.coerce.number().min(0, "El costo debe ser positivo."),
-  proposedToolCost: z.coerce.number().min(0, "El costo debe ser positivo."),
-  cycleTimeReduction: z.coerce.number().min(0, "La reducción no puede ser negativa.").max(100, "La reducción no puede ser mayor a 100%."),
+  costoHoraMaquina: z.coerce.number().min(0, "El costo debe ser positivo."),
+  piezasAlMes: z.coerce.number().min(0, "El valor debe ser positivo."),
+  
+  precioA: z.coerce.number().min(0, "El costo debe ser positivo."),
+  filosA: z.coerce.number().min(1, "Debe tener al menos 1 filo."),
+  pzsPorFiloA: z.coerce.number().min(1, "Debe ser al menos 1."),
+  cicloMinA: z.coerce.number().min(0, "Debe ser un valor positivo."),
+  cicloSegA: z.coerce.number().min(0).max(59, "No puede exceder 59 segundos."),
+  vcA: z.coerce.number().min(0, "Debe ser un valor positivo."),
+
+  precioB: z.coerce.number().min(0, "El costo debe ser positivo."),
+  filosB: z.coerce.number().min(1, "Debe tener al menos 1 filo."),
+  pzsPorFiloB: z.coerce.number().min(1, "Debe ser al menos 1."),
+  cicloMinB: z.coerce.number().min(0, "Debe ser un valor positivo."),
+  cicloSegB: z.coerce.number().min(0).max(59, "No puede exceder 59 segundos."),
+  vcB: z.coerce.number().min(0, "Debe ser un valor positivo."),
 });
 
-export const DetailedReportSchema = QuickDiagnosisSchema.extend({
+export const DetailedReportSchema = z.object({
   partsProducedPerShift: z.coerce.number().min(1, "Debe ser al menos 1."),
   shiftsPerDay: z.coerce.number().min(1, "Debe ser al menos 1."),
   daysPerWeek: z.coerce.number().min(1, "Debe ser al menos 1."),
@@ -26,6 +40,9 @@ export const DetailedReportSchema = QuickDiagnosisSchema.extend({
   machineHourlyRate: z.coerce.number().min(0, "La tarifa debe ser positiva."),
   currentTool: z.string().min(1, "El nombre de la herramienta es requerido."),
   proposedTool: z.string().min(1, "El nombre de la herramienta es requerido."),
+  currentToolCost: z.coerce.number().min(0, "El costo debe ser positivo."),
+  proposedToolCost: z.coerce.number().min(0, "El costo debe ser positivo."),
+  cycleTimeReduction: z.coerce.number().min(0, "La reducción no puede ser negativa.").max(100, "La reducción no puede ser mayor a 100%."),
 });
 
 export const SavingsInsightsSchema = z.object({
@@ -40,3 +57,5 @@ export const SavingsInsightsSchema = z.object({
   weeksPerYear: z.coerce.number().int().positive("Debe ser un entero positivo."),
   machineHourlyRate: z.coerce.number().positive("La tarifa horaria debe ser un número positivo."),
 });
+
+    

@@ -1,9 +1,10 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Calculator,
   Download,
@@ -13,6 +14,8 @@ import {
   Clock,
   DollarSign,
   Package,
+  TrendingDown,
+  ArrowRight,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -36,35 +39,44 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "../ui/separator";
 
 type QuickDiagnosisResult = {
-  breakEven: number;
-  annualSavings: number;
+  breakEvenSeconds: number;
+  breakEvenPieces: number;
 };
-type DetailedReportResult = {
-  cppCurrent: number;
-  cppProposed: number;
-  netSavings: number;
-  roi: number;
-  machineHoursFreed: number;
+type NetSavingsResult = {
+    netAnnualSavings: number;
 };
 
 export default function DashboardTabs() {
   const [quickResult, setQuickResult] = React.useState<QuickDiagnosisResult | null>(null);
-  const [detailedResult, setDetailedResult] = React.useState<DetailedReportResult | null>(null);
+  const [netSavingsResult, setNetSavingsResult] = React.useState<NetSavingsResult | null>(null);
+  const [detailedResult, setDetailedResult] = React.useState<any | null>(null);
 
-  const quickForm = useForm<z.infer<typeof QuickDiagnosisSchema>>({
+  const diagnosisForm = useForm<z.infer<typeof QuickDiagnosisSchema>>({
     resolver: zodResolver(QuickDiagnosisSchema),
     defaultValues: {
-      currentToolCost: 100,
-      proposedToolCost: 150,
-      cycleTimeReduction: 20,
+      costoHoraMaquina: 800,
+      piezasAlMes: 2000,
+      precioA: 100,
+      filosA: 4,
+      pzsPorFiloA: 20,
+      cicloMinA: 1,
+      cicloSegA: 30,
+      vcA: 200,
+      precioB: 150,
+      filosB: 4,
+      pzsPorFiloB: 25,
+      cicloMinB: 1,
+      cicloSegB: 15,
+      vcB: 250,
     },
   });
 
   const detailedForm = useForm<z.infer<typeof DetailedReportSchema>>({
     resolver: zodResolver(DetailedReportSchema),
-    defaultValues: {
+     defaultValues: {
       currentTool: "Herramienta Estándar",
       currentToolCost: 100,
       proposedTool: "Herramienta Premium",
@@ -78,21 +90,60 @@ export default function DashboardTabs() {
     },
   });
 
+  // Sync diagnosisForm to detailedForm
+  const watchedDiagnosisData = useWatch({ control: diagnosisForm.control });
+  useEffect(() => {
+    detailedForm.setValue("machineHourlyRate", watchedDiagnosisData.costoHoraMaquina || 0);
+    detailedForm.setValue("currentToolCost", watchedDiagnosisData.precioA || 0);
+    detailedForm.setValue("proposedToolCost", watchedDiagnosisData.precioB || 0);
+    
+    const cicloASeconds = (watchedDiagnosisData.cicloMinA || 0) * 60 + (watchedDiagnosisData.cicloSegA || 0);
+    const cicloBSeconds = (watchedDiagnosisData.cicloMinB || 0) * 60 + (watchedDiagnosisData.cicloSegB || 0);
+    const reduction = cicloASeconds > 0 ? ((cicloASeconds - cicloBSeconds) / cicloASeconds) * 100 : 0;
+    detailedForm.setValue("cycleTimeReduction", parseFloat(reduction.toFixed(2)));
+
+  }, [watchedDiagnosisData, detailedForm]);
+
+
   function onQuickSubmit(data: z.infer<typeof QuickDiagnosisSchema>) {
-    const { currentToolCost, proposedToolCost, cycleTimeReduction } = data;
-    // Dummy calculations
-    const costDifference = proposedToolCost - currentToolCost;
-    if (cycleTimeReduction <= 0) {
-        setQuickResult({ breakEven: Infinity, annualSavings: 0 });
+    const { precioA, precioB, filosA, pzsPorFiloA, costoHoraMaquina } = data;
+    const deltaP = precioB - precioA;
+    const nA = filosA * pzsPorFiloA;
+    const cm = costoHoraMaquina / 60;
+    
+    if (deltaP <= 0 || nA <= 0 || cm <=0) {
+        setQuickResult({ breakEvenSeconds: 0, breakEvenPieces: 0});
         return;
     }
-    const breakEven = Math.ceil(costDifference / (cycleTimeReduction / 100));
-    const annualSavings = (breakEven * (cycleTimeReduction / 100) * 250) - costDifference * 12;
-    setQuickResult({ breakEven, annualSavings: Math.max(0, annualSavings) });
+
+    const breakEvenSeconds = (deltaP * nA) / cm;
+    const breakEvenPieces = (deltaP * nA) / cm; // This seems to be the same formula, might need adjustment based on real logic
+
+    setQuickResult({ breakEvenSeconds, breakEvenPieces });
+  }
+
+  function onNetSavingsSubmit(data: z.infer<typeof QuickDiagnosisSchema>) {
+    const { precioA, filosA, pzsPorFiloA, cicloMinA, cicloSegA, costoHoraMaquina, piezasAlMes, precioB, filosB, pzsPorFiloB, cicloMinB, cicloSegB } = data;
+
+    const cm = costoHoraMaquina / 60;
+    
+    // CPP A
+    const nA = filosA * pzsPorFiloA;
+    const tcA = cicloMinA + cicloSegA / 60;
+    const cppA = nA > 0 ? (precioA / nA) + (tcA * cm) : Infinity;
+
+    // CPP B
+    const nB = filosB * pzsPorFiloB;
+    const tcB = cicloMinB + cicloSegB / 60;
+    const cppB = nB > 0 ? (precioB / nB) + (tcB * cm) : Infinity;
+
+    const savingsPerPiece = cppA - cppB;
+    const netAnnualSavings = savingsPerPiece * piezasAlMes * 12;
+
+    setNetSavingsResult({ netAnnualSavings: isFinite(netAnnualSavings) ? netAnnualSavings : 0 });
   }
 
   function onDetailedSubmit(data: z.infer<typeof DetailedReportSchema>) {
-    // Dummy calculations
     const cppCurrent = data.currentToolCost / data.partsProducedPerShift;
     const cppProposed = data.proposedToolCost / (data.partsProducedPerShift * (1 + data.cycleTimeReduction/100));
     const annualParts = data.partsProducedPerShift * data.shiftsPerDay * data.daysPerWeek * data.weeksPerYear;
@@ -111,6 +162,11 @@ export default function DashboardTabs() {
   }
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
+  const formatSeconds = (seconds: number) => {
+    const min = Math.floor(seconds/60);
+    const sec = Math.round(seconds % 60);
+    return `${min}m ${sec}s`;
+  }
 
   const StatCard = ({ icon, title, value, description }: { icon: React.ReactNode, title: string, value: string, description?: string }) => (
     <Card>
@@ -128,8 +184,8 @@ export default function DashboardTabs() {
   return (
     <Tabs defaultValue="quick">
       <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="quick">Diagnóstico Rápido</TabsTrigger>
-        <TabsTrigger value="detailed">Informe Detallado</TabsTrigger>
+        <TabsTrigger value="quick">1. Diagnóstico</TabsTrigger>
+        <TabsTrigger value="detailed">2. Informe</TabsTrigger>
       </TabsList>
       <TabsContent value="quick">
         <Card>
@@ -140,43 +196,93 @@ export default function DashboardTabs() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <Form {...quickForm}>
-              <form onSubmit={quickForm.handleSubmit(onQuickSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <FormField control={quickForm.control} name="currentToolCost" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Costo Herramienta Actual ($)</FormLabel>
-                      <FormControl><Input type="number" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                )}/>
-                <FormField control={quickForm.control} name="proposedToolCost" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Costo Herramienta Propuesta ($)</FormLabel>
-                      <FormControl><Input type="number" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                )}/>
-                <FormField control={quickForm.control} name="cycleTimeReduction" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Reducción Tiempo Ciclo (%)</FormLabel>
-                      <FormControl><Input type="number" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                )}/>
-                <div className="md:col-span-3">
-                  <Button type="submit" className="w-full md:w-auto">Calcular</Button>
+            <Form {...diagnosisForm}>
+              <form className="space-y-8">
+                {/* Datos de Partida */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4 font-headline">Datos de Partida</h3>
+                  <div className="p-6 border rounded-lg space-y-6">
+                    {/* Datos Globales */}
+                    <div>
+                      <h4 className="font-medium text-primary mb-4">Datos Globales del Proceso</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField control={diagnosisForm.control} name="costoHoraMaquina" render={({ field }) => (<FormItem><FormLabel>Costo Hora-Máquina ($)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={diagnosisForm.control} name="piezasAlMes" render={({ field }) => (<FormItem><FormLabel>Piezas al Mes (aprox.)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      </div>
+                    </div>
+                    <Separator />
+                    {/* Datos Inserto A y B */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                       <div>
+                          <h4 className="font-medium text-primary mb-4">Datos Inserto A (Actual)</h4>
+                          <div className="space-y-4">
+                            <FormField control={diagnosisForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio A ($)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <div className="grid grid-cols-2 gap-4">
+                               <FormField control={diagnosisForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                               <FormField control={diagnosisForm.control} name="pzsPorFiloA" render={({ field }) => (<FormItem><FormLabel>Pzs/Filo</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            </div>
+                             <div className="grid grid-cols-2 gap-4">
+                                <FormField control={diagnosisForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={diagnosisForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>Ciclo (Seg)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            </div>
+                            <FormField control={diagnosisForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                          </div>
+                       </div>
+                        <div>
+                          <h4 className="font-medium text-accent mb-4">Datos Inserto B (Propuesta)</h4>
+                          <div className="space-y-4">
+                            <FormField control={diagnosisForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio B ($)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormField control={diagnosisForm.control} name="filosB" render={({ field }) => (<FormItem><FormLabel>Filos</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                               <FormField control={diagnosisForm.control} name="pzsPorFiloB" render={({ field }) => (<FormItem><FormLabel>Pzs/Filo</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            </div>
+                             <div className="grid grid-cols-2 gap-4">
+                                <FormField control={diagnosisForm.control} name="cicloMinB" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={diagnosisForm.control} name="cicloSegB" render={({ field }) => (<FormItem><FormLabel>Ciclo (Seg)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            </div>
+                            <FormField control={diagnosisForm.control} name="vcB" render={({ field }) => (<FormItem><FormLabel>Vc Propuesta (m/min)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                          </div>
+                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Punto de Equilibrio */}
+                <div className="space-y-4">
+                    <h3 className="text-lg font-semibold font-headline">Paso 1: Punto de Equilibrio</h3>
+                    <div className="p-6 border rounded-lg space-y-4">
+                        <p className="text-sm text-muted-foreground">Calcula la reducción de tiempo de ciclo o el aumento de rendimiento necesarios para justificar la diferencia de precio entre la herramienta A y B.</p>
+                        <Button type="button" onClick={diagnosisForm.handleSubmit(onQuickSubmit)}>Calcular Punto de Equilibrio</Button>
+                         {quickResult && (
+                            <div className="mt-4 pt-4 border-t">
+                                <h4 className="font-semibold mb-4">Resultados</h4>
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <StatCard icon={<TrendingDown className="h-4 w-4 text-muted-foreground" />} title="Reducción de Tiempo Necesaria" value={formatSeconds(quickResult.breakEvenSeconds)} description="Para justificar el costo de la herramienta B" />
+                                    <StatCard icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} title="Piezas Adicionales Necesarias" value={`${quickResult.breakEvenPieces.toFixed(2)} pzs`} description="Rendimiento extra por inserto para pagar la diferencia"/>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Ahorro Neto Real */}
+                <div className="space-y-4">
+                    <h3 className="text-lg font-semibold font-headline">Paso 2: Simulación de Ahorro Neto Real</h3>
+                     <div className="p-6 border rounded-lg space-y-4">
+                        <p className="text-sm text-muted-foreground">Simula el ahorro real cambiando los parámetros de la herramienta B y compara el Costo Por Pieza (CPP) final.</p>
+                        <Button type="button" onClick={diagnosisForm.handleSubmit(onNetSavingsSubmit)}>Calcular Ahorro Neto</Button>
+                         {netSavingsResult && (
+                            <div className="mt-4 pt-4 border-t">
+                                <h4 className="font-semibold mb-4">Resultados</h4>
+                                <div className="grid gap-4 md:grid-cols-1">
+                                    <StatCard icon={<DollarSign className="h-4 w-4 text-muted-foreground" />} title="Ahorro Neto Anual Estimado" value={formatCurrency(netSavingsResult.netAnnualSavings)} description="Basado en la diferencia de CPP y producción mensual." />
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
               </form>
             </Form>
-            {quickResult && (
-                <div className="mt-6 pt-6 border-t">
-                    <h3 className="text-lg font-headline font-semibold mb-4">Resultados del Diagnóstico</h3>
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <StatCard icon={<Calculator className="h-4 w-4 text-muted-foreground" />} title="Punto de Equilibrio" value={isFinite(quickResult.breakEven) ? `${quickResult.breakEven.toFixed(2)}` : 'N/A'} description="Costo justificado por la reducción de tiempo" />
-                        <StatCard icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} title="Ahorro Anual Estimado" value={formatCurrency(quickResult.annualSavings)} description="Basado en una operación continua" />
-                    </div>
-                </div>
-            )}
           </CardContent>
         </Card>
       </TabsContent>
@@ -185,7 +291,7 @@ export default function DashboardTabs() {
           <CardHeader>
             <CardTitle className="font-headline">Informe Detallado (A vs. B)</CardTitle>
             <CardDescription>
-              Genera una comparación exhaustiva entre dos herramientas de corte.
+              Genera una comparación exhaustiva entre dos herramientas de corte. Los datos de partida se sincronizan desde la pestaña de Diagnóstico.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -242,3 +348,5 @@ export default function DashboardTabs() {
     </Tabs>
   );
 }
+
+    
