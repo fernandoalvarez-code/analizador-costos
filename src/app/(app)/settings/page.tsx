@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -114,10 +115,10 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <FormItem>
-              <FormLabel>Tema</FormLabel>
+            <div className="space-y-2">
+              <Label htmlFor="theme-select">Tema</Label>
               <Select defaultValue="system">
-                <SelectTrigger>
+                <SelectTrigger id="theme-select">
                   <SelectValue placeholder="Selecciona un tema" />
                 </SelectTrigger>
                 <SelectContent>
@@ -126,7 +127,7 @@ export default function SettingsPage() {
                   <SelectItem value="system">Sistema</SelectItem>
                 </SelectContent>
               </Select>
-            </FormItem>
+            </div>
           </CardContent>
         </Card>
 
@@ -148,3 +149,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+
