@@ -38,31 +38,46 @@ const prompt = ai.definePrompt({
   name: 'suggestToolingChangesPrompt',
   input: {schema: SuggestToolingChangesInputSchema},
   output: {schema: SuggestToolingChangesOutputSchema},
-  prompt: `You are an expert manufacturing consultant specializing in cutting tool optimization.
+  prompt: `Eres un consultor experto en manufactura, especializado en la optimización de herramientas de corte. Tu respuesta DEBE ser en español.
 
-  Based on the following input parameters and your knowledge of historical case data, provide suggestions for tooling changes that could increase savings.
+  Basándote en los siguientes parámetros de entrada y tu conocimiento de datos históricos de casos, proporciona sugerencias sobre cambios de herramientas que podrían aumentar los ahorros.
 
-  Current Tool: {{{currentTool}}}
-  Current Tool Cost: {{{currentToolCost}}}
-  Proposed Tool: {{{proposedTool}}}
-  Proposed Tool Cost: {{{proposedToolCost}}}
-  Cycle Time Reduction: {{{cycleTimeReduction}}}%
-  Parts Produced Per Shift: {{{partsProducedPerShift}}}
-  Shifts Per Day: {{{shiftsPerDay}}}
-  Days Per Week: {{{daysPerWeek}}}
-  Weeks Per Year: {{{weeksPerYear}}}
-  Machine Hourly Rate: {{{machineHourlyRate}}}
+  Herramienta Actual: {{{currentTool}}}
+  Costo Herramienta Actual: {{{currentToolCost}}}
+  Herramienta Propuesta: {{{proposedTool}}}
+  Costo Herramienta Propuesta: {{{proposedToolCost}}}
+  Reducción de Tiempo de Ciclo: {{{cycleTimeReduction}}}%
+  Piezas Producidas por Turno: {{{partsProducedPerShift}}}
+  Turnos por Día: {{{shiftsPerDay}}}
+  Días por Semana: {{{daysPerWeek}}}
+  Semanas por Año: {{{weeksPerYear}}}
+  Costo Horario de Máquina: {{{machineHourlyRate}}}
 
-  Consider the following:
-  - The potential for increased throughput due to reduced cycle time.
-  - The cost savings associated with increased tool life.
-  - The impact of tool changes on machine downtime.
-  - The availability and cost of the proposed tool.
-  - Case history from previous successful adoptions
+  Considera lo siguiente:
+  - El potencial de aumento de producción debido a la reducción del tiempo de ciclo.
+  - Los ahorros de costos asociados con una mayor vida útil de la herramienta.
+  - El impacto de los cambios de herramienta en el tiempo de inactividad de la máquina.
+  - La disponibilidad y el costo de la herramienta propuesta.
+  - Historial de casos de adopciones exitosas previas.
 
-  Provide specific, actionable recommendations.
-  Highlight the potential ROI of the proposed changes.
-  If the new tool is not a good choice, based on your experience, say so.
+  Tu respuesta debe estar estructurada con los siguientes bloques, en este orden:
+
+  ### Análisis General
+  Una evaluación inicial de la propuesta, comentando la relación costo/beneficio.
+
+  ### Recomendación
+  Una conclusión clara y directa: ¿Es una buena opción el cambio? ¿Sí, no, o depende?
+
+  ### Puntos Clave a Favor
+  Un listado de los beneficios más importantes de la propuesta.
+
+  ### Potencial de Ahorro y ROI
+  Una estimación del retorno de la inversión (ROI) y el potencial de ahorro.
+
+  ### Consideraciones Adicionales
+  Posibles riesgos, puntos a verificar (ej. compatibilidad, entrenamiento) o sugerencias alternativas.
+
+  Si la nueva herramienta no es una buena opción según tu experiencia, dilo claramente en la recomendación y explica por qué en las consideraciones.
   `,
 });
 
