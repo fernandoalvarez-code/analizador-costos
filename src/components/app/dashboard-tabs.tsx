@@ -104,27 +104,34 @@ export default function DashboardTabs() {
 
   // Sync diagnosisForm to detailedForm and other related fields
   useEffect(() => {
+    const { costoHoraMaquina, precioA, precioB, cicloMinA, cicloSegA, modoSimulacionTiempo, segundosMenosReales, vcA, vcBReal } = watchedDiagnosisData;
+
     // Sync to Detailed Report
-    detailedForm.setValue("machineHourlyRate", watchedDiagnosisData.costoHoraMaquina || 0);
-    detailedForm.setValue("currentToolCost", watchedDiagnosisData.precioA || 0);
-    detailedForm.setValue("proposedToolCost", watchedDiagnosisData.precioB || 0);
+    detailedForm.setValue("machineHourlyRate", costoHoraMaquina || 0, { shouldValidate: true });
+    detailedForm.setValue("currentToolCost", precioA || 0, { shouldValidate: true });
+    detailedForm.setValue("proposedToolCost", precioB || 0, { shouldValidate: true });
     
     // Auto-fill Vc B Real if simulating by Vc and Vc A changes
-    if (watchedDiagnosisData.modoSimulacionTiempo === 'vc' && watchedDiagnosisData.vcA) {
-        diagnosisForm.setValue("vcBReal", watchedDiagnosisData.vcA);
+    if (modoSimulacionTiempo === 'vc' && vcA && vcBReal !== vcA) {
+        if(diagnosisForm.getValues("vcBReal") !== vcA) {
+            // diagnosisForm.setValue("vcBReal", vcA); // This can cause a loop if not careful
+        }
     }
 
-    const cicloASeconds = (watchedDiagnosisData.cicloMinA || 0) * 60 + (watchedDiagnosisData.cicloSegA || 0);
+    const cicloASeconds = (cicloMinA || 0) * 60 + (cicloSegA || 0);
     
     let cicloBSeconds = 0;
-    if (watchedDiagnosisData.modoSimulacionTiempo === 'segundos') {
-        cicloBSeconds = cicloASeconds - (watchedDiagnosisData.segundosMenosReales || 0);
-    } else if (watchedDiagnosisData.vcA && watchedDiagnosisData.vcBReal) {
-        cicloBSeconds = cicloASeconds * (watchedDiagnosisData.vcA / watchedDiagnosisData.vcBReal);
+    if (modoSimulacionTiempo === 'segundos') {
+        cicloBSeconds = cicloASeconds - (segundosMenosReales || 0);
+    } else if (vcA && vcBReal) {
+        cicloBSeconds = cicloASeconds * (vcA / vcBReal);
     }
     
     const reduction = cicloASeconds > 0 ? ((cicloASeconds - cicloBSeconds) / cicloASeconds) * 100 : 0;
-    detailedForm.setValue("cycleTimeReduction", parseFloat(reduction.toFixed(2)));
+    
+    if (detailedForm.getValues("cycleTimeReduction") !== parseFloat(reduction.toFixed(2))) {
+      detailedForm.setValue("cycleTimeReduction", parseFloat(reduction.toFixed(2)), { shouldValidate: true });
+    }
 
   }, [watchedDiagnosisData, detailedForm, diagnosisForm]);
 
@@ -312,27 +319,27 @@ export default function DashboardTabs() {
                   <h3 className="text-lg font-semibold mb-4 font-headline text-blue-800">Datos de Partida</h3>
                   <div className="p-6 border border-blue-200 bg-blue-50/50 rounded-lg space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField control={diagnosisForm.control} name="costoHoraMaquina" render={({ field }) => (<FormItem><FormLabel>⚙️ Costo Hora-Máquina ($)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={diagnosisForm.control} name="piezasAlMes" render={({ field }) => (<FormItem><FormLabel>🏭 Piezas al Mes (aprox.)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={diagnosisForm.control} name="costoHoraMaquina" render={({ field }) => (<FormItem><FormLabel>⚙️ Costo Hora-Máquina ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={diagnosisForm.control} name="piezasAlMes" render={({ field }) => (<FormItem><FormLabel>🏭 Piezas al Mes (aprox.)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
                     </div>
                     <Separator />
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                        <div className="space-y-3">
                           <h4 className="font-medium text-primary mb-4">Datos Inserto A (Actual)</h4>
-                            <FormField control={diagnosisForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio A ($)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={diagnosisForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio A ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
                             <div className="flex space-x-2">
-                               <FormField control={diagnosisForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                               <FormField control={diagnosisForm.control} name="pzsPorFiloA" render={({ field }) => (<FormItem><FormLabel>Pzs/Filo</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                               <FormField control={diagnosisForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+                               <FormField control={diagnosisForm.control} name="pzsPorFiloA" render={({ field }) => (<FormItem><FormLabel>Pzs/Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
                             </div>
                              <div className="flex space-x-2">
-                                <FormField control={diagnosisForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Min</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={diagnosisForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>Seg</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={diagnosisForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Min</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={diagnosisForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>Seg</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
                             </div>
-                            <FormField control={diagnosisForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={diagnosisForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
                        </div>
                         <div className="space-y-3">
                           <h4 className="font-medium text-accent mb-4">Datos Inserto B (Propuesta)</h4>
-                            <FormField control={diagnosisForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio B ($)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={diagnosisForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio B ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
                        </div>
                     </div>
                   </div>
@@ -389,7 +396,7 @@ export default function DashboardTabs() {
                         <p className="text-sm text-muted-foreground">Simula el ahorro neto total basado en tu propuesta real de mejora (puedes mejorar rendimiento, tiempo, o ambos).</p>
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-                            <FormField control={diagnosisForm.control} name="piezasMasReales" render={({ field }) => (<FormItem><FormLabel>Piezas MÁS Reales por Filo</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={diagnosisForm.control} name="piezasMasReales" render={({ field }) => (<FormItem><FormLabel>Piezas MÁS Reales por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField
                                 control={diagnosisForm.control}
                                 name="modoSimulacionTiempo"
@@ -413,9 +420,9 @@ export default function DashboardTabs() {
                             />
                             <div>
                                 {watchedSimTimeMode === 'segundos' ? (
-                                    <FormField control={diagnosisForm.control} name="segundosMenosReales" render={({ field }) => (<FormItem><FormLabel>Segundos MENOS Reales por Pieza</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={diagnosisForm.control} name="segundosMenosReales" render={({ field }) => (<FormItem><FormLabel>Segundos MENOS Reales por Pieza</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
                                 ) : (
-                                    <FormField control={diagnosisForm.control} name="vcBReal" render={({ field }) => (<FormItem><FormLabel>Nueva Vc (B) (m/min)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={diagnosisForm.control} name="vcBReal" render={({ field }) => (<FormItem><FormLabel>Nueva Vc (B) (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
                                 )}
                             </div>
                         </div>
@@ -470,22 +477,22 @@ export default function DashboardTabs() {
                   <div className="space-y-4">
                       <h4 className="font-semibold text-primary">Herramienta Actual (A)</h4>
                       <FormField control={detailedForm.control} name="currentTool" render={({ field }) => (<FormItem><FormLabel>Nombre Herramienta A</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                      <FormField control={detailedForm.control} name="currentToolCost" render={({ field }) => (<FormItem><FormLabel>Costo Herramienta A ($)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                      <FormField control={detailedForm.control} name="currentToolCost" render={({ field }) => (<FormItem><FormLabel>Costo Herramienta A ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}/>
                   </div>
                    <div className="space-y-4">
                       <h4 className="font-semibold text-accent">Herramienta Propuesta (B)</h4>
                       <FormField control={detailedForm.control} name="proposedTool" render={({ field }) => (<FormItem><FormLabel>Nombre Herramienta B</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                      <FormField control={detailedForm.control} name="proposedToolCost" render={({ field }) => (<FormItem><FormLabel>Costo Herramienta B ($)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                      <FormField control={detailedForm.control} name="proposedToolCost" render={({ field }) => (<FormItem><FormLabel>Costo Herramienta B ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}/>
                   </div>
                 </div>
                 <div className="border-t pt-8">
                     <h4 className="font-semibold mb-4">Parámetros de Producción</h4>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                        <FormField control={detailedForm.control} name="cycleTimeReduction" render={({ field }) => (<FormItem><FormLabel>Reducción Ciclo (%)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                        <FormField control={detailedForm.control} name="partsProducedPerShift" render={({ field }) => (<FormItem><FormLabel>Piezas/Turno</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                        <FormField control={detailedForm.control} name="shiftsPerDay" render={({ field }) => (<FormItem><FormLabel>Turnos/Día</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                        <FormField control={detailedForm.control} name="daysPerWeek" render={({ field }) => (<FormItem><FormLabel>Días/Semana</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                        <FormField control={detailedForm.control} name="machineHourlyRate" render={({ field }) => (<FormItem><FormLabel>Costo Máquina/Hr ($)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                        <FormField control={detailedForm.control} name="cycleTimeReduction" render={({ field }) => (<FormItem><FormLabel>Reducción Ciclo (%)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}/>
+                        <FormField control={detailedForm.control} name="partsProducedPerShift" render={({ field }) => (<FormItem><FormLabel>Piezas/Turno</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}/>
+                        <FormField control={detailedForm.control} name="shiftsPerDay" render={({ field }) => (<FormItem><FormLabel>Turnos/Día</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}/>
+                        <FormField control={detailedForm.control} name="daysPerWeek" render={({ field }) => (<FormItem><FormLabel>Días/Semana</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}/>
+                        <FormField control={detailedForm.control} name="machineHourlyRate" render={({ field }) => (<FormItem><FormLabel>Costo Máquina/Hr ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}/>
                     </div>
                 </div>
                 <div>
