@@ -36,13 +36,7 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <header className="px-4 lg:px-6 h-16 flex items-center bg-background/80 backdrop-blur-sm fixed top-0 w-full z-50">
         <Link href="#" className="flex items-center justify-center">
-           <Image 
-            src="/logo.png" 
-            alt="Seco Cut Srl" 
-            width={150} 
-            height={40}
-            className="object-contain"
-          />
+           <span className="font-headline text-xl font-bold text-primary">Secocut SRL</span>
           <span className="sr-only">Analizador de Costos de Corte</span>
         </Link>
         <nav className="ml-auto flex gap-4 sm:gap-6">
