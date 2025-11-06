@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -73,6 +74,7 @@ type DetailedReportResult = {
   roi: number;
   toolCostIncreasePercent: number;
   totalCostReductionPercent: number;
+  timeReductionPercent: number;
 
   // Horas liberadas
   machineHoursFreedAnnual: number;
@@ -93,6 +95,17 @@ type DetailedReportResult = {
   insertosNecesariosB: number;
   costoTotalInsertosA: number;
   costoTotalInsertosB: number;
+  
+  // Para resumen financiero
+  costoTotalMensualA: number;
+  costoTotalMensualB: number;
+  tiempoMaquinaMensualHorasA: number;
+  tiempoMaquinaMensualHorasB: number;
+  tiempoMaquinaMensualValorA: number;
+  tiempoMaquinaMensualValorB: number;
+  turnosMensualesA: number;
+  turnosMensualesB: number;
+  machineHoursFreedMonthly: number;
 };
 
 export default function DashboardTabs() {
@@ -163,50 +176,54 @@ export default function DashboardTabs() {
     return minVal + (secVal / 60);
   }
 
-  const syncForms = useCallback((source: 'diag' | 'detail') => {
-    const diagValues = diagnosisForm.getValues();
-    const detailValues = detailedForm.getValues();
+  const syncForms = useCallback((sourceForm: 'diag' | 'detail', changedFieldName: string) => {
+    if (sourceForm === 'diag') {
+        const diagValues = diagnosisForm.getValues();
+        const detailValues = detailedForm.getValues();
+        
+        const mapping: { [key: string]: keyof z.infer<typeof DetailedReportSchema> } = {
+            costoHoraMaquina: 'machineHourlyRate',
+            piezasAlMes: 'piezasAlMes',
+            precioA: 'precioA',
+            precioB: 'precioB',
+            filosA: 'filosA',
+            pzsPorFiloA: 'piezasFiloA',
+            cicloMinA: 'cicloMinA',
+            cicloSegA: 'cicloSegA',
+            vcA: 'vcA',
+        };
 
-    if (source === 'diag') {
-        const newDetailValues: Partial<z.infer<typeof DetailedReportSchema>> = {};
-
-        if (diagValues.costoHoraMaquina !== detailValues.machineHourlyRate) newDetailValues.machineHourlyRate = diagValues.costoHoraMaquina;
-        if (diagValues.piezasAlMes !== detailValues.piezasAlMes) newDetailValues.piezasAlMes = diagValues.piezasAlMes;
-        if (diagValues.precioA !== detailValues.precioA) newDetailValues.precioA = diagValues.precioA;
-        if (diagValues.filosA !== detailValues.filosA) newDetailValues.filosA = diagValues.filosA;
-        if (diagValues.pzsPorFiloA !== detailValues.piezasFiloA) newDetailValues.piezasFiloA = diagValues.pzsPorFiloA;
-        if (diagValues.cicloMinA !== detailValues.cicloMinA) newDetailValues.cicloMinA = diagValues.cicloMinA;
-        if (diagValues.cicloSegA !== detailValues.cicloSegA) newDetailValues.cicloSegA = diagValues.cicloSegA;
-        if (diagValues.vcA !== detailValues.vcA) newDetailValues.vcA = diagValues.vcA;
-        if (diagValues.precioB !== detailValues.precioB) newDetailValues.precioB = diagValues.precioB;
-
-        if (Object.keys(newDetailValues).length > 0) {
-            detailedForm.reset({ ...detailedForm.getValues(), ...newDetailValues }, { keepValues: true });
+        const targetField = mapping[changedFieldName as keyof typeof mapping];
+        if (targetField && diagValues[changedFieldName as keyof typeof diagValues] !== detailValues[targetField]) {
+            detailedForm.setValue(targetField, diagValues[changedFieldName as keyof typeof diagValues] as any);
         }
     } else { // source === 'detail'
-        const newDiagValues: Partial<z.infer<typeof QuickDiagnosisSchema>> = {};
+        const detailValues = detailedForm.getValues();
+        const diagValues = diagnosisForm.getValues();
 
-        if (detailValues.machineHourlyRate !== diagValues.costoHoraMaquina) newDiagValues.costoHoraMaquina = detailValues.machineHourlyRate;
-        if (detailValues.piezasAlMes !== diagValues.piezasAlMes) newDiagValues.piezasAlMes = detailValues.piezasAlMes;
-        if (detailValues.precioA !== diagValues.precioA) newDiagValues.precioA = detailValues.precioA;
-        if (detailValues.precioB !== diagValues.precioB) newDiagValues.precioB = detailValues.precioB;
-        if (detailValues.filosA !== diagValues.filosA) newDiagValues.filosA = detailValues.filosA;
-        if (detailValues.piezasFiloA !== diagValues.pzsPorFiloA) newDiagValues.pzsPorFiloA = detailValues.piezasFiloA;
-        if (detailValues.cicloMinA !== diagValues.cicloMinA) newDiagValues.cicloMinA = detailValues.cicloMinA;
-        if (detailValues.cicloSegA !== diagValues.cicloSegA) newDiagValues.cicloSegA = detailValues.cicloSegA;
-        if (detailValues.vcA !== diagValues.vcA) newDiagValues.vcA = detailValues.vcA;
-        if (detailValues.vcB !== diagValues.vcB) newDiagValues.vcB = detailValues.vcB;
+        const mapping: { [key: string]: keyof z.infer<typeof QuickDiagnosisSchema> } = {
+            machineHourlyRate: 'costoHoraMaquina',
+            piezasAlMes: 'piezasAlMes',
+            precioA: 'precioA',
+            precioB: 'precioB',
+            filosA: 'filosA',
+            piezasFiloA: 'pzsPorFiloA',
+            cicloMinA: 'cicloMinA',
+            cicloSegA: 'cicloSegA',
+            vcA: 'vcA',
+        };
 
-        if (Object.keys(newDiagValues).length > 0) {
-            diagnosisForm.reset({ ...diagValues, ...newDiagValues }, { keepValues: true });
+        const targetField = mapping[changedFieldName as keyof typeof mapping];
+        if (targetField && detailValues[changedFieldName as keyof typeof detailValues] !== diagValues[targetField]) {
+            diagnosisForm.setValue(targetField, detailValues[changedFieldName as keyof typeof detailValues] as any);
         }
     }
   }, [diagnosisForm, detailedForm]);
 
   useEffect(() => {
     const subscription = diagnosisForm.watch((value, { name, type }) => {
-        if (type === 'change') {
-            syncForms('diag');
+        if (type === 'change' && name) {
+            syncForms('diag', name);
         }
     });
     return () => subscription.unsubscribe();
@@ -214,8 +231,8 @@ export default function DashboardTabs() {
 
   useEffect(() => {
     const subscription = detailedForm.watch((value, { name, type }) => {
-      if (type === 'change') {
-            syncForms('detail');
+      if (type === 'change' && name) {
+            syncForms('detail', name);
         }
     });
     return () => subscription.unsubscribe();
@@ -225,13 +242,18 @@ export default function DashboardTabs() {
   function onQuickSubmit(data: z.infer<typeof QuickDiagnosisSchema>) {
     const { precioA, precioB, filosA, pzsPorFiloA, costoHoraMaquina, cicloMinA, cicloSegA, vcA } = data;
     
+    if (!precioA || !precioB || !filosA || !pzsPorFiloA || !costoHoraMaquina || !cicloMinA) {
+        toast({ variant: "destructive", title: "Datos incompletos", description: "Por favor, complete todos los 'Datos de Partida' para el Paso 1." });
+        return;
+    }
+    
     const nA = (filosA || 1) * (pzsPorFiloA || 1);
     const tcA = parseTimeToMinutes(cicloMinA, cicloSegA);
     const cm = (costoHoraMaquina || 0) / 60;
     const deltaP = (precioB || 0) - (precioA || 0);
 
     if (costoHoraMaquina <= 0 || precioA <= 0 || precioB <= 0 || nA <= 0 || tcA <= 0) {
-        toast({ variant: "destructive", title: "Datos incompletos", description: "Por favor, complete todos los 'Datos de Partida' para el Paso 1." });
+        toast({ variant: "destructive", title: "Datos inválidos", description: "Asegúrese que los valores de partida sean mayores a cero." });
         return;
     }
 
@@ -248,7 +270,7 @@ export default function DashboardTabs() {
     const tcB_target = tcA - delta_t_min;
 
     let vcBTarget = 0;
-    if (vcA > 0 && tcB_target > 0) {
+    if (vcA && vcA > 0 && tcB_target > 0) {
         vcBTarget = vcA * (tcA / tcB_target);
     }
     
@@ -291,7 +313,7 @@ export default function DashboardTabs() {
         tcB_real_min = tcA - ((segundosMenosReales || 0) / 60);
          if ((vcA || 0) > 0 && tcB_real_min > 0) {
             actualVcB = (vcA || 0) * (tcA / tcB_real_min);
-            diagnosisForm.setValue('vcBReal', actualVcB);
+            diagnosisForm.setValue('vcBReal', parseFloat(actualVcB.toFixed(2)));
         }
     } else { // modo 'vc'
         if ((vcA || 0) <= 0 || (vcBReal || 0) <= 0 || vcBReal === vcA) {
@@ -307,6 +329,10 @@ export default function DashboardTabs() {
     }
 
     const nB_real = (filosA || 1) * ((pzsPorFiloA || 0) + (piezasMasReales || 0));
+    if (nB_real <= 0) {
+        toast({ variant: "destructive", title: "Rendimiento inválido", description: "El rendimiento de la herramienta B no puede ser cero o negativo." });
+        return;
+    }
     const costoHerrB = (precioB || 0) / nB_real;
     const costoMaqB = tcB_real_min * cm;
     const cppB = costoHerrB + costoMaqB;
@@ -332,12 +358,18 @@ export default function DashboardTabs() {
     detailedForm.setValue("cicloSegB", newCicloSeg);
     detailedForm.setValue("piezasFiloB", (pzsPorFiloA || 0) + (piezasMasReales || 0));
     detailedForm.setValue("vcB", parseFloat(actualVcB.toFixed(2)));
-    detailedForm.setValue("filosB", filosA || 4);
+    detailedForm.setValue("filosB", filosA || undefined);
     detailedForm.setValue("modoVidaB", "piezas");
   }
 
   function onDetailedSubmit(data: z.infer<typeof DetailedReportSchema>) {
     const { machineHourlyRate, piezasAlMes, tiempoParada } = data;
+    
+    if (!machineHourlyRate || !piezasAlMes) {
+      toast({ variant: "destructive", title: "Datos incompletos", description: "Por favor, complete los 'Datos Generales' del informe."});
+      return;
+    }
+    
     const costoMin = machineHourlyRate / 60;
 
     // Tool A calculations
@@ -379,7 +411,7 @@ export default function DashboardTabs() {
     const toolCostIncreasePercent = costoHerramientaA > 0 ? ((costoHerramientaB - costoHerramientaA) / costoHerramientaA) * 100 : (costoHerramientaB > 0 ? Infinity : 0);
     const totalCostReductionPercent = cppA > 0 ? (ahorroPorPieza / cppA) * 100 : 0;
     const investment = (data.precioB || 0) - (data.precioA || 0);
-    const roi = investment > 0 ? (ahorroAnual / investment) * 100 : Infinity;
+    const roi = investment > 0 && ahorroAnual > 0 ? (ahorroAnual / investment) * 100 : (ahorroAnual > 0 ? Infinity : 0);
     
     // Time savings
     const annualParts = (piezasAlMes || 0) * 12;
@@ -394,6 +426,18 @@ export default function DashboardTabs() {
     const insertosNecesariosB = piezasTotalB > 0 ? (piezasAlMes || 0) / piezasTotalB : 0;
     const costoTotalInsertosA = insertosNecesariosA * (data.precioA || 0);
     const costoTotalInsertosB = insertosNecesariosB * (data.precioB || 0);
+
+    // For Financial Summary
+    const costoTotalMensualA = cppA * (piezasAlMes || 0);
+    const costoTotalMensualB = cppB * (piezasAlMes || 0);
+    const tiempoMaquinaMensualHorasA = (tcA * (piezasAlMes || 0)) / 60;
+    const tiempoMaquinaMensualHorasB = (tcB * (piezasAlMes || 0)) / 60;
+    const machineHoursFreedMonthly = tiempoMaquinaMensualHorasA - tiempoMaquinaMensualHorasB;
+    const tiempoMaquinaMensualValorA = tiempoMaquinaMensualHorasA * machineHourlyRate;
+    const tiempoMaquinaMensualValorB = tiempoMaquinaMensualHorasB * machineHourlyRate;
+    const turnosMensualesA = tiempoMaquinaMensualHorasA / 8;
+    const turnosMensualesB = tiempoMaquinaMensualHorasB / 8;
+    const timeReductionPercent = tcA > 0 ? ((tcA - tcB) / tcA) * 100 : 0;
 
     setDetailedResult({
         cppA, cppB, costoHerramientaA, costoHerramientaB, costoMaquinaA, costoMaquinaB,
@@ -413,6 +457,16 @@ export default function DashboardTabs() {
         insertosNecesariosB,
         costoTotalInsertosA,
         costoTotalInsertosB,
+        costoTotalMensualA,
+        costoTotalMensualB,
+        tiempoMaquinaMensualHorasA,
+        tiempoMaquinaMensualHorasB,
+        tiempoMaquinaMensualValorA,
+        tiempoMaquinaMensualValorB,
+        turnosMensualesA,
+        turnosMensualesB,
+        machineHoursFreedMonthly,
+        timeReductionPercent,
     });
   }
 
@@ -429,7 +483,7 @@ export default function DashboardTabs() {
             <CardTitle className={cn("font-medium", isCompact ? "text-sm" : "text-base")}>{title}</CardTitle>
             {icon}
         </CardHeader>
-        <CardContent className={isCompact ? "p-3 pt-0" : ""}>
+        <CardContent className={cn("p-3 pt-0", isCompact ? "" : "pt-0")}>
             <div className={cn("font-bold", isCompact ? "text-2xl" : "text-3xl", valueClassName)}>{value}</div>
             {description && <p className="text-xs text-muted-foreground">{description}</p>}
         </CardContent>
@@ -717,7 +771,7 @@ export default function DashboardTabs() {
                                       <div className="font-bold">Máquina</div>
                                       <div>{formatCurrency(detailedResult.costoMaquinaA)}</div>
                                   </div>
-                                  <div className="bg-destructive/40 text-destructive-foreground p-3 text-center">
+                                  <div className="bg-red-300 text-red-900 p-3 text-center">
                                       <div className="font-bold">Herram.</div>
                                       <div>{formatCurrency(detailedResult.costoHerramientaA)}</div>
                                   </div>
@@ -732,7 +786,7 @@ export default function DashboardTabs() {
                                       <div className="font-bold">Máquina</div>
                                       <div>{formatCurrency(detailedResult.costoMaquinaB)}</div>
                                   </div>
-                                  <div className="bg-primary/40 text-primary-foreground p-3 text-center">
+                                  <div className="bg-blue-300 text-blue-900 p-3 text-center">
                                       <div className="font-bold">Herram.</div>
                                       <div>{formatCurrency(detailedResult.costoHerramientaB)}</div>
                                   </div>
@@ -825,7 +879,7 @@ export default function DashboardTabs() {
                                   <TableRow><TableCell>Precio del Inserto</TableCell><TableCell className="text-center">{formatCurrency(detailedForm.getValues("precioA") || 0)}</TableCell><TableCell className="text-center">{formatCurrency(detailedForm.getValues("precioB") || 0)}</TableCell></TableRow>
                                   <TableRow><TableCell>Filos por Inserto</TableCell><TableCell className="text-center">{detailedForm.getValues("filosA")}</TableCell><TableCell className="text-center">{detailedForm.getValues("filosB")}</TableCell></TableRow>
                                   <TableRow><TableCell>Vida por Filo (Minutos)</TableCell><TableCell className="text-center">{detailedResult.minutosFiloA.toFixed(2)} {detailedForm.getValues("modoVidaA") === 'minutos' ? '(input)' : '(calc.)'}</TableCell><TableCell className="text-center">{detailedResult.minutosFiloB.toFixed(2)} {detailedForm.getValues("modoVidaB") === 'minutos' ? '(input)' : '(calc.)'}</TableCell></TableRow>
-                                  <TableRow><TableCell>Piezas por Filo</TableCell><TableCell className="text-center font-bold">{detailedResult.piezasTotalA / (detailedForm.getValues("filosA") || 1).toFixed(2)} {detailedForm.getValues("modoVidaA") === 'piezas' ? '(input)' : '(calc.)'}</TableCell><TableCell className="text-center font-bold">{detailedResult.piezasTotalB / (detailedForm.getValues("filosB") || 1).toFixed(2)} {detailedForm.getValues("modoVidaB") === 'piezas' ? '(input)' : '(calc.)'}</TableCell></TableRow>
+                                  <TableRow><TableCell>Piezas por Filo</TableCell><TableCell className="text-center font-bold">{(detailedResult.piezasTotalA / (detailedForm.getValues("filosA") || 1)).toFixed(2)} {detailedForm.getValues("modoVidaA") === 'piezas' ? '(input)' : '(calc.)'}</TableCell><TableCell className="text-center font-bold">{(detailedResult.piezasTotalB / (detailedForm.getValues("filosB") || 1)).toFixed(2)} {detailedForm.getValues("modoVidaB") === 'piezas' ? '(input)' : '(calc.)'}</TableCell></TableRow>
                                   <TableRow><TableCell>Piezas Totales / Inserto</TableCell><TableCell className="text-center font-semibold">{detailedResult.piezasTotalA.toFixed(0)}</TableCell><TableCell className="text-center font-semibold">{detailedResult.piezasTotalB.toFixed(0)}</TableCell></TableRow>
                                   <TableRow><TableCell>Insertos Requeridos / Mes</TableCell><TableCell className="text-center">{detailedResult.insertosNecesariosA.toFixed(2)} ({formatCurrency(detailedResult.costoTotalInsertosA)})</TableCell><TableCell className="text-center">{detailedResult.insertosNecesariosB.toFixed(2)} ({formatCurrency(detailedResult.costoTotalInsertosB)})</TableCell></TableRow>
                                   <TableRow className="bg-muted/50"><TableCell className="font-bold">Costo Herramienta / Pieza</TableCell><TableCell className="text-center font-bold text-destructive">{formatCurrency(detailedResult.costoHerramientaA)}</TableCell><TableCell className="text-center font-bold text-primary">{formatCurrency(detailedResult.costoHerramientaB)}</TableCell></TableRow>
@@ -841,7 +895,62 @@ export default function DashboardTabs() {
                               </TableBody>
                           </Table>
                       </div>
-                  </div>
+                    </div>
+                    
+                    <div className="no-break-inside">
+                        <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">Resumen Financiero (para {detailedForm.getValues("piezasAlMes")?.toLocaleString()} piezas/mes)</h3>
+                        <div className="overflow-x-auto rounded-lg border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="font-semibold">Métrica</TableHead>
+                                <TableHead>Inserto A (Actual)</TableHead>
+                                <TableHead>Inserto B (Propuesta)</TableHead>
+                                <TableHead className="bg-green-100/50 text-green-700">Ahorro</TableHead>
+                                <TableHead className="bg-green-100/50 text-green-700">% Mejora</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              <TableRow>
+                                <TableCell>Costo Total por Pieza</TableCell>
+                                <TableCell>{formatCurrency(detailedResult.cppA)}</TableCell>
+                                <TableCell>{formatCurrency(detailedResult.cppB)}</TableCell>
+                                <TableCell className="font-semibold text-green-700 bg-green-100/50">{formatCurrency(detailedResult.ahorroPorPieza)}</TableCell>
+                                <TableCell className="font-semibold text-green-700 bg-green-100/50">{detailedResult.totalCostReductionPercent.toFixed(1)}%</TableCell>
+                              </TableRow>
+                               <TableRow>
+                                <TableCell>Costo Total (Mensual)</TableCell>
+                                <TableCell>{formatCurrency(detailedResult.costoTotalMensualA)}</TableCell>
+                                <TableCell>{formatCurrency(detailedResult.costoTotalMensualB)}</TableCell>
+                                <TableCell className="font-semibold text-green-700 bg-green-100/50">{formatCurrency(detailedResult.ahorroMensual)}</TableCell>
+                                <TableCell className="font-semibold text-green-700 bg-green-100/50">{detailedResult.totalCostReductionPercent.toFixed(1)}%</TableCell>
+                              </TableRow>
+                               <TableRow>
+                                <TableCell>Tiempo de Máquina (Mensual)</TableCell>
+                                <TableCell>{formatCurrency(detailedResult.tiempoMaquinaMensualValorA)} ({detailedResult.tiempoMaquinaMensualHorasA.toFixed(2)} hs)</TableCell>
+                                <TableCell>{formatCurrency(detailedResult.tiempoMaquinaMensualValorB)} ({detailedResult.tiempoMaquinaMensualHorasB.toFixed(2)} hs)</TableCell>
+                                <TableCell className="font-semibold text-green-700 bg-green-100/50">{formatCurrency(detailedResult.machineHoursFreedValueAnnual / 12)} ({detailedResult.machineHoursFreedMonthly.toFixed(2)} hs)</TableCell>
+                                <TableCell className="font-semibold text-green-700 bg-green-100/50">{detailedResult.timeReductionPercent.toFixed(1)}%</TableCell>
+                              </TableRow>
+                               <TableRow>
+                                <TableCell>Turnos de 8hs (Mensual)</TableCell>
+                                <TableCell>{detailedResult.turnosMensualesA.toFixed(2)} turnos</TableCell>
+                                <TableCell>{detailedResult.turnosMensualesB.toFixed(2)} turnos</TableCell>
+                                <TableCell className="font-semibold text-green-700 bg-green-100/50">{(detailedResult.turnosMensualesA - detailedResult.turnosMensualesB).toFixed(2)} turnos liberados</TableCell>
+                                <TableCell className="font-semibold text-green-700 bg-green-100/50">{detailedResult.timeReductionPercent.toFixed(1)}%</TableCell>
+                              </TableRow>
+                              <TableRow className="bg-muted/80">
+                                <TableCell className="font-bold">Costo Total (Anual)</TableCell>
+                                <TableCell className="font-bold">{formatCurrency(detailedResult.costoTotalMensualA * 12)}</TableCell>
+                                <TableCell className="font-bold">{formatCurrency(detailedResult.costoTotalMensualB * 12)}</TableCell>
+                                <TableCell className="font-bold text-lg text-green-700 bg-green-100/50">{formatCurrency(detailedResult.ahorroAnual)}</TableCell>
+                                <TableCell className="font-bold text-lg text-green-700 bg-green-100/50">{detailedResult.totalCostReductionPercent.toFixed(1)}%</TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
+                    </div>
+
 
                 </div>
             )}
@@ -851,6 +960,8 @@ export default function DashboardTabs() {
     </Tabs>
   );
 }
+
+    
 
     
 
