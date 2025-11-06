@@ -6,7 +6,7 @@ import { useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
 import React, { useEffect, useState, useCallback } from "react";
 import { Download, Save } from "lucide-react";
-import { collection, serverTimestamp } from "firebase/firestore";
+import { collection, serverTimestamp, doc } from "firebase/firestore";
 
 
 import { addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -526,19 +526,11 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
       });
       return;
     }
-    if (!user) {
+    if (!user || !firestore) {
       toast({
         variant: "destructive",
-        title: "Usuario no autenticado",
+        title: "Error",
         description: "Debes iniciar sesión para guardar un caso.",
-      });
-      return;
-    }
-     if (!firestore) {
-      toast({
-        variant: "destructive",
-        title: "Error de base de datos",
-        description: "No se pudo conectar a la base de datos.",
       });
       return;
     }
@@ -573,11 +565,9 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
 
 
     if (isExistingCase) {
-      // Update existing document
-      const caseDocRef = collection(firestore, "users", user.uid, "cuttingToolAnalyses");
-      setDocumentNonBlocking(caseDocRef, fullCaseData);
+      const caseDocRef = doc(firestore, "users", user.uid, "cuttingToolAnalyses", initialData.id);
+      setDocumentNonBlocking(caseDocRef, fullCaseData, { merge: true });
     } else {
-      // Create new document
       const casesCollection = collection(firestore, "users", user.uid, "cuttingToolAnalyses");
       addDocumentNonBlocking(casesCollection, fullCaseData);
     }
@@ -587,6 +577,7 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
       description: `El caso "${caseName}" ha sido ${isExistingCase ? 'actualizado' : 'guardado'} con éxito.`,
     });
     setSaveAlertOpen(false);
+    router.push('/cases');
   };
   
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
@@ -930,7 +921,7 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
                             <AlertDialogHeader>
                                 <AlertDialogTitle>Guardar Caso de Éxito</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    Ingresa un nombre para identificar este análisis en el futuro.
+                                    Ingresa un nombre para identificar este análisis en el futuro. Si el caso ya existe, los cambios se guardarán y se añadirá una entrada al historial.
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <Form {...saveCaseForm}>
@@ -1222,4 +1213,3 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
   );
 }
 
-    
