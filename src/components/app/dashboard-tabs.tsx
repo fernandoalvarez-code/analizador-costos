@@ -225,7 +225,7 @@ export default function DashboardTabs() {
 
   useEffect(() => {
     const subscription = diagnosisForm.watch((value, { name, type }) => {
-        if (type === 'change' && name) {
+        if (type === 'change' && name && ['precioA', 'precioB'].includes(name)) {
             syncForms('diag', value);
         }
     });
@@ -234,7 +234,7 @@ export default function DashboardTabs() {
 
   useEffect(() => {
     const subscription = detailedForm.watch((value, { name, type }) => {
-      if (type === 'change' && name) {
+      if (type === 'change' && name && ['precioA', 'precioB'].includes(name)) {
             syncForms('detail', value);
         }
     });
@@ -888,7 +888,7 @@ export default function DashboardTabs() {
                 <div className="printable-area mt-8 pt-6 border-t space-y-12">
                     <div className="cover-page">
                         <header className="flex justify-between items-start">
-                            <div className="cover-logo">SECO TOOLS</div>
+                            <div className="cover-logo">SECOCUT SRL</div>
                             <div className="text-right">
                                 <h1 className="text-4xl font-bold text-primary">Análisis de Productividad</h1>
                                 <p className="text-lg text-muted-foreground">Estudio de Costo por Pieza</p>
@@ -919,7 +919,7 @@ export default function DashboardTabs() {
                             </div>
                         </div>
                          <footer className="mt-24 pt-4 border-t text-center text-sm text-muted-foreground">
-                            <p>Informe generado con la Herramienta de Productividad de Seco Tools</p>
+                            <p>Informe generado con la Herramienta de Productividad de SECOCUT SRL</p>
                             <p>Contacto: {detailedForm.getValues("contacto") || 'N/A'}</p>
                         </footer>
                     </div>
