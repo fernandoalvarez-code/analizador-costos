@@ -245,6 +245,7 @@ export default function DashboardTabs() {
     
     if (!precioA || !precioB || !filosA || !pzsPorFiloA || !costoHoraMaquina || cicloMinA === undefined) {
         toast({ variant: "destructive", title: "Datos incompletos", description: "Por favor, complete todos los 'Datos de Partida' para el Paso 1." });
+        setQuickResult(null);
         return;
     }
     
@@ -253,13 +254,24 @@ export default function DashboardTabs() {
     const cm = (costoHoraMaquina || 0) / 60;
     const deltaP = (precioB || 0) - (precioA || 0);
 
-    if (costoHoraMaquina <= 0 || precioA <= 0 || precioB <= 0 || nA <= 0 || tcA <= 0) {
-        toast({ variant: "destructive", title: "Datos inválidos", description: "Asegúrese que los valores de partida sean mayores a cero." });
+    if (costoHoraMaquina <= 0 || precioA < 0 || precioB < 0 || nA <= 0 || tcA <= 0) {
+        toast({ variant: "destructive", title: "Datos inválidos", description: "Asegúrese que los valores de partida sean mayores o iguales a cero." });
+        setQuickResult(null);
         return;
     }
 
     if (deltaP <= 0) {
-      toast({ variant: "destructive", title: "Precio inválido", description: "El Precio B debe ser mayor que el Precio A para este cálculo." });
+      if (deltaP < 0) {
+        toast({ variant: "destructive", title: "Precio B es menor", description: "El Precio B es menor que el Precio A. No hay sobrecosto que justificar." });
+      }
+      setQuickResult({
+        breakEvenSeconds: 0,
+        breakEvenPieces: 0,
+        deltaP: deltaP,
+        tcA: tcA,
+        vcBTarget: vcA || 0,
+        newCycleTimeTarget: tcA,
+      });
       return;
     }
 
@@ -609,33 +621,42 @@ export default function DashboardTabs() {
                         <Button type="button" onClick={diagnosisForm.handleSubmit(onQuickSubmit)}>Calcular Punto de Equilibrio</Button>
                          {quickResult && (
                             <div className="mt-6 pt-6 border-t">
-                                <h4 className="text-lg font-semibold text-gray-800 mb-4 text-center">🎯 Objetivos de Punto de Equilibrio</h4>
-                                <p className="text-center text-gray-600 mb-6">Para justificar un costo extra de {formatCurrency(quickResult.deltaP)} por inserto, necesita lograr <strong>UNA</strong> de estas dos metas:</p>
-                                <div className="grid gap-6 md:grid-cols-2">
-                                    <Card className="text-center">
-                                      <CardHeader>
-                                        <CardTitle>Opción 1: Mejorar Rendimiento</CardTitle>
-                                        <CardDescription>(Mismo Tiempo de Ciclo: {formatMinutes(quickResult.tcA)})</CardDescription>
-                                      </CardHeader>
-                                      <CardContent>
-                                        <p className="text-3xl font-bold text-primary">+{quickResult.breakEvenPieces.toFixed(1)} pzs/filo</p>
-                                      </CardContent>
-                                    </Card>
-                                    <Card className="text-center">
-                                      <CardHeader>
-                                        <CardTitle>Opción 2: Mejorar Velocidad</CardTitle>
-                                        <CardDescription>(Mismo Rendimiento)</CardDescription>
-                                      </CardHeader>
-                                      <CardContent>
-                                        <p className="text-3xl font-bold text-primary">-{quickResult.breakEvenSeconds.toFixed(2)} seg/pieza</p>
-                                        {quickResult.vcBTarget > 0 && (
-                                            <p className="text-muted-foreground mt-1">
-                                                (Nueva Vc: {quickResult.vcBTarget.toFixed(0)} m/min)
-                                            </p>
-                                        )}
-                                      </CardContent>
-                                    </Card>
-                                </div>
+                                {quickResult.deltaP > 0 ? (
+                                    <>
+                                        <h4 className="text-lg font-semibold text-gray-800 mb-4 text-center">🎯 Objetivos de Punto de Equilibrio</h4>
+                                        <p className="text-center text-gray-600 mb-6">Para justificar un costo extra de {formatCurrency(quickResult.deltaP)} por inserto, necesita lograr <strong>UNA</strong> de estas dos metas:</p>
+                                        <div className="grid gap-6 md:grid-cols-2">
+                                            <Card className="text-center">
+                                            <CardHeader>
+                                                <CardTitle>Opción 1: Mejorar Rendimiento</CardTitle>
+                                                <CardDescription>(Mismo Tiempo de Ciclo: {formatMinutes(quickResult.tcA)})</CardDescription>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <p className="text-3xl font-bold text-primary">+{quickResult.breakEvenPieces.toFixed(1)} pzs/filo</p>
+                                            </CardContent>
+                                            </Card>
+                                            <Card className="text-center">
+                                            <CardHeader>
+                                                <CardTitle>Opción 2: Mejorar Velocidad</CardTitle>
+                                                <CardDescription>(Mismo Rendimiento)</CardDescription>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <p className="text-3xl font-bold text-primary">-{quickResult.breakEvenSeconds.toFixed(2)} seg/pieza</p>
+                                                {quickResult.vcBTarget > 0 && (
+                                                    <p className="text-muted-foreground mt-1">
+                                                        (Nueva Vc: {quickResult.vcBTarget.toFixed(0)} m/min)
+                                                    </p>
+                                                )}
+                                            </CardContent>
+                                            </Card>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="text-center text-gray-600 p-4 bg-green-50 rounded-lg">
+                                        <h4 className="font-semibold text-lg text-green-800">¡Buenas noticias!</h4>
+                                        <p>El Precio B es igual o menor que el Precio A. No hay sobrecosto que justificar. Cualquier mejora resultará en un ahorro directo.</p>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
