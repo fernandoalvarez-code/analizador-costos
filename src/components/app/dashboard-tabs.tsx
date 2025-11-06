@@ -6,7 +6,7 @@ import { useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
 import React, { useEffect, useState, useCallback } from "react";
 import { Download, Save } from "lucide-react";
-import { collection, serverTimestamp, doc } from "firebase/firestore";
+import { collection, serverTimestamp, doc, Timestamp } from "firebase/firestore";
 
 
 import { addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -540,7 +540,7 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
 
     const historyEntry = {
       modifiedBy: user.uid,
-      modifiedAt: serverTimestamp(),
+      modifiedAt: Timestamp.now(),
       snapshot: formValues, // Snapshot of the form state
     };
     
@@ -1212,4 +1212,3 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
     </Tabs>
   );
 }
-
