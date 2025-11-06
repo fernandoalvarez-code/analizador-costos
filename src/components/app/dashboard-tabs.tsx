@@ -9,12 +9,6 @@ import React, { useEffect, useState, useCallback } from "react";
 import {
   Download,
   Save,
-  TrendingUp,
-  BarChart,
-  Clock,
-  DollarSign,
-  Package,
-  TrendingDown,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -43,6 +37,7 @@ import { Separator } from "../ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "../ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 
 type QuickDiagnosisResult = {
   breakEvenSeconds: number;
@@ -186,59 +181,45 @@ export default function DashboardTabs() {
     if (diagValues.precioB !== detailValues.precioB) newDetailValues.precioB = diagValues.precioB;
 
     if (Object.keys(newDetailValues).length > 0) {
-        let changed = false;
-        for (const key in newDetailValues) {
-            if (newDetailValues[key as keyof typeof newDetailValues] !== detailValues[key as keyof typeof detailValues]) {
-                changed = true;
-                break;
-            }
-        }
-        if (changed) {
-            detailedForm.reset({ ...detailValues, ...newDetailValues }, { keepValues: true });
-        }
+        detailedForm.reset({ ...detailedForm.getValues(), ...newDetailValues }, { keepValues: false });
     }
 
   }, [diagnosisForm, detailedForm]);
 
   useEffect(() => {
     const subscription = diagnosisForm.watch((value, { name, type }) => {
-        if (type === 'change') syncForms();
+        if (type === 'change') {
+            syncForms();
+        }
     });
     return () => subscription.unsubscribe();
-  }, [diagnosisForm.watch, syncForms]);
+  }, [diagnosisForm, syncForms]);
 
   useEffect(() => {
     const subscription = detailedForm.watch((value, { name, type }) => {
       if (type !== 'change') return;
 
       const diagValues = diagnosisForm.getValues();
+      const detailValues = detailedForm.getValues();
       const newDiagValues: Partial<z.infer<typeof QuickDiagnosisSchema>> = {};
 
-      if (value.machineHourlyRate !== undefined && value.machineHourlyRate !== diagValues.costoHoraMaquina) newDiagValues.costoHoraMaquina = value.machineHourlyRate;
-      if (value.piezasAlMes !== undefined && value.piezasAlMes !== diagValues.piezasAlMes) newDiagValues.piezasAlMes = value.piezasAlMes;
-      if (value.precioA !== undefined && value.precioA !== diagValues.precioA) newDiagValues.precioA = value.precioA;
-      if (value.filosA !== undefined && value.filosA !== diagValues.filosA) newDiagValues.filosA = value.filosA;
-      if (value.piezasFiloA !== undefined && value.piezasFiloA !== diagValues.pzsPorFiloA) newDiagValues.pzsPorFiloA = value.piezasFiloA;
-      if (value.cicloMinA !== undefined && value.cicloMinA !== diagValues.cicloMinA) newDiagValues.cicloMinA = value.cicloMinA;
-      if (value.cicloSegA !== undefined && value.cicloSegA !== diagValues.cicloSegA) newDiagValues.cicloSegA = value.cicloSegA;
-      if (value.vcA !== undefined && value.vcA !== diagValues.vcA) newDiagValues.vcA = value.vcA;
-      if (value.precioB !== undefined && value.precioB !== diagValues.precioB) newDiagValues.precioB = value.precioB;
+      if (detailValues.machineHourlyRate !== diagValues.costoHoraMaquina) newDiagValues.costoHoraMaquina = detailValues.machineHourlyRate;
+      if (detailValues.piezasAlMes !== diagValues.piezasAlMes) newDiagValues.piezasAlMes = detailValues.piezasAlMes;
+      if (detailValues.precioA !== diagValues.precioA) newDiagValues.precioA = detailValues.precioA;
+      if (detailValues.filosA !== diagValues.filosA) newDiagValues.filosA = detailValues.filosA;
+      if (detailValues.piezasFiloA !== diagValues.pzsPorFiloA) newDiagValues.pzsPorFiloA = detailValues.piezasFiloA;
+      if (detailValues.cicloMinA !== diagValues.cicloMinA) newDiagValues.cicloMinA = detailValues.cicloMinA;
+      if (detailValues.cicloSegA !== diagValues.cicloSegA) newDiagValues.cicloSegA = detailValues.cicloSegA;
+      if (detailValues.vcA !== diagValues.vcA) newDiagValues.vcA = detailValues.vcA;
+      if (detailValues.precioB !== diagValues.precioB) newDiagValues.precioB = detailValues.precioB;
+      if (detailValues.vcB !== diagValues.vcB) newDiagValues.vcB = detailValues.vcB;
 
        if (Object.keys(newDiagValues).length > 0) {
-            let changed = false;
-            for (const key in newDiagValues) {
-                if (newDiagValues[key as keyof typeof newDiagValues] !== diagValues[key as keyof typeof diagValues]) {
-                    changed = true;
-                    break;
-                }
-            }
-            if (changed) {
-                diagnosisForm.reset({ ...diagValues, ...newDiagValues }, { keepValues: true });
-            }
+            diagnosisForm.reset({ ...diagValues, ...newDiagValues }, { keepValues: false });
         }
     });
     return () => subscription.unsubscribe();
-  }, [detailedForm.watch, diagnosisForm.reset]);
+  }, [detailedForm, diagnosisForm]);
 
 
   function onQuickSubmit(data: z.infer<typeof QuickDiagnosisSchema>) {
@@ -614,14 +595,14 @@ export default function DashboardTabs() {
                                 </div>
                                 <h4 className="text-lg font-semibold text-gray-800 mt-6 mb-3 text-center">Desglose del Ahorro</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                                    <StatCard icon={<Package className="h-4 w-4 text-muted-foreground" />} title="Costo/Pieza Actual (A)" value={formatCurrency(netSavingsResult.cppA)} />
-                                    <StatCard icon={<Package className="h-4 w-4 text-muted-foreground" />} title="Nuevo Costo/Pieza (B)" value={formatCurrency(netSavingsResult.cppB)} />
-                                    <StatCard icon={<DollarSign className="h-4 w-4 text-muted-foreground" />} title="Ahorro Neto / Pieza" value={formatCurrency(netSavingsResult.savingsPerPiece)} />
+                                    <StatCard title="Costo/Pieza Actual (A)" value={formatCurrency(netSavingsResult.cppA)} />
+                                    <StatCard title="Nuevo Costo/Pieza (B)" value={formatCurrency(netSavingsResult.cppB)} />
+                                    <StatCard title="Ahorro Neto / Pieza" value={formatCurrency(netSavingsResult.savingsPerPiece)} />
                                 </div>
                                 <h4 className="text-lg font-semibold text-gray-800 mt-6 mb-3 text-center">Impacto en Producción</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
-                                    <StatCard icon={<Clock className="h-4 w-4 text-muted-foreground" />} title="Nuevo Tiempo de Ciclo" value={formatMinutes(netSavingsResult.newCycleTime)} />
-                                    <StatCard icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} title="Nuevo Rendimiento" value={`${netSavingsResult.newToolLife.toFixed(0)} pzs/filo`} />
+                                    <StatCard title="Nuevo Tiempo de Ciclo" value={formatMinutes(netSavingsResult.newCycleTime)} />
+                                    <StatCard title="Nuevo Rendimiento" value={`${netSavingsResult.newToolLife.toFixed(0)} pzs/filo`} />
                                 </div>
                                  <div className="mt-4 p-4 bg-white border-2 border-green-600 rounded-lg text-center">
                                     <span className="block text-sm font-bold text-gray-700">MEJORA TOTAL DE PRODUCTIVIDAD</span>
