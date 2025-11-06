@@ -9,7 +9,12 @@ import {
   Settings,
   User,
 } from "lucide-react";
+import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
 
+import { useAuth, useUser } from "@/firebase/provider";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -29,9 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import Image from "next/image";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { usePathname } from "next/navigation";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 function getBreadcrumb(path: string) {
     const segments = path.split('/').filter(Boolean);
@@ -52,9 +55,22 @@ function getBreadcrumb(path: string) {
 }
 
 export default function AppHeader() {
-  const avatarImage = PlaceHolderImages.find((p) => p.id === "user-avatar-1");
+  const auth = useAuth();
+  const { user } = useUser();
+  const router = useRouter();
   const pathname = usePathname();
   const pageTitle = getBreadcrumb(pathname);
+
+  const handleSignOut = async () => {
+    if (!auth) return;
+    await signOut(auth);
+    router.push("/login");
+  };
+  
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return "U";
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  }
 
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6 sticky top-0 z-30">
@@ -92,26 +108,20 @@ export default function AppHeader() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
-              {avatarImage ? (
-                <Image
-                  src={avatarImage.imageUrl}
-                  width={36}
-                  height={36}
-                  alt={avatarImage.description}
-                  data-ai-hint={avatarImage.imageHint}
-                  className="rounded-full"
-                />
-              ) : (
-                <User className="h-5 w-5" />
-              )}
+              <Avatar className="h-9 w-9">
+                {user?.photoURL ? (
+                  <AvatarImage src={user.photoURL} alt={user.displayName || "Avatar de usuario"} />
+                ) : null}
+                <AvatarFallback>{getInitials(user?.displayName || user?.email)}</AvatarFallback>
+              </Avatar>
               <span className="sr-only">Toggle user menu</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">Usuario Ejemplo</p>
-                    <p className="text-xs leading-none text-muted-foreground">usuario@ejemplo.com</p>
+                    <p className="text-sm font-medium leading-none">{user?.displayName || "Usuario"}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                 </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -124,7 +134,7 @@ export default function AppHeader() {
               <span>Configuración</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleSignOut}>
               <LogOut className="mr-2 h-4 w-4" />
               <span>Cerrar Sesión</span>
             </DropdownMenuItem>

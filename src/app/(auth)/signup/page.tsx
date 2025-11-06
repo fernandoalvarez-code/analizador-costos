@@ -1,10 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
+import { useAuth, useUser } from "@/firebase/provider";
+import { initiateEmailSignUp } from "@/firebase/non-blocking-login";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -19,6 +23,16 @@ import { SignupSchema } from "@/lib/schemas";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function SignupPage() {
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isUserLoading && user) {
+      router.push("/dashboard");
+    }
+  }, [user, isUserLoading, router]);
+
   const form = useForm<z.infer<typeof SignupSchema>>({
     resolver: zodResolver(SignupSchema),
     defaultValues: {
@@ -29,8 +43,12 @@ export default function SignupPage() {
   });
 
   function onSubmit(data: z.infer<typeof SignupSchema>) {
-    console.log(data);
-    // Here you would typically handle the signup logic, e.g., call an API
+    if (!auth) return;
+    initiateEmailSignUp(auth, data.email, data.password);
+  }
+
+  if (isUserLoading || user) {
+    return null; // Or a loading spinner
   }
 
   return (

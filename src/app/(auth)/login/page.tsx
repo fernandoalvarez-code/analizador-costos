@@ -1,10 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
+import { useAuth, useUser } from "@/firebase/provider";
+import { initiateEmailSignIn } from "@/firebase/non-blocking-login";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -17,8 +22,20 @@ import {
 import { Input } from "@/components/ui/input";
 import { LoginSchema } from "@/lib/schemas";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
+  const { toast } = useToast();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isUserLoading && user) {
+      router.push("/dashboard");
+    }
+  }, [user, isUserLoading, router]);
+
   const form = useForm<z.infer<typeof LoginSchema>>({
     resolver: zodResolver(LoginSchema),
     defaultValues: {
@@ -27,9 +44,28 @@ export default function LoginPage() {
     },
   });
 
+  async function handleGoogleSignIn() {
+    if (!auth) return;
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      router.push("/dashboard");
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error al iniciar sesión",
+        description: error.message,
+      });
+    }
+  }
+
   function onSubmit(data: z.infer<typeof LoginSchema>) {
-    console.log(data);
-    // Here you would typically handle the login logic, e.g., call an API
+    if (!auth) return;
+    initiateEmailSignIn(auth, data.email, data.password);
+  }
+
+  if (isUserLoading || user) {
+    return null; // Or a loading spinner
   }
 
   return (
@@ -80,7 +116,7 @@ export default function LoginPage() {
             <Button type="submit" className="w-full">
               Iniciar Sesión
             </Button>
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} type="button">
               Iniciar Sesión con Google
             </Button>
           </form>
