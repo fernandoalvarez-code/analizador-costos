@@ -1,0 +1,123 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Analizador de Costos de Corte application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "email"
+      ]
+    },
+    "CuttingToolAnalysis": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CuttingToolAnalysis",
+      "type": "object",
+      "description": "Represents a cutting tool analysis case.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the cutting tool analysis case."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who created this analysis. (Relationship: User 1:N CuttingToolAnalysis)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the analysis case."
+        },
+        "dateCreated": {
+          "type": "string",
+          "description": "Date the analysis case was created.",
+          "format": "date-time"
+        },
+        "currentToolCost": {
+          "type": "number",
+          "description": "Cost of the current cutting tool."
+        },
+        "proposedToolCost": {
+          "type": "number",
+          "description": "Cost of the proposed cutting tool."
+        },
+        "cycleTimeSavings": {
+          "type": "number",
+          "description": "Savings in cycle time."
+        },
+        "performanceImprovement": {
+          "type": "number",
+          "description": "Improvement in performance."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "dateCreated",
+        "currentToolCost",
+        "proposedToolCost",
+        "cycleTimeSavings",
+        "performanceImprovement"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Uses path-based ownership for private user data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/cuttingToolAnalyses/{cuttingToolAnalysisId}",
+        "definition": {
+          "entityName": "CuttingToolAnalysis",
+          "schema": {
+            "$ref": "#/backend/entities/CuttingToolAnalysis"
+          },
+          "description": "Stores cutting tool analysis cases for each user. Uses path-based ownership: access is limited to the user whose ID matches the 'userId' parameter. This enforces that users can only access their own analysis cases.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "cuttingToolAnalysisId",
+              "description": "The unique identifier of the cutting tool analysis case."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to support the Analizador de Costos de Corte application, focusing on secure user data management and efficient data access. The design emphasizes authorization independence by using path-based ownership for user-specific data. This approach avoids the need for complex `get()` calls in security rules, simplifying rule logic and ensuring atomic operations. \n\nThe primary data collections are structured to maintain a clear separation of concerns. Each user's cutting tool analysis cases are stored under their respective user ID, enabling easy retrieval and secure access control. This design effectively addresses the QAPs (Rules are not Filters) by ensuring that list operations are naturally scoped to a user's own data, preventing unauthorized access to other users' analysis cases. The data structure strictly adheres to the DBAC (Database-Based Access Control) principle, relying solely on the `request.auth.uid` for authorization without the use of custom claims.\n\nSpecifically, the `/users/{userId}/cuttingToolAnalyses/{cuttingToolAnalysisId}` path uses path-based ownership, meaning access to the `cuttingToolAnalyses` subcollection is inherently tied to the authenticated user's ID. This ensures that users can only access their own analysis cases. This approach simplifies security rules and makes them more robust and easier to debug."
+  }
+}
