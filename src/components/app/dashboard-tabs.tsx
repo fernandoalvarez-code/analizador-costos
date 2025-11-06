@@ -106,13 +106,13 @@ export default function DashboardTabs() {
     defaultValues: {
       costoHoraMaquina: 35,
       piezasAlMes: 2000,
-      precioA: 100,
-      filosA: 4,
-      pzsPorFiloA: 20,
-      cicloMinA: 1,
-      cicloSegA: 30,
-      vcA: 180,
-      precioB: 150,
+      precioA: undefined,
+      filosA: undefined,
+      pzsPorFiloA: undefined,
+      cicloMinA: undefined,
+      cicloSegA: undefined,
+      vcA: undefined,
+      precioB: undefined,
       piezasMasReales: 0,
       modoSimulacionTiempo: 'segundos',
       segundosMenosReales: 0,
@@ -132,23 +132,23 @@ export default function DashboardTabs() {
       piezasAlMes: 2000,
       tiempoParada: 2,
       descA: "Herramienta Actual",
-      precioA: 100,
-      filosA: 4,
-      cicloMinA: 1,
-      cicloSegA: 30,
-      vcA: 180,
+      precioA: undefined,
+      filosA: undefined,
+      cicloMinA: undefined,
+      cicloSegA: undefined,
+      vcA: undefined,
       modoVidaA: 'piezas',
-      piezasFiloA: 20,
+      piezasFiloA: undefined,
       minutosFiloA: 0,
       notasA: "",
       descB: "Herramienta Propuesta",
-      precioB: 150,
-      filosB: 4,
-      cicloMinB: 1,
-      cicloSegB: 30,
-      vcB: 180,
+      precioB: undefined,
+      filosB: undefined,
+      cicloMinB: undefined,
+      cicloSegB: undefined,
+      vcB: undefined,
       modoVidaB: 'piezas',
-      piezasFiloB: 20,
+      piezasFiloB: undefined,
       minutosFiloB: 0,
       notasB: "",
     },
@@ -163,62 +163,63 @@ export default function DashboardTabs() {
     return minVal + (secVal / 60);
   }
 
-  const syncForms = useCallback(() => {
+  const syncForms = useCallback((source: 'diag' | 'detail') => {
     const diagValues = diagnosisForm.getValues();
     const detailValues = detailedForm.getValues();
 
-    const newDetailValues: Partial<z.infer<typeof DetailedReportSchema>> = {};
+    if (source === 'diag') {
+        const newDetailValues: Partial<z.infer<typeof DetailedReportSchema>> = {};
 
-    if (diagValues.costoHoraMaquina !== detailValues.machineHourlyRate) newDetailValues.machineHourlyRate = diagValues.costoHoraMaquina;
-    if (diagValues.piezasAlMes !== detailValues.piezasAlMes) newDetailValues.piezasAlMes = diagValues.piezasAlMes;
-    if (diagValues.precioA !== detailValues.precioA) newDetailValues.precioA = diagValues.precioA;
-    if (diagValues.filosA !== detailValues.filosA) newDetailValues.filosA = diagValues.filosA;
-    if (diagValues.pzsPorFiloA !== detailValues.piezasFiloA) newDetailValues.piezasFiloA = diagValues.pzsPorFiloA;
-    if (diagValues.cicloMinA !== detailValues.cicloMinA) newDetailValues.cicloMinA = diagValues.cicloMinA;
-    if (diagValues.cicloSegA !== detailValues.cicloSegA) newDetailValues.cicloSegA = diagValues.cicloSegA;
-    if (diagValues.vcA !== detailValues.vcA) newDetailValues.vcA = diagValues.vcA;
-    if (diagValues.precioB !== detailValues.precioB) newDetailValues.precioB = diagValues.precioB;
+        if (diagValues.costoHoraMaquina !== detailValues.machineHourlyRate) newDetailValues.machineHourlyRate = diagValues.costoHoraMaquina;
+        if (diagValues.piezasAlMes !== detailValues.piezasAlMes) newDetailValues.piezasAlMes = diagValues.piezasAlMes;
+        if (diagValues.precioA !== detailValues.precioA) newDetailValues.precioA = diagValues.precioA;
+        if (diagValues.filosA !== detailValues.filosA) newDetailValues.filosA = diagValues.filosA;
+        if (diagValues.pzsPorFiloA !== detailValues.piezasFiloA) newDetailValues.piezasFiloA = diagValues.pzsPorFiloA;
+        if (diagValues.cicloMinA !== detailValues.cicloMinA) newDetailValues.cicloMinA = diagValues.cicloMinA;
+        if (diagValues.cicloSegA !== detailValues.cicloSegA) newDetailValues.cicloSegA = diagValues.cicloSegA;
+        if (diagValues.vcA !== detailValues.vcA) newDetailValues.vcA = diagValues.vcA;
+        if (diagValues.precioB !== detailValues.precioB) newDetailValues.precioB = diagValues.precioB;
 
-    if (Object.keys(newDetailValues).length > 0) {
-        detailedForm.reset({ ...detailedForm.getValues(), ...newDetailValues }, { keepValues: false });
+        if (Object.keys(newDetailValues).length > 0) {
+            detailedForm.reset({ ...detailedForm.getValues(), ...newDetailValues }, { keepValues: true });
+        }
+    } else { // source === 'detail'
+        const newDiagValues: Partial<z.infer<typeof QuickDiagnosisSchema>> = {};
+
+        if (detailValues.machineHourlyRate !== diagValues.costoHoraMaquina) newDiagValues.costoHoraMaquina = detailValues.machineHourlyRate;
+        if (detailValues.piezasAlMes !== diagValues.piezasAlMes) newDiagValues.piezasAlMes = detailValues.piezasAlMes;
+        if (detailValues.precioA !== diagValues.precioA) newDiagValues.precioA = detailValues.precioA;
+        if (detailValues.precioB !== diagValues.precioB) newDiagValues.precioB = detailValues.precioB;
+        if (detailValues.filosA !== diagValues.filosA) newDiagValues.filosA = detailValues.filosA;
+        if (detailValues.piezasFiloA !== diagValues.pzsPorFiloA) newDiagValues.pzsPorFiloA = detailValues.piezasFiloA;
+        if (detailValues.cicloMinA !== diagValues.cicloMinA) newDiagValues.cicloMinA = detailValues.cicloMinA;
+        if (detailValues.cicloSegA !== diagValues.cicloSegA) newDiagValues.cicloSegA = detailValues.cicloSegA;
+        if (detailValues.vcA !== diagValues.vcA) newDiagValues.vcA = detailValues.vcA;
+        if (detailValues.vcB !== diagValues.vcB) newDiagValues.vcB = detailValues.vcB;
+
+        if (Object.keys(newDiagValues).length > 0) {
+            diagnosisForm.reset({ ...diagValues, ...newDiagValues }, { keepValues: true });
+        }
     }
-
   }, [diagnosisForm, detailedForm]);
 
   useEffect(() => {
     const subscription = diagnosisForm.watch((value, { name, type }) => {
         if (type === 'change') {
-            syncForms();
+            syncForms('diag');
         }
     });
     return () => subscription.unsubscribe();
-  }, [diagnosisForm, syncForms]);
+  }, [diagnosisForm.watch, syncForms]);
 
   useEffect(() => {
     const subscription = detailedForm.watch((value, { name, type }) => {
-      if (type !== 'change') return;
-
-      const diagValues = diagnosisForm.getValues();
-      const detailValues = detailedForm.getValues();
-      const newDiagValues: Partial<z.infer<typeof QuickDiagnosisSchema>> = {};
-
-      if (detailValues.machineHourlyRate !== diagValues.costoHoraMaquina) newDiagValues.costoHoraMaquina = detailValues.machineHourlyRate;
-      if (detailValues.piezasAlMes !== diagValues.piezasAlMes) newDiagValues.piezasAlMes = detailValues.piezasAlMes;
-      if (detailValues.precioA !== diagValues.precioA) newDiagValues.precioA = detailValues.precioA;
-      if (detailValues.precioB !== diagValues.precioB) newDiagValues.precioB = detailValues.precioB;
-      if (detailValues.filosA !== diagValues.filosA) newDiagValues.filosA = detailValues.filosA;
-      if (detailValues.piezasFiloA !== diagValues.pzsPorFiloA) newDiagValues.pzsPorFiloA = detailValues.piezasFiloA;
-      if (detailValues.cicloMinA !== diagValues.cicloMinA) newDiagValues.cicloMinA = detailValues.cicloMinA;
-      if (detailValues.cicloSegA !== diagValues.cicloSegA) newDiagValues.cicloSegA = detailValues.cicloSegA;
-      if (detailValues.vcA !== diagValues.vcA) newDiagValues.vcA = detailValues.vcA;
-      if (detailValues.vcB !== diagValues.vcB) newDiagValues.vcB = detailValues.vcB;
-
-       if (Object.keys(newDiagValues).length > 0) {
-            diagnosisForm.reset({ ...diagValues, ...newDiagValues }, { keepValues: false });
+      if (type === 'change') {
+            syncForms('detail');
         }
     });
     return () => subscription.unsubscribe();
-  }, [detailedForm, diagnosisForm]);
+  }, [detailedForm.watch, syncForms]);
 
 
   function onQuickSubmit(data: z.infer<typeof QuickDiagnosisSchema>) {
@@ -240,7 +241,7 @@ export default function DashboardTabs() {
     }
 
     const nB_target = precioB * nA / precioA;
-    const delta_N_filo = (nB_target / filosA) - pzsPorFiloA;
+    const delta_N_filo = (nB_target / (filosA || 1)) - (pzsPorFiloA || 1);
     
     const delta_t_min = deltaP / (nA * cm);
     const breakEvenSeconds = delta_t_min * 60;
@@ -260,7 +261,7 @@ export default function DashboardTabs() {
       newCycleTimeTarget: tcB_target,
     });
 
-    diagnosisForm.setValue('segundosMenosReales', breakEvenSeconds);
+    diagnosisForm.setValue('segundosMenosReales', parseFloat(breakEvenSeconds.toFixed(2)));
   }
 
   function onNetSavingsSubmit(data: z.infer<typeof QuickDiagnosisSchema>) {
@@ -298,7 +299,7 @@ export default function DashboardTabs() {
             return;
         }
         tcB_real_min = tcA * ((vcA || 0) / (vcBReal || 1));
-        diagnosisForm.setValue('segundosMenosReales', (tcA - tcB_real_min) * 60);
+        diagnosisForm.setValue('segundosMenosReales', parseFloat(((tcA - tcB_real_min) * 60).toFixed(2)));
     }
      if (tcB_real_min <= 0) {
         toast({ variant: "destructive", title: "Tiempo de ciclo inválido", description: "El ahorro de segundos es mayor o igual al tiempo de ciclo actual." });
@@ -330,7 +331,7 @@ export default function DashboardTabs() {
     detailedForm.setValue("cicloMinB", newCicloMin);
     detailedForm.setValue("cicloSegB", newCicloSeg);
     detailedForm.setValue("piezasFiloB", (pzsPorFiloA || 0) + (piezasMasReales || 0));
-    detailedForm.setValue("vcB", actualVcB);
+    detailedForm.setValue("vcB", parseFloat(actualVcB.toFixed(2)));
     detailedForm.setValue("filosB", filosA || 4);
     detailedForm.setValue("modoVidaB", "piezas");
   }
@@ -467,20 +468,20 @@ export default function DashboardTabs() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                        <div className="space-y-3">
                           <h4 className="font-medium text-primary mb-4">Datos Inserto A (Actual)</h4>
-                            <FormField control={diagnosisForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio A ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={diagnosisForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio A ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} placeholder="Ej: 100" /></FormControl><FormMessage /></FormItem>)} />
                             <div className="flex space-x-2">
-                               <FormField control={diagnosisForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
-                               <FormField control={diagnosisForm.control} name="pzsPorFiloA" render={({ field }) => (<FormItem><FormLabel>Pzs/Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+                               <FormField control={diagnosisForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} placeholder="Ej: 4" /></FormControl><FormMessage /></FormItem>)} />
+                               <FormField control={diagnosisForm.control} name="pzsPorFiloA" render={({ field }) => (<FormItem><FormLabel>Pzs/Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} placeholder="Ej: 20" /></FormControl><FormMessage /></FormItem>)} />
                             </div>
                              <div className="flex space-x-2">
-                                <FormField control={diagnosisForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Min</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={diagnosisForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>Seg</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={diagnosisForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Min</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} placeholder="Ej: 1" /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={diagnosisForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>Seg</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} placeholder="Ej: 30" /></FormControl><FormMessage /></FormItem>)} />
                             </div>
-                            <FormField control={diagnosisForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={diagnosisForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} placeholder="Ej: 180" /></FormControl><FormMessage /></FormItem>)} />
                        </div>
                         <div className="space-y-3">
                           <h4 className="font-medium text-accent mb-4">Datos Inserto B (Propuesta)</h4>
-                            <FormField control={diagnosisForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio B ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={diagnosisForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio B ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} placeholder="Ej: 150" /></FormControl><FormMessage /></FormItem>)} />
                        </div>
                     </div>
                   </div>
@@ -643,19 +644,19 @@ export default function DashboardTabs() {
                         </CardHeader>
                         <CardContent className="p-6 space-y-4 pt-6">
                             <FormField control={detailedForm.control} name="descA" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Ej: Inserto de 4 filos..." {...field} /></FormControl></FormItem>)}/>
-                            <FormField control={detailedForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio de Compra ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
-                            <FormField control={detailedForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Cant. de Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio de Compra ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Cant. de Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
                             <FormField control={detailedForm.control} name="modoVidaA" render={({ field }) => (<FormItem><FormLabel>Calcular Vida Útil por:</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="piezas">Piezas por Filo</SelectItem><SelectItem value="minutos">Minutos por Filo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
                             {watchedModoVidaA === 'piezas' ? (
-                                <FormField control={detailedForm.control} name="piezasFiloA" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="piezasFiloA" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
                             ) : (
                                 <FormField control={detailedForm.control} name="minutosFiloA" render={({ field }) => (<FormItem><FormLabel>Minutos por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
                             )}
                             <div className="flex space-x-2">
-                                <FormField control={detailedForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
-                                <FormField control={detailedForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
                             </div>
-                            <FormField control={detailedForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
                             <FormField control={detailedForm.control} name="notasA" render={({ field }) => (<FormItem><FormLabel>Notas Internas</FormLabel><FormControl><Textarea placeholder="No se imprime..." {...field} /></FormControl></FormItem>)}/>
                         </CardContent>
                     </Card>
@@ -666,19 +667,19 @@ export default function DashboardTabs() {
                         </CardHeader>
                         <CardContent className="p-6 space-y-4 pt-6">
                             <FormField control={detailedForm.control} name="descB" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Ej: Inserto de alta vel..." {...field} /></FormControl></FormItem>)}/>
-                            <FormField control={detailedForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio de Compra ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
-                            <FormField control={detailedForm.control} name="filosB" render={({ field }) => (<FormItem><FormLabel>Cant. de Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio de Compra ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="filosB" render={({ field }) => (<FormItem><FormLabel>Cant. de Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
                             <FormField control={detailedForm.control} name="modoVidaB" render={({ field }) => (<FormItem><FormLabel>Calcular Vida Útil por:</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="piezas">Piezas por Filo</SelectItem><SelectItem value="minutos">Minutos por Filo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
                             {watchedModoVidaB === 'piezas' ? (
-                                <FormField control={detailedForm.control} name="piezasFiloB" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="piezasFiloB" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
                             ) : (
                                 <FormField control={detailedForm.control} name="minutosFiloB" render={({ field }) => (<FormItem><FormLabel>Minutos por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
                             )}
                             <div className="flex space-x-2">
-                                <FormField control={detailedForm.control} name="cicloMinB" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
-                                <FormField control={detailedForm.control} name="cicloSegB" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="cicloMinB" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="cicloSegB" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
                             </div>
-                            <FormField control={detailedForm.control} name="vcB" render={({ field }) => (<FormItem><FormLabel>Vc Propuesta (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="vcB" render={({ field }) => (<FormItem><FormLabel>Vc Propuesta (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
                             <FormField control={detailedForm.control} name="notasB" render={({ field }) => (<FormItem><FormLabel>Notas Internas</FormLabel><FormControl><Textarea placeholder="No se imprime..." {...field} /></FormControl></FormItem>)}/>
                         </CardContent>
                     </Card>
@@ -696,7 +697,7 @@ export default function DashboardTabs() {
                 <div className="mt-8 pt-6 border-t space-y-12">
                     <div className="text-center">
                         <h3 className="text-3xl font-bold tracking-tight">Análisis de Costo por Pieza (CPP)</h3>
-                        <p className="text-lg text-muted-foreground">Basado en {detailedForm.getValues("piezasAlMes")} pzs/mes y un costo de {formatCurrency(detailedForm.getValues("machineHourlyRate"))}/hr</p>
+                        <p className="text-lg text-muted-foreground">Basado en {detailedForm.getValues("piezasAlMes")?.toLocaleString()} pzs/mes y un costo de {formatCurrency(detailedForm.getValues("machineHourlyRate"))}/hr</p>
                         <div className="mt-4">
                             <p className="text-xl font-medium text-foreground">{detailedResult.ahorroAnual > 0 ? 'AHORRO ANUAL PROYECTADO' : 'PÉRDIDA ANUAL PROYECTADA'}</p>
                             <p className={`text-6xl font-bold ${detailedResult.ahorroAnual > 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(detailedResult.ahorroAnual)}</p>
@@ -704,7 +705,7 @@ export default function DashboardTabs() {
                         </div>
                     </div>
                     
-                    <div className="mb-8">
+                     <div className="mb-8">
                       <h3 className="text-xl font-bold text-center mb-6">Comparativa de Costo Total por Pieza</h3>
                       <div className="grid grid-cols-2 gap-4 md:gap-8 justify-items-center">
                           {/* Columna Actual */}
@@ -821,10 +822,10 @@ export default function DashboardTabs() {
                               <TableBody>
                                   <TableRow className="bg-muted/50"><TableCell colSpan={3} className="font-semibold text-muted-foreground">Datos del Inserto</TableCell></TableRow>
                                   <TableRow><TableCell>Descripción</TableCell><TableCell className="text-center">{detailedForm.getValues("descA")}</TableCell><TableCell className="text-center">{detailedForm.getValues("descB")}</TableCell></TableRow>
-                                  <TableRow><TableCell>Precio del Inserto</TableCell><TableCell className="text-center">{formatCurrency(detailedForm.getValues("precioA"))}</TableCell><TableCell className="text-center">{formatCurrency(detailedForm.getValues("precioB"))}</TableCell></TableRow>
+                                  <TableRow><TableCell>Precio del Inserto</TableCell><TableCell className="text-center">{formatCurrency(detailedForm.getValues("precioA") || 0)}</TableCell><TableCell className="text-center">{formatCurrency(detailedForm.getValues("precioB") || 0)}</TableCell></TableRow>
                                   <TableRow><TableCell>Filos por Inserto</TableCell><TableCell className="text-center">{detailedForm.getValues("filosA")}</TableCell><TableCell className="text-center">{detailedForm.getValues("filosB")}</TableCell></TableRow>
                                   <TableRow><TableCell>Vida por Filo (Minutos)</TableCell><TableCell className="text-center">{detailedResult.minutosFiloA.toFixed(2)} {detailedForm.getValues("modoVidaA") === 'minutos' ? '(input)' : '(calc.)'}</TableCell><TableCell className="text-center">{detailedResult.minutosFiloB.toFixed(2)} {detailedForm.getValues("modoVidaB") === 'minutos' ? '(input)' : '(calc.)'}</TableCell></TableRow>
-                                  <TableRow><TableCell>Piezas por Filo</TableCell><TableCell className="text-center font-bold">{detailedForm.getValues("piezasFiloA").toFixed(2)} {detailedForm.getValues("modoVidaA") === 'piezas' ? '(input)' : '(calc.)'}</TableCell><TableCell className="text-center font-bold">{detailedForm.getValues("piezasFiloB").toFixed(2)} {detailedForm.getValues("modoVidaB") === 'piezas' ? '(input)' : '(calc.)'}</TableCell></TableRow>
+                                  <TableRow><TableCell>Piezas por Filo</TableCell><TableCell className="text-center font-bold">{detailedResult.piezasTotalA / (detailedForm.getValues("filosA") || 1).toFixed(2)} {detailedForm.getValues("modoVidaA") === 'piezas' ? '(input)' : '(calc.)'}</TableCell><TableCell className="text-center font-bold">{detailedResult.piezasTotalB / (detailedForm.getValues("filosB") || 1).toFixed(2)} {detailedForm.getValues("modoVidaB") === 'piezas' ? '(input)' : '(calc.)'}</TableCell></TableRow>
                                   <TableRow><TableCell>Piezas Totales / Inserto</TableCell><TableCell className="text-center font-semibold">{detailedResult.piezasTotalA.toFixed(0)}</TableCell><TableCell className="text-center font-semibold">{detailedResult.piezasTotalB.toFixed(0)}</TableCell></TableRow>
                                   <TableRow><TableCell>Insertos Requeridos / Mes</TableCell><TableCell className="text-center">{detailedResult.insertosNecesariosA.toFixed(2)} ({formatCurrency(detailedResult.costoTotalInsertosA)})</TableCell><TableCell className="text-center">{detailedResult.insertosNecesariosB.toFixed(2)} ({formatCurrency(detailedResult.costoTotalInsertosB)})</TableCell></TableRow>
                                   <TableRow className="bg-muted/50"><TableCell className="font-bold">Costo Herramienta / Pieza</TableCell><TableCell className="text-center font-bold text-destructive">{formatCurrency(detailedResult.costoHerramientaA)}</TableCell><TableCell className="text-center font-bold text-primary">{formatCurrency(detailedResult.costoHerramientaB)}</TableCell></TableRow>
@@ -850,5 +851,7 @@ export default function DashboardTabs() {
     </Tabs>
   );
 }
+
+    
 
     

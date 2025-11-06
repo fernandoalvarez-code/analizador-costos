@@ -17,14 +17,14 @@ export const QuickDiagnosisSchema = z.object({
   costoHoraMaquina: z.coerce.number().min(0, "El costo debe ser positivo."),
   piezasAlMes: z.coerce.number().min(0, "El valor debe ser positivo.").optional(),
   
-  precioA: z.coerce.number().min(0, "El costo debe ser positivo."),
-  filosA: z.coerce.number().min(1, "Debe tener al menos 1 filo."),
-  pzsPorFiloA: z.coerce.number().min(1, "Debe ser al menos 1."),
-  cicloMinA: z.coerce.number().min(0, "Debe ser un valor positivo."),
-  cicloSegA: z.coerce.number().min(0).max(59, "No puede exceder 59 segundos."),
-  vcA: z.coerce.number().min(0, "Debe ser un valor positivo."),
+  precioA: z.coerce.number().min(0, "El costo debe ser positivo.").optional(),
+  filosA: z.coerce.number().min(1, "Debe tener al menos 1 filo.").optional(),
+  pzsPorFiloA: z.coerce.number().min(1, "Debe ser al menos 1.").optional(),
+  cicloMinA: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
+  cicloSegA: z.coerce.number().min(0).max(59, "No puede exceder 59 segundos.").optional(),
+  vcA: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
 
-  precioB: z.coerce.number().min(0, "El costo debe ser positivo."),
+  precioB: z.coerce.number().min(0, "El costo debe ser positivo.").optional(),
   
   // Paso 2: Ahorro Neto Real
   piezasMasReales: z.coerce.number().min(0, "Debe ser un valor positivo.").default(0),
@@ -50,30 +50,30 @@ export const DetailedReportSchema = z.object({
 
   // Datos Generales
   machineHourlyRate: z.coerce.number().min(0, "La tarifa debe ser positiva."),
-  piezasAlMes: z.coerce.number().min(1, "Debe ser al menos 1."),
+  piezasAlMes: z.coerce.number().min(1, "Debe ser al menos 1.").optional(),
   tiempoParada: z.coerce.number().min(0, "Debe ser un valor positivo.").default(2),
 
   // Herramienta A
   descA: z.string().optional(),
-  precioA: z.coerce.number().min(0, "El costo debe ser positivo."),
-  filosA: z.coerce.number().min(1, "Debe ser al menos 1."),
-  cicloMinA: z.coerce.number().min(0, "Debe ser un valor positivo."),
-  cicloSegA: z.coerce.number().min(0).max(59, "No puede exceder 59 segundos."),
+  precioA: z.coerce.number().min(0, "El costo debe ser positivo.").optional(),
+  filosA: z.coerce.number().min(1, "Debe ser al menos 1.").optional(),
+  cicloMinA: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
+  cicloSegA: z.coerce.number().min(0).max(59, "No puede exceder 59 segundos.").optional(),
   vcA: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
   modoVidaA: z.enum(['piezas', 'minutos']).default('piezas'),
-  piezasFiloA: z.coerce.number().min(1, "Debe ser al menos 1."),
+  piezasFiloA: z.coerce.number().min(1, "Debe ser al menos 1.").optional(),
   minutosFiloA: z.coerce.number().min(0, "Debe ser un valor positivo."),
   notasA: z.string().optional(),
 
   // Herramienta B
   descB: z.string().optional(),
-  precioB: z.coerce.number().min(0, "El costo debe ser positivo."),
-  filosB: z.coerce.number().min(1, "Debe ser al menos 1."),
-  cicloMinB: z.coerce.number().min(0, "Debe ser un valor positivo."),
-  cicloSegB: z.coerce.number().min(0).max(59, "No puede exceder 59 segundos."),
+  precioB: z.coerce.number().min(0, "El costo debe ser positivo.").optional(),
+  filosB: z.coerce.number().min(1, "Debe ser al menos 1.").optional(),
+  cicloMinB: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
+  cicloSegB: z.coerce.number().min(0).max(59, "No puede exceder 59 segundos.").optional(),
   vcB: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
   modoVidaB: z.enum(['piezas', 'minutos']).default('piezas'),
-  piezasFiloB: z.coerce.number().min(1, "Debe ser al menos 1."),
+  piezasFiloB: z.coerce.number().min(1, "Debe ser al menos 1.").optional(),
   minutosFiloB: z.coerce.number().min(0, "Debe ser un valor positivo."),
   notasB: z.string().optional(),
 });
@@ -91,3 +91,6 @@ export const SavingsInsightsSchema = z.object({
   weeksPerYear: z.coerce.number().int().positive("Debe ser un entero positivo."),
   machineHourlyRate: z.coerce.number().positive("La tarifa horaria debe ser un número positivo."),
 });
+
+
+    
