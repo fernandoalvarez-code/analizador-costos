@@ -5,7 +5,7 @@ import { useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Download, Save } from "lucide-react";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { collection, serverTimestamp } from "firebase/firestore";
 
 
 import { cn } from "@/lib/utils";
@@ -207,15 +207,15 @@ export default function DashboardTabs() {
     if (sourceForm === 'diag') {
         Object.entries(mappings).forEach(([diagKey, detailKey]) => {
             const value = data[diagKey];
-            if (value !== undefined && value !== detailValues[detailKey as keyof typeof detailValues]) {
-                detailedForm.setValue(detailKey as any, value);
+            if (value !== undefined && String(value) !== String(detailValues[detailKey as keyof typeof detailValues])) {
+                detailedForm.setValue(detailKey as any, value, { shouldDirty: true });
             }
         });
     } else { // source === 'detail'
         Object.entries(mappings).forEach(([diagKey, detailKey]) => {
             const value = data[detailKey];
-             if (value !== undefined && value !== diagValues[diagKey as keyof typeof diagValues]) {
-                diagnosisForm.setValue(diagKey as any, value);
+             if (value !== undefined && String(value) !== String(diagValues[diagKey as keyof typeof diagValues])) {
+                diagnosisForm.setValue(diagKey as any, value, { shouldDirty: true });
             }
         });
     }
@@ -555,7 +555,7 @@ export default function DashboardTabs() {
 
   return (
     <Tabs defaultValue="quick" className="w-full">
-      <TabsList className="grid w-full grid-cols-2">
+      <TabsList className="grid w-full grid-cols-2 no-print">
         <TabsTrigger value="quick">1. Diagnóstico</TabsTrigger>
         <TabsTrigger value="detailed">2. Informe</TabsTrigger>
       </TabsList>
@@ -581,20 +581,20 @@ export default function DashboardTabs() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                        <div className="space-y-3">
                           <h4 className="font-medium text-primary mb-4">Datos Inserto A (Actual)</h4>
-                            <FormField control={diagnosisForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio A ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} placeholder="Ej: 100" /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={diagnosisForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio A ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} placeholder="Ej: 100" /></FormControl><FormMessage /></FormItem>)} />
                             <div className="flex space-x-2">
-                               <FormField control={diagnosisForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} placeholder="Ej: 4" /></FormControl><FormMessage /></FormItem>)} />
-                               <FormField control={diagnosisForm.control} name="pzsPorFiloA" render={({ field }) => (<FormItem><FormLabel>Pzs/Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} placeholder="Ej: 20" /></FormControl><FormMessage /></FormItem>)} />
+                               <FormField control={diagnosisForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} placeholder="Ej: 4" /></FormControl><FormMessage /></FormItem>)} />
+                               <FormField control={diagnosisForm.control} name="pzsPorFiloA" render={({ field }) => (<FormItem><FormLabel>Pzs/Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} placeholder="Ej: 20" /></FormControl><FormMessage /></FormItem>)} />
                             </div>
                              <div className="flex space-x-2">
-                                <FormField control={diagnosisForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Min</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} placeholder="Ej: 1" /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={diagnosisForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>Seg</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} placeholder="Ej: 30" /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={diagnosisForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Min</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} placeholder="Ej: 1" /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={diagnosisForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>Seg</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} placeholder="Ej: 30" /></FormControl><FormMessage /></FormItem>)} />
                             </div>
-                            <FormField control={diagnosisForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} placeholder="Ej: 180" /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={diagnosisForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} placeholder="Ej: 180" /></FormControl><FormMessage /></FormItem>)} />
                        </div>
                         <div className="space-y-3">
                           <h4 className="font-medium text-accent mb-4">Datos Inserto B (Propuesta)</h4>
-                            <FormField control={diagnosisForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio B ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} placeholder="Ej: 150" /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={diagnosisForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio B ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} placeholder="Ej: 150" /></FormControl><FormMessage /></FormItem>)} />
                        </div>
                     </div>
                   </div>
@@ -717,7 +717,7 @@ export default function DashboardTabs() {
       </TabsContent>
       <TabsContent value="detailed">
         <Card>
-          <CardHeader>
+          <CardHeader className="no-print">
             <CardTitle className="font-headline">Informe Detallado (A vs. B)</CardTitle>
             <CardDescription>
               Genera una comparación exhaustiva entre dos herramientas de corte. Los datos se sincronizan desde la pestaña de Diagnóstico.
@@ -725,7 +725,7 @@ export default function DashboardTabs() {
           </CardHeader>
           <CardContent className="space-y-6">
             <Form {...detailedForm}>
-              <form onSubmit={detailedForm.handleSubmit(onDetailedSubmit)} className="space-y-8">
+              <form onSubmit={detailedForm.handleSubmit(onDetailedSubmit)} className="space-y-8 no-print">
                 
                 {/* Datos del Informe */}
                 <div className="p-6 bg-white rounded-lg shadow-md border">
@@ -757,19 +757,19 @@ export default function DashboardTabs() {
                         </CardHeader>
                         <CardContent className="p-6 space-y-4 pt-6">
                             <FormField control={detailedForm.control} name="descA" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Ej: Inserto de 4 filos..." {...field} /></FormControl></FormItem>)}/>
-                            <FormField control={detailedForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio de Compra ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
-                            <FormField control={detailedForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Cant. de Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio de Compra ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Cant. de Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             <FormField control={detailedForm.control} name="modoVidaA" render={({ field }) => (<FormItem><FormLabel>Calcular Vida Útil por:</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="piezas">Piezas por Filo</SelectItem><SelectItem value="minutos">Minutos por Filo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
                             {watchedModoVidaA === 'piezas' ? (
-                                <FormField control={detailedForm.control} name="piezasFiloA" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="piezasFiloA" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             ) : (
                                 <FormField control={detailedForm.control} name="minutosFiloA" render={({ field }) => (<FormItem><FormLabel>Minutos por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
                             )}
                             <div className="flex space-x-2">
-                                <FormField control={detailedForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
-                                <FormField control={detailedForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             </div>
-                            <FormField control={detailedForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             <FormField control={detailedForm.control} name="notasA" render={({ field }) => (<FormItem><FormLabel>Notas Internas</FormLabel><FormControl><Textarea placeholder="No se imprime..." {...field} /></FormControl></FormItem>)}/>
                         </CardContent>
                     </Card>
@@ -780,19 +780,19 @@ export default function DashboardTabs() {
                         </CardHeader>
                         <CardContent className="p-6 space-y-4 pt-6">
                             <FormField control={detailedForm.control} name="descB" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Ej: Inserto de alta vel..." {...field} /></FormControl></FormItem>)}/>
-                            <FormField control={detailedForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio de Compra ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
-                            <FormField control={detailedForm.control} name="filosB" render={({ field }) => (<FormItem><FormLabel>Cant. de Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio de Compra ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="filosB" render={({ field }) => (<FormItem><FormLabel>Cant. de Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             <FormField control={detailedForm.control} name="modoVidaB" render={({ field }) => (<FormItem><FormLabel>Calcular Vida Útil por:</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="piezas">Piezas por Filo</SelectItem><SelectItem value="minutos">Minutos por Filo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
                             {watchedModoVidaB === 'piezas' ? (
-                                <FormField control={detailedForm.control} name="piezasFiloB" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="piezasFiloB" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             ) : (
                                 <FormField control={detailedForm.control} name="minutosFiloB" render={({ field }) => (<FormItem><FormLabel>Minutos por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
                             )}
                             <div className="flex space-x-2">
-                                <FormField control={detailedForm.control} name="cicloMinB" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
-                                <FormField control={detailedForm.control} name="cicloSegB" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="cicloMinB" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="cicloSegB" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             </div>
-                            <FormField control={detailedForm.control} name="vcB" render={({ field }) => (<FormItem><FormLabel>Vc Propuesta (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="vcB" render={({ field }) => (<FormItem><FormLabel>Vc Propuesta (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             <FormField control={detailedForm.control} name="notasB" render={({ field }) => (<FormItem><FormLabel>Notas Internas</FormLabel><FormControl><Textarea placeholder="No se imprime..." {...field} /></FormControl></FormItem>)}/>
                         </CardContent>
                     </Card>
@@ -844,210 +844,244 @@ export default function DashboardTabs() {
             </Form>
 
             {detailedResult && (
-                <div className="mt-8 pt-6 border-t space-y-12 printable-area">
-                    <div className="text-center">
-                        <h3 className="text-3xl font-bold tracking-tight">Análisis de Costo por Pieza (CPP)</h3>
-                        <p className="text-lg text-muted-foreground">Basado en {detailedForm.getValues("piezasAlMes")?.toLocaleString()} pzs/mes y un costo de {formatCurrency(detailedForm.getValues("machineHourlyRate"))}/hr</p>
-                        <div className="mt-4">
-                            <p className="text-xl font-medium text-foreground">{detailedResult.ahorroAnual > 0 ? 'AHORRO ANUAL PROYECTADO' : 'PÉRDIDA ANUAL PROYECTADA'}</p>
-                            <p className={`text-6xl font-bold ${detailedResult.ahorroAnual > 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(detailedResult.ahorroAnual)}</p>
-                            <p className="text-xl text-muted-foreground mt-1">({formatCurrency(detailedResult.ahorroMensual)} / Mes)</p>
+                <div className="printable-area mt-8 pt-6 border-t space-y-12">
+                    <div className="cover-page">
+                        <header className="flex justify-between items-start">
+                            <div className="cover-logo">SECO TOOLS</div>
+                            <div className="text-right">
+                                <h1 className="text-4xl font-bold text-primary">Análisis de Productividad</h1>
+                                <p className="text-lg text-muted-foreground">Estudio de Costo por Pieza</p>
+                            </div>
+                        </header>
+                        <div className="cover-content mt-24">
+                            <div className="mb-8">
+                                <p className="text-sm text-muted-foreground">Cliente</p>
+                                <p className="text-2xl font-semibold">{detailedForm.getValues("cliente") || 'N/A'}</p>
+                            </div>
+                            <div className="mb-8">
+                                <p className="text-sm text-muted-foreground">Fecha del Análisis</p>
+                                <p className="text-2xl font-semibold">{new Date(detailedForm.getValues("fecha")?.replace(/-/g, '\/') || Date.now()).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-8">
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Operación</p>
+                                    <p className="text-2xl font-semibold">{detailedForm.getValues("operacion") || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Pieza</p>
+                                    <p className="text-2xl font-semibold">{detailedForm.getValues("pieza") || 'N/A'}</p>
+                                </div>
+                            </div>
                         </div>
+                         <footer className="mt-24 pt-4 border-t text-center text-sm text-muted-foreground">
+                            <p>Informe generado con la Herramienta de Productividad de Seco Tools</p>
+                            <p>Contacto: {detailedForm.getValues("contacto") || 'N/A'}</p>
+                        </footer>
                     </div>
                     
-                     <div className="mb-8">
-                      <h3 className="text-xl font-bold text-center mb-6">Comparativa de Costo Total por Pieza</h3>
-                      <div className="grid grid-cols-2 gap-4 md:gap-8 justify-items-center">
-                          {/* Columna Actual */}
-                          <div className="w-full max-w-xs flex flex-col items-center">
-                              <div className="text-3xl font-bold text-destructive">{formatCurrency(detailedResult.cppA)}</div>
-                              <div className="text-lg font-semibold text-muted-foreground mb-2">Actual</div>
-                              <div className="w-full rounded-lg overflow-hidden shadow-md">
-                                  <div className="bg-destructive text-white p-3 text-center">
-                                      <div className="font-bold">Máquina</div>
-                                      <div>{formatCurrency(detailedResult.costoMaquinaA)}</div>
-                                  </div>
-                                  <div className="bg-red-300 text-red-900 p-3 text-center">
-                                      <div className="font-bold">Herram.</div>
-                                      <div>{formatCurrency(detailedResult.costoHerramientaA)}</div>
+                    <div className="report-content page-break-before">
+                        <div className="text-center">
+                            <h3 className="text-3xl font-bold tracking-tight">Análisis de Costo por Pieza (CPP)</h3>
+                            <p className="text-lg text-muted-foreground">Basado en {detailedForm.getValues("piezasAlMes")?.toLocaleString()} pzs/mes y un costo de {formatCurrency(detailedForm.getValues("machineHourlyRate"))}/hr</p>
+                            <div className="mt-4">
+                                <p className="text-xl font-medium text-foreground">{detailedResult.ahorroAnual > 0 ? 'AHORRO ANUAL PROYECTADO' : 'PÉRDIDA ANUAL PROYECTADA'}</p>
+                                <p className={`text-6xl font-bold ${detailedResult.ahorroAnual > 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(detailedResult.ahorroAnual)}</p>
+                                <p className="text-xl text-muted-foreground mt-1">({formatCurrency(detailedResult.ahorroMensual)} / Mes)</p>
+                            </div>
+                        </div>
+                        
+                        <div className="my-8 no-break-inside">
+                          <h3 className="text-xl font-bold text-center mb-6">Comparativa de Costo Total por Pieza</h3>
+                          <div className="grid grid-cols-2 gap-4 md:gap-8 justify-items-center">
+                              {/* Columna Actual */}
+                              <div className="w-full max-w-xs flex flex-col items-center">
+                                  <div className="text-3xl font-bold text-destructive">{formatCurrency(detailedResult.cppA)}</div>
+                                  <div className="text-lg font-semibold text-muted-foreground mb-2">Actual</div>
+                                  <div className="w-full rounded-lg overflow-hidden shadow-md">
+                                      <div className="bg-destructive text-white p-3 text-center">
+                                          <div className="font-bold">Máquina</div>
+                                          <div>{formatCurrency(detailedResult.costoMaquinaA)}</div>
+                                      </div>
+                                      <div className="bg-red-300 text-red-900 p-3 text-center">
+                                          <div className="font-bold">Herram.</div>
+                                          <div>{formatCurrency(detailedResult.costoHerramientaA)}</div>
+                                      </div>
                                   </div>
                               </div>
-                          </div>
-                          {/* Columna Propuesta */}
-                          <div className="w-full max-w-xs flex flex-col items-center">
-                              <div className="text-3xl font-bold text-primary">{formatCurrency(detailedResult.cppB)}</div>
-                              <div className="text-lg font-semibold text-muted-foreground mb-2">Propuesta</div>
-                              <div className="w-full rounded-lg overflow-hidden shadow-md">
-                                  <div className="bg-primary text-primary-foreground p-3 text-center">
-                                      <div className="font-bold">Máquina</div>
-                                      <div>{formatCurrency(detailedResult.costoMaquinaB)}</div>
-                                  </div>
-                                  <div className="bg-blue-300 text-blue-900 p-3 text-center">
-                                      <div className="font-bold">Herram.</div>
-                                      <div>{formatCurrency(detailedResult.costoHerramientaB)}</div>
+                              {/* Columna Propuesta */}
+                              <div className="w-full max-w-xs flex flex-col items-center">
+                                  <div className="text-3xl font-bold text-primary">{formatCurrency(detailedResult.cppB)}</div>
+                                  <div className="text-lg font-semibold text-muted-foreground mb-2">Propuesta</div>
+                                  <div className="w-full rounded-lg overflow-hidden shadow-md">
+                                      <div className="bg-primary text-primary-foreground p-3 text-center">
+                                          <div className="font-bold">Máquina</div>
+                                          <div>{formatCurrency(detailedResult.costoMaquinaB)}</div>
+                                      </div>
+                                      <div className="bg-blue-300 text-blue-900 p-3 text-center">
+                                          <div className="font-bold">Herram.</div>
+                                          <div>{formatCurrency(detailedResult.costoHerramientaB)}</div>
+                                      </div>
                                   </div>
                               </div>
                           </div>
                       </div>
-                  </div>
 
 
-                    <div className="p-6 bg-muted rounded-lg">
-                        <h3 className="text-2xl font-bold text-center mb-6">Análisis de Inversión vs. Ahorro</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <StatCard 
-                                title="Inversión en Herramienta" 
-                                description="Variación en costo de herramienta por pieza"
-                                value={`${detailedResult.toolCostIncreasePercent > 0 ? '+' : ''}${detailedResult.toolCostIncreasePercent.toFixed(1)}%`}
-                                valueClassName={detailedResult.toolCostIncreasePercent > 0 ? 'text-red-600' : 'text-green-600'}
-                                isCompact
-                            />
-                             <StatCard 
-                                title="Mejora en Costo Total" 
-                                description="Reducción de costo total por pieza"
-                                value={`${detailedResult.totalCostReductionPercent.toFixed(1)}%`}
-                                valueClassName={detailedResult.totalCostReductionPercent > 0 ? 'text-green-600' : 'text-red-600'}
-                                isCompact
-                            />
+                        <div className="p-6 bg-muted rounded-lg no-break-inside">
+                            <h3 className="text-2xl font-bold text-center mb-6">Análisis de Inversión vs. Ahorro</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <StatCard 
+                                    title="Inversión en Herramienta" 
+                                    description="Variación en costo de herramienta por pieza"
+                                    value={`${detailedResult.toolCostIncreasePercent > 0 ? '+' : ''}${detailedResult.toolCostIncreasePercent.toFixed(1)}%`}
+                                    valueClassName={detailedResult.toolCostIncreasePercent > 0 ? 'text-red-600' : 'text-green-600'}
+                                    isCompact
+                                />
+                                <StatCard 
+                                    title="Mejora en Costo Total" 
+                                    description="Reducción de costo total por pieza"
+                                    value={`${detailedResult.totalCostReductionPercent.toFixed(1)}%`}
+                                    valueClassName={detailedResult.totalCostReductionPercent > 0 ? 'text-green-600' : 'text-red-600'}
+                                    isCompact
+                                />
+                            </div>
+                            <p className="text-center mt-4 text-muted-foreground text-sm">
+                            {detailedResult.toolCostIncreasePercent > 0 
+                                    ? `Una inversión del ${detailedResult.toolCostIncreasePercent.toFixed(1)}% en la herramienta ` 
+                                    : `Un ahorro del ${(detailedResult.toolCostIncreasePercent * -1).toFixed(1)}% en la herramienta `
+                                }
+                                genera una mejora total del <strong className="text-foreground">{detailedResult.totalCostReductionPercent.toFixed(1)}%</strong> en el costo por pieza.
+                            </p>
                         </div>
-                        <p className="text-center mt-4 text-muted-foreground text-sm">
-                          {detailedResult.toolCostIncreasePercent > 0 
-                                ? `Una inversión del ${detailedResult.toolCostIncreasePercent.toFixed(1)}% en la herramienta ` 
-                                : `Un ahorro del ${(detailedResult.toolCostIncreasePercent * -1).toFixed(1)}% en la herramienta `
-                            }
-                            genera una mejora total del <strong className="text-foreground">{detailedResult.totalCostReductionPercent.toFixed(1)}%</strong> en el costo por pieza.
-                        </p>
-                    </div>
 
-                    <div>
-                        <h3 className="text-2xl font-bold text-center mb-6">Análisis de Horas de Máquina Liberadas</h3>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <StatCard 
-                                title="Tiempo de Máquina Liberado (Anual)"
-                                value={`${detailedResult.machineHoursFreedAnnual.toFixed(2)} horas`}
-                                valueClassName="text-primary"
-                                isCompact
-                            />
-                            <StatCard 
-                                title="Valor de Producción Adicional"
-                                description={`Tiempo liberado valorizado a ${formatCurrency(detailedForm.getValues("machineHourlyRate"))}/hr`}
-                                value={formatCurrency(detailedResult.machineHoursFreedValueAnnual)}
-                                valueClassName="text-green-600"
-                                isCompact
-                            />
+                        <div className="no-break-inside mt-12">
+                            <h3 className="text-2xl font-bold text-center mb-6">Análisis de Horas de Máquina Liberadas</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <StatCard 
+                                    title="Tiempo de Máquina Liberado (Anual)"
+                                    value={`${detailedResult.machineHoursFreedAnnual.toFixed(2)} horas`}
+                                    valueClassName="text-primary"
+                                    isCompact
+                                />
+                                <StatCard 
+                                    title="Valor de Producción Adicional"
+                                    description={`Tiempo liberado valorizado a ${formatCurrency(detailedForm.getValues("machineHourlyRate"))}/hr`}
+                                    value={formatCurrency(detailedResult.machineHoursFreedValueAnnual)}
+                                    valueClassName="text-green-600"
+                                    isCompact
+                                />
+                            </div>
+                        </div>
+
+                        <div className="no-break-inside mt-12">
+                            <h3 className="text-2xl font-bold text-center mb-6">Impacto en Planificación</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <StatCard 
+                                    title="Días de Trabajo Liberados"
+                                    description="Basado en turnos de 8 horas"
+                                    value={detailedResult.diasLaboralesAhorradosAnual.toFixed(2)}
+                                    valueClassName="text-primary"
+                                    isCompact
+                                />
+                                <StatCard 
+                                    title="Semanas de Trabajo Liberadas"
+                                    description="Basado en semanas de 5 días"
+                                    value={detailedResult.semanasLaboralesAhorradasAnual.toFixed(2)}
+                                    valueClassName="text-primary"
+                                    isCompact
+                                />
+                            </div>
+                        </div>
+                        
+                        <div className="mb-10 mt-12 no-break-inside">
+                          <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">Datos Detallados de la Simulación</h3>
+                          <div className="overflow-x-auto rounded-lg border">
+                              <Table>
+                                  <TableHeader>
+                                      <TableRow>
+                                          <TableHead className="font-semibold">Parámetro</TableHead>
+                                          <TableHead className="text-center bg-destructive/10 text-destructive font-semibold">Inserto A (Actual)</TableHead>
+                                          <TableHead className="text-center bg-primary/10 text-primary font-semibold">Inserto B (Propuesta)</TableHead>
+                                      </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                      <TableRow className="bg-muted/50"><TableCell colSpan={3} className="font-semibold text-muted-foreground">Datos del Inserto</TableCell></TableRow>
+                                      <TableRow><TableCell>Descripción</TableCell><TableCell className="text-center">{detailedForm.getValues("descA")}</TableCell><TableCell className="text-center">{detailedForm.getValues("descB")}</TableCell></TableRow>
+                                      <TableRow><TableCell>Precio del Inserto</TableCell><TableCell className="text-center">{formatCurrency(detailedForm.getValues("precioA") || 0)}</TableCell><TableCell className="text-center">{formatCurrency(detailedForm.getValues("precioB") || 0)}</TableCell></TableRow>
+                                      <TableRow><TableCell>Filos por Inserto</TableCell><TableCell className="text-center">{detailedForm.getValues("filosA")}</TableCell><TableCell className="text-center">{detailedForm.getValues("filosB")}</TableCell></TableRow>
+                                      <TableRow><TableCell>Vida por Filo (Minutos)</TableCell><TableCell className="text-center">{detailedResult.minutosFiloA.toFixed(2)} {detailedForm.getValues("modoVidaA") === 'minutos' ? '(input)' : '(calc.)'}</TableCell><TableCell className="text-center">{detailedResult.minutosFiloB.toFixed(2)} {detailedForm.getValues("modoVidaB") === 'minutos' ? '(input)' : '(calc.)'}</TableCell></TableRow>
+                                      <TableRow><TableCell>Piezas por Filo</TableCell><TableCell className="text-center font-bold">{(detailedResult.piezasTotalA / (detailedForm.getValues("filosA") || 1)).toFixed(2)} {detailedForm.getValues("modoVidaA") === 'piezas' ? '(input)' : '(calc.)'}</TableCell><TableCell className="text-center font-bold">{(detailedResult.piezasTotalB / (detailedForm.getValues("filosB") || 1)).toFixed(2)} {detailedForm.getValues("modoVidaB") === 'piezas' ? '(input)' : '(calc.)'}</TableCell></TableRow>
+                                      <TableRow><TableCell>Piezas Totales / Inserto</TableCell><TableCell className="text-center font-semibold">{detailedResult.piezasTotalA.toFixed(0)}</TableCell><TableCell className="text-center font-semibold">{detailedResult.piezasTotalB.toFixed(0)}</TableCell></TableRow>
+                                      <TableRow><TableCell>Insertos Requeridos / Mes</TableCell><TableCell className="text-center">{detailedResult.insertosNecesariosA.toFixed(2)} ({formatCurrency(detailedResult.costoTotalInsertosA)})</TableCell><TableCell className="text-center">{detailedResult.insertosNecesariosB.toFixed(2)} ({formatCurrency(detailedResult.costoTotalInsertosB)})</TableCell></TableRow>
+                                      <TableRow className="bg-muted/50"><TableCell className="font-bold">Costo Herramienta / Pieza</TableCell><TableCell className="text-center font-bold text-destructive">{formatCurrency(detailedResult.costoHerramientaA)}</TableCell><TableCell className="text-center font-bold text-primary">{formatCurrency(detailedResult.costoHerramientaB)}</TableCell></TableRow>
+                                      
+                                      <TableRow className="bg-muted/50"><TableCell colSpan={3} className="font-semibold text-muted-foreground">Datos del Proceso</TableCell></TableRow>
+                                      <TableRow><TableCell>Tiempo de Ciclo (min)</TableCell><TableCell className="text-center">{detailedResult.tiempoCicloA.toFixed(3)} min</TableCell><TableCell className="text-center">{detailedResult.tiempoCicloB.toFixed(3)} min</TableCell></TableRow>
+                                      <TableRow><TableCell>Velocidad de Corte (Vc)</TableCell><TableCell className="text-center">{detailedForm.getValues("vcA")} m/min</TableCell><TableCell className="text-center">{detailedForm.getValues("vcB")} m/min</TableCell></TableRow>
+                                      <TableRow><TableCell>Costo Hora-Máquina</TableCell><TableCell colSpan={2} className="text-center">{formatCurrency(detailedForm.getValues("machineHourlyRate"))} ({formatCurrency(detailedForm.getValues("machineHourlyRate")/60)}/min)</TableCell></TableRow>
+                                      <TableRow><TableCell>Parada por Cambio (costo/pza)</TableCell><TableCell className="text-center">{formatCurrency(detailedResult.costoParadaA)}</TableCell><TableCell className="text-center">{formatCurrency(detailedResult.costoParadaB)}</TableCell></TableRow>
+                                      <TableRow className="bg-muted/50"><TableCell className="font-bold">Costo Máquina / Pieza</TableCell><TableCell className="text-center font-bold text-destructive">{formatCurrency(detailedResult.costoMaquinaA)}</TableCell><TableCell className="text-center font-bold text-primary">{formatCurrency(detailedResult.costoMaquinaB)}</TableCell></TableRow>
+
+                                      <TableRow className="bg-foreground/10"><TableCell className="font-extrabold text-lg">COSTO TOTAL / PIEZA</TableCell><TableCell className="text-center font-extrabold text-lg text-destructive">{formatCurrency(detailedResult.cppA)}</TableCell><TableCell className="text-center font-extrabold text-lg text-primary">{formatCurrency(detailedResult.cppB)}</TableCell></TableRow>
+                                  </TableBody>
+                              </Table>
+                          </div>
+                        </div>
+                        
+                        <div className="no-break-inside page-break-before">
+                            <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">Resumen Financiero (para {detailedForm.getValues("piezasAlMes")?.toLocaleString()} piezas/mes)</h3>
+                            <div className="overflow-x-auto rounded-lg border">
+                            <Table>
+                                <TableHeader>
+                                <TableRow>
+                                    <TableHead className="font-semibold">Métrica</TableHead>
+                                    <TableHead>Inserto A (Actual)</TableHead>
+                                    <TableHead>Inserto B (Propuesta)</TableHead>
+                                    <TableHead className="bg-green-100/50 text-green-700">Ahorro</TableHead>
+                                    <TableHead className="bg-green-100/50 text-green-700">% Mejora</TableHead>
+                                </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                <TableRow>
+                                    <TableCell>Costo Total por Pieza</TableCell>
+                                    <TableCell>{formatCurrency(detailedResult.cppA)}</TableCell>
+                                    <TableCell>{formatCurrency(detailedResult.cppB)}</TableCell>
+                                    <TableCell className="font-semibold text-green-700 bg-green-100/50">{formatCurrency(detailedResult.ahorroPorPieza)}</TableCell>
+                                    <TableCell className="font-semibold text-green-700 bg-green-100/50">{detailedResult.totalCostReductionPercent.toFixed(1)}%</TableCell>
+                                </TableRow>
+                                <TableRow>
+                                    <TableCell>Costo Total (Mensual)</TableCell>
+                                    <TableCell>{formatCurrency(detailedResult.costoTotalMensualA)}</TableCell>
+                                    <TableCell>{formatCurrency(detailedResult.costoTotalMensualB)}</TableCell>
+                                    <TableCell className="font-semibold text-green-700 bg-green-100/50">{formatCurrency(detailedResult.ahorroMensual)}</TableCell>
+                                    <TableCell className="font-semibold text-green-700 bg-green-100/50">{detailedResult.totalCostReductionPercent.toFixed(1)}%</TableCell>
+                                </TableRow>
+                                <TableRow>
+                                    <TableCell>Tiempo de Máquina (Mensual)</TableCell>
+                                    <TableCell>{formatCurrency(detailedResult.tiempoMaquinaMensualValorA)} ({detailedResult.tiempoMaquinaMensualHorasA.toFixed(2)} hs)</TableCell>
+                                    <TableCell>{formatCurrency(detailedResult.tiempoMaquinaMensualValorB)} ({detailedResult.tiempoMaquinaMensualHorasB.toFixed(2)} hs)</TableCell>
+                                    <TableCell className="font-semibold text-green-700 bg-green-100/50">{formatCurrency(detailedResult.machineHoursFreedValueAnnual / 12)} ({detailedResult.machineHoursFreedMonthly.toFixed(2)} hs)</TableCell>
+                                    <TableCell className="font-semibold text-green-700 bg-green-100/50">{detailedResult.timeReductionPercent.toFixed(1)}%</TableCell>
+                                </TableRow>
+                                <TableRow>
+                                    <TableCell>Turnos de 8hs (Mensual)</TableCell>
+                                    <TableCell>{detailedResult.turnosMensualesA.toFixed(2)} turnos</TableCell>
+                                    <TableCell>{detailedResult.turnosMensualesB.toFixed(2)} turnos</TableCell>
+                                    <TableCell className="font-semibold text-green-700 bg-green-100/50">{(detailedResult.turnosMensualesA - detailedResult.turnosMensualesB).toFixed(2)} turnos liberados</TableCell>
+                                    <TableCell className="font-semibold text-green-700 bg-green-100/50">{detailedResult.timeReductionPercent.toFixed(1)}%</TableCell>
+                                </TableRow>
+                                <TableRow className="bg-muted/80">
+                                    <TableCell className="font-bold">Costo Total (Anual)</TableCell>
+                                    <TableCell className="font-bold">{formatCurrency(detailedResult.costoTotalMensualA * 12)}</TableCell>
+                                    <TableCell className="font-bold">{formatCurrency(detailedResult.costoTotalMensualB * 12)}</TableCell>
+                                    <TableCell className="font-bold text-lg text-green-700 bg-green-100/50">{formatCurrency(detailedResult.ahorroAnual)}</TableCell>
+                                    <TableCell className="font-bold text-lg text-green-700 bg-green-100/50">{detailedResult.totalCostReductionPercent.toFixed(1)}%</TableCell>
+                                </TableRow>
+                                </TableBody>
+                            </Table>
+                            </div>
                         </div>
                     </div>
-
-                     <div>
-                        <h3 className="text-2xl font-bold text-center mb-6">Impacto en Planificación</h3>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             <StatCard 
-                                title="Días de Trabajo Liberados"
-                                description="Basado en turnos de 8 horas"
-                                value={detailedResult.diasLaboralesAhorradosAnual.toFixed(2)}
-                                valueClassName="text-primary"
-                                isCompact
-                            />
-                            <StatCard 
-                                title="Semanas de Trabajo Liberadas"
-                                description="Basado en semanas de 5 días"
-                                value={detailedResult.semanasLaboralesAhorradasAnual.toFixed(2)}
-                                valueClassName="text-primary"
-                                isCompact
-                            />
-                        </div>
-                    </div>
-                    
-                    <div className="mb-10">
-                      <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">Datos Detallados de la Simulación</h3>
-                      <div className="overflow-x-auto rounded-lg border">
-                          <Table>
-                              <TableHeader>
-                                  <TableRow>
-                                      <TableHead className="font-semibold">Parámetro</TableHead>
-                                      <TableHead className="text-center bg-destructive/10 text-destructive font-semibold">Inserto A (Actual)</TableHead>
-                                      <TableHead className="text-center bg-primary/10 text-primary font-semibold">Inserto B (Propuesta)</TableHead>
-                                  </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                  <TableRow className="bg-muted/50"><TableCell colSpan={3} className="font-semibold text-muted-foreground">Datos del Inserto</TableCell></TableRow>
-                                  <TableRow><TableCell>Descripción</TableCell><TableCell className="text-center">{detailedForm.getValues("descA")}</TableCell><TableCell className="text-center">{detailedForm.getValues("descB")}</TableCell></TableRow>
-                                  <TableRow><TableCell>Precio del Inserto</TableCell><TableCell className="text-center">{formatCurrency(detailedForm.getValues("precioA") || 0)}</TableCell><TableCell className="text-center">{formatCurrency(detailedForm.getValues("precioB") || 0)}</TableCell></TableRow>
-                                  <TableRow><TableCell>Filos por Inserto</TableCell><TableCell className="text-center">{detailedForm.getValues("filosA")}</TableCell><TableCell className="text-center">{detailedForm.getValues("filosB")}</TableCell></TableRow>
-                                  <TableRow><TableCell>Vida por Filo (Minutos)</TableCell><TableCell className="text-center">{detailedResult.minutosFiloA.toFixed(2)} {detailedForm.getValues("modoVidaA") === 'minutos' ? '(input)' : '(calc.)'}</TableCell><TableCell className="text-center">{detailedResult.minutosFiloB.toFixed(2)} {detailedForm.getValues("modoVidaB") === 'minutos' ? '(input)' : '(calc.)'}</TableCell></TableRow>
-                                  <TableRow><TableCell>Piezas por Filo</TableCell><TableCell className="text-center font-bold">{(detailedResult.piezasTotalA / (detailedForm.getValues("filosA") || 1)).toFixed(2)} {detailedForm.getValues("modoVidaA") === 'piezas' ? '(input)' : '(calc.)'}</TableCell><TableCell className="text-center font-bold">{(detailedResult.piezasTotalB / (detailedForm.getValues("filosB") || 1)).toFixed(2)} {detailedForm.getValues("modoVidaB") === 'piezas' ? '(input)' : '(calc.)'}</TableCell></TableRow>
-                                  <TableRow><TableCell>Piezas Totales / Inserto</TableCell><TableCell className="text-center font-semibold">{detailedResult.piezasTotalA.toFixed(0)}</TableCell><TableCell className="text-center font-semibold">{detailedResult.piezasTotalB.toFixed(0)}</TableCell></TableRow>
-                                  <TableRow><TableCell>Insertos Requeridos / Mes</TableCell><TableCell className="text-center">{detailedResult.insertosNecesariosA.toFixed(2)} ({formatCurrency(detailedResult.costoTotalInsertosA)})</TableCell><TableCell className="text-center">{detailedResult.insertosNecesariosB.toFixed(2)} ({formatCurrency(detailedResult.costoTotalInsertosB)})</TableCell></TableRow>
-                                  <TableRow className="bg-muted/50"><TableCell className="font-bold">Costo Herramienta / Pieza</TableCell><TableCell className="text-center font-bold text-destructive">{formatCurrency(detailedResult.costoHerramientaA)}</TableCell><TableCell className="text-center font-bold text-primary">{formatCurrency(detailedResult.costoHerramientaB)}</TableCell></TableRow>
-                                  
-                                  <TableRow className="bg-muted/50"><TableCell colSpan={3} className="font-semibold text-muted-foreground">Datos del Proceso</TableCell></TableRow>
-                                  <TableRow><TableCell>Tiempo de Ciclo (min)</TableCell><TableCell className="text-center">{detailedResult.tiempoCicloA.toFixed(3)} min</TableCell><TableCell className="text-center">{detailedResult.tiempoCicloB.toFixed(3)} min</TableCell></TableRow>
-                                  <TableRow><TableCell>Velocidad de Corte (Vc)</TableCell><TableCell className="text-center">{detailedForm.getValues("vcA")} m/min</TableCell><TableCell className="text-center">{detailedForm.getValues("vcB")} m/min</TableCell></TableRow>
-                                  <TableRow><TableCell>Costo Hora-Máquina</TableCell><TableCell colSpan={2} className="text-center">{formatCurrency(detailedForm.getValues("machineHourlyRate"))} ({formatCurrency(detailedForm.getValues("machineHourlyRate")/60)}/min)</TableCell></TableRow>
-                                  <TableRow><TableCell>Parada por Cambio (costo/pza)</TableCell><TableCell className="text-center">{formatCurrency(detailedResult.costoParadaA)}</TableCell><TableCell className="text-center">{formatCurrency(detailedResult.costoParadaB)}</TableCell></TableRow>
-                                  <TableRow className="bg-muted/50"><TableCell className="font-bold">Costo Máquina / Pieza</TableCell><TableCell className="text-center font-bold text-destructive">{formatCurrency(detailedResult.costoMaquinaA)}</TableCell><TableCell className="text-center font-bold text-primary">{formatCurrency(detailedResult.costoMaquinaB)}</TableCell></TableRow>
-
-                                  <TableRow className="bg-foreground/10"><TableCell className="font-extrabold text-lg">COSTO TOTAL / PIEZA</TableCell><TableCell className="text-center font-extrabold text-lg text-destructive">{formatCurrency(detailedResult.cppA)}</TableCell><TableCell className="text-center font-extrabold text-lg text-primary">{formatCurrency(detailedResult.cppB)}</TableCell></TableRow>
-                              </TableBody>
-                          </Table>
-                      </div>
-                    </div>
-                    
-                    <div className="no-break-inside">
-                        <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">Resumen Financiero (para {detailedForm.getValues("piezasAlMes")?.toLocaleString()} piezas/mes)</h3>
-                        <div className="overflow-x-auto rounded-lg border">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="font-semibold">Métrica</TableHead>
-                                <TableHead>Inserto A (Actual)</TableHead>
-                                <TableHead>Inserto B (Propuesta)</TableHead>
-                                <TableHead className="bg-green-100/50 text-green-700">Ahorro</TableHead>
-                                <TableHead className="bg-green-100/50 text-green-700">% Mejora</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              <TableRow>
-                                <TableCell>Costo Total por Pieza</TableCell>
-                                <TableCell>{formatCurrency(detailedResult.cppA)}</TableCell>
-                                <TableCell>{formatCurrency(detailedResult.cppB)}</TableCell>
-                                <TableCell className="font-semibold text-green-700 bg-green-100/50">{formatCurrency(detailedResult.ahorroPorPieza)}</TableCell>
-                                <TableCell className="font-semibold text-green-700 bg-green-100/50">{detailedResult.totalCostReductionPercent.toFixed(1)}%</TableCell>
-                              </TableRow>
-                               <TableRow>
-                                <TableCell>Costo Total (Mensual)</TableCell>
-                                <TableCell>{formatCurrency(detailedResult.costoTotalMensualA)}</TableCell>
-                                <TableCell>{formatCurrency(detailedResult.costoTotalMensualB)}</TableCell>
-                                <TableCell className="font-semibold text-green-700 bg-green-100/50">{formatCurrency(detailedResult.ahorroMensual)}</TableCell>
-                                <TableCell className="font-semibold text-green-700 bg-green-100/50">{detailedResult.totalCostReductionPercent.toFixed(1)}%</TableCell>
-                              </TableRow>
-                               <TableRow>
-                                <TableCell>Tiempo de Máquina (Mensual)</TableCell>
-                                <TableCell>{formatCurrency(detailedResult.tiempoMaquinaMensualValorA)} ({detailedResult.tiempoMaquinaMensualHorasA.toFixed(2)} hs)</TableCell>
-                                <TableCell>{formatCurrency(detailedResult.tiempoMaquinaMensualValorB)} ({detailedResult.tiempoMaquinaMensualHorasB.toFixed(2)} hs)</TableCell>
-                                <TableCell className="font-semibold text-green-700 bg-green-100/50">{formatCurrency(detailedResult.machineHoursFreedValueAnnual / 12)} ({detailedResult.machineHoursFreedMonthly.toFixed(2)} hs)</TableCell>
-                                <TableCell className="font-semibold text-green-700 bg-green-100/50">{detailedResult.timeReductionPercent.toFixed(1)}%</TableCell>
-                              </TableRow>
-                               <TableRow>
-                                <TableCell>Turnos de 8hs (Mensual)</TableCell>
-                                <TableCell>{detailedResult.turnosMensualesA.toFixed(2)} turnos</TableCell>
-                                <TableCell>{detailedResult.turnosMensualesB.toFixed(2)} turnos</TableCell>
-                                <TableCell className="font-semibold text-green-700 bg-green-100/50">{(detailedResult.turnosMensualesA - detailedResult.turnosMensualesB).toFixed(2)} turnos liberados</TableCell>
-                                <TableCell className="font-semibold text-green-700 bg-green-100/50">{detailedResult.timeReductionPercent.toFixed(1)}%</TableCell>
-                              </TableRow>
-                              <TableRow className="bg-muted/80">
-                                <TableCell className="font-bold">Costo Total (Anual)</TableCell>
-                                <TableCell className="font-bold">{formatCurrency(detailedResult.costoTotalMensualA * 12)}</TableCell>
-                                <TableCell className="font-bold">{formatCurrency(detailedResult.costoTotalMensualB * 12)}</TableCell>
-                                <TableCell className="font-bold text-lg text-green-700 bg-green-100/50">{formatCurrency(detailedResult.ahorroAnual)}</TableCell>
-                                <TableCell className="font-bold text-lg text-green-700 bg-green-100/50">{detailedResult.totalCostReductionPercent.toFixed(1)}%</TableCell>
-                              </TableRow>
-                            </TableBody>
-                          </Table>
-                        </div>
-                    </div>
-
-
                 </div>
             )}
           </CardContent>
@@ -1056,9 +1090,3 @@ export default function DashboardTabs() {
     </Tabs>
   );
 }
-
-    
-
-    
-
-    

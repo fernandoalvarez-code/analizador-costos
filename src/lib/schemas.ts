@@ -66,7 +66,7 @@ export const DetailedReportSchema = z.object({
   vcA: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
   modoVidaA: z.enum(['piezas', 'minutos']).default('piezas'),
   piezasFiloA: z.coerce.number().min(1, "Debe ser al menos 1.").optional(),
-  minutosFiloA: z.coerce.number().min(0, "Debe ser un valor positivo."),
+  minutosFiloA: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
   notasA: z.string().optional(),
 
   // Herramienta B
@@ -78,7 +78,7 @@ export const DetailedReportSchema = z.object({
   vcB: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
   modoVidaB: z.enum(['piezas', 'minutos']).default('piezas'),
   piezasFiloB: z.coerce.number().min(1, "Debe ser al menos 1.").optional(),
-  minutosFiloB: z.coerce.number().min(0, "Debe ser un valor positivo."),
+  minutosFiloB: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
   notasB: z.string().optional(),
 });
 

@@ -12,6 +12,8 @@
         left: 0;
         top: 0;
         width: 100%;
+        margin: 0;
+        padding: 0;
     }
     
     .no-print {
@@ -22,13 +24,81 @@
         size: A4 portrait;
         margin: 15mm;
     }
+    
+    html, body {
+        background: #fff !important;
+        font-size: 10pt;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
 
     .no-break-inside {
         break-inside: avoid;
         page-break-inside: avoid;
     }
 
+    .page-break-before {
+        page-break-before: always !important;
+    }
+
     thead {
-        display: table-header-group;
+        display: table-header-group !important; /* Repeat table headers on each page */
+    }
+
+    tr {
+        page-break-inside: avoid !important;
+        page-break-after: auto !important;
+    }
+
+    .cover-page {
+        display: block !important;
+        width: 100%;
+        border: 2px solid hsl(var(--primary));
+        box-sizing: border-box;
+        padding: 1rem;
+        min-height: 250mm; /* A4 height (297mm) minus margins */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .cover-page header, .cover-page .cover-content, .cover-page footer {
+        display: block;
+    }
+
+    .cover-logo {
+        font-size: 2rem;
+        font-weight: 700;
+        color: hsl(var(--primary));
+        border: 3px solid hsl(var(--primary));
+        padding: 0.5rem 1rem;
+        display: inline-block;
+    }
+    
+    /* Force background colors for printing */
+    .bg-destructive {
+        background-color: hsl(var(--destructive)) !important;
+        color: hsl(var(--destructive-foreground)) !important;
+    }
+    .bg-red-300 {
+        background-color: #fca5a5 !important;
+        color: #991b1b !important;
+    }
+    .bg-primary {
+         background-color: hsl(var(--primary)) !important;
+        color: hsl(var(--primary-foreground)) !important;
+    }
+    .bg-blue-300 {
+        background-color: #93c5fd !important;
+        color: #1e40af !important;
+    }
+    .bg-green-100\/50 {
+        background-color: rgba(220, 252, 231, 0.5) !important;
+    }
+    .text-green-700 {
+        color: #15803d !important;
+    }
+     .bg-muted\/80 {
+        background-color: hsla(var(--muted), 0.8) !important;
     }
 }
