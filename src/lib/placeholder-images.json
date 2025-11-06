@@ -1,3 +1,34 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-landing",
+      "description": "A modern manufacturing facility with CNC machines.",
+      "imageUrl": "https://images.unsplash.com/photo-1666427620535-1d0edfaa78b2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxtYW51ZmFjdHVyaW5nJTIwZmFjdG9yeXxlbnwwfHx8fDE3NjI0MzM3MzF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "manufacturing factory"
+    },
+    {
+      "id": "user-avatar-1",
+      "description": "Avatar for a sample user.",
+      "imageUrl": "https://images.unsplash.com/photo-1600180758890-6b94519a8ba6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjIzNzk2MTR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "user-avatar-2",
+      "description": "Avatar for another sample user.",
+      "imageUrl": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjIzNzk2MTR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "tool-image-1",
+      "description": "A close-up of a cutting tool.",
+      "imageUrl": "https://images.unsplash.com/photo-1671487589953-bf90f4e07989?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxjdXR0aW5nJTIwdG9vbHxlbnwwfHx8fDE3NjI0MzM3MzF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "cutting tool"
+    },
+    {
+      "id": "tool-image-2",
+      "description": "Another cutting tool being used on a machine.",
+      "imageUrl": "https://images.unsplash.com/photo-1702196665517-9d3670421443?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxtYWNoaW5lJTIwdG9vbHxlbnwwfHx8fDE3NjI0MzM3MzF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "machine tool"
+    }
+  ]
 }
