@@ -21,14 +21,14 @@ export const QuickDiagnosisSchema = z.object({
   costoHoraMaquina: z.coerce.number().min(0, "El costo debe ser positivo."),
   piezasAlMes: z.coerce.number().min(0, "El valor debe ser positivo.").optional(),
   
-  precioA: z.coerce.number().min(0, "El costo debe ser positivo.").optional(),
-  filosA: z.coerce.number().min(1, "Debe tener al menos 1 filo.").optional(),
-  pzsPorFiloA: z.coerce.number().min(1, "Debe ser al menos 1.").optional(),
-  cicloMinA: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
-  cicloSegA: z.coerce.number().min(0).max(59, "No puede exceder 59 segundos.").optional(),
-  vcA: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
+  precioA: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0, "El costo debe ser positivo.").optional(),
+  filosA: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(1, "Debe tener al menos 1 filo.").optional(),
+  pzsPorFiloA: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(1, "Debe ser al menos 1.").optional(),
+  cicloMinA: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0, "Debe ser un valor positivo.").optional(),
+  cicloSegA: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0).max(59, "No puede exceder 59 segundos.").optional(),
+  vcA: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0, "Debe ser un valor positivo.").optional(),
 
-  precioB: z.coerce.number().min(0, "El costo debe ser positivo.").optional(),
+  precioB: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0, "El costo debe ser positivo.").optional(),
   
   // Paso 2: Ahorro Neto Real
   piezasMasReales: z.coerce.number().min(0, "Debe ser un valor positivo.").default(0),
@@ -37,11 +37,11 @@ export const QuickDiagnosisSchema = z.object({
   vcBReal: z.coerce.number().min(0, "Debe ser un valor positivo.").default(0),
 
   // Estos no son del form pero se usan en los calculos
-  filosB: z.coerce.number().min(1, "Debe tener al menos 1 filo.").optional(),
-  pzsPorFiloB: z.coerce.number().min(1, "Debe ser al menos 1.").optional(),
-  cicloMinB: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
-  cicloSegB: z.coerce.number().min(0).max(59, "No puede exceder 59 segundos.").optional(),
-  vcB: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
+  filosB: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(1, "Debe tener al menos 1 filo.").optional(),
+  pzsPorFiloB: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(1, "Debe ser al menos 1.").optional(),
+  cicloMinB: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0, "Debe ser un valor positivo.").optional(),
+  cicloSegB: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0).max(59, "No puede exceder 59 segundos.").optional(),
+  vcB: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0, "Debe ser un valor positivo.").optional(),
 });
 
 export const DetailedReportSchema = z.object({
@@ -59,25 +59,25 @@ export const DetailedReportSchema = z.object({
 
   // Herramienta A
   descA: z.string().optional(),
-  precioA: z.coerce.number().min(0, "El costo debe ser positivo.").optional(),
-  filosA: z.coerce.number().min(1, "Debe ser al menos 1.").optional(),
-  cicloMinA: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
-  cicloSegA: z.coerce.number().min(0).max(59, "No puede exceder 59 segundos.").optional(),
-  vcA: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
+  precioA: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0, "El costo debe ser positivo.").optional(),
+  filosA: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(1, "Debe ser al menos 1.").optional(),
+  cicloMinA: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0, "Debe ser un valor positivo.").optional(),
+  cicloSegA: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0).max(59, "No puede exceder 59 segundos.").optional(),
+  vcA: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0, "Debe ser un valor positivo.").optional(),
   modoVidaA: z.enum(['piezas', 'minutos']).default('piezas'),
-  piezasFiloA: z.coerce.number().min(1, "Debe ser al menos 1.").optional(),
+  piezasFiloA: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(1, "Debe ser al menos 1.").optional(),
   minutosFiloA: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
   notasA: z.string().optional(),
 
   // Herramienta B
   descB: z.string().optional(),
-  precioB: z.coerce.number().min(0, "El costo debe ser positivo.").optional(),
-  filosB: z.coerce.number().min(1, "Debe ser al menos 1.").optional(),
-  cicloMinB: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
-  cicloSegB: z.coerce.number().min(0).max(59, "No puede exceder 59 segundos.").optional(),
-  vcB: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
+  precioB: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0, "El costo debe ser positivo.").optional(),
+  filosB: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(1, "Debe ser al menos 1.").optional(),
+  cicloMinB: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0, "Debe ser un valor positivo.").optional(),
+  cicloSegB: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0).max(59, "No puede exceder 59 segundos.").optional(),
+  vcB: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(0, "Debe ser un valor positivo.").optional(),
   modoVidaB: z.enum(['piezas', 'minutos']).default('piezas'),
-  piezasFiloB: z.coerce.number().min(1, "Debe ser al menos 1.").optional(),
+  piezasFiloB: z.coerce.number({invalid_type_error: "Debe ser un número"}).min(1, "Debe ser al menos 1.").optional(),
   minutosFiloB: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
   notasB: z.string().optional(),
 });
@@ -96,5 +96,7 @@ export const SavingsInsightsSchema = z.object({
   machineHourlyRate: z.coerce.number().positive("La tarifa horaria debe ser un número positivo."),
 });
 
+
+    
 
     
