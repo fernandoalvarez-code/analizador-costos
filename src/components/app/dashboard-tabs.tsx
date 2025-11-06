@@ -80,6 +80,7 @@ type DetailedReportResult = {
   // Horas liberadas
   machineHoursFreedAnnual: number;
   machineHoursFreedValueAnnual: number;
+  piezasAdicionalesAnual: number;
   diasLaboralesAhorradosAnual: number;
   semanasLaboralesAhorradasAnual: number;
 
@@ -224,7 +225,7 @@ export default function DashboardTabs() {
 
   useEffect(() => {
     const subscription = diagnosisForm.watch((value, { name, type }) => {
-        if (type === 'change') {
+        if (type === 'change' && name) {
             syncForms('diag', value);
         }
     });
@@ -233,7 +234,7 @@ export default function DashboardTabs() {
 
   useEffect(() => {
     const subscription = detailedForm.watch((value, { name, type }) => {
-      if (type === 'change') {
+      if (type === 'change' && name) {
             syncForms('detail', value);
         }
     });
@@ -432,6 +433,7 @@ export default function DashboardTabs() {
     const tiempoAhorradoPorPiezaMin = tcA - tcB;
     const machineHoursFreedAnnual = (annualParts * tiempoAhorradoPorPiezaMin) / 60;
     const machineHoursFreedValueAnnual = machineHoursFreedAnnual * machineHourlyRate;
+    const piezasAdicionalesAnual = tcB > 0 ? (machineHoursFreedAnnual * 60) / tcB : 0;
     const diasLaboralesAhorradosAnual = machineHoursFreedAnnual / 8; // 8-hour shifts
     const semanasLaboralesAhorradasAnual = diasLaboralesAhorradosAnual / 5; // 5-day weeks
 
@@ -457,7 +459,7 @@ export default function DashboardTabs() {
         cppA, cppB, costoHerramientaA, costoHerramientaB, costoMaquinaA, costoMaquinaB,
         ahorroAnual, ahorroMensual, ahorroPorPieza,
         roi, toolCostIncreasePercent, totalCostReductionPercent,
-        machineHoursFreedAnnual, machineHoursFreedValueAnnual,
+        machineHoursFreedAnnual, machineHoursFreedValueAnnual, piezasAdicionalesAnual,
         diasLaboralesAhorradosAnual, semanasLaboralesAhorradasAnual,
         piezasTotalA: piezasTotalA,
         piezasTotalB: piezasTotalB,
@@ -514,15 +516,31 @@ export default function DashboardTabs() {
       return;
     }
 
+    const {
+        currentToolCost,
+        proposedToolCost,
+        cycleTimeSavings,
+        performanceImprovement,
+        ...restOfDetailedResult
+    } = detailedResult;
+
+
     const caseData = {
       ...detailedForm.getValues(),
-      ...detailedResult,
+      ...restOfDetailedResult,
       userId: user.uid,
       name: caseName,
       dateCreated: serverTimestamp(),
+      currentToolCost: restOfDetailedResult.costoHerramientaA,
+      proposedToolCost: restOfDetailedResult.costoHerramientaB,
+      cycleTimeSavings: restOfDetailedResult.timeReductionPercent,
+      performanceImprovement: restOfDetailedResult.totalCostReductionPercent,
     };
 
     try {
+      if (!firestore) {
+        throw new Error("Firestore is not initialized");
+      }
       const casesCollection = collection(firestore, "users", user.uid, "cuttingToolAnalyses");
       addDocumentNonBlocking(casesCollection, caseData);
       
@@ -881,7 +899,7 @@ export default function DashboardTabs() {
                                 <p className="text-sm text-muted-foreground">Cliente</p>
                                 <p className="text-2xl font-semibold">{detailedForm.getValues("cliente") || 'N/A'}</p>
                             </div>
-                            <div className="mb-8">
+                             <div className="mb-8">
                                 <p className="text-sm text-muted-foreground">Fecha del Análisis</p>
                                 <p className="text-2xl font-semibold">{new Date(detailedForm.getValues("fecha")?.replace(/-/g, '\/') || Date.now()).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                             </div>
@@ -983,7 +1001,7 @@ export default function DashboardTabs() {
 
                         <div className="no-break-inside mt-12">
                             <h3 className="text-2xl font-bold text-center mb-6">Análisis de Horas de Máquina Liberadas</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <StatCard 
                                     title="Tiempo de Máquina Liberado (Anual)"
                                     value={`${detailedResult.machineHoursFreedAnnual.toFixed(2)} horas`}
@@ -995,6 +1013,13 @@ export default function DashboardTabs() {
                                     description={`Tiempo liberado valorizado a ${formatCurrency(detailedForm.getValues("machineHourlyRate"))}/hr`}
                                     value={formatCurrency(detailedResult.machineHoursFreedValueAnnual)}
                                     valueClassName="text-green-600"
+                                    isCompact
+                                />
+                                <StatCard 
+                                    title="Piezas Adicionales Anuales"
+                                    description={`Producibles en las horas liberadas`}
+                                    value={detailedResult.piezasAdicionalesAnual.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                                    valueClassName="text-primary"
                                     isCompact
                                 />
                             </div>
@@ -1117,7 +1142,3 @@ export default function DashboardTabs() {
     </Tabs>
   );
 }
-
-    
-
-    
