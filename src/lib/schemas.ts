@@ -41,17 +41,43 @@ export const QuickDiagnosisSchema = z.object({
 });
 
 export const DetailedReportSchema = z.object({
-  partsProducedPerShift: z.coerce.number().min(1, "Debe ser al menos 1."),
-  shiftsPerDay: z.coerce.number().min(1, "Debe ser al menos 1."),
-  daysPerWeek: z.coerce.number().min(1, "Debe ser al menos 1."),
-  weeksPerYear: z.coerce.number().min(1, "Debe ser al menos 1."),
+  // Datos del informe
+  cliente: z.string().optional(),
+  fecha: z.string().optional(),
+  contacto: z.string().optional(),
+  operacion: z.string().optional(),
+  pieza: z.string().optional(),
+
+  // Datos Generales
   machineHourlyRate: z.coerce.number().min(0, "La tarifa debe ser positiva."),
-  currentTool: z.string().min(1, "El nombre de la herramienta es requerido."),
-  proposedTool: z.string().min(1, "El nombre de la herramienta es requerido."),
-  currentToolCost: z.coerce.number().min(0, "El costo debe ser positivo."),
-  proposedToolCost: z.coerce.number().min(0, "El costo debe ser positivo."),
-  cycleTimeReduction: z.coerce.number().min(0, "La reducción no puede ser negativa.").max(100, "La reducción no puede ser mayor a 100%."),
+  piezasAlMes: z.coerce.number().min(1, "Debe ser al menos 1."),
+  tiempoParada: z.coerce.number().min(0, "Debe ser un valor positivo.").default(2),
+
+  // Herramienta A
+  descA: z.string().optional(),
+  precioA: z.coerce.number().min(0, "El costo debe ser positivo."),
+  filosA: z.coerce.number().min(1, "Debe ser al menos 1."),
+  cicloMinA: z.coerce.number().min(0, "Debe ser un valor positivo."),
+  cicloSegA: z.coerce.number().min(0).max(59, "No puede exceder 59 segundos."),
+  vcA: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
+  modoVidaA: z.enum(['piezas', 'minutos']).default('piezas'),
+  piezasFiloA: z.coerce.number().min(1, "Debe ser al menos 1."),
+  minutosFiloA: z.coerce.number().min(0, "Debe ser un valor positivo."),
+  notasA: z.string().optional(),
+
+  // Herramienta B
+  descB: z.string().optional(),
+  precioB: z.coerce.number().min(0, "El costo debe ser positivo."),
+  filosB: z.coerce.number().min(1, "Debe ser al menos 1."),
+  cicloMinB: z.coerce.number().min(0, "Debe ser un valor positivo."),
+  cicloSegB: z.coerce.number().min(0).max(59, "No puede exceder 59 segundos."),
+  vcB: z.coerce.number().min(0, "Debe ser un valor positivo.").optional(),
+  modoVidaB: z.enum(['piezas', 'minutos']).default('piezas'),
+  piezasFiloB: z.coerce.number().min(1, "Debe ser al menos 1."),
+  minutosFiloB: z.coerce.number().min(0, "Debe ser un valor positivo."),
+  notasB: z.string().optional(),
 });
+
 
 export const SavingsInsightsSchema = z.object({
   currentTool: z.string().min(1, "El nombre de la herramienta actual es requerido."),

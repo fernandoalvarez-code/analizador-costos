@@ -4,7 +4,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Download,
   Save,
@@ -40,6 +40,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "../ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "../ui/textarea";
 
 type QuickDiagnosisResult = {
   breakEvenSeconds: number;
@@ -58,12 +59,19 @@ type NetSavingsResult = {
     newCycleTime: number;
     newToolLife: number;
 };
+type DetailedReportResult = {
+    cppA: number;
+    cppB: number;
+    netSavings: number;
+    roi: number;
+    machineHoursFreed: number;
+};
 
 export default function DashboardTabs() {
   const { toast } = useToast();
   const [quickResult, setQuickResult] = useState<QuickDiagnosisResult | null>(null);
   const [netSavingsResult, setNetSavingsResult] = useState<NetSavingsResult | null>(null);
-  const [detailedResult, setDetailedResult] = useState<any | null>(null);
+  const [detailedResult, setDetailedResult] = useState<DetailedReportResult | null>(null);
 
   const diagnosisForm = useForm<z.infer<typeof QuickDiagnosisSchema>>({
     resolver: zodResolver(QuickDiagnosisSchema),
@@ -87,59 +95,88 @@ export default function DashboardTabs() {
   const detailedForm = useForm<z.infer<typeof DetailedReportSchema>>({
     resolver: zodResolver(DetailedReportSchema),
      defaultValues: {
-      currentTool: "Herramienta Estándar",
-      currentToolCost: 100,
-      proposedTool: "Herramienta Premium",
-      proposedToolCost: 150,
-      cycleTimeReduction: 20,
-      partsProducedPerShift: 50,
-      shiftsPerDay: 2,
-      daysPerWeek: 5,
-      weeksPerYear: 50,
+      cliente: "",
+      fecha: new Date().toISOString().split('T')[0],
+      contacto: "",
+      operacion: "",
+      pieza: "",
       machineHourlyRate: 35,
+      piezasAlMes: 2000,
+      tiempoParada: 2,
+      descA: "Herramienta Actual",
+      precioA: 100,
+      filosA: 4,
+      cicloMinA: 1,
+      cicloSegA: 30,
+      vcA: 180,
+      modoVidaA: 'piezas',
+      piezasFiloA: 20,
+      minutosFiloA: 0,
+      notasA: "",
+      descB: "Herramienta Propuesta",
+      precioB: 150,
+      filosB: 4,
+      cicloMinB: 1,
+      cicloSegB: 30,
+      vcB: 180,
+      modoVidaB: 'piezas',
+      piezasFiloB: 20,
+      minutosFiloB: 0,
+      notasB: "",
     },
   });
 
   const watchedDiagnosisData = useWatch({ control: diagnosisForm.control });
-
-  // Sync diagnosisForm to detailedForm and other related fields
-  useEffect(() => {
-    const { costoHoraMaquina, precioA, precioB, cicloMinA, cicloSegA, modoSimulacionTiempo, segundosMenosReales, vcA, vcBReal } = watchedDiagnosisData;
-
-    // Sync to Detailed Report
-    detailedForm.setValue("machineHourlyRate", costoHoraMaquina || 0, { shouldValidate: true });
-    detailedForm.setValue("currentToolCost", precioA || 0, { shouldValidate: true });
-    detailedForm.setValue("proposedToolCost", precioB || 0, { shouldValidate: true });
-    
-    // Auto-fill Vc B Real if simulating by Vc and Vc A changes
-    if (modoSimulacionTiempo === 'vc' && vcA && vcBReal !== vcA) {
-        if(diagnosisForm.getValues("vcBReal") !== vcA) {
-            // diagnosisForm.setValue("vcBReal", vcA); // This can cause a loop if not careful
-        }
-    }
-
-    const cicloASeconds = (cicloMinA || 0) * 60 + (cicloSegA || 0);
-    
-    let cicloBSeconds = 0;
-    if (modoSimulacionTiempo === 'segundos') {
-        cicloBSeconds = cicloASeconds - (segundosMenosReales || 0);
-    } else if (vcA && vcBReal) {
-        cicloBSeconds = cicloASeconds * (vcA / vcBReal);
-    }
-    
-    const reduction = cicloASeconds > 0 ? ((cicloASeconds - cicloBSeconds) / cicloASeconds) * 100 : 0;
-    
-    if (detailedForm.getValues("cycleTimeReduction") !== parseFloat(reduction.toFixed(2))) {
-      detailedForm.setValue("cycleTimeReduction", parseFloat(reduction.toFixed(2)), { shouldValidate: true });
-    }
-
-  }, [watchedDiagnosisData, detailedForm, diagnosisForm]);
-
-  const parseTimeToMinutes = (min: number, sec: number) => {
+  
+  const parseTimeToMinutes = (min: number | undefined, sec: number | undefined) => {
     const minVal = min || 0;
     const secVal = sec || 0;
     return minVal + (secVal / 60);
   }
+
+  // Sync Diagnosis -> Detailed
+  const syncDiagnosisToDetailed = useCallback(() => {
+    const { costoHoraMaquina, piezasAlMes, precioA, filosA, pzsPorFiloA, cicloMinA, cicloSegA, vcA, precioB, vcB, cicloMinB, cicloSegB, pzsPorFiloB } = diagnosisForm.getValues();
+  
+    detailedForm.setValue("machineHourlyRate", costoHoraMaquina, { shouldValidate: false });
+    detailedForm.setValue("piezasAlMes", piezasAlMes || 0, { shouldValidate: false });
+    detailedForm.setValue("precioA", precioA, { shouldValidate: false });
+    detailedForm.setValue("filosA", filosA, { shouldValidate: false });
+    detailedForm.setValue("piezasFiloA", pzsPorFiloA, { shouldValidate: false });
+    detailedForm.setValue("cicloMinA", cicloMinA, { shouldValidate: false });
+    detailedForm.setValue("cicloSegA", cicloSegA, { shouldValidate: false });
+    detailedForm.setValue("vcA", vcA, { shouldValidate: false });
+    detailedForm.setValue("precioB", precioB, { shouldValidate: false });
+    detailedForm.setValue("vcB", vcB, { shouldValidate: false });
+    detailedForm.setValue("cicloMinB", cicloMinB, { shouldValidate: false });
+    detailedForm.setValue("cicloSegB", cicloSegB, { shouldValidate: false });
+    detailedForm.setValue("filosB", filosA, { shouldValidate: false }); // Asumimos mismos filos
+    detailedForm.setValue("piezasFiloB", pzsPorFiloB, { shouldValidate: false });
+  }, [diagnosisForm, detailedForm]);
+
+  useEffect(() => {
+    syncDiagnosisToDetailed();
+  }, [watchedDiagnosisData, syncDiagnosisToDetailed]);
+
+  // Sync Detailed -> Diagnosis
+  const syncDetailedToDiagnosis = useCallback(() => {
+    const { machineHourlyRate, piezasAlMes, precioA, filosA, piezasFiloA, cicloMinA, cicloSegA, vcA, precioB } = detailedForm.getValues();
+    diagnosisForm.setValue("costoHoraMaquina", machineHourlyRate, { shouldValidate: false });
+    diagnosisForm.setValue("piezasAlMes", piezasAlMes, { shouldValidate: false });
+    diagnosisForm.setValue("precioA", precioA, { shouldValidate: false });
+    diagnosisForm.setValue("filosA", filosA, { shouldValidate: false });
+    diagnosisForm.setValue("pzsPorFiloA", piezasFiloA, { shouldValidate: false });
+    diagnosisForm.setValue("cicloMinA", cicloMinA, { shouldValidate: false });
+    diagnosisForm.setValue("cicloSegA", cicloSegA, { shouldValidate: false });
+    diagnosisForm.setValue("vcA", vcA, { shouldValidate: false });
+    diagnosisForm.setValue("precioB", precioB, { shouldValidate: false });
+  }, [detailedForm, diagnosisForm]);
+
+  const watchedDetailedData = useWatch({ control: detailedForm.control });
+  useEffect(() => {
+    syncDetailedToDiagnosis();
+  }, [watchedDetailedData, syncDetailedToDiagnosis]);
+
 
   function onQuickSubmit(data: z.infer<typeof QuickDiagnosisSchema>) {
     const { precioA, precioB, filosA, pzsPorFiloA, costoHoraMaquina, cicloMinA, cicloSegA, vcA } = data;
@@ -204,8 +241,14 @@ export default function DashboardTabs() {
     const cppA = costoHerrA + costoMaqA;
 
     let tcB_real_min = 0;
+    let actualVcB = vcBReal;
+
     if (modoSimulacionTiempo === 'segundos') {
         tcB_real_min = tcA - (segundosMenosReales / 60);
+         if (vcA > 0 && tcB_real_min > 0) {
+            actualVcB = vcA * (tcA / tcB_real_min);
+            diagnosisForm.setValue('vcBReal', actualVcB);
+        }
     } else { // modo 'vc'
         if (vcA <= 0 || vcBReal <= 0 || vcBReal === vcA) {
             toast({ variant: "destructive", title: "Vc inválida", description: "Ingrese una Vc Actual y una Nueva Vc (distinta) para simular." });
@@ -238,32 +281,58 @@ export default function DashboardTabs() {
         newToolLife: pzsPorFiloA + piezasMasReales,
     });
 
-    // Sync to detailed report
     const newCicloMin = Math.floor(tcB_real_min);
     const newCicloSeg = Math.round((tcB_real_min - newCicloMin) * 60);
-    detailedForm.setValue("proposedToolCost", precioB);
-    
     diagnosisForm.setValue("cicloMinB", newCicloMin);
     diagnosisForm.setValue("cicloSegB", newCicloSeg);
-    diagnosisForm.setValue("filosB", filosA); // Assume same number of edges
     diagnosisForm.setValue("pzsPorFiloB", pzsPorFiloA + piezasMasReales);
-     if (modoSimulacionTiempo === 'vc') {
-        diagnosisForm.setValue("vcB", vcBReal);
-    }
+    diagnosisForm.setValue("vcB", actualVcB);
+
+    syncDiagnosisToDetailed();
   }
 
   function onDetailedSubmit(data: z.infer<typeof DetailedReportSchema>) {
-    const cppCurrent = data.currentToolCost / data.partsProducedPerShift;
-    const cppProposed = data.proposedToolCost / (data.partsProducedPerShift * (1 + data.cycleTimeReduction/100));
-    const annualParts = data.partsProducedPerShift * data.shiftsPerDay * data.daysPerWeek * data.weeksPerYear;
-    const netSavings = (cppCurrent - cppProposed) * annualParts;
-    const investment = data.proposedToolCost - data.currentToolCost;
+    const { machineHourlyRate, piezasAlMes, tiempoParada } = data;
+    const costoMin = machineHourlyRate / 60;
+
+    // Tool A calculations
+    const tcA = parseTimeToMinutes(data.cicloMinA, data.cicloSegA);
+    let piezasFiloA = data.piezasFiloA;
+    if (data.modoVidaA === 'minutos' && tcA > 0) {
+        piezasFiloA = data.minutosFiloA / tcA;
+    }
+    const piezasTotalA = data.filosA * piezasFiloA;
+    const costoHerramientaA = piezasTotalA > 0 ? data.precioA / piezasTotalA : 0;
+    const costoParadaA = piezasFiloA > 0 ? (tiempoParada * costoMin) / piezasFiloA : 0;
+    const costoMaquinaA = (tcA * costoMin) + costoParadaA;
+    const cppA = costoHerramientaA + costoMaquinaA;
+
+    // Tool B calculations
+    const tcB = parseTimeToMinutes(data.cicloMinB, data.cicloSegB);
+    let piezasFiloB = data.piezasFiloB;
+    if (data.modoVidaB === 'minutos' && tcB > 0) {
+        piezasFiloB = data.minutosFiloB / tcB;
+    }
+    const piezasTotalB = data.filosB * piezasFiloB;
+    const costoHerramientaB = piezasTotalB > 0 ? data.precioB / piezasTotalB : 0;
+    const costoParadaB = piezasFiloB > 0 ? (tiempoParada * costoMin) / piezasFiloB : 0;
+    const costoMaquinaB = (tcB * costoMin) + costoParadaB;
+    const cppB = costoHerramientaB + costoMaquinaB;
+    
+    // Final calculations
+    const ahorroPorPieza = cppA - cppB;
+    const netSavings = ahorroPorPieza * piezasAlMes * 12;
+    
+    const investment = data.precioB - data.precioA;
     const roi = investment > 0 ? (netSavings / investment) * 100 : Infinity;
-    const hoursSaved = (annualParts * (data.cycleTimeReduction/100)) / 60;
+    
+    const tiempoAhorradoPorPiezaMin = tcA - tcB;
+    const annualParts = piezasAlMes * 12;
+    const hoursSaved = (annualParts * tiempoAhorradoPorPiezaMin) / 60;
 
     setDetailedResult({
-        cppCurrent,
-        cppProposed,
+        cppA,
+        cppB,
         netSavings,
         roi,
         machineHoursFreed: hoursSaved,
@@ -271,12 +340,7 @@ export default function DashboardTabs() {
   }
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
-  const formatSeconds = (seconds: number) => {
-    const min = Math.floor(seconds/60);
-    const sec = Math.round(seconds % 60);
-    return `${min}m ${sec}s`;
-  }
-   const formatMinutes = (timeInMinutes: number) => {
+  const formatMinutes = (timeInMinutes: number) => {
     const minutes = Math.floor(timeInMinutes);
     const seconds = Math.round((timeInMinutes - minutes) * 60);
     return `${minutes} min ${seconds} seg`;
@@ -296,9 +360,11 @@ export default function DashboardTabs() {
   )
 
   const watchedSimTimeMode = useWatch({ control: diagnosisForm.control, name: 'modoSimulacionTiempo' });
+  const watchedModoVidaA = useWatch({ control: detailedForm.control, name: 'modoVidaA' });
+  const watchedModoVidaB = useWatch({ control: detailedForm.control, name: 'modoVidaB' });
 
   return (
-    <Tabs defaultValue="quick">
+    <Tabs defaultValue="quick" className="w-full">
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="quick">1. Diagnóstico</TabsTrigger>
         <TabsTrigger value="detailed">2. Informe</TabsTrigger>
@@ -314,7 +380,6 @@ export default function DashboardTabs() {
           <CardContent className="space-y-6">
             <Form {...diagnosisForm}>
               <form className="space-y-8">
-                {/* Datos de Partida */}
                 <div>
                   <h3 className="text-lg font-semibold mb-4 font-headline text-blue-800">Datos de Partida</h3>
                   <div className="p-6 border border-blue-200 bg-blue-50/50 rounded-lg space-y-6">
@@ -347,7 +412,6 @@ export default function DashboardTabs() {
 
                 <Separator className="my-8" />
 
-                {/* Punto de Equilibrio */}
                 <div className="space-y-4">
                     <h3 className="text-xl font-semibold font-headline">Paso 1: ¿Cuánto <span className="text-primary">necesitamos</span> para justificar el costo?</h3>
                     <div className="p-6 border rounded-lg space-y-4">
@@ -389,7 +453,6 @@ export default function DashboardTabs() {
 
                 <Separator className="my-8" />
                 
-                {/* Ahorro Neto Real */}
                 <div className="space-y-4">
                     <h3 className="text-xl font-semibold font-headline">Paso 2: ¿Cuánto <span className="text-green-600">vamos a ahorrar</span> realmente?</h3>
                      <div className="p-6 border rounded-lg space-y-6">
@@ -467,43 +530,95 @@ export default function DashboardTabs() {
           <CardHeader>
             <CardTitle className="font-headline">Informe Detallado (A vs. B)</CardTitle>
             <CardDescription>
-              Genera una comparación exhaustiva entre dos herramientas de corte. Los datos de partida se sincronizan desde la pestaña de Diagnóstico.
+              Genera una comparación exhaustiva entre dos herramientas de corte. Los datos se sincronizan desde la pestaña de Diagnóstico.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <Form {...detailedForm}>
               <form onSubmit={detailedForm.handleSubmit(onDetailedSubmit)} className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                      <h4 className="font-semibold text-primary">Herramienta Actual (A)</h4>
-                      <FormField control={detailedForm.control} name="currentTool" render={({ field }) => (<FormItem><FormLabel>Nombre Herramienta A</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                      <FormField control={detailedForm.control} name="currentToolCost" render={({ field }) => (<FormItem><FormLabel>Costo Herramienta A ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}/>
-                  </div>
-                   <div className="space-y-4">
-                      <h4 className="font-semibold text-accent">Herramienta Propuesta (B)</h4>
-                      <FormField control={detailedForm.control} name="proposedTool" render={({ field }) => (<FormItem><FormLabel>Nombre Herramienta B</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                      <FormField control={detailedForm.control} name="proposedToolCost" render={({ field }) => (<FormItem><FormLabel>Costo Herramienta B ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}/>
-                  </div>
-                </div>
-                <div className="border-t pt-8">
-                    <h4 className="font-semibold mb-4">Parámetros de Producción</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                        <FormField control={detailedForm.control} name="cycleTimeReduction" render={({ field }) => (<FormItem><FormLabel>Reducción Ciclo (%)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}/>
-                        <FormField control={detailedForm.control} name="partsProducedPerShift" render={({ field }) => (<FormItem><FormLabel>Piezas/Turno</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}/>
-                        <FormField control={detailedForm.control} name="shiftsPerDay" render={({ field }) => (<FormItem><FormLabel>Turnos/Día</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}/>
-                        <FormField control={detailedForm.control} name="daysPerWeek" render={({ field }) => (<FormItem><FormLabel>Días/Semana</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}/>
-                        <FormField control={detailedForm.control} name="machineHourlyRate" render={({ field }) => (<FormItem><FormLabel>Costo Máquina/Hr ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}/>
+                
+                {/* Datos del Informe */}
+                <div className="p-6 bg-white rounded-lg shadow-md border">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Datos del Informe</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <FormField control={detailedForm.control} name="cliente" render={({ field }) => (<FormItem><FormLabel>Cliente</FormLabel><FormControl><Input placeholder="Nombre del Cliente" {...field} /></FormControl></FormItem>)}/>
+                        <FormField control={detailedForm.control} name="fecha" render={({ field }) => (<FormItem><FormLabel>Fecha</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>)}/>
+                        <FormField control={detailedForm.control} name="contacto" render={({ field }) => (<FormItem><FormLabel>Contacto</FormLabel><FormControl><Input placeholder="Persona de Contacto" {...field} /></FormControl></FormItem>)}/>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField control={detailedForm.control} name="operacion" render={({ field }) => (<FormItem><FormLabel>Operación</FormLabel><FormControl><Input placeholder="Ej: Fresado Frontal" {...field} /></FormControl></FormItem>)}/>
+                        <FormField control={detailedForm.control} name="pieza" render={({ field }) => (<FormItem><FormLabel>Nombre de la Pieza</FormLabel><FormControl><Input placeholder="Ej: Soporte Motor" {...field} /></FormControl></FormItem>)}/>
                     </div>
                 </div>
-                <div>
+
+                {/* Datos Generales */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                    <FormField control={detailedForm.control} name="machineHourlyRate" render={({ field }) => (<FormItem><FormLabel>⚙️ Costo de Hora-Máquina ($)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                    <FormField control={detailedForm.control} name="piezasAlMes" render={({ field }) => (<FormItem><FormLabel>🏭 Piezas/Mes</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                    <FormField control={detailedForm.control} name="tiempoParada" render={({ field }) => (<FormItem><FormLabel>⏱️ Parada por Cambio (min)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                </div>
+
+                {/* Comparativa A vs B */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Herramienta A */}
+                    <Card className="overflow-hidden">
+                        <CardHeader className="bg-destructive text-destructive-foreground p-4">
+                            <CardTitle>Inserto A (Actual)</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-4 pt-6">
+                            <FormField control={detailedForm.control} name="descA" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Ej: Inserto de 4 filos..." {...field} /></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio de Compra ($)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Cant. de Filos</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="modoVidaA" render={({ field }) => (<FormItem><FormLabel>Calcular Vida Útil por:</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="piezas">Piezas por Filo</SelectItem><SelectItem value="minutos">Minutos por Filo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
+                            {watchedModoVidaA === 'piezas' ? (
+                                <FormField control={detailedForm.control} name="piezasFiloA" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                            ) : (
+                                <FormField control={detailedForm.control} name="minutosFiloA" render={({ field }) => (<FormItem><FormLabel>Minutos por Filo</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                            )}
+                            <div className="flex space-x-2">
+                                <FormField control={detailedForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                            </div>
+                            <FormField control={detailedForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="notasA" render={({ field }) => (<FormItem><FormLabel>Notas Internas</FormLabel><FormControl><Textarea placeholder="No se imprime..." {...field} /></FormControl></FormItem>)}/>
+                        </CardContent>
+                    </Card>
+                    {/* Herramienta B */}
+                    <Card className="overflow-hidden">
+                        <CardHeader className="bg-green-600 text-white p-4">
+                            <CardTitle>Inserto B (Propuesta)</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-4 pt-6">
+                            <FormField control={detailedForm.control} name="descB" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Ej: Inserto de alta vel..." {...field} /></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio de Compra ($)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="filosB" render={({ field }) => (<FormItem><FormLabel>Cant. de Filos</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="modoVidaB" render={({ field }) => (<FormItem><FormLabel>Calcular Vida Útil por:</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="piezas">Piezas por Filo</SelectItem><SelectItem value="minutos">Minutos por Filo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
+                            {watchedModoVidaB === 'piezas' ? (
+                                <FormField control={detailedForm.control} name="piezasFiloB" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                            ) : (
+                                <FormField control={detailedForm.control} name="minutosFiloB" render={({ field }) => (<FormItem><FormLabel>Minutos por Filo</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                            )}
+                            <div className="flex space-x-2">
+                                <FormField control={detailedForm.control} name="cicloMinB" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="cicloSegB" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                            </div>
+                            <FormField control={detailedForm.control} name="vcB" render={({ field }) => (<FormItem><FormLabel>Vc Propuesta (m/min)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="notasB" render={({ field }) => (<FormItem><FormLabel>Notas Internas</FormLabel><FormControl><Textarea placeholder="No se imprime..." {...field} /></FormControl></FormItem>)}/>
+                        </CardContent>
+                    </Card>
+                </div>
+                
+                <div className="flex flex-wrap gap-4 justify-center">
                   <Button type="submit">Generar Informe</Button>
+                  <Button type="button" variant="secondary"><Download className="mr-2 h-4 w-4" />Imprimir / Guardar PDF</Button>
                 </div>
               </form>
             </Form>
+
             {detailedResult && (
-                <div className="mt-6 pt-6 border-t">
+                <div className="mt-8 pt-6 border-t">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-headline font-semibold">Resultados del Informe</h3>
+                        <h3 className="text-xl font-headline font-semibold">Resultados del Informe</h3>
                         <div className="flex gap-2">
                             <Button variant="outline" size="sm"><Save className="mr-2"/> Guardar Caso</Button>
                             <Button variant="outline" size="sm"><Download className="mr-2"/> Descargar PDF</Button>
@@ -512,9 +627,9 @@ export default function DashboardTabs() {
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         <StatCard icon={<DollarSign className="h-4 w-4 text-muted-foreground" />} title="Ahorro Neto Anual" value={formatCurrency(detailedResult.netSavings)} />
                         <StatCard icon={<BarChart className="h-4 w-4 text-muted-foreground" />} title="Retorno de Inversión (ROI)" value={isFinite(detailedResult.roi) ? `${detailedResult.roi.toFixed(1)}%` : '∞'} />
-                        <StatCard icon={<Clock className="h-4 w-4 text-muted-foreground" />} title="Horas de Máquina Liberadas" value={`${detailedResult.machineHoursFreed.toFixed(1)} hrs`} />
-                        <StatCard icon={<Package className="h-4 w-4 text-muted-foreground" />} title="CPP Actual" value={formatCurrency(detailedResult.cppCurrent)} description="Costo Por Pieza" />
-                        <StatCard icon={<Package className="h-4 w-4 text-muted-foreground" />} title="CPP Propuesto" value={formatCurrency(detailedResult.cppProposed)} description="Costo Por Pieza" />
+                        <StatCard icon={<Clock className="h-4 w-4 text-muted-foreground" />} title="Horas de Máquina Liberadas (Anual)" value={`${detailedResult.machineHoursFreed.toFixed(1)} hrs`} />
+                        <StatCard icon={<Package className="h-4 w-4 text-muted-foreground" />} title="CPP Actual (A)" value={formatCurrency(detailedResult.cppA)} description="Costo Por Pieza" />
+                        <StatCard icon={<Package className="h-4 w-4 text-muted-foreground" />} title="CPP Propuesto (B)" value={formatCurrency(detailedResult.cppB)} description="Costo Por Pieza" />
                     </div>
                 </div>
             )}
