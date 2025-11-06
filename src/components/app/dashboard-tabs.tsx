@@ -60,11 +60,28 @@ type NetSavingsResult = {
     newToolLife: number;
 };
 type DetailedReportResult = {
-    cppA: number;
-    cppB: number;
-    netSavings: number;
-    roi: number;
-    machineHoursFreed: number;
+  // Costos por pieza
+  cppA: number;
+  cppB: number;
+  costoHerramientaA: number;
+  costoHerramientaB: number;
+  costoMaquinaA: number;
+  costoMaquinaB: number;
+
+  // Ahorros
+  ahorroAnual: number;
+  ahorroMensual: number;
+
+  // ROI y Performance
+  roi: number;
+  toolCostIncreasePercent: number;
+  totalCostReductionPercent: number;
+
+  // Horas liberadas
+  machineHoursFreedAnnual: number;
+  machineHoursFreedValueAnnual: number;
+  diasLaboralesAhorradosAnual: number;
+  semanasLaboralesAhorradasAnual: number;
 };
 
 export default function DashboardTabs() {
@@ -135,37 +152,54 @@ export default function DashboardTabs() {
     return minVal + (secVal / 60);
   }
 
-  // Sync Diagnosis -> Detailed
+  const syncForms = useCallback(() => {
+    const diagValues = diagnosisForm.getValues();
+    const detailValues = detailedForm.getValues();
+
+    const newDetailValues: Partial<z.infer<typeof DetailedReportSchema>> = {};
+
+    if (diagValues.costoHoraMaquina !== detailValues.machineHourlyRate) newDetailValues.machineHourlyRate = diagValues.costoHoraMaquina;
+    if (diagValues.piezasAlMes !== detailValues.piezasAlMes) newDetailValues.piezasAlMes = diagValues.piezasAlMes;
+    if (diagValues.precioA !== detailValues.precioA) newDetailValues.precioA = diagValues.precioA;
+    if (diagValues.filosA !== detailValues.filosA) newDetailValues.filosA = diagValues.filosA;
+    if (diagValues.pzsPorFiloA !== detailValues.piezasFiloA) newDetailValues.piezasFiloA = diagValues.pzsPorFiloA;
+    if (diagValues.cicloMinA !== detailValues.cicloMinA) newDetailValues.cicloMinA = diagValues.cicloMinA;
+    if (diagValues.cicloSegA !== detailValues.cicloSegA) newDetailValues.cicloSegA = diagValues.cicloSegA;
+    if (diagValues.vcA !== detailValues.vcA) newDetailValues.vcA = diagValues.vcA;
+    if (diagValues.precioB !== detailValues.precioB) newDetailValues.precioB = diagValues.precioB;
+
+    if (Object.keys(newDetailValues).length > 0) {
+      detailedForm.reset({ ...detailValues, ...newDetailValues });
+    }
+
+  }, [diagnosisForm, detailedForm]);
+
   useEffect(() => {
-    const { costoHoraMaquina, piezasAlMes, precioA, filosA, pzsPorFiloA, cicloMinA, cicloSegA, vcA, precioB } = watchedDiagnosisData;
-    const detailedValues = detailedForm.getValues();
+    const subscription = diagnosisForm.watch(() => syncForms());
+    return () => subscription.unsubscribe();
+  }, [diagnosisForm, syncForms]);
 
-    if (detailedValues.machineHourlyRate !== costoHoraMaquina) detailedForm.setValue("machineHourlyRate", costoHoraMaquina || 0);
-    if (detailedValues.piezasAlMes !== piezasAlMes) detailedForm.setValue("piezasAlMes", piezasAlMes || 0);
-    if (detailedValues.precioA !== precioA) detailedForm.setValue("precioA", precioA || 0);
-    if (detailedValues.filosA !== filosA) detailedForm.setValue("filosA", filosA || 0);
-    if (detailedValues.piezasFiloA !== pzsPorFiloA) detailedForm.setValue("piezasFiloA", pzsPorFiloA || 0);
-    if (detailedValues.cicloMinA !== cicloMinA) detailedForm.setValue("cicloMinA", cicloMinA || 0);
-    if (detailedValues.cicloSegA !== cicloSegA) detailedForm.setValue("cicloSegA", cicloSegA || 0);
-    if (detailedValues.vcA !== vcA) detailedForm.setValue("vcA", vcA || 0);
-    if (detailedValues.precioB !== precioB) detailedForm.setValue("precioB", precioB || 0);
-  }, [watchedDiagnosisData, detailedForm]);
-
-  // Sync Detailed -> Diagnosis
   useEffect(() => {
-    const { machineHourlyRate, piezasAlMes, precioA, filosA, piezasFiloA, cicloMinA, cicloSegA, vcA, precioB } = watchedDetailedData;
-    const diagnosisValues = diagnosisForm.getValues();
+    const subscription = detailedForm.watch((value) => {
+      const diagValues = diagnosisForm.getValues();
+      const newDiagValues: Partial<z.infer<typeof QuickDiagnosisSchema>> = {};
 
-    if (diagnosisValues.costoHoraMaquina !== machineHourlyRate) diagnosisForm.setValue("costoHoraMaquina", machineHourlyRate || 0);
-    if (diagnosisValues.piezasAlMes !== piezasAlMes) diagnosisForm.setValue("piezasAlMes", piezasAlMes || 0);
-    if (diagnosisValues.precioA !== precioA) diagnosisForm.setValue("precioA", precioA || 0);
-    if (diagnosisValues.filosA !== filosA) diagnosisForm.setValue("filosA", filosA || 0);
-    if (diagnosisValues.pzsPorFiloA !== piezasFiloA) diagnosisForm.setValue("pzsPorFiloA", piezasFiloA || 0);
-    if (diagnosisValues.cicloMinA !== cicloMinA) diagnosisForm.setValue("cicloMinA", cicloMinA || 0);
-    if (diagnosisValues.cicloSegA !== cicloSegA) diagnosisForm.setValue("cicloSegA", cicloSegA || 0);
-    if (diagnosisValues.vcA !== vcA) diagnosisForm.setValue("vcA", vcA || 0);
-    if (diagnosisValues.precioB !== precioB) diagnosisForm.setValue("precioB", precioB || 0);
-  }, [watchedDetailedData, diagnosisForm]);
+      if (value.machineHourlyRate !== undefined && value.machineHourlyRate !== diagValues.costoHoraMaquina) newDiagValues.costoHoraMaquina = value.machineHourlyRate;
+      if (value.piezasAlMes !== undefined && value.piezasAlMes !== diagValues.piezasAlMes) newDiagValues.piezasAlMes = value.piezasAlMes;
+      if (value.precioA !== undefined && value.precioA !== diagValues.precioA) newDiagValues.precioA = value.precioA;
+      if (value.filosA !== undefined && value.filosA !== diagValues.filosA) newDiagValues.filosA = value.filosA;
+      if (value.piezasFiloA !== undefined && value.piezasFiloA !== diagValues.pzsPorFiloA) newDiagValues.pzsPorFiloA = value.piezasFiloA;
+      if (value.cicloMinA !== undefined && value.cicloMinA !== diagValues.cicloMinA) newDiagValues.cicloMinA = value.cicloMinA;
+      if (value.cicloSegA !== undefined && value.cicloSegA !== diagValues.cicloSegA) newDiagValues.cicloSegA = value.cicloSegA;
+      if (value.vcA !== undefined && value.vcA !== diagValues.vcA) newDiagValues.vcA = value.vcA;
+      if (value.precioB !== undefined && value.precioB !== diagValues.precioB) newDiagValues.precioB = value.precioB;
+
+      if (Object.keys(newDiagValues).length > 0) {
+        diagnosisForm.reset({ ...diagValues, ...newDiagValues });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [detailedForm, diagnosisForm]);
 
 
   function onQuickSubmit(data: z.infer<typeof QuickDiagnosisSchema>) {
@@ -312,21 +346,39 @@ export default function DashboardTabs() {
     
     // Final calculations
     const ahorroPorPieza = cppA - cppB;
-    const netSavings = ahorroPorPieza * (piezasAlMes || 0) * 12;
+    const ahorroMensual = ahorroPorPieza * (piezasAlMes || 0);
+    const ahorroAnual = ahorroMensual * 12;
     
+    // Investment analysis
+    const toolCostIncreasePercent = costoHerramientaA > 0 ? ((costoHerramientaB - costoHerramientaA) / costoHerramientaA) * 100 : (costoHerramientaB > 0 ? Infinity : 0);
+    const totalCostReductionPercent = cppA > 0 ? (ahorroPorPieza / cppA) * 100 : 0;
     const investment = (data.precioB || 0) - (data.precioA || 0);
-    const roi = investment > 0 ? (netSavings / investment) * 100 : Infinity;
+    const roi = investment > 0 ? (ahorroAnual / investment) * 100 : Infinity;
     
-    const tiempoAhorradoPorPiezaMin = tcA - tcB;
+    // Time savings
     const annualParts = (piezasAlMes || 0) * 12;
-    const hoursSaved = (annualParts * tiempoAhorradoPorPiezaMin) / 60;
+    const tiempoAhorradoPorPiezaMin = tcA - tcB;
+    const machineHoursFreedAnnual = (annualParts * tiempoAhorradoPorPiezaMin) / 60;
+    const machineHoursFreedValueAnnual = machineHoursFreedAnnual * machineHourlyRate;
+    const diasLaboralesAhorradosAnual = machineHoursFreedAnnual / 8; // 8-hour shifts
+    const semanasLaboralesAhorradasAnual = diasLaboralesAhorradosAnual / 5; // 5-day weeks
 
     setDetailedResult({
         cppA,
         cppB,
-        netSavings,
+        costoHerramientaA,
+        costoHerramientaB,
+        costoMaquinaA,
+        costoMaquinaB,
+        ahorroAnual,
+        ahorroMensual,
         roi,
-        machineHoursFreed: hoursSaved,
+        toolCostIncreasePercent,
+        totalCostReductionPercent,
+        machineHoursFreedAnnual,
+        machineHoursFreedValueAnnual,
+        diasLaboralesAhorradosAnual,
+        semanasLaboralesAhorradasAnual,
     });
   }
 
@@ -337,14 +389,14 @@ export default function DashboardTabs() {
     return `${minutes} min ${seconds} seg`;
   };
 
-  const StatCard = ({ icon, title, value, description }: { icon: React.ReactNode, title: string, value: string, description?: string }) => (
+  const StatCard = ({ icon, title, value, description, valueClassName, isCompact = false }: { icon?: React.ReactNode, title: string, value: string, description?: string, valueClassName?: string, isCompact?: boolean }) => (
     <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <CardHeader className={cn("flex flex-row items-center justify-between space-y-0", isCompact ? "p-3" : "pb-2")}>
+            <CardTitle className={cn("font-medium", isCompact ? "text-sm" : "text-base")}>{title}</CardTitle>
             {icon}
         </CardHeader>
-        <CardContent>
-            <div className="text-2xl font-bold">{value}</div>
+        <CardContent className={isCompact ? "p-3 pt-0" : ""}>
+            <div className={cn("font-bold", isCompact ? "text-2xl" : "text-3xl", valueClassName)}>{value}</div>
             {description && <p className="text-xs text-muted-foreground">{description}</p>}
         </CardContent>
     </Card>
@@ -607,21 +659,83 @@ export default function DashboardTabs() {
             </Form>
 
             {detailedResult && (
-                <div className="mt-8 pt-6 border-t">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-headline font-semibold">Resultados del Informe</h3>
-                        <div className="flex gap-2">
-                            <Button variant="outline" size="sm"><Save className="mr-2 h-4 w-4"/> Guardar Caso</Button>
-                            <Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4"/> Descargar PDF</Button>
+                <div className="mt-8 pt-6 border-t space-y-12">
+                    <div className="text-center">
+                        <h3 className="text-3xl font-bold tracking-tight">Análisis de Costo por Pieza (CPP)</h3>
+                        <p className="text-lg text-muted-foreground">Basado en {detailedForm.getValues("piezasAlMes")} pzs/mes y un costo de {formatCurrency(detailedForm.getValues("machineHourlyRate"))}/hr</p>
+                        <div className="mt-4">
+                            <p className="text-xl font-medium text-foreground">{detailedResult.ahorroAnual > 0 ? 'AHORRO ANUAL PROYECTADO' : 'PÉRDIDA ANUAL PROYECTADA'}</p>
+                            <p className={`text-6xl font-bold ${detailedResult.ahorroAnual > 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(detailedResult.ahorroAnual)}</p>
+                            <p className="text-xl text-muted-foreground mt-1">({formatCurrency(detailedResult.ahorroMensual)} / Mes)</p>
                         </div>
                     </div>
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        <StatCard icon={<DollarSign className="h-4 w-4 text-muted-foreground" />} title="Ahorro Neto Anual" value={formatCurrency(detailedResult.netSavings)} />
-                        <StatCard icon={<BarChart className="h-4 w-4 text-muted-foreground" />} title="Retorno de Inversión (ROI)" value={isFinite(detailedResult.roi) ? `${detailedResult.roi.toFixed(1)}%` : '∞'} />
-                        <StatCard icon={<Clock className="h-4 w-4 text-muted-foreground" />} title="Horas de Máquina Liberadas (Anual)" value={`${detailedResult.machineHoursFreed.toFixed(1)} hrs`} />
-                        <StatCard icon={<Package className="h-4 w-4 text-muted-foreground" />} title="CPP Actual (A)" value={formatCurrency(detailedResult.cppA)} description="Costo Por Pieza" />
-                        <StatCard icon={<Package className="h-4 w-4 text-muted-foreground" />} title="CPP Propuesto (B)" value={formatCurrency(detailedResult.cppB)} description="Costo Por Pieza" />
+                    
+                    <div className="p-6 bg-muted rounded-lg">
+                        <h3 className="text-2xl font-bold text-center mb-6">Análisis de Inversión vs. Ahorro</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <StatCard 
+                                title="Inversión en Herramienta" 
+                                description="Variación en costo de herramienta por pieza"
+                                value={`${detailedResult.toolCostIncreasePercent > 0 ? '+' : ''}${detailedResult.toolCostIncreasePercent.toFixed(1)}%`}
+                                valueClassName={detailedResult.toolCostIncreasePercent > 0 ? 'text-red-600' : 'text-green-600'}
+                                isCompact
+                            />
+                             <StatCard 
+                                title="Mejora en Costo Total" 
+                                description="Reducción de costo total por pieza"
+                                value={`${detailedResult.totalCostReductionPercent.toFixed(1)}%`}
+                                valueClassName={detailedResult.totalCostReductionPercent > 0 ? 'text-green-600' : 'text-red-600'}
+                                isCompact
+                            />
+                        </div>
+                        <p className="text-center mt-4 text-muted-foreground text-sm">
+                          {detailedResult.toolCostIncreasePercent > 0 
+                                ? `Una inversión del ${detailedResult.toolCostIncreasePercent.toFixed(1)}% en la herramienta ` 
+                                : `Un ahorro del ${(detailedResult.toolCostIncreasePercent * -1).toFixed(1)}% en la herramienta `
+                            }
+                            genera una mejora total del <strong className="text-foreground">{detailedResult.totalCostReductionPercent.toFixed(1)}%</strong> en el costo por pieza.
+                        </p>
                     </div>
+
+                    <div>
+                        <h3 className="text-2xl font-bold text-center mb-6">Análisis de Horas de Máquina Liberadas</h3>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <StatCard 
+                                title="Tiempo de Máquina Liberado (Anual)"
+                                value={`${detailedResult.machineHoursFreedAnnual.toFixed(2)} horas`}
+                                valueClassName="text-primary"
+                                isCompact
+                            />
+                            <StatCard 
+                                title="Valor de Producción Adicional"
+                                description={`Tiempo liberado valorizado a ${formatCurrency(detailedForm.getValues("machineHourlyRate"))}/hr`}
+                                value={formatCurrency(detailedResult.machineHoursFreedValueAnnual)}
+                                valueClassName="text-green-600"
+                                isCompact
+                            />
+                        </div>
+                    </div>
+
+                     <div>
+                        <h3 className="text-2xl font-bold text-center mb-6">Impacto en Planificación</h3>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             <StatCard 
+                                title="Días de Trabajo Liberados"
+                                description="Basado en turnos de 8 horas"
+                                value={detailedResult.diasLaboralesAhorradosAnual.toFixed(2)}
+                                valueClassName="text-primary"
+                                isCompact
+                            />
+                            <StatCard 
+                                title="Semanas de Trabajo Liberadas"
+                                description="Basado en semanas de 5 días"
+                                value={detailedResult.semanasLaboralesAhorradasAnual.toFixed(2)}
+                                valueClassName="text-primary"
+                                isCompact
+                            />
+                        </div>
+                    </div>
+
                 </div>
             )}
           </CardContent>
