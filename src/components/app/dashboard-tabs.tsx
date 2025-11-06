@@ -1,15 +1,12 @@
-
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
-import React, { useEffect, useState, useCallback } from "react";
-import {
-  Download,
-  Save,
-} from "lucide-react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { Download, Save } from "lucide-react";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import {
   QuickDiagnosisSchema,
   DetailedReportSchema,
+  SaveCaseSchema,
 } from "@/lib/schemas";
 import {
   Tabs,
@@ -38,6 +36,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "../ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { useFirestore, useUser } from "@/firebase/provider";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../ui/alert-dialog";
+import { addDocumentNonBlocking } from "@/firebase";
 
 type QuickDiagnosisResult = {
   breakEvenSeconds: number;
@@ -110,9 +111,12 @@ type DetailedReportResult = {
 
 export default function DashboardTabs() {
   const { toast } = useToast();
+  const firestore = useFirestore();
+  const { user } = useUser();
   const [quickResult, setQuickResult] = useState<QuickDiagnosisResult | null>(null);
   const [netSavingsResult, setNetSavingsResult] = useState<NetSavingsResult | null>(null);
   const [detailedResult, setDetailedResult] = useState<DetailedReportResult | null>(null);
+  const [isSaveAlertOpen, setSaveAlertOpen] = useState(false);
 
   const diagnosisForm = useForm<z.infer<typeof QuickDiagnosisSchema>>({
     resolver: zodResolver(QuickDiagnosisSchema),
@@ -166,6 +170,14 @@ export default function DashboardTabs() {
       notasB: "",
     },
   });
+  
+  const saveCaseForm = useForm<z.infer<typeof SaveCaseSchema>>({
+    resolver: zodResolver(SaveCaseSchema),
+    defaultValues: {
+      caseName: "",
+    },
+  });
+
 
   const watchedDiagnosisData = useWatch({ control: diagnosisForm.control });
   const watchedDetailedData = useWatch({ control: detailedForm.control });
@@ -176,54 +188,43 @@ export default function DashboardTabs() {
     return minVal + (secVal / 60);
   }
 
-  const syncForms = useCallback((sourceForm: 'diag' | 'detail', changedFieldName: string) => {
+  const syncForms = useCallback((sourceForm: 'diag' | 'detail', data: any) => {
+    const diagValues = diagnosisForm.getValues();
+    const detailValues = detailedForm.getValues();
+
+    const mappings = {
+      costoHoraMaquina: 'machineHourlyRate',
+      piezasAlMes: 'piezasAlMes',
+      precioA: 'precioA',
+      precioB: 'precioB',
+      filosA: 'filosA',
+      pzsPorFiloA: 'piezasFiloA',
+      cicloMinA: 'cicloMinA',
+      cicloSegA: 'cicloSegA',
+      vcA: 'vcA',
+    };
+
     if (sourceForm === 'diag') {
-        const diagValues = diagnosisForm.getValues();
-        const detailValues = detailedForm.getValues();
-        
-        const mapping: { [key: string]: keyof z.infer<typeof DetailedReportSchema> } = {
-            costoHoraMaquina: 'machineHourlyRate',
-            piezasAlMes: 'piezasAlMes',
-            precioA: 'precioA',
-            precioB: 'precioB',
-            filosA: 'filosA',
-            pzsPorFiloA: 'piezasFiloA',
-            cicloMinA: 'cicloMinA',
-            cicloSegA: 'cicloSegA',
-            vcA: 'vcA',
-        };
-
-        const targetField = mapping[changedFieldName as keyof typeof mapping];
-        if (targetField && diagValues[changedFieldName as keyof typeof diagValues] !== detailValues[targetField]) {
-            detailedForm.setValue(targetField, diagValues[changedFieldName as keyof typeof diagValues] as any);
-        }
+        Object.entries(mappings).forEach(([diagKey, detailKey]) => {
+            const value = data[diagKey];
+            if (value !== undefined && value !== detailValues[detailKey as keyof typeof detailValues]) {
+                detailedForm.setValue(detailKey as any, value);
+            }
+        });
     } else { // source === 'detail'
-        const detailValues = detailedForm.getValues();
-        const diagValues = diagnosisForm.getValues();
-
-        const mapping: { [key: string]: keyof z.infer<typeof QuickDiagnosisSchema> } = {
-            machineHourlyRate: 'costoHoraMaquina',
-            piezasAlMes: 'piezasAlMes',
-            precioA: 'precioA',
-            precioB: 'precioB',
-            filosA: 'filosA',
-            piezasFiloA: 'pzsPorFiloA',
-            cicloMinA: 'cicloMinA',
-            cicloSegA: 'cicloSegA',
-            vcA: 'vcA',
-        };
-
-        const targetField = mapping[changedFieldName as keyof typeof mapping];
-        if (targetField && detailValues[changedFieldName as keyof typeof detailValues] !== diagValues[targetField]) {
-            diagnosisForm.setValue(targetField, detailValues[changedFieldName as keyof typeof detailValues] as any);
-        }
+        Object.entries(mappings).forEach(([diagKey, detailKey]) => {
+            const value = data[detailKey];
+             if (value !== undefined && value !== diagValues[diagKey as keyof typeof diagValues]) {
+                diagnosisForm.setValue(diagKey as any, value);
+            }
+        });
     }
   }, [diagnosisForm, detailedForm]);
 
   useEffect(() => {
     const subscription = diagnosisForm.watch((value, { name, type }) => {
-        if (type === 'change' && name) {
-            syncForms('diag', name);
+        if (type === 'change') {
+            syncForms('diag', value);
         }
     });
     return () => subscription.unsubscribe();
@@ -231,8 +232,8 @@ export default function DashboardTabs() {
 
   useEffect(() => {
     const subscription = detailedForm.watch((value, { name, type }) => {
-      if (type === 'change' && name) {
-            syncForms('detail', name);
+      if (type === 'change') {
+            syncForms('detail', value);
         }
     });
     return () => subscription.unsubscribe();
@@ -242,7 +243,7 @@ export default function DashboardTabs() {
   function onQuickSubmit(data: z.infer<typeof QuickDiagnosisSchema>) {
     const { precioA, precioB, filosA, pzsPorFiloA, costoHoraMaquina, cicloMinA, cicloSegA, vcA } = data;
     
-    if (!precioA || !precioB || !filosA || !pzsPorFiloA || !costoHoraMaquina || !cicloMinA) {
+    if (!precioA || !precioB || !filosA || !pzsPorFiloA || !costoHoraMaquina || cicloMinA === undefined) {
         toast({ variant: "destructive", title: "Datos incompletos", description: "Por favor, complete todos los 'Datos de Partida' para el Paso 1." });
         return;
     }
@@ -470,6 +471,64 @@ export default function DashboardTabs() {
     });
   }
 
+  const handlePrint = () => {
+    if (detailedResult) {
+      window.print();
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Informe no generado",
+        description: "Primero debes generar el informe para poder imprimirlo.",
+      });
+    }
+  };
+
+  const handleSaveCase = async (caseName: string) => {
+    if (!detailedResult) {
+      toast({
+        variant: "destructive",
+        title: "No hay informe para guardar",
+        description: "Primero debes generar un informe detallado.",
+      });
+      return;
+    }
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Usuario no autenticado",
+        description: "Debes iniciar sesión para guardar un caso.",
+      });
+      return;
+    }
+
+    const caseData = {
+      ...detailedForm.getValues(),
+      ...detailedResult,
+      userId: user.uid,
+      name: caseName,
+      dateCreated: serverTimestamp(),
+    };
+
+    try {
+      const casesCollection = collection(firestore, "users", user.uid, "cuttingToolAnalyses");
+      addDocumentNonBlocking(casesCollection, caseData);
+      
+      toast({
+        title: "Caso guardado",
+        description: `El caso "${caseName}" ha sido guardado con éxito.`,
+      });
+      setSaveAlertOpen(false);
+      saveCaseForm.reset();
+    } catch (error) {
+      console.error("Error saving case: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error al guardar",
+        description: "Ocurrió un error al intentar guardar el caso.",
+      });
+    }
+  };
+  
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
   const formatMinutes = (timeInMinutes: number) => {
     const minutes = Math.floor(timeInMinutes);
@@ -741,14 +800,51 @@ export default function DashboardTabs() {
                 
                 <div className="flex flex-wrap gap-4 justify-center">
                   <Button type="submit">Generar Informe</Button>
-                  <Button type="button" variant="secondary"><Save className="mr-2 h-4 w-4" />Guardar Caso</Button>
-                  <Button type="button" variant="secondary"><Download className="mr-2 h-4 w-4" />Imprimir / Guardar PDF</Button>
+                    <AlertDialog open={isSaveAlertOpen} onOpenChange={setSaveAlertOpen}>
+                        <AlertDialogTrigger asChild>
+                            <Button type="button" variant="secondary" disabled={!detailedResult}>
+                                <Save className="mr-2 h-4 w-4" />Guardar Caso
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Guardar Caso de Éxito</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Ingresa un nombre para identificar este análisis en el futuro.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <Form {...saveCaseForm}>
+                                <form id="save-case-form" onSubmit={saveCaseForm.handleSubmit((data) => handleSaveCase(data.caseName))} className="space-y-4">
+                                    <FormField
+                                        control={saveCaseForm.control}
+                                        name="caseName"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Nombre del Caso</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Ej: Optimización Cliente X - Pieza Y" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </form>
+                            </Form>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction type="submit" form="save-case-form">
+                                    Guardar
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                  <Button type="button" variant="secondary" onClick={handlePrint} disabled={!detailedResult}><Download className="mr-2 h-4 w-4" />Imprimir / Guardar PDF</Button>
                 </div>
               </form>
             </Form>
 
             {detailedResult && (
-                <div className="mt-8 pt-6 border-t space-y-12">
+                <div className="mt-8 pt-6 border-t space-y-12 printable-area">
                     <div className="text-center">
                         <h3 className="text-3xl font-bold tracking-tight">Análisis de Costo por Pieza (CPP)</h3>
                         <p className="text-lg text-muted-foreground">Basado en {detailedForm.getValues("piezasAlMes")?.toLocaleString()} pzs/mes y un costo de {formatCurrency(detailedForm.getValues("machineHourlyRate"))}/hr</p>

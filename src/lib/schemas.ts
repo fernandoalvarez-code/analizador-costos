@@ -12,6 +12,10 @@ export const SignupSchema = z.object({
   password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
 });
 
+export const SaveCaseSchema = z.object({
+  caseName: z.string().min(3, { message: "El nombre debe tener al menos 3 caracteres." }),
+});
+
 
 export const QuickDiagnosisSchema = z.object({
   costoHoraMaquina: z.coerce.number().min(0, "El costo debe ser positivo."),
