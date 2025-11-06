@@ -66,18 +66,16 @@ export default function AppNav() {
         <SidebarMenu>
           {menuItems.map((item) => (
             <SidebarMenuItem key={item.href}>
-              <Link href={item.href} passHref legacyBehavior>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === item.href}
-                  tooltip={{ children: item.label }}
-                >
-                  <a>
-                    <item.icon />
-                    <span>{item.label}</span>
-                  </a>
-                </SidebarMenuButton>
-              </Link>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === item.href}
+                tooltip={{ children: item.label }}
+              >
+                <Link href={item.href}>
+                  <item.icon />
+                  <span>{item.label}</span>
+                </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
@@ -85,14 +83,12 @@ export default function AppNav() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <Link href="/settings" passHref legacyBehavior>
-              <SidebarMenuButton asChild isActive={pathname === '/settings'} tooltip={{children: 'Configuración'}}>
-                <a>
-                  <Settings />
-                  <span>Configuración</span>
-                </a>
-              </SidebarMenuButton>
-            </Link>
+            <SidebarMenuButton asChild isActive={pathname === '/settings'} tooltip={{children: 'Configuración'}}>
+              <Link href="/settings">
+                <Settings />
+                <span>Configuración</span>
+              </Link>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
