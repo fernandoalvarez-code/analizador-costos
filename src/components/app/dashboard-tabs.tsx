@@ -1088,8 +1088,8 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
                             </div>
                         </div>
                         
-                        <div className="mb-8 mt-8 no-break-inside page-break-before section-spacing compact-table">
-                          <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Datos Detallados de la Simulación</h3>
+                        <div className="mb-8 mt-8 no-break-inside compact-table">
+                          <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Datos Detallados</h3>
                           <div className="overflow-x-auto rounded-lg border">
                               <Table>
                                   <TableHeader>
