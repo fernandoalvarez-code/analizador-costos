@@ -16,6 +16,7 @@ import {
   TrendingDown,
 } from "lucide-react";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -169,7 +170,16 @@ export default function DashboardTabs() {
     if (diagValues.precioB !== detailValues.precioB) newDetailValues.precioB = diagValues.precioB;
 
     if (Object.keys(newDetailValues).length > 0) {
-      detailedForm.reset({ ...detailValues, ...newDetailValues });
+        let changed = false;
+        for (const key in newDetailValues) {
+            if (newDetailValues[key as keyof typeof newDetailValues] !== detailValues[key as keyof typeof detailValues]) {
+                changed = true;
+                break;
+            }
+        }
+        if (changed) {
+            detailedForm.reset({ ...detailValues, ...newDetailValues });
+        }
     }
 
   }, [diagnosisForm, detailedForm]);
@@ -194,9 +204,18 @@ export default function DashboardTabs() {
       if (value.vcA !== undefined && value.vcA !== diagValues.vcA) newDiagValues.vcA = value.vcA;
       if (value.precioB !== undefined && value.precioB !== diagValues.precioB) newDiagValues.precioB = value.precioB;
 
-      if (Object.keys(newDiagValues).length > 0) {
-        diagnosisForm.reset({ ...diagValues, ...newDiagValues });
-      }
+       if (Object.keys(newDiagValues).length > 0) {
+            let changed = false;
+            for (const key in newDiagValues) {
+                if (newDiagValues[key as keyof typeof newDiagValues] !== diagValues[key as keyof typeof diagValues]) {
+                    changed = true;
+                    break;
+                }
+            }
+            if (changed) {
+                diagnosisForm.reset({ ...diagValues, ...newDiagValues });
+            }
+        }
     });
     return () => subscription.unsubscribe();
   }, [detailedForm, diagnosisForm]);
@@ -744,5 +763,3 @@ export default function DashboardTabs() {
     </Tabs>
   );
 }
-
-    
