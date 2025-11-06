@@ -5,6 +5,7 @@ import {
   ColumnDef,
   ColumnFiltersState,
   SortingState,
+  VisibilityState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -13,8 +14,9 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { MoreHorizontal, PlusCircle, Search, Trash2, Eye } from "lucide-react";
-import { sampleCases, Case } from "@/lib/placeholder-data";
+import { collection } from "firebase/firestore";
 
+import { useCollection, useFirestore, useUser, useMemoFirebase } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,10 +37,23 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
 
-const columns: ColumnDef<Case>[] = [
+type CaseData = {
+  id: string;
+  name: string;
+  dateCreated: { seconds: number; nanoseconds: number; };
+  annualSavings: number;
+  roi: number;
+  cliente: string;
+  operacion: string;
+  material: string;
+};
+
+
+const columns: ColumnDef<CaseData>[] = [
   {
     accessorKey: "name",
     header: "Nombre del Caso",
@@ -47,18 +62,31 @@ const columns: ColumnDef<Case>[] = [
     ),
   },
   {
-    accessorKey: "client",
+    accessorKey: "cliente",
     header: "Cliente",
   },
-  {
-    accessorKey: "date",
-    header: "Fecha",
+    {
+    accessorKey: "operacion",
+    header: "Operación",
   },
   {
-    accessorKey: "savings",
+    accessorKey: "material",
+    header: "Material",
+  },
+  {
+    accessorKey: "dateCreated",
+    header: "Fecha",
+    cell: ({ row }) => {
+        const date = row.getValue("dateCreated") as { seconds: number };
+        if (!date || !date.seconds) return 'N/A';
+        return new Date(date.seconds * 1000).toLocaleDateString('es-ES');
+    }
+  },
+  {
+    accessorKey: "annualSavings",
     header: "Ahorro Anual",
     cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("savings"));
+      const amount = parseFloat(row.getValue("annualSavings"));
       return <div className="font-medium text-right">{formatCurrency(amount)}</div>;
     },
   },
@@ -67,18 +95,20 @@ const columns: ColumnDef<Case>[] = [
     header: "ROI",
     cell: ({ row }) => {
         const roi = parseFloat(row.getValue("roi"));
+         if (!isFinite(roi)) {
+            return <div className="text-center"><Badge variant="default">∞</Badge></div>
+        }
         const getBadgeVariant = (roi: number) => {
             if (roi > 300) return "default";
             if (roi > 200) return "secondary";
             return "outline";
         }
-        return <div className="text-center"><Badge variant={getBadgeVariant(roi)}>{roi}%</Badge></div>
+        return <div className="text-center"><Badge variant={getBadgeVariant(roi)}>{roi.toFixed(0)}%</Badge></div>
     }
   },
   {
     id: "actions",
     cell: ({ row }) => {
-      const caseData = row.original;
       return (
         <div className="text-right">
             <DropdownMenu>
@@ -108,22 +138,31 @@ const columns: ColumnDef<Case>[] = [
 ];
 
 export default function CasesTable() {
-  const [data] = React.useState(() => [...sampleCases]);
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  const { user } = useUser();
+  const firestore = useFirestore();
 
+  const casesCollectionRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return collection(firestore, `users/${user.uid}/cuttingToolAnalyses`);
+  }, [firestore, user]);
+
+  const { data: casesData, isLoading } = useCollection<CaseData>(casesCollectionRef);
+
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [globalFilter, setGlobalFilter] = React.useState('');
+  
   const table = useReactTable({
-    data,
+    data: casesData || [],
     columns,
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     state: {
       sorting,
-      columnFilters,
+      globalFilter,
     },
   });
 
@@ -134,12 +173,12 @@ export default function CasesTable() {
                 <div className="relative flex-1">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Buscar por nombre o cliente..."
-                        value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+                        placeholder="Buscar por nombre, cliente, operación o material..."
+                        value={globalFilter ?? ""}
                         onChange={(event) =>
-                            table.getColumn("name")?.setFilterValue(event.target.value)
+                            setGlobalFilter(event.target.value)
                         }
-                        className="pl-8 w-full md:w-1/2 lg:w-1/3"
+                        className="pl-8 w-full md:w-1/2 lg:w-2/3"
                     />
                 </div>
                  <Button>
@@ -168,7 +207,15 @@ export default function CasesTable() {
                     ))}
                 </TableHeader>
                 <TableBody>
-                    {table.getRowModel().rows?.length ? (
+                    {isLoading ? (
+                         Array.from({ length: 5 }).map((_, i) => (
+                            <TableRow key={i}>
+                                <TableCell colSpan={columns.length}>
+                                    <Skeleton className="h-8 w-full" />
+                                </TableCell>
+                            </TableRow>
+                        ))
+                    ) : table.getRowModel().rows?.length ? (
                     table.getRowModel().rows.map((row) => (
                         <TableRow
                         key={row.id}
