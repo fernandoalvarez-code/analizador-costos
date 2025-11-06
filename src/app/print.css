@@ -22,15 +22,31 @@
 
     @page {
         size: A4 portrait;
-        margin: 15mm;
+        margin: 12mm;
     }
     
     html, body {
         background: #fff !important;
-        font-size: 10pt;
+        font-size: 9pt;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
+    
+    .printable-area h3 {
+        font-size: 18pt !important;
+        margin-bottom: 1.25rem !important;
+    }
+    
+    .printable-area .report-content {
+        --tw-space-y-reverse: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+    
+    .printable-area .section-spacing {
+        margin-top: 2rem !important;
+    }
+
 
     .no-break-inside {
         break-inside: avoid;
@@ -56,7 +72,7 @@
         border: 2px solid hsl(var(--primary));
         box-sizing: border-box;
         padding: 1rem;
-        min-height: 250mm; /* A4 height (297mm) minus margins */
+        min-height: 260mm; /* A4 height (297mm) minus margins */
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -73,6 +89,14 @@
         border: 3px solid hsl(var(--primary));
         padding: 0.5rem 1rem;
         display: inline-block;
+    }
+
+    /* Compact table cells */
+    .printable-area .compact-table th, 
+    .printable-area .compact-table td {
+        padding-top: 0.3rem !important;
+        padding-bottom: 0.3rem !important;
+        font-size: 8pt !important;
     }
     
     /* Force background colors for printing */
@@ -100,5 +124,11 @@
     }
      .bg-muted\/80 {
         background-color: hsla(var(--muted), 0.8) !important;
+    }
+    .bg-muted\/50 {
+        background-color: hsla(var(--muted), 0.5) !important;
+    }
+     .bg-foreground\/10 {
+        background-color: hsla(var(--foreground), 0.1) !important;
     }
 }

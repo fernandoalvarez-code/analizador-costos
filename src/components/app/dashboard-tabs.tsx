@@ -588,14 +588,14 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
   };
 
   const StatCard = ({ icon, title, value, description, valueClassName, isCompact = false }: { icon?: React.ReactNode, title: string, value: string, description?: string, valueClassName?: string, isCompact?: boolean }) => (
-    <Card>
-        <CardHeader className={cn("flex flex-row items-center justify-between space-y-0", isCompact ? "p-3" : "pb-2")}>
-            <CardTitle className={cn("font-medium", isCompact ? "text-sm" : "text-base")}>{title}</CardTitle>
+    <Card className={cn(isCompact && "print:p-1")}>
+        <CardHeader className={cn("flex flex-row items-center justify-between space-y-0", isCompact ? "p-3 print:p-2" : "pb-2")}>
+            <CardTitle className={cn("font-medium", isCompact ? "text-sm print:text-xs" : "text-base")}>{title}</CardTitle>
             {icon}
         </CardHeader>
-        <CardContent className={cn("p-3 pt-0", isCompact ? "" : "pt-0")}>
-            <div className={cn("font-bold", isCompact ? "text-2xl" : "text-3xl", valueClassName)}>{value}</div>
-            {description && <p className="text-xs text-muted-foreground">{description}</p>}
+        <CardContent className={cn("p-3 pt-0", isCompact ? "print:p-2 print:pt-0" : "pt-0")}>
+            <div className={cn("font-bold", isCompact ? "text-2xl print:text-xl" : "text-3xl", valueClassName)}>{value}</div>
+            {description && <p className="text-xs text-muted-foreground print:text-[8pt]">{description}</p>}
         </CardContent>
     </Card>
   )
@@ -955,7 +955,7 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
             </Form>
 
             {detailedResult && (
-                <div className="printable-area mt-8 pt-6 border-t space-y-12">
+                <div className="printable-area pt-6 border-t space-y-8">
                     <div className="cover-page">
                         <header className="flex justify-between items-start">
                             <div className="cover-logo">SECOCUT SRL</div>
@@ -994,7 +994,7 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
                         </footer>
                     </div>
                     
-                    <div className="report-content page-break-before">
+                    <div className="report-content page-break-before space-y-8">
                         <div className="text-center">
                             <h3 className="text-3xl font-bold tracking-tight">Análisis de Costo por Pieza (CPP)</h3>
                             <p className="text-lg text-muted-foreground">Basado en {detailedForm.getValues("piezasAlMes")?.toLocaleString()} pzs/mes y un costo de {formatCurrency(detailedForm.getValues("machineHourlyRate"))}/hr</p>
@@ -1005,36 +1005,36 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
                             </div>
                         </div>
                         
-                        <div className="my-8 no-break-inside">
-                          <h3 className="text-xl font-bold text-center mb-6">Comparativa de Costo Total por Pieza</h3>
+                        <div className="my-6 no-break-inside">
+                          <h3 className="text-xl font-bold text-center mb-4">Comparativa de Costo Total por Pieza</h3>
                           <div className="grid grid-cols-2 gap-4 md:gap-8 justify-items-center">
                               {/* Columna Actual */}
                               <div className="w-full max-w-xs flex flex-col items-center">
-                                  <div className="text-3xl font-bold text-destructive">{formatCurrency(detailedResult.cppA)}</div>
-                                  <div className="text-lg font-semibold text-muted-foreground mb-2">Actual</div>
+                                  <div className="text-2xl font-bold text-destructive">{formatCurrency(detailedResult.cppA)}</div>
+                                  <div className="text-md font-semibold text-muted-foreground mb-2">Actual</div>
                                   <div className="w-full rounded-lg overflow-hidden shadow-md">
-                                      <div className="bg-destructive text-destructive-foreground p-3 text-center">
-                                          <div className="font-bold">Máquina</div>
-                                          <div>{formatCurrency(detailedResult.costoMaquinaA)}</div>
+                                      <div className="bg-destructive text-destructive-foreground p-2 text-center">
+                                          <div className="font-bold text-sm">Máquina</div>
+                                          <div className="text-sm">{formatCurrency(detailedResult.costoMaquinaA)}</div>
                                       </div>
-                                      <div className="bg-red-300 text-red-900 p-3 text-center">
-                                          <div className="font-bold">Herram.</div>
-                                          <div>{formatCurrency(detailedResult.costoHerramientaA)}</div>
+                                      <div className="bg-red-300 text-red-900 p-2 text-center">
+                                          <div className="font-bold text-sm">Herram.</div>
+                                          <div className="text-sm">{formatCurrency(detailedResult.costoHerramientaA)}</div>
                                       </div>
                                   </div>
                               </div>
                               {/* Columna Propuesta */}
                               <div className="w-full max-w-xs flex flex-col items-center">
-                                  <div className="text-3xl font-bold text-primary">{formatCurrency(detailedResult.cppB)}</div>
-                                  <div className="text-lg font-semibold text-muted-foreground mb-2">Propuesta</div>
+                                  <div className="text-2xl font-bold text-primary">{formatCurrency(detailedResult.cppB)}</div>
+                                  <div className="text-md font-semibold text-muted-foreground mb-2">Propuesta</div>
                                   <div className="w-full rounded-lg overflow-hidden shadow-md">
-                                      <div className="bg-primary text-primary-foreground p-3 text-center">
-                                          <div className="font-bold">Máquina</div>
-                                          <div>{formatCurrency(detailedResult.costoMaquinaB)}</div>
+                                      <div className="bg-primary text-primary-foreground p-2 text-center">
+                                          <div className="font-bold text-sm">Máquina</div>
+                                          <div className="text-sm">{formatCurrency(detailedResult.costoMaquinaB)}</div>
                                       </div>
-                                      <div className="bg-blue-300 text-blue-900 p-3 text-center">
-                                          <div className="font-bold">Herram.</div>
-                                          <div>{formatCurrency(detailedResult.costoHerramientaB)}</div>
+                                      <div className="bg-blue-300 text-blue-900 p-2 text-center">
+                                          <div className="font-bold text-sm">Herram.</div>
+                                          <div className="text-sm">{formatCurrency(detailedResult.costoHerramientaB)}</div>
                                       </div>
                                   </div>
                               </div>
@@ -1042,9 +1042,9 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
                       </div>
 
 
-                        <div className="p-6 bg-muted rounded-lg no-break-inside">
-                            <h3 className="text-2xl font-bold text-center mb-6">Análisis de Inversión vs. Ahorro</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="p-4 bg-muted rounded-lg no-break-inside section-spacing">
+                            <h3 className="text-lg font-bold text-center mb-4">Análisis de Inversión vs. Ahorro</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <StatCard 
                                     title="Inversión en Herramienta" 
                                     description="Variación en costo de herramienta por pieza"
@@ -1060,18 +1060,11 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
                                     isCompact
                                 />
                             </div>
-                            <p className="text-center mt-4 text-muted-foreground text-sm">
-                            {detailedResult.toolCostIncreasePercent > 0 
-                                    ? `Una inversión del ${detailedResult.toolCostIncreasePercent.toFixed(1)}% en la herramienta ` 
-                                    : `Un ahorro del ${(detailedResult.toolCostIncreasePercent * -1).toFixed(1)}% en la herramienta `
-                                }
-                                genera una mejora total del <strong className="text-foreground">{detailedResult.totalCostReductionPercent.toFixed(1)}%</strong> en el costo por pieza.
-                            </p>
                         </div>
 
-                        <div className="no-break-inside mt-12">
-                            <h3 className="text-2xl font-bold text-center mb-6">Análisis de Horas de Máquina Liberadas</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="no-break-inside section-spacing">
+                            <h3 className="text-lg font-bold text-center mb-4">Análisis de Horas de Máquina Liberadas</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <StatCard 
                                     title="Tiempo de Máquina Liberado (Anual)"
                                     value={`${detailedResult.machineHoursFreedAnnual.toFixed(2)} horas`}
@@ -1094,29 +1087,9 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
                                 />
                             </div>
                         </div>
-
-                        <div className="no-break-inside mt-12">
-                            <h3 className="text-2xl font-bold text-center mb-6">Impacto en Planificación</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <StatCard 
-                                    title="Días de Trabajo Liberados"
-                                    description="Basado en turnos de 8 horas"
-                                    value={detailedResult.diasLaboralesAhorradosAnual.toFixed(2)}
-                                    valueClassName="text-primary"
-                                    isCompact
-                                />
-                                <StatCard 
-                                    title="Semanas de Trabajo Liberadas"
-                                    description="Basado en semanas de 5 días"
-                                    value={detailedResult.semanasLaboralesAhorradasAnual.toFixed(2)}
-                                    valueClassName="text-primary"
-                                    isCompact
-                                />
-                            </div>
-                        </div>
                         
-                        <div className="mb-10 mt-12 no-break-inside">
-                          <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">Datos Detallados de la Simulación</h3>
+                        <div className="mb-8 mt-8 no-break-inside section-spacing compact-table">
+                          <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Datos Detallados de la Simulación</h3>
                           <div className="overflow-x-auto rounded-lg border">
                               <Table>
                                   <TableHeader>
@@ -1150,8 +1123,8 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
                           </div>
                         </div>
                         
-                        <div className="no-break-inside page-break-before">
-                            <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">Resumen Financiero (para {detailedForm.getValues("piezasAlMes")?.toLocaleString()} piezas/mes)</h3>
+                        <div className="no-break-inside page-break-before section-spacing compact-table">
+                            <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Resumen Financiero (para {detailedForm.getValues("piezasAlMes")?.toLocaleString()} piezas/mes)</h3>
                             <div className="overflow-x-auto rounded-lg border">
                             <Table>
                                 <TableHeader>
