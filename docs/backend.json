@@ -39,6 +39,10 @@
           "type": "string",
           "description": "Name of the analysis case."
         },
+        "material": {
+          "type": "string",
+          "description": "The type of material being worked on."
+        },
         "dateCreated": {
           "type": "string",
           "description": "Date the analysis case was created.",
@@ -122,3 +126,4 @@
     "reasoning": "The Firestore data structure is designed to support the Analizador de Costos de Corte application, focusing on secure user data management and efficient data access. The design emphasizes authorization independence by using path-based ownership for user-specific data. This approach avoids the need for complex `get()` calls in security rules, simplifying rule logic and ensuring atomic operations. \n\nThe primary data collections are structured to maintain a clear separation of concerns. Each user's cutting tool analysis cases are stored under their respective user ID, enabling easy retrieval and secure access control. This design effectively addresses the QAPs (Rules are not Filters) by ensuring that list operations are naturally scoped to a user's own data, preventing unauthorized access to other users' analysis cases. The data structure strictly adheres to the DBAC (Database-Based Access Control) principle, relying solely on the `request.auth.uid` for authorization without the use of custom claims.\n\nSpecifically, the `/users/{userId}/cuttingToolAnalyses/{cuttingToolAnalysisId}` path uses path-based ownership, meaning access to the `cuttingToolAnalyses` subcollection is inherently tied to the authenticated user's ID. This ensures that users can only access their own analysis cases. This approach simplifies security rules and makes them more robust and easier to debug."
   }
 }
+    

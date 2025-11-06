@@ -145,6 +145,7 @@ export default function DashboardTabs() {
       contacto: "",
       operacion: "",
       pieza: "",
+      material: "",
       machineHourlyRate: 35,
       piezasAlMes: 2000,
       tiempoParada: 2,
@@ -207,15 +208,15 @@ export default function DashboardTabs() {
     if (sourceForm === 'diag') {
         Object.entries(mappings).forEach(([diagKey, detailKey]) => {
             const value = data[diagKey];
-            if (value !== undefined && String(value) !== String(detailValues[detailKey as keyof typeof detailValues])) {
-                detailedForm.setValue(detailKey as any, value, { shouldValidate: true });
+             if (value !== undefined && String(value) !== String(detailedForm.getValues(detailKey as any))) {
+                detailedForm.setValue(detailKey as any, value, { shouldValidate: true, shouldDirty: true });
             }
         });
     } else { // source === 'detail'
         Object.entries(mappings).forEach(([diagKey, detailKey]) => {
             const value = data[detailKey];
-             if (value !== undefined && String(value) !== String(diagValues[diagKey as keyof typeof diagValues])) {
-                diagnosisForm.setValue(diagKey as any, value, { shouldValidate: true });
+             if (value !== undefined && String(value) !== String(diagnosisForm.getValues(diagKey as any))) {
+                diagnosisForm.setValue(diagKey as any, value, { shouldValidate: true, shouldDirty: true });
             }
         });
     }
@@ -756,9 +757,10 @@ export default function DashboardTabs() {
                         <FormField control={detailedForm.control} name="fecha" render={({ field }) => (<FormItem><FormLabel>Fecha</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>)}/>
                         <FormField control={detailedForm.control} name="contacto" render={({ field }) => (<FormItem><FormLabel>Contacto</FormLabel><FormControl><Input placeholder="Persona de Contacto" {...field} /></FormControl></FormItem>)}/>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <FormField control={detailedForm.control} name="operacion" render={({ field }) => (<FormItem><FormLabel>Operación</FormLabel><FormControl><Input placeholder="Ej: Fresado Frontal" {...field} /></FormControl></FormItem>)}/>
                         <FormField control={detailedForm.control} name="pieza" render={({ field }) => (<FormItem><FormLabel>Nombre de la Pieza</FormLabel><FormControl><Input placeholder="Ej: Soporte Motor" {...field} /></FormControl></FormItem>)}/>
+                        <FormField control={detailedForm.control} name="material" render={({ field }) => (<FormItem><FormLabel>Tipo de Material</FormLabel><FormControl><Input placeholder="Ej: Acero Inoxidable 304" {...field} /></FormControl></FormItem>)}/>
                     </div>
                 </div>
 
@@ -891,6 +893,10 @@ export default function DashboardTabs() {
                                 <div>
                                     <p className="text-sm text-muted-foreground">Pieza</p>
                                     <p className="text-2xl font-semibold">{detailedForm.getValues("pieza") || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Material</p>
+                                    <p className="text-2xl font-semibold">{detailedForm.getValues("material") || 'N/A'}</p>
                                 </div>
                             </div>
                         </div>
@@ -1111,5 +1117,7 @@ export default function DashboardTabs() {
     </Tabs>
   );
 }
+
+    
 
     

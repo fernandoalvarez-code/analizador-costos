@@ -51,6 +51,7 @@ export const DetailedReportSchema = z.object({
   contacto: z.string().optional(),
   operacion: z.string().optional(),
   pieza: z.string().optional(),
+  material: z.string().optional(),
 
   // Datos Generales
   machineHourlyRate: z.coerce.number().min(0, "La tarifa debe ser positiva."),
@@ -96,6 +97,8 @@ export const SavingsInsightsSchema = z.object({
   machineHourlyRate: z.coerce.number().positive("La tarifa horaria debe ser un número positivo."),
 });
 
+
+    
 
     
 
