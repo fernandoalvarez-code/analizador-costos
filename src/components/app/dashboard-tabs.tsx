@@ -40,6 +40,7 @@ import { Textarea } from "../ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { useFirestore, useUser } from "@/firebase/provider";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../ui/alert-dialog";
+import { useRouter } from "next/navigation";
 
 type QuickDiagnosisResult = {
   breakEvenSeconds: number;
@@ -111,13 +112,18 @@ type DetailedReportResult = {
   machineHoursFreedMonthly: number;
 };
 
-export default function DashboardTabs() {
+type DashboardTabsProps = {
+  initialData?: any;
+};
+
+export default function DashboardTabs({ initialData }: DashboardTabsProps) {
   const { toast } = useToast();
   const firestore = useFirestore();
   const { user } = useUser();
+  const router = useRouter();
   const [quickResult, setQuickResult] = useState<QuickDiagnosisResult | null>(null);
   const [netSavingsResult, setNetSavingsResult] = useState<NetSavingsResult | null>(null);
-  const [detailedResult, setDetailedResult] = useState<DetailedReportResult | null>(null);
+  const [detailedResult, setDetailedResult] = useState<DetailedReportResult | null>(initialData?.results || null);
   const [isSaveAlertOpen, setSaveAlertOpen] = useState(false);
 
   const diagnosisForm = useForm<z.infer<typeof QuickDiagnosisSchema>>({
@@ -141,7 +147,7 @@ export default function DashboardTabs() {
 
   const detailedForm = useForm<z.infer<typeof DetailedReportSchema>>({
     resolver: zodResolver(DetailedReportSchema),
-     defaultValues: {
+     defaultValues: initialData || {
       cliente: "",
       fecha: new Date().toISOString().split('T')[0],
       contacto: "",
@@ -179,7 +185,7 @@ export default function DashboardTabs() {
   const saveCaseForm = useForm<z.infer<typeof SaveCaseSchema>>({
     resolver: zodResolver(SaveCaseSchema),
     defaultValues: {
-      caseName: "",
+      caseName: initialData?.name || "",
     },
   });
 
@@ -244,6 +250,14 @@ export default function DashboardTabs() {
     return () => subscription.unsubscribe();
   }, [detailedForm.watch, syncForms]);
 
+    useEffect(() => {
+    if (initialData) {
+      detailedForm.reset(initialData);
+      if (initialData.name) {
+        saveCaseForm.reset({ caseName: initialData.name });
+      }
+    }
+  }, [initialData, detailedForm, saveCaseForm]);
 
   function onQuickSubmit(data: z.infer<typeof QuickDiagnosisSchema>) {
     const { precioA, precioB, filosA, pzsPorFiloA, costoHoraMaquina, cicloMinA, cicloSegA, vcA } = data;
@@ -573,9 +587,50 @@ export default function DashboardTabs() {
   const watchedSimTimeMode = useWatch({ control: diagnosisForm.control, name: 'modoSimulacionTiempo' });
   const watchedModoVidaA = useWatch({ control: detailedForm.control, name: 'modoVidaA' });
   const watchedModoVidaB = useWatch({ control: detailedForm.control, name: 'modoVidaB' });
+  
+  const handleNewCase = () => {
+    detailedForm.reset({
+      cliente: "",
+      fecha: new Date().toISOString().split('T')[0],
+      contacto: "",
+      operacion: "",
+      pieza: "",
+      material: "",
+      machineHourlyRate: 35,
+      piezasAlMes: 2000,
+      tiempoParada: 2,
+      descA: "Herramienta Actual",
+      precioA: '' as any,
+      insertosPorHerramientaA: 1,
+      filosA: '' as any,
+      cicloMinA: '' as any,
+      cicloSegA: '' as any,
+      vcA: '' as any,
+      modoVidaA: 'piezas',
+      piezasFiloA: '' as any,
+      minutosFiloA: 0,
+      notasA: "",
+      descB: "Herramienta Propuesta",
+      precioB: '' as any,
+      insertosPorHerramientaB: 1,
+      filosB: '' as any,
+      cicloMinB: '' as any,
+      cicloSegB: '' as any,
+      vcB: '' as any,
+      modoVidaB: 'piezas',
+      piezasFiloB: '' as any,
+      minutosFiloB: 0,
+      notasB: "",
+    });
+    setDetailedResult(null);
+    setQuickResult(null);
+    setNetSavingsResult(null);
+    saveCaseForm.reset({ caseName: "" });
+    router.push('/dashboard');
+  }
 
   return (
-    <Tabs defaultValue="quick" className="w-full">
+    <Tabs defaultValue={initialData ? "detailed" : "quick"} className="w-full">
       <TabsList className="grid w-full grid-cols-2 no-print">
         <TabsTrigger value="quick">1. Diagnóstico</TabsTrigger>
         <TabsTrigger value="detailed">2. Informe</TabsTrigger>
@@ -602,20 +657,20 @@ export default function DashboardTabs() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                        <div className="space-y-3">
                           <h4 className="font-medium text-primary mb-4">Datos Inserto A (Actual)</h4>
-                            <FormField control={diagnosisForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio Inserto ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 100" /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={diagnosisForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio Inserto ($)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 100" /></FormControl><FormMessage /></FormItem>)} />
                             <div className="flex space-x-2">
-                               <FormField control={diagnosisForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 4" /></FormControl><FormMessage /></FormItem>)} />
-                               <FormField control={diagnosisForm.control} name="pzsPorFiloA" render={({ field }) => (<FormItem><FormLabel>Pzs/Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 20" /></FormControl><FormMessage /></FormItem>)} />
+                               <FormField control={diagnosisForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 4" /></FormControl><FormMessage /></FormItem>)} />
+                               <FormField control={diagnosisForm.control} name="pzsPorFiloA" render={({ field }) => (<FormItem><FormLabel>Pzs/Filo</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 20" /></FormControl><FormMessage /></FormItem>)} />
                             </div>
                              <div className="flex space-x-2">
-                                <FormField control={diagnosisForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Min</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 1" /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={diagnosisForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>Seg</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 30" /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={diagnosisForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Min</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 1" /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={diagnosisForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>Seg</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 30" /></FormControl><FormMessage /></FormItem>)} />
                             </div>
-                            <FormField control={diagnosisForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 180" /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={diagnosisForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 180" /></FormControl><FormMessage /></FormItem>)} />
                        </div>
                         <div className="space-y-3">
                           <h4 className="font-medium text-accent mb-4">Datos Inserto B (Propuesta)</h4>
-                            <FormField control={diagnosisForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio Inserto ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 150" /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={diagnosisForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio Inserto ($)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 150" /></FormControl><FormMessage /></FormItem>)} />
                        </div>
                     </div>
                   </div>
@@ -747,11 +802,14 @@ export default function DashboardTabs() {
       </TabsContent>
       <TabsContent value="detailed">
         <Card>
-          <CardHeader className="no-print">
-            <CardTitle className="font-headline">Informe Detallado (A vs. B)</CardTitle>
-            <CardDescription>
-              Genera una comparación exhaustiva entre dos herramientas de corte. Los datos se sincronizan desde la pestaña de Diagnóstico.
-            </CardDescription>
+          <CardHeader className="no-print flex-row justify-between items-center">
+            <div>
+              <CardTitle className="font-headline">Informe Detallado (A vs. B)</CardTitle>
+              <CardDescription>
+                Genera una comparación exhaustiva entre dos herramientas de corte. Los datos se sincronizan desde la pestaña de Diagnóstico.
+              </CardDescription>
+            </div>
+            <Button onClick={handleNewCase} variant="outline" size="sm">Nuevo Informe</Button>
           </CardHeader>
           <CardContent className="space-y-6">
             <Form {...detailedForm}>
@@ -788,22 +846,22 @@ export default function DashboardTabs() {
                         </CardHeader>
                         <CardContent className="p-6 space-y-4 pt-6">
                             <FormField control={detailedForm.control} name="descA" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Ej: Inserto de 4 filos..." {...field} /></FormControl></FormItem>)}/>
-                            <FormField control={detailedForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio de Compra ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio de Compra ($)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             <div className="flex space-x-2">
                                 <FormField control={detailedForm.control} name="insertosPorHerramientaA" render={({ field }) => (<FormItem><FormLabel>Insertos/Herr.</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 1)}/></FormControl></FormItem>)}/>
-                                <FormField control={detailedForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos/Inserto</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos/Inserto</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             </div>
                             <FormField control={detailedForm.control} name="modoVidaA" render={({ field }) => (<FormItem><FormLabel>Calcular Vida Útil por:</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="piezas">Piezas por Filo</SelectItem><SelectItem value="minutos">Minutos por Filo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
                             {watchedModoVidaA === 'piezas' ? (
-                                <FormField control={detailedForm.control} name="piezasFiloA" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="piezasFiloA" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             ) : (
                                 <FormField control={detailedForm.control} name="minutosFiloA" render={({ field }) => (<FormItem><FormLabel>Minutos por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
                             )}
                             <div className="flex space-x-2">
-                                <FormField control={detailedForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
-                                <FormField control={detailedForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             </div>
-                            <FormField control={detailedForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             <FormField control={detailedForm.control} name="notasA" render={({ field }) => (<FormItem><FormLabel>Notas Internas</FormLabel><FormControl><Textarea placeholder="No se imprime..." {...field} /></FormControl></FormItem>)}/>
                         </CardContent>
                     </Card>
@@ -814,22 +872,22 @@ export default function DashboardTabs() {
                         </CardHeader>
                         <CardContent className="p-6 space-y-4 pt-6">
                             <FormField control={detailedForm.control} name="descB" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Ej: Inserto de alta vel..." {...field} /></FormControl></FormItem>)}/>
-                            <FormField control={detailedForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio de Compra ($)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio de Compra ($)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             <div className="flex space-x-2">
                                 <FormField control={detailedForm.control} name="insertosPorHerramientaB" render={({ field }) => (<FormItem><FormLabel>Insertos/Herr.</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 1)}/></FormControl></FormItem>)}/>
-                                <FormField control={detailedForm.control} name="filosB" render={({ field }) => (<FormItem><FormLabel>Filos/Inserto</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="filosB" render={({ field }) => (<FormItem><FormLabel>Filos/Inserto</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             </div>
                             <FormField control={detailedForm.control} name="modoVidaB" render={({ field }) => (<FormItem><FormLabel>Calcular Vida Útil por:</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="piezas">Piezas por Filo</SelectItem><SelectItem value="minutos">Minutos por Filo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
                             {watchedModoVidaB === 'piezas' ? (
-                                <FormField control={detailedForm.control} name="piezasFiloB" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="piezasFiloB" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             ) : (
                                 <FormField control={detailedForm.control} name="minutosFiloB" render={({ field }) => (<FormItem><FormLabel>Minutos por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
                             )}
                             <div className="flex space-x-2">
-                                <FormField control={detailedForm.control} name="cicloMinB" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
-                                <FormField control={detailedForm.control} name="cicloSegB" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="cicloMinB" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                <FormField control={detailedForm.control} name="cicloSegB" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             </div>
-                            <FormField control={detailedForm.control} name="vcB" render={({ field }) => (<FormItem><FormLabel>Vc Propuesta (m/min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                            <FormField control={detailedForm.control} name="vcB" render={({ field }) => (<FormItem><FormLabel>Vc Propuesta (m/min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                             <FormField control={detailedForm.control} name="notasB" render={({ field }) => (<FormItem><FormLabel>Notas Internas</FormLabel><FormControl><Textarea placeholder="No se imprime..." {...field} /></FormControl></FormItem>)}/>
                         </CardContent>
                     </Card>
@@ -939,7 +997,7 @@ export default function DashboardTabs() {
                                   <div className="text-3xl font-bold text-destructive">{formatCurrency(detailedResult.cppA)}</div>
                                   <div className="text-lg font-semibold text-muted-foreground mb-2">Actual</div>
                                   <div className="w-full rounded-lg overflow-hidden shadow-md">
-                                      <div className="bg-destructive text-white p-3 text-center">
+                                      <div className="bg-destructive text-destructive-foreground p-3 text-center">
                                           <div className="font-bold">Máquina</div>
                                           <div>{formatCurrency(detailedResult.costoMaquinaA)}</div>
                                       </div>
@@ -1138,4 +1196,3 @@ export default function DashboardTabs() {
     </Tabs>
   );
 }
-

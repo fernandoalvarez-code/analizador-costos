@@ -15,6 +15,8 @@ import {
 } from "@tanstack/react-table";
 import { MoreHorizontal, PlusCircle, Search, Trash2, Eye } from "lucide-react";
 import { collection } from "firebase/firestore";
+import Link from "next/link";
+
 
 import { useCollection, useFirestore, useUser, useMemoFirebase } from "@/firebase";
 import { Button } from "@/components/ui/button";
@@ -38,6 +40,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRouter } from "next/navigation";
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
 
@@ -53,7 +56,7 @@ type CaseData = {
 };
 
 
-const columns: ColumnDef<CaseData>[] = [
+export const columns: ColumnDef<CaseData>[] = [
   {
     accessorKey: "name",
     header: "Nombre del Caso",
@@ -109,6 +112,7 @@ const columns: ColumnDef<CaseData>[] = [
   {
     id: "actions",
     cell: ({ row }) => {
+      const caseData = row.original;
       return (
         <div className="text-right">
             <DropdownMenu>
@@ -120,9 +124,11 @@ const columns: ColumnDef<CaseData>[] = [
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                <DropdownMenuItem>
-                    <Eye className="mr-2 h-4 w-4"/>
-                    Ver detalles
+                <DropdownMenuItem asChild>
+                    <Link href={`/cases/${caseData.id}`}>
+                        <Eye className="mr-2 h-4 w-4"/>
+                        Ver detalles
+                    </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive">
@@ -140,6 +146,7 @@ const columns: ColumnDef<CaseData>[] = [
 export default function CasesTable() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
 
   const casesCollectionRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -165,6 +172,10 @@ export default function CasesTable() {
       globalFilter,
     },
   });
+  
+  const handleNewCase = () => {
+    router.push('/dashboard');
+  }
 
   return (
     <Card>
@@ -181,7 +192,7 @@ export default function CasesTable() {
                         className="pl-8 w-full md:w-1/2 lg:w-2/3"
                     />
                 </div>
-                 <Button>
+                 <Button onClick={handleNewCase}>
                     <PlusCircle className="mr-2 h-4 w-4"/>
                     Nuevo Caso
                 </Button>
