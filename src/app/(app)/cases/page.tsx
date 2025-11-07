@@ -1,4 +1,4 @@
-import CasesTable from "@/components/app/cases-table";
+import CasesTableWrapper from "@/components/app/cases-table";
 
 export default function CasesPage() {
     return (
@@ -9,7 +9,7 @@ export default function CasesPage() {
                 </h1>
             </div>
            
-            <CasesTable />
+            <CasesTableWrapper />
         </div>
     );
 }

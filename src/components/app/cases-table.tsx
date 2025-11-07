@@ -64,10 +64,10 @@ import {
 
 const formatCurrency = (value: number | undefined) => {
     if (typeof value !== 'number' || !isFinite(value)) return 'N/A';
-    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD' }).format(value);
+    return new Intl.NumberFormat('es-US', { style: 'currency', currency: 'USD' }).format(value);
 }
 
-type CaseData = {
+export type CaseData = {
   id: string;
   userId: string;
   name: string;
@@ -80,7 +80,7 @@ type CaseData = {
   status: 'Pendiente' | 'Exitoso' | 'No Exitoso';
 };
 
-type UserProfile = {
+export type UserProfile = {
   role: 'admin' | 'user';
 }
 
@@ -164,30 +164,14 @@ const ActionCell = ({ row, user, firestore, isAdmin }: { row: Row<CaseData>, use
 };
 
 
-export default function CasesTable() {
+const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseData[], isLoading: boolean, user: User | null, isAdmin: boolean }) => {
   const firestore = useFirestore();
-  const { user } = useUser();
   const router = useRouter();
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
   const [grouping, setGrouping] = React.useState<GroupingState>([]);
-
-   const userProfileRef = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return doc(firestore, `users/${user.uid}`);
-  }, [firestore, user]);
-
-  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
-  const isAdmin = userProfile?.role === 'admin';
-
-  const casesCollectionRef = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, `cuttingToolAnalyses`);
-  }, [firestore]);
-
-  const { data: casesData, isLoading } = useCollection<CaseData>(casesCollectionRef);
-
+  
   const columns = React.useMemo<ColumnDef<CaseData>[]>(() => [
       {
         accessorKey: "name",
@@ -418,3 +402,34 @@ export default function CasesTable() {
     </Card>
   );
 }
+
+const CasesTableWrapper = () => {
+  const firestore = useFirestore();
+  const { user } = useUser();
+  
+  const userProfileRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return doc(firestore, `users/${user.uid}`);
+  }, [firestore, user]);
+
+  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+  const isAdmin = userProfile?.role === 'admin';
+
+  const casesCollectionRef = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, `cuttingToolAnalyses`);
+  }, [firestore]);
+
+  const { data: casesData, isLoading } = useCollection<CaseData>(casesCollectionRef);
+
+  return (
+    <CasesTable 
+      casesData={casesData || []} 
+      isLoading={isLoading} 
+      user={user} 
+      isAdmin={isAdmin} 
+    />
+  );
+};
+
+export default CasesTableWrapper;
