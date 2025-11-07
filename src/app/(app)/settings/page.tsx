@@ -4,7 +4,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { useTheme } from "next-themes"
 import { updateProfile } from 'firebase/auth';
 import { useEffect } from 'react';
@@ -37,7 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth, updateDocumentNonBlocking } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { createUserWithRole } from '@/firebase/admin-actions';
 import { Auth } from 'firebase/auth';
@@ -199,13 +199,15 @@ export default function SettingsPage() {
 
     try {
         await updateProfile(auth.currentUser, { displayName: data.name });
-        await updateDoc(userProfileRef, { name: data.name });
+        // Use non-blocking update to get contextual errors
+        updateDocumentNonBlocking(userProfileRef, { name: data.name });
 
         toast({
             title: "Perfil actualizado",
             description: "Tu nombre para mostrar ha sido guardado.",
         });
     } catch (error: any) {
+        // This will primarily catch auth errors now
         toast({
             variant: "destructive",
             title: "Error al actualizar",
