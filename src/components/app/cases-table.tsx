@@ -393,3 +393,5 @@ export default function CasesTable() {
     </Card>
   );
 }
+
+    
