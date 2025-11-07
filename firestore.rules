@@ -52,7 +52,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow get, update: if isOwner(userId) || isRequestingUserAdmin();
       allow list: if false;
-      allow create: if isRequestingUserAdmin() || (isOwner(userId) && request.resource.data.id == request.auth.uid);
+      allow create: if isRequestingUserAdmin() || (isOwner(userId) && request.resource.data.role == 'user');
       allow delete: if false; // Protect against accidental deletion
     }
 

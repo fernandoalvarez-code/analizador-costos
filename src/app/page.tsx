@@ -40,7 +40,7 @@ export default function Home() {
           <span className="sr-only">Analizador de Costos de Corte</span>
         </Link>
         <nav className="ml-auto flex gap-4 sm:gap-6">
-          <Button asChild variant="ghost">
+          <Button asChild>
             <Link href="/login">Iniciar Sesión</Link>
           </Button>
         </nav>

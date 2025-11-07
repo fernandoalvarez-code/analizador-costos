@@ -6,8 +6,9 @@ import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { doc, setDoc } from "firebase/firestore";
 
-import { useAuth, useUser } from "@/firebase/provider";
+import { useAuth, useUser, useFirestore } from "@/firebase/provider";
 import { initiateEmailSignUp } from "@/firebase/non-blocking-login";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,13 +26,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export default function SignupPage() {
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const router = useRouter();
 
   useEffect(() => {
     if (!isUserLoading && user) {
-      router.push("/dashboard");
+        // Create user profile document in Firestore if it doesn't exist
+        const userDocRef = doc(firestore, 'users', user.uid);
+        setDoc(userDocRef, {
+            id: user.uid,
+            email: user.email,
+            role: 'user', // default role
+        }, { merge: true });
+
+        router.push("/dashboard");
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, firestore]);
 
   const form = useForm<z.infer<typeof SignupSchema>>({
     resolver: zodResolver(SignupSchema),
