@@ -4,70 +4,74 @@
  *
  * Core Philosophy:
  * This ruleset enforces a strict user-ownership model. Each user can only access their own data,
- * and no data is publicly accessible without authentication.
+ * and no data is publicly accessible without authentication. Admins have elevated privileges.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profiles. Only the user themselves can read and write their profile.
- * - /users/{userId}/cuttingToolAnalyses/{cuttingToolAnalysisId}: Stores cutting tool analysis cases for each user.
- *   Only the user who owns the analysis case can read, write, update, or delete it.
+ * - /users/{userId}: Stores user profiles, including a 'role' field ('admin' or 'user').
+ *   - An admin can create/edit any user profile.
+ *   - A user can only edit their own profile.
+ * - /users/{userId}/cuttingToolAnalyses/{cuttingToolAnalysisId}: Stores cutting tool analysis cases.
+ *   - An admin can read/write/update/delete any analysis.
+ *   - A user can only manage their own analysis cases.
  *
  * Key Security Decisions:
- * - User listing is explicitly denied to prevent unauthorized access to user data.
- * - Path-based ownership is enforced for all user-specific data, simplifying rules and improving performance.
- *
- * Denormalization for Authorization:
- * - The `userId` field is present in the `/users/{userId}/cuttingToolAnalyses/{cuttingToolAnalysisId}` documents. This is used for authorization
- * checks, ensuring that only the owner can access the analysis case.
+ * - User listing is explicitly denied.
+ * - Path-based ownership is the primary security mechanism for regular users.
+ * - Admin role provides override capabilities for management purposes.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
+     * @description Determines if the requesting user is the owner of the document.
+     * @param userId The ID of the user to check against the authenticated user.
+     * @returns boolean
+     */
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the requesting user has the 'admin' role.
+     * It fetches the user's profile from the /users collection.
+     * @returns boolean
+     */
+    function isRequestingUserAdmin() {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    /**
      * @description Enforces access control for user profiles.
      * @path /users/{userId}
-     * @allow (create) - Authenticated user can create their own profile if the userId matches their auth.uid.
-     * @allow (get, update, delete) - Authenticated user can get, update, or delete their own profile if the userId matches their auth.uid.
-     * @deny (list) - Prevents listing all users.
-     * @deny (create) - Prevents creating a user with an ID that doesn't match the authenticated user's ID.
-     * @deny (update, delete) - Prevents updating or deleting a user profile if the user ID does not match the authenticated user's ID.
-     * @principle Enforces document ownership for all operations.
+     * @allow (get) - Authenticated user can get their own profile. Admins can get any profile.
+     * @allow (update) - Authenticated user can update their own profile. Admins can update any profile.
+     * @allow (create) - Admins can create new user profiles. A new user can create their own profile.
+     * @deny (list, delete) - Prevents listing or deleting users.
      */
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
-      allow get: if isOwner(userId);
+      allow get, update: if isOwner(userId) || isRequestingUserAdmin();
       allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == request.auth.uid;
-      allow update: if isOwner(userId) && resource.data.id == request.resource.data.id;
-      allow delete: if isOwner(userId) && resource.data.id == userId;
+      allow create: if isRequestingUserAdmin() || (isOwner(userId) && request.resource.data.id == request.auth.uid);
+      allow delete: if false; // Protect against accidental deletion
     }
 
     /**
      * @description Enforces access control for cutting tool analysis cases.
      * @path /users/{userId}/cuttingToolAnalyses/{cuttingToolAnalysisId}
-     * @allow (create) - Authenticated user can create a new analysis case under their user ID.
-     * @allow (get, list, update, delete) - Authenticated user can get, list, update, or delete their own analysis cases.
-     * @deny (create, update, delete) - Prevents creating, updating, or deleting analysis cases under another user's ID.
-     * @principle Enforces document ownership for all operations on analysis cases.
+     * @allow (get, list) - Owner or an admin can read cases.
+     * @allow (create) - Owner can create a case under their own ID.
+     * @allow (update, delete) - Only an admin can update or delete a case. This ensures data integrity.
+     * @principle Enforces document ownership for users and broad access for admins.
      */
     match /users/{userId}/cuttingToolAnalyses/{cuttingToolAnalysisId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
-      function isExistingOwner(userId) {
-          return isOwner(userId) && resource != null;
-      }
-      function isAdmin(userId) {
-        return get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
-      }
+        function isExistingOwner(userId) {
+            return isOwner(userId) && resource != null;
+        }
 
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.userId == request.auth.uid;
-      allow update: if isExistingOwner(userId) && resource.data.userId == request.resource.data.userId && isAdmin(userId);
-      allow delete: if isExistingOwner(userId) && resource.data.userId == userId && isAdmin(userId);
+        allow get, list: if isOwner(userId) || isRequestingUserAdmin();
+        allow create: if isOwner(userId) && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if isRequestingUserAdmin();
     }
   }
 }

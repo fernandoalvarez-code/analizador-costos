@@ -4,6 +4,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
+import { doc } from 'firebase/firestore';
+
 
 import { Button } from '@/components/ui/button';
 import {
@@ -17,6 +19,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -31,15 +34,142 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
+import { createUserWithRole } from '@/firebase/admin-actions';
+import { Auth } from 'firebase/auth';
+import { useAuth } from '@/firebase/provider';
+
+type UserProfile = {
+  role?: 'admin' | 'user';
+};
 
 const profileFormSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.'),
   email: z.string().email('Correo electrónico no válido.').optional(),
 });
 
+const createUserSchema = z.object({
+  email: z.string().email({ message: "Por favor, introduce un correo electrónico válido." }),
+  password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
+  role: z.enum(['user', 'admin'], { required_error: "Debes seleccionar un rol." }),
+});
+
+const UserCreationForm = () => {
+    const { toast } = useToast();
+    const auth = useAuth();
+    const firestore = useFirestore();
+
+    const form = useForm<z.infer<typeof createUserSchema>>({
+        resolver: zodResolver(createUserSchema),
+        defaultValues: {
+        email: "",
+        password: "",
+        role: "user",
+        },
+    });
+
+    async function onSubmit(data: z.infer<typeof createUserSchema>) {
+        if (!auth || !firestore) return;
+        try {
+            await createUserWithRole(auth, firestore, data.email, data.password, data.role);
+            toast({
+                title: "Usuario Creado",
+                description: `El usuario ${data.email} ha sido creado con el rol de ${data.role}.`,
+            });
+            form.reset();
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Error al crear usuario",
+                description: error.message,
+            });
+        }
+    }
+
+    return (
+         <Card>
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)}>
+                <CardHeader>
+                    <CardTitle>Crear Nuevo Usuario</CardTitle>
+                    <CardDescription>
+                    Crea una nueva cuenta de usuario y asígnale un rol.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Correo Electrónico del Nuevo Usuario</FormLabel>
+                        <FormControl>
+                            <Input type="email" placeholder="nuevo.usuario@ejemplo.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Contraseña Temporal</FormLabel>
+                        <FormControl>
+                            <Input type="password" placeholder="••••••••" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="role"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Rol del Usuario</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona un rol" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                <SelectItem value="user">Usuario</SelectItem>
+                                <SelectItem value="admin">Administrador</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormDescription>
+                                Los administradores pueden crear usuarios y editar todos los casos.
+                            </FormDescription>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                </CardContent>
+                <CardFooter className="border-t px-6 py-4">
+                    <Button type="submit">Crear Usuario</Button>
+                </CardFooter>
+                </form>
+            </Form>
+        </Card>
+    )
+}
+
 export default function SettingsPage() {
   const { user } = useUser();
+  const firestore = useFirestore();
+
+  const userProfileRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return doc(firestore, `users/${user.uid}`);
+  }, [firestore, user]);
+
+  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+
+  const isAdmin = userProfile?.role === 'admin';
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -107,6 +237,8 @@ export default function SettingsPage() {
             </form>
           </Form>
         </Card>
+        
+        {isAdmin && <UserCreationForm />}
 
         <Card>
           <CardHeader>
