@@ -41,6 +41,8 @@ import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth, updateDocument
 import { useToast } from '@/hooks/use-toast';
 import { createUserWithRole } from '@/firebase/admin-actions';
 import { Auth } from 'firebase/auth';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 type UserProfile = {
   role?: 'admin' | 'user';
@@ -207,12 +209,19 @@ export default function SettingsPage() {
             description: "Tu nombre para mostrar ha sido guardado.",
         });
     } catch (error: any) {
-        // This will primarily catch auth errors now
-        toast({
-            variant: "destructive",
-            title: "Error al actualizar",
-            description: error.message || "No se pudo guardar tu perfil.",
-        });
+        if (error.code === 'permission-denied' && userProfileRef) {
+             errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: userProfileRef.path,
+                operation: 'update',
+                requestResourceData: { name: data.name }
+            }));
+        } else {
+             toast({
+                variant: "destructive",
+                title: "Error al actualizar",
+                description: error.message || "No se pudo guardar tu perfil.",
+            });
+        }
     }
   }
 

@@ -64,7 +64,7 @@ import {
 
 const formatCurrency = (value: number | undefined) => {
     if (typeof value !== 'number' || !isFinite(value)) return 'N/A';
-    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
+    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD' }).format(value);
 }
 
 type CaseData = {
