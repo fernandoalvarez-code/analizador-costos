@@ -34,11 +34,11 @@ export default function AppNav() {
       label: 'Gestión de Casos',
       icon: FolderKanban,
     },
-    {
-      href: '/insights',
-      label: 'Perspectivas de IA',
-      icon: BrainCircuit,
-    },
+    // {
+    //   href: '/insights',
+    //   label: 'Perspectivas de IA',
+    //   icon: BrainCircuit,
+    // },
   ];
 
   return (
