@@ -16,6 +16,7 @@ import {
   GroupingState,
   getExpandedRowModel,
   useReactTable,
+  Row,
 } from "@tanstack/react-table";
 import { MoreHorizontal, PlusCircle, Search, Trash2, Eye, ChevronDown, ChevronRight, GripVertical, Edit } from "lucide-react";
 import { collection, doc, deleteDoc } from "firebase/firestore";
@@ -48,6 +49,8 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { User, Auth } from "firebase/auth";
+import { Firestore } from "firebase/firestore";
 
 const formatCurrency = (value: number | undefined) => {
     if (typeof value !== 'number' || !isFinite(value)) return 'N/A';
@@ -82,9 +85,7 @@ function getStatusVariant(status: string) {
     }
 }
 
-const ActionCell = ({ row }: { row: any }) => {
-    const { user } = useUser();
-    const firestore = useFirestore();
+const ActionCell = ({ row, user, firestore }: { row: Row<CaseData>, user: User | null, firestore: Firestore | null }) => {
     const { toast } = useToast();
     
     const userProfileRef = useMemoFirebase(() => {
@@ -94,7 +95,7 @@ const ActionCell = ({ row }: { row: any }) => {
 
     const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
     
-    const caseData = row.original as CaseData;
+    const caseData = row.original;
     const isAdmin = userProfile?.role === 'admin';
     const isOwner = user?.uid === caseData.userId;
 
@@ -145,97 +146,9 @@ const ActionCell = ({ row }: { row: any }) => {
 };
 
 
-export const columns: ColumnDef<CaseData>[] = [
-  {
-    accessorKey: "name",
-    header: "Nombre del Caso",
-    cell: ({ row, getValue }) => (
-      <div className={cn("font-medium", row.getCanExpand() && "pl-2")}>
-        {row.getCanExpand() ? (
-          <button
-            {...{
-              onClick: row.getToggleExpandedHandler(),
-              style: { cursor: 'pointer' },
-              className: "flex items-center gap-1"
-            }}
-          >
-            {row.getIsExpanded() ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-            {getValue<string>()} ({row.subRows.length})
-          </button>
-        ) : (
-          getValue<string>()
-        )}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "cliente",
-    header: "Cliente",
-    cell: ({ getValue }) => getValue() || 'N/A',
-    enableGrouping: true,
-  },
-    {
-    accessorKey: "operacion",
-    header: "Operación",
-    cell: ({ getValue }) => getValue() || 'N/A',
-  },
-  {
-    accessorKey: "material",
-    header: "Material",
-    cell: ({ getValue }) => getValue() || 'N/A',
-    enableGrouping: true,
-  },
-  {
-    accessorKey: "status",
-    header: "Estado",
-    cell: ({ row }) => {
-        const status = row.getValue("status") as string;
-        if (!status) return null;
-        return <Badge variant={getStatusVariant(status)}>{status}</Badge>
-    },
-    enableGrouping: true,
-  },
-  {
-    accessorKey: "dateCreated",
-    header: "Fecha",
-    cell: ({ row }) => {
-        const date = row.getValue("dateCreated") as { seconds: number };
-        if (!date || !date.seconds) return 'N/A';
-        return new Date(date.seconds * 1000).toLocaleDateString('es-ES');
-    }
-  },
-  {
-    accessorKey: "annualSavings",
-    header: () => <div className="text-right">Ahorro Anual</div>,
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("annualSavings"));
-      return <div className="font-medium text-right">{formatCurrency(amount)}</div>;
-    },
-  },
-  {
-    accessorKey: "roi",
-    header: () => <div className="text-center">ROI</div>,
-    cell: ({ row }) => {
-        const roi = parseFloat(row.getValue("roi"));
-         if (!isFinite(roi)) {
-            return <div className="text-center"><Badge variant="secondary" className="text-xs">∞</Badge></div>
-        }
-        const getBadgeVariant = (roi: number) => {
-            if (roi > 300) return "default";
-            if (roi > 200) return "secondary";
-            return "outline";
-        }
-        return <div className="text-center"><Badge variant={getBadgeVariant(roi)} className="text-xs">{roi.toFixed(0)}%</Badge></div>
-    }
-  },
-  {
-    id: "actions",
-    cell: ActionCell,
-  },
-];
-
 export default function CasesTable() {
   const firestore = useFirestore();
+  const { user } = useUser();
   const router = useRouter();
 
   const casesCollectionRef = useMemoFirebase(() => {
@@ -249,6 +162,95 @@ export default function CasesTable() {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
   const [grouping, setGrouping] = React.useState<GroupingState>([]);
+
+  const columns: ColumnDef<CaseData>[] = React.useMemo(() => [
+      {
+        accessorKey: "name",
+        header: "Nombre del Caso",
+        cell: ({ row, getValue }) => (
+          <div className={cn("font-medium", row.getCanExpand() && "pl-2")}>
+            {row.getCanExpand() ? (
+              <button
+                {...{
+                  onClick: row.getToggleExpandedHandler(),
+                  style: { cursor: 'pointer' },
+                  className: "flex items-center gap-1"
+                }}
+              >
+                {row.getIsExpanded() ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                {getValue<string>()} ({row.subRows.length})
+              </button>
+            ) : (
+              getValue<string>()
+            )}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "cliente",
+        header: "Cliente",
+        cell: ({ getValue }) => getValue() || 'N/A',
+        enableGrouping: true,
+      },
+        {
+        accessorKey: "operacion",
+        header: "Operación",
+        cell: ({ getValue }) => getValue() || 'N/A',
+      },
+      {
+        accessorKey: "material",
+        header: "Material",
+        cell: ({ getValue }) => getValue() || 'N/A',
+        enableGrouping: true,
+      },
+      {
+        accessorKey: "status",
+        header: "Estado",
+        cell: ({ row }) => {
+            const status = row.getValue("status") as string;
+            if (!status) return null;
+            return <Badge variant={getStatusVariant(status)}>{status}</Badge>
+        },
+        enableGrouping: true,
+      },
+      {
+        accessorKey: "dateCreated",
+        header: "Fecha",
+        cell: ({ row }) => {
+            const date = row.getValue("dateCreated") as { seconds: number };
+            if (!date || !date.seconds) return 'N/A';
+            return new Date(date.seconds * 1000).toLocaleDateString('es-ES');
+        }
+      },
+      {
+        accessorKey: "annualSavings",
+        header: () => <div className="text-right">Ahorro Anual</div>,
+        cell: ({ row }) => {
+          const amount = parseFloat(row.getValue("annualSavings"));
+          return <div className="font-medium text-right">{formatCurrency(amount)}</div>;
+        },
+      },
+      {
+        accessorKey: "roi",
+        header: () => <div className="text-center">ROI</div>,
+        cell: ({ row }) => {
+            const roi = parseFloat(row.getValue("roi"));
+             if (!isFinite(roi)) {
+                return <div className="text-center"><Badge variant="secondary" className="text-xs">∞</Badge></div>
+            }
+            const getBadgeVariant = (roi: number) => {
+                if (roi > 300) return "default";
+                if (roi > 200) return "secondary";
+                return "outline";
+            }
+            return <div className="text-center"><Badge variant={getBadgeVariant(roi)} className="text-xs">{roi.toFixed(0)}%</Badge></div>
+        }
+      },
+      {
+        id: "actions",
+        cell: ({ row }) => <ActionCell row={row} user={user} firestore={firestore} />,
+      },
+  ], [user, firestore]);
   
   const table = useReactTable({
     data: casesData || [],
