@@ -4,8 +4,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { doc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { useTheme } from "next-themes"
+import { updateProfile } from 'firebase/auth';
+import { useEffect } from 'react';
 
 
 import { Button } from '@/components/ui/button';
@@ -35,14 +37,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { createUserWithRole } from '@/firebase/admin-actions';
 import { Auth } from 'firebase/auth';
-import { useAuth } from '@/firebase/provider';
 
 type UserProfile = {
   role?: 'admin' | 'user';
+  name?: string;
 };
 
 const profileFormSchema = z.object({
@@ -160,30 +162,56 @@ const UserCreationForm = () => {
 }
 
 export default function SettingsPage() {
-  const { setTheme } = useTheme()
+  const { setTheme } = useTheme();
   const { user } = useUser();
+  const auth = useAuth();
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, `users/${user.uid}`);
   }, [firestore, user]);
 
-  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const isAdmin = userProfile?.role === 'admin';
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      name: user?.displayName || '',
+      name: '',
       email: user?.email || '',
     },
   });
 
-  function onSubmit(data: z.infer<typeof profileFormSchema>) {
-    // Lógica para actualizar el perfil del usuario
-    console.log(data);
+  useEffect(() => {
+    if (user) {
+        // Set name from Auth (displayName) or Firestore profile
+        const currentName = user.displayName || userProfile?.name || '';
+        form.setValue('name', currentName);
+        form.setValue('email', user.email || '');
+    }
+  }, [user, userProfile, form]);
+
+  async function onSubmit(data: z.infer<typeof profileFormSchema>) {
+    if (!user || !auth?.currentUser || !userProfileRef) return;
+
+    try {
+        await updateProfile(auth.currentUser, { displayName: data.name });
+        await updateDoc(userProfileRef, { name: data.name });
+
+        toast({
+            title: "Perfil actualizado",
+            description: "Tu nombre para mostrar ha sido guardado.",
+        });
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Error al actualizar",
+            description: error.message || "No se pudo guardar tu perfil.",
+        });
+    }
   }
 
   return (
