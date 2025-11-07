@@ -64,10 +64,22 @@ type CaseData = {
   cliente: string;
   operacion: string;
   material: string;
+  status: 'Pendiente' | 'Exitoso' | 'No Exitoso';
 };
 
 type UserProfile = {
   role: 'admin' | 'user';
+}
+
+function getStatusVariant(status: string) {
+    switch (status) {
+        case 'Exitoso':
+        return 'default';
+        case 'No Exitoso':
+        return 'destructive';
+        default:
+        return 'secondary';
+    }
 }
 
 const ActionCell = ({ row }: { row: any }) => {
@@ -174,6 +186,16 @@ export const columns: ColumnDef<CaseData>[] = [
     enableGrouping: true,
   },
   {
+    accessorKey: "status",
+    header: "Estado",
+    cell: ({ row }) => {
+        const status = row.getValue("status") as string;
+        if (!status) return null;
+        return <Badge variant={getStatusVariant(status)}>{status}</Badge>
+    },
+    enableGrouping: true,
+  },
+  {
     accessorKey: "dateCreated",
     header: "Fecha",
     cell: ({ row }) => {
@@ -270,6 +292,7 @@ export default function CasesTable() {
                     <span className="text-sm text-muted-foreground">Agrupar por:</span>
                     <Button variant={grouping.includes('cliente') ? 'secondary' : 'outline'} size="sm" onClick={() => table.setGrouping(g => g.includes('cliente') ? g.filter(i => i !== 'cliente') : [...g, 'cliente'])}>Cliente</Button>
                     <Button variant={grouping.includes('material') ? 'secondary' : 'outline'} size="sm" onClick={() => table.setGrouping(g => g.includes('material') ? g.filter(i => i !== 'material') : [...g, 'material'])}>Material</Button>
+                    <Button variant={grouping.includes('status') ? 'secondary' : 'outline'} size="sm" onClick={() => table.setGrouping(g => g.includes('status') ? g.filter(i => i !== 'status') : [...g, 'status'])}>Estado</Button>
                 </div>
                  <Button onClick={handleNewCase}>
                     <PlusCircle className="mr-2 h-4 w-4"/>
@@ -368,5 +391,3 @@ export default function CasesTable() {
     </Card>
   );
 }
-
-    

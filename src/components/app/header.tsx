@@ -14,8 +14,12 @@ import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { collection, query, orderBy, limit } from "firebase/firestore";
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 
-import { useAuth, useUser } from "@/firebase/provider";
+
+import { useAuth, useUser, useCollection, useFirestore, useMemoFirebase } from "@/firebase/provider";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -36,6 +40,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "../ui/skeleton";
 
 function getBreadcrumb(path: string) {
     const segments = path.split('/').filter(Boolean);
@@ -61,12 +66,29 @@ function getBreadcrumb(path: string) {
     }
 }
 
+type Notification = {
+    id: string;
+    title: string;
+    message: string;
+    createdAt: { seconds: number };
+    caseId?: string;
+}
+
 export default function AppHeader() {
   const auth = useAuth();
   const { user } = useUser();
   const router = useRouter();
   const pathname = usePathname();
   const pageTitle = getBreadcrumb(pathname);
+  const firestore = useFirestore();
+
+  const notificationsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, "notifications"), orderBy("createdAt", "desc"), limit(5));
+  }, [firestore]);
+
+  const { data: notifications, isLoading: isLoadingNotifications } = useCollection<Notification>(notificationsQuery);
+
 
   const handleSignOut = async () => {
     if (!auth) return;
@@ -118,18 +140,26 @@ export default function AppHeader() {
             <DropdownMenuContent align="end" className="w-80">
                 <DropdownMenuLabel>Notificaciones</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                    <div className="flex flex-col">
-                        <p className="font-medium">Informe de Ahorro Generado</p>
-                        <p className="text-xs text-muted-foreground">Tu informe "Optimización Cliente X" está listo para ver.</p>
+                {isLoadingNotifications ? (
+                    <div className="p-2 space-y-2">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
                     </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                     <div className="flex flex-col">
-                        <p className="font-medium">Nuevo Caso de Éxito</p>
-                        <p className="text-xs text-muted-foreground">Se añadió un nuevo caso sobre fresado en titanio.</p>
-                    </div>
-                </DropdownMenuItem>
+                ) : notifications && notifications.length > 0 ? (
+                    notifications.map(notif => (
+                        <DropdownMenuItem key={notif.id} onClick={() => notif.caseId && router.push(`/cases/${notif.caseId}`)}>
+                            <div className="flex flex-col">
+                                <p className="font-medium">{notif.title}</p>
+                                <p className="text-xs text-muted-foreground">{notif.message}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {formatDistanceToNow(new Date(notif.createdAt.seconds * 1000), { addSuffix: true, locale: es })}
+                                </p>
+                            </div>
+                        </DropdownMenuItem>
+                    ))
+                ) : (
+                     <p className="p-4 text-center text-sm text-muted-foreground">No hay notificaciones</p>
+                )}
                  <DropdownMenuSeparator />
                  <DropdownMenuItem className="justify-center text-sm text-primary hover:underline">
                     Ver todas las notificaciones

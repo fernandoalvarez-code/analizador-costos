@@ -52,6 +52,7 @@ export const DetailedReportSchema = z.object({
   operacion: z.string().optional(),
   pieza: z.string().optional(),
   material: z.string().optional(),
+  status: z.enum(['Pendiente', 'Exitoso', 'No Exitoso']).default('Pendiente'),
 
   // Datos Generales
   machineHourlyRate: z.coerce.number().min(0, "La tarifa debe ser positiva."),
@@ -98,10 +99,3 @@ export const SavingsInsightsSchema = z.object({
   weeksPerYear: z.coerce.number().int().positive("Debe ser un entero positivo."),
   machineHourlyRate: z.coerce.number().positive("La tarifa horaria debe ser un número positivo."),
 });
-
-
-    
-
-    
-
-    

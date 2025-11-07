@@ -7,7 +7,7 @@ import { useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
 import React, { useEffect, useState, useCallback } from "react";
 import { Download, Save } from "lucide-react";
-import { collection, serverTimestamp, doc, Timestamp } from "firebase/firestore";
+import { collection, serverTimestamp, doc, Timestamp, addDoc } from "firebase/firestore";
 
 
 import { addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -156,6 +156,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
       operacion: "",
       pieza: "",
       material: "",
+      status: "Pendiente",
       machineHourlyRate: 35,
       piezasAlMes: 2000,
       tiempoParada: 2,
@@ -519,7 +520,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     }
   };
 
-  const handleSaveCase = (caseName: string) => {
+  const handleSaveCase = async (caseName: string) => {
     if (!detailedResult) {
       toast({
         variant: "destructive",
@@ -553,6 +554,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
       name: caseName,
       annualSavings: detailedResult.ahorroAnual,
       roi: detailedResult.roi,
+      status: formValues.status || "Pendiente",
       ...(isExistingCase 
         ? { 
             dateModified: serverTimestamp(),
@@ -571,7 +573,17 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
       setDocumentNonBlocking(caseDocRef, fullCaseData, { merge: true });
     } else {
       const casesCollection = collection(firestore, "cuttingToolAnalyses");
-      addDocumentNonBlocking(casesCollection, fullCaseData);
+      const docRef = await addDocumentNonBlocking(casesCollection, fullCaseData);
+      
+      // Create notification
+      const notificationsCollection = collection(firestore, "notifications");
+      await addDoc(notificationsCollection, {
+          title: "Nuevo Caso de Éxito",
+          message: `Se añadió un nuevo caso: "${caseName}"`,
+          caseId: docRef?.id,
+          createdAt: serverTimestamp(),
+          readBy: [],
+      });
     }
     
     toast({
@@ -614,6 +626,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
       operacion: "",
       pieza: "",
       material: "",
+      status: "Pendiente",
       machineHourlyRate: 35,
       piezasAlMes: 2000,
       tiempoParada: 2,
@@ -1191,5 +1204,3 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     </Tabs>
   );
 }
-
-    

@@ -44,6 +44,11 @@
           "type": "string",
           "description": "The type of material being worked on."
         },
+        "status": {
+            "type": "string",
+            "description": "The status of the analysis case.",
+            "enum": ["Pendiente", "Exitoso", "No Exitoso"]
+        },
         "dateCreated": {
           "type": "string",
           "description": "Date the analysis case was created.",
@@ -91,8 +96,22 @@
         "id",
         "userId",
         "name",
-        "dateCreated"
+        "dateCreated",
+        "status"
       ]
+    },
+    "Notification": {
+        "title": "Notification",
+        "type": "object",
+        "description": "Represents a notification for users.",
+        "properties": {
+            "title": { "type": "string" },
+            "message": { "type": "string" },
+            "caseId": { "type": "string" },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "readBy": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["title", "message", "createdAt"]
     }
   },
   "auth": {
@@ -135,9 +154,24 @@
             }
           ]
         }
+      },
+      {
+        "path": "/notifications/{notificationId}",
+        "definition": {
+          "entityName": "Notification",
+          "schema": {
+            "$ref": "#/backend/entities/Notification"
+          },
+          "description": "Stores notifications for all users.",
+           "params": [
+            {
+              "name": "notificationId",
+              "description": "The unique identifier of the notification."
+            }
+          ]
+        }
       }
     ],
     "reasoning": "The Firestore data structure has been updated to support a global repository of cutting tool analysis cases, making them visible to all authenticated users. This promotes knowledge sharing within the organization. The user-specific subcollection has been migrated to a root-level collection `/cuttingToolAnalyses`. The security rules will be updated to allow read access for all authenticated users while restricting write/delete operations to the document owner or an administrator, ensuring data integrity."
   }
 }
-    
