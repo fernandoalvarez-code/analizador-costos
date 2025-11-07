@@ -4,12 +4,9 @@
 import * as React from "react";
 import {
   ColumnDef,
-  ColumnFiltersState,
   SortingState,
-  VisibilityState,
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   getGroupedRowModel,
@@ -17,10 +14,13 @@ import {
   getExpandedRowModel,
   useReactTable,
   Row,
+  getFilteredRowModel,
 } from "@tanstack/react-table";
 import { MoreHorizontal, PlusCircle, Search, Trash2, Eye, ChevronDown, ChevronRight, GripVertical, Edit } from "lucide-react";
-import { collection, doc, deleteDoc } from "firebase/firestore";
+import { collection, doc } from "firebase/firestore";
 import Link from "next/link";
+import { User } from "firebase/auth";
+import { Firestore } from "firebase/firestore";
 
 
 import { useCollection, useFirestore, useUser, useMemoFirebase, useDoc } from "@/firebase";
@@ -49,8 +49,18 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { User, Auth } from "firebase/auth";
-import { Firestore } from "firebase/firestore";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
 
 const formatCurrency = (value: number | undefined) => {
     if (typeof value !== 'number' || !isFinite(value)) return 'N/A';
@@ -90,7 +100,7 @@ const ActionCell = ({ row, user, firestore, isAdmin }: { row: Row<CaseData>, use
     const caseData = row.original;
     const isOwner = user?.uid === caseData.userId;
 
-    const handleDelete = () => {
+    function handleDelete() {
         if (!firestore || !caseData.id) return;
         const caseDocRef = doc(firestore, 'cuttingToolAnalyses', caseData.id);
         deleteDocumentNonBlocking(caseDocRef);
@@ -102,34 +112,53 @@ const ActionCell = ({ row, user, firestore, isAdmin }: { row: Row<CaseData>, use
 
     return (
         <div className="text-right">
-            <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Abrir menú</span>
-                <MoreHorizontal className="h-4 w-4" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                <DropdownMenuItem asChild>
-                    <Link href={`/cases/${caseData.id}`}>
-                        <Eye className="mr-2 h-4 w-4"/>
-                        Ver detalles
-                    </Link>
-                </DropdownMenuItem>
-                 <DropdownMenuItem asChild disabled={!isAdmin && !isOwner}>
-                    <Link href={`/cases/${caseData.id}?edit=true`}>
-                        <Edit className="mr-2 h-4 w-4"/>
-                        Editar
-                    </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive" disabled={!isAdmin && !isOwner} onClick={handleDelete}>
-                    <Trash2 className="mr-2 h-4 w-4"/>
-                    Eliminar caso
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-            </DropdownMenu>
+            <AlertDialog>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Abrir menú</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                        <DropdownMenuItem asChild>
+                            <Link href={`/cases/${caseData.id}`}>
+                                <Eye className="mr-2 h-4 w-4"/>
+                                Ver detalles
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild disabled={!isAdmin && !isOwner}>
+                            <Link href={`/cases/${caseData.id}?edit=true`}>
+                                <Edit className="mr-2 h-4 w-4"/>
+                                Editar
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <AlertDialogTrigger asChild>
+                            <DropdownMenuItem className="text-destructive" disabled={!isAdmin && !isOwner} onSelect={(e) => e.preventDefault()}>
+                                <Trash2 className="mr-2 h-4 w-4"/>
+                                Eliminar caso
+                            </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Esta acción no se puede deshacer. Esto eliminará permanentemente el caso
+                        de éxito y todos sus datos asociados de nuestros servidores.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className={cn(buttonVariants({ variant: "destructive" }))}>
+                        Continuar
+                    </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };
@@ -140,7 +169,11 @@ export default function CasesTable() {
   const { user } = useUser();
   const router = useRouter();
 
-  const userProfileRef = useMemoFirebase(() => {
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [globalFilter, setGlobalFilter] = React.useState('');
+  const [grouping, setGrouping] = React.useState<GroupingState>([]);
+
+   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, `users/${user.uid}`);
   }, [firestore, user]);
@@ -154,10 +187,6 @@ export default function CasesTable() {
   }, [firestore]);
 
   const { data: casesData, isLoading } = useCollection<CaseData>(casesCollectionRef);
-
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = React.useState('');
-  const [grouping, setGrouping] = React.useState<GroupingState>([]);
 
   const columns = React.useMemo<ColumnDef<CaseData>[]>(() => [
       {
@@ -389,5 +418,3 @@ export default function CasesTable() {
     </Card>
   );
 }
-
-    
