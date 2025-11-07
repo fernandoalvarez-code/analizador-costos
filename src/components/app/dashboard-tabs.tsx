@@ -192,75 +192,33 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     },
   });
 
-
-  const watchedDiagnosisData = useWatch({ control: diagnosisForm.control });
-  const watchedDetailedData = useWatch({ control: detailedForm.control });
-
   const parseTimeToMinutes = (min: number | undefined, sec: number | undefined) => {
     const minVal = min || 0;
     const secVal = sec || 0;
     return minVal + (secVal / 60);
   }
 
-  const syncForms = useCallback((sourceForm: 'diag' | 'detail', data: any) => {
-    const diagValues = diagnosisForm.getValues();
-    const detailValues = detailedForm.getValues();
-
-    const mappings: {[key: string]: string} = {
-      costoHoraMaquina: 'machineHourlyRate',
-      piezasAlMes: 'piezasAlMes',
-      precioA: 'precioA',
-      precioB: 'precioB',
-      filosA: 'filosA',
-      pzsPorFiloA: 'piezasFiloA',
-      cicloMinA: 'cicloMinA',
-      cicloSegA: 'cicloSegA',
-      vcA: 'vcA',
-    };
-
-    if (sourceForm === 'diag') {
-        Object.entries(mappings).forEach(([diagKey, detailKey]) => {
-            const value = data[diagKey];
-             if (value !== undefined && String(value) !== String(detailedForm.getValues(detailKey as any))) {
-                detailedForm.setValue(detailKey as any, value, { shouldValidate: true, shouldDirty: true });
-            }
-        });
-    } else { // source === 'detail'
-        Object.entries(mappings).forEach(([diagKey, detailKey]) => {
-            const value = data[detailKey];
-             if (value !== undefined && String(value) !== String(diagnosisForm.getValues(diagKey as any))) {
-                diagnosisForm.setValue(diagKey as any, value, { shouldValidate: true, shouldDirty: true });
-            }
-        });
-    }
-  }, [diagnosisForm, detailedForm]);
-
-  useEffect(() => {
-    const subscription = diagnosisForm.watch((value, { name, type }) => {
-        if (type === 'change' && name && Object.keys(value).includes(name)) {
-            syncForms('diag', value);
-        }
-    });
-    return () => subscription.unsubscribe();
-  }, [diagnosisForm.watch, syncForms]);
-
-  useEffect(() => {
-    const subscription = detailedForm.watch((value, { name, type }) => {
-      if (type === 'change' && name && Object.keys(value).includes(name)) {
-            syncForms('detail', value);
-        }
-    });
-    return () => subscription.unsubscribe();
-  }, [detailedForm.watch, syncForms]);
-
     useEffect(() => {
     if (initialData) {
       detailedForm.reset(initialData);
+       // Sync from detailed to diagnosis form upon initial load
+        diagnosisForm.reset({
+            costoHoraMaquina: initialData.machineHourlyRate,
+            piezasAlMes: initialData.piezasAlMes,
+            precioA: initialData.precioA,
+            filosA: initialData.filosA,
+            pzsPorFiloA: initialData.piezasFiloA,
+            cicloMinA: initialData.cicloMinA,
+            cicloSegA: initialData.cicloSegA,
+            vcA: initialData.vcA,
+            precioB: initialData.precioB,
+        });
+
       if (initialData.name) {
         saveCaseForm.reset({ caseName: initialData.name });
       }
     }
-  }, [initialData, detailedForm, saveCaseForm]);
+  }, [initialData, detailedForm, diagnosisForm, saveCaseForm]);
 
   function onQuickSubmit(data: z.infer<typeof QuickDiagnosisSchema>) {
     const { precioA, precioB, filosA, pzsPorFiloA, costoHoraMaquina, cicloMinA, cicloSegA, vcA } = data;
@@ -601,7 +559,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     }
   };
   
-  const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD' }).format(value);
+  const formatCurrency = (value: number) => new Intl.NumberFormat('es-US', { style: 'currency', currency: 'USD' }).format(value);
   const formatMinutes = (timeInMinutes: number) => {
     const minutes = Math.floor(timeInMinutes);
     const seconds = Math.round((timeInMinutes - minutes) * 60);
@@ -667,6 +625,43 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     router.push('/dashboard');
   }
 
+  // Sync functions
+  const syncDiagToDetail = useCallback((fieldName: any, value: any) => {
+    const mappings: { [key: string]: string } = {
+        costoHoraMaquina: 'machineHourlyRate',
+        piezasAlMes: 'piezasAlMes',
+        precioA: 'precioA',
+        precioB: 'precioB',
+        filosA: 'filosA',
+        pzsPorFiloA: 'piezasFiloA',
+        cicloMinA: 'cicloMinA',
+        cicloSegA: 'cicloSegA',
+        vcA: 'vcA',
+    };
+    const detailField = mappings[fieldName];
+    if (detailField && String(value) !== String(detailedForm.getValues(detailField as any))) {
+        detailedForm.setValue(detailField as any, value, { shouldValidate: true, shouldDirty: true });
+    }
+  }, [detailedForm]);
+
+  const syncDetailToDiag = useCallback((fieldName: any, value: any) => {
+    const mappings: { [key: string]: string } = {
+        machineHourlyRate: 'costoHoraMaquina',
+        piezasAlMes: 'piezasAlMes',
+        precioA: 'precioA',
+        precioB: 'precioB',
+        filosA: 'filosA',
+        piezasFiloA: 'pzsPorFiloA',
+        cicloMinA: 'cicloMinA',
+        cicloSegA: 'cicloSegA',
+        vcA: 'vcA',
+    };
+    const diagField = mappings[fieldName];
+    if (diagField && String(value) !== String(diagnosisForm.getValues(diagField as any))) {
+        diagnosisForm.setValue(diagField as any, value, { shouldValidate: true, shouldDirty: true });
+    }
+  }, [diagnosisForm]);
+
   return (
     <>
       <Tabs defaultValue={initialData ? "detailed" : "quick"} className="w-full">
@@ -689,27 +684,27 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                     <h3 className="text-lg font-semibold mb-4 font-headline text-blue-800">Datos de Partida</h3>
                     <div className="p-6 border border-blue-200 bg-blue-50/50 rounded-lg space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <FormField control={diagnosisForm.control} name="costoHoraMaquina" render={({ field }) => (<FormItem><FormLabel>⚙️ Costo Hora-Máquina (USD)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
-                          <FormField control={diagnosisForm.control} name="piezasAlMes" render={({ field }) => (<FormItem><FormLabel>🏭 Piezas al Mes (aprox.)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+                          <FormField control={diagnosisForm.control} name="costoHoraMaquina" render={({ field }) => (<FormItem><FormLabel>⚙️ Costo Hora-Máquina (USD)</FormLabel><FormControl><Input type="number" {...field} onChange={e => { const val = parseFloat(e.target.value) || 0; field.onChange(val); syncDiagToDetail('costoHoraMaquina', val); }} /></FormControl><FormMessage /></FormItem>)} />
+                          <FormField control={diagnosisForm.control} name="piezasAlMes" render={({ field }) => (<FormItem><FormLabel>🏭 Piezas al Mes (aprox.)</FormLabel><FormControl><Input type="number" {...field} onChange={e => { const val = parseFloat(e.target.value) || 0; field.onChange(val); syncDiagToDetail('piezasAlMes', val); }} /></FormControl><FormMessage /></FormItem>)} />
                       </div>
                       <Separator />
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                          <div className="space-y-3">
                             <h4 className="font-medium text-primary mb-4">Datos Inserto A (Actual)</h4>
-                              <FormField control={diagnosisForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio Inserto (USD)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 100" /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={diagnosisForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio Inserto (USD)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('precioA', val); }} placeholder="Ej: 100" /></FormControl><FormMessage /></FormItem>)} />
                               <div className="flex space-x-2">
-                                 <FormField control={diagnosisForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 4" /></FormControl><FormMessage /></FormItem>)} />
-                                 <FormField control={diagnosisForm.control} name="pzsPorFiloA" render={({ field }) => (<FormItem><FormLabel>Pzs/Filo</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 20" /></FormControl><FormMessage /></FormItem>)} />
+                                 <FormField control={diagnosisForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('filosA', val); }} placeholder="Ej: 4" /></FormControl><FormMessage /></FormItem>)} />
+                                 <FormField control={diagnosisForm.control} name="pzsPorFiloA" render={({ field }) => (<FormItem><FormLabel>Pzs/Filo</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('pzsPorFiloA', val); }} placeholder="Ej: 20" /></FormControl><FormMessage /></FormItem>)} />
                               </div>
                                <div className="flex space-x-2">
-                                  <FormField control={diagnosisForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Min</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 1" /></FormControl><FormMessage /></FormItem>)} />
-                                  <FormField control={diagnosisForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>Seg</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 30" /></FormControl><FormMessage /></FormItem>)} />
+                                  <FormField control={diagnosisForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Min</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('cicloMinA', val); }} placeholder="Ej: 1" /></FormControl><FormMessage /></FormItem>)} />
+                                  <FormField control={diagnosisForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>Seg</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('cicloSegA', val); }} placeholder="Ej: 30" /></FormControl><FormMessage /></FormItem>)} />
                               </div>
-                              <FormField control={diagnosisForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 180" /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={diagnosisForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('vcA', val); }} placeholder="Ej: 180" /></FormControl><FormMessage /></FormItem>)} />
                          </div>
                           <div className="space-y-3">
                             <h4 className="font-medium text-accent mb-4">Datos Inserto B (Propuesta)</h4>
-                              <FormField control={diagnosisForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio Inserto (USD)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="Ej: 150" /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={diagnosisForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio Inserto (USD)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('precioB', val); }} placeholder="Ej: 150" /></FormControl><FormMessage /></FormItem>)} />
                          </div>
                       </div>
                     </div>
@@ -874,8 +869,8 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
 
                       {/* Datos Generales */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
-                          <FormField control={detailedForm.control} name="machineHourlyRate" render={({ field }) => (<FormItem><FormLabel>⚙️ Costo de Hora-Máquina (USD)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl></FormItem>)}/>
-                          <FormField control={detailedForm.control} name="piezasAlMes" render={({ field }) => (<FormItem><FormLabel>🏭 Piezas/Mes</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl></FormItem>)}/>
+                          <FormField control={detailedForm.control} name="machineHourlyRate" render={({ field }) => (<FormItem><FormLabel>⚙️ Costo de Hora-Máquina (USD)</FormLabel><FormControl><Input type="number" {...field} onChange={e => { const val = parseFloat(e.target.value) || 0; field.onChange(val); syncDetailToDiag('machineHourlyRate', val); }} /></FormControl></FormItem>)}/>
+                          <FormField control={detailedForm.control} name="piezasAlMes" render={({ field }) => (<FormItem><FormLabel>🏭 Piezas/Mes</FormLabel><FormControl><Input type="number" {...field} onChange={e => { const val = parseFloat(e.target.value) || 0; field.onChange(val); syncDetailToDiag('piezasAlMes', val); }} /></FormControl></FormItem>)}/>
                           <FormField control={detailedForm.control} name="tiempoParada" render={({ field }) => (<FormItem><FormLabel>⏱️ Parada por Cambio (min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl></FormItem>)}/>
                       </div>
 
@@ -888,22 +883,22 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                               </CardHeader>
                               <CardContent className="p-6 space-y-4 pt-6">
                                   <FormField control={detailedForm.control} name="descA" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Ej: Inserto de 4 filos..." {...field} /></FormControl></FormItem>)}/>
-                                  <FormField control={detailedForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio de Compra (USD)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                  <FormField control={detailedForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio de Compra (USD)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDetailToDiag('precioA', val); }}/></FormControl></FormItem>)}/>
                                   <div className="flex space-x-2">
                                       <FormField control={detailedForm.control} name="insertosPorHerramientaA" render={({ field }) => (<FormItem><FormLabel>Insertos/Herr.</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 1)}/></FormControl></FormItem>)}/>
-                                      <FormField control={detailedForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos/Inserto</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                      <FormField control={detailedForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos/Inserto</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDetailToDiag('filosA', val); }}/></FormControl></FormItem>)}/>
                                   </div>
                                   <FormField control={detailedForm.control} name="modoVidaA" render={({ field }) => (<FormItem><FormLabel>Calcular Vida Útil por:</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="piezas">Piezas por Filo</SelectItem><SelectItem value="minutos">Minutos por Filo</SelectItem></SelectContent></Select><FormMessage /></FormItem>)}/>
                                   {watchedModoVidaA === 'piezas' ? (
-                                      <FormField control={detailedForm.control} name="piezasFiloA" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                      <FormField control={detailedForm.control} name="piezasFiloA" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDetailToDiag('piezasFiloA', val); }}/></FormControl></FormItem>)}/>
                                   ) : (
                                       <FormField control={detailedForm.control} name="minutosFiloA" render={({ field }) => (<FormItem><FormLabel>Minutos por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/>
                                   )}
                                   <div className="flex space-x-2">
-                                      <FormField control={detailedForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
-                                      <FormField control={detailedForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                      <FormField control={detailedForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDetailToDiag('cicloMinA', val); }}/></FormControl></FormItem>)}/>
+                                      <FormField control={detailedForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDetailToDiag('cicloSegA', val); }}/></FormControl></FormItem>)}/>
                                   </div>
-                                  <FormField control={detailedForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                  <FormField control={detailedForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDetailToDiag('vcA', val); }}/></FormControl></FormItem>)}/>
                                   <FormField control={detailedForm.control} name="notasA" render={({ field }) => (<FormItem><FormLabel>Notas Internas</FormLabel><FormControl><Textarea placeholder="No se imprime..." {...field} /></FormControl></FormItem>)}/>
                               </CardContent>
                           </Card>
@@ -914,7 +909,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                               </CardHeader>
                               <CardContent className="p-6 space-y-4 pt-6">
                                   <FormField control={detailedForm.control} name="descB" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Ej: Inserto de alta vel..." {...field} /></FormControl></FormItem>)}/>
-                                  <FormField control={detailedForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio de Compra (USD)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                  <FormField control={detailedForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio de Compra (USD)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDetailToDiag('precioB', val); }}/></FormControl></FormItem>)}/>
                                   <div className="flex space-x-2">
                                       <FormField control={detailedForm.control} name="insertosPorHerramientaB" render={({ field }) => (<FormItem><FormLabel>Insertos/Herr.</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 1)}/></FormControl></FormItem>)}/>
                                       <FormField control={detailedForm.control} name="filosB" render={({ field }) => (<FormItem><FormLabel>Filos/Inserto</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
@@ -1017,9 +1012,9 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                                   </div>
                               </div>
                           </div>
-                           <footer className="mt-24 pt-4 border-t text-center text-sm text-muted-foreground">
-                              <p>Informe generado con la Herramienta de Productividad de SECOCUT SRL</p>
-                              <p>Contacto: {detailedForm.getValues("contacto") || 'N/A'}</p>
+                           <footer className="mt-24 pt-4 border-t text-center">
+                              <p className="text-sm text-muted-foreground">Informe generado con la Herramienta de Productividad de SECOCUT SRL</p>
+                              <p className="text-sm text-muted-foreground">Contacto: {detailedForm.getValues("contacto") || 'N/A'}</p>
                                <p className="text-lg font-bold text-primary mt-4">Se pueden conseguir Resultados o Excusas, no las dos cosas.</p>
                           </footer>
                       </div>
@@ -1216,3 +1211,5 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     </>
   );
 }
+
+    
