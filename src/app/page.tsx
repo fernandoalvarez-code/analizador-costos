@@ -43,9 +43,6 @@ export default function Home() {
           <Button asChild variant="ghost">
             <Link href="/login">Iniciar Sesión</Link>
           </Button>
-          <Button asChild>
-            <Link href="/signup">Registrarse</Link>
-          </Button>
         </nav>
       </header>
 
@@ -62,7 +59,7 @@ export default function Home() {
               </p>
               <div className="mt-8 flex justify-center gap-4">
                 <Button asChild size="lg">
-                  <Link href="/signup">Empezar Ahora</Link>
+                  <Link href="/login">Empezar Ahora</Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
                   <Link href="#">Saber Más</Link>

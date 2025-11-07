@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview Firestore Security Rules for Analizador de Costos de Corte application.
  *
@@ -58,11 +59,15 @@ service cloud.firestore {
       function isExistingOwner(userId) {
           return isOwner(userId) && resource != null;
       }
+      function isAdmin(userId) {
+        return get(/databases/$(database)/documents/users/$(userId)).data.role == 'admin';
+      }
+
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId) && request.resource.data.userId == request.auth.uid;
-      allow update: if isExistingOwner(userId) && resource.data.userId == request.resource.data.userId;
-      allow delete: if isExistingOwner(userId) && resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && resource.data.userId == request.resource.data.userId && isAdmin(userId);
+      allow delete: if isExistingOwner(userId) && resource.data.userId == userId && isAdmin(userId);
     }
   }
 }

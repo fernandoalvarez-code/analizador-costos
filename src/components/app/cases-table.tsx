@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -17,11 +18,11 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { MoreHorizontal, PlusCircle, Search, Trash2, Eye, ChevronDown, ChevronRight, GripVertical } from "lucide-react";
-import { collection } from "firebase/firestore";
+import { collection, doc } from "firebase/firestore";
 import Link from "next/link";
 
 
-import { useCollection, useFirestore, useUser, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useUser, useMemoFirebase, useDoc } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -60,6 +61,54 @@ type CaseData = {
   cliente: string;
   operacion: string;
   material: string;
+};
+
+type UserProfile = {
+  role: 'admin' | 'user';
+}
+
+const ActionCell = ({ row }: { row: any }) => {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    
+    const userProfileRef = useMemoFirebase(() => {
+        if (!firestore || !user) return null;
+        return doc(firestore, `users/${user.uid}`);
+    }, [firestore, user]);
+
+    const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+    
+    const caseData = row.original;
+    const isAdmin = userProfile?.role === 'admin';
+
+    if (row.getIsGrouped()) return null;
+
+    return (
+        <div className="text-right">
+            <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Abrir menú</span>
+                <MoreHorizontal className="h-4 w-4" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                <DropdownMenuItem asChild disabled={!isAdmin}>
+                    <Link href={`/cases/${caseData.id}`}>
+                        <Eye className="mr-2 h-4 w-4"/>
+                        Ver detalles
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive" disabled={!isAdmin}>
+                    <Trash2 className="mr-2 h-4 w-4"/>
+                    Eliminar caso
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+    );
 };
 
 
@@ -138,36 +187,7 @@ export const columns: ColumnDef<CaseData>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      if (row.getIsGrouped()) return null;
-      const caseData = row.original;
-      return (
-        <div className="text-right">
-            <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Abrir menú</span>
-                <MoreHorizontal className="h-4 w-4" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                <DropdownMenuItem asChild>
-                    <Link href={`/cases/${caseData.id}`}>
-                        <Eye className="mr-2 h-4 w-4"/>
-                        Ver detalles
-                    </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive">
-                    <Trash2 className="mr-2 h-4 w-4"/>
-                    Eliminar caso
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
-      );
-    },
+    cell: ActionCell,
   },
 ];
 
