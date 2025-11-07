@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 
 type CaseData = {
   id: string;
@@ -26,23 +26,24 @@ const StaleCaseChecker = () => {
 
     const checkCases = async () => {
       const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      const notificationsCollection = collection(firestore, 'notifications');
 
       for (const caseData of pendingCases) {
         if (caseData.dateCreated && caseData.dateCreated.seconds * 1000 < thirtyDaysAgo) {
           // Case is stale. Check if a notification already exists.
-          const notificationsCollection = collection(firestore, 'notifications');
           const q = query(notificationsCollection, where('caseId', '==', caseData.id));
           const existingNotifs = await getDocs(q);
 
           if (existingNotifs.empty) {
-            // No notification found, create one.
-            await addDoc(notificationsCollection, {
+            // No notification found, create one using non-blocking update
+            const notificationData = {
               title: 'Caso Pendiente de Seguimiento',
               message: `El caso "${caseData.name}" lleva más de 30 días pendiente.`,
               caseId: caseData.id,
               createdAt: serverTimestamp(),
               readBy: [],
-            });
+            };
+            addDocumentNonBlocking(notificationsCollection, notificationData);
           }
         }
       }
