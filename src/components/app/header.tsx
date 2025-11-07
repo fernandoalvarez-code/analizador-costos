@@ -19,7 +19,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 
-import { useAuth, useUser, useCollection, useFirestore, useMemoFirebase } from "@/firebase/provider";
+import { useAuth, useUser, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import {
   Breadcrumb,
   BreadcrumbItem,
