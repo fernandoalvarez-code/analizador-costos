@@ -100,7 +100,7 @@ const ActionCell = ({ row }: { row: any }) => {
 
     if (row.getIsGrouped()) return null;
 
-    const handleDelete = () => {
+    const handleDelete = React.useCallback(() => {
         if (!firestore || !caseData.id) return;
         const caseDocRef = doc(firestore, 'cuttingToolAnalyses', caseData.id);
         deleteDocumentNonBlocking(caseDocRef);
@@ -108,7 +108,7 @@ const ActionCell = ({ row }: { row: any }) => {
             title: "Caso eliminado",
             description: `El caso "${caseData.name}" ha sido eliminado.`,
         });
-    };
+    }, [firestore, caseData, toast]);
 
     return (
         <div className="text-right">
