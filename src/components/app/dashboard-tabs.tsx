@@ -519,24 +519,6 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
       });
     }
   };
-  
-  const handleQuickPrint = () => {
-    if (quickResult || netSavingsResult) {
-      const printableContent = document.getElementById('quick-print-area');
-      if (printableContent) {
-        document.body.classList.add('printing-quick-report');
-        window.print();
-        document.body.classList.remove('printing-quick-report');
-      }
-    } else {
-       toast({
-        variant: "destructive",
-        title: "Sin resultados para imprimir",
-        description: "Primero debes calcular el punto de equilibrio o el ahorro neto.",
-      });
-    }
-  };
-
 
   const handleSaveCase = async (caseName: string) => {
     if (!detailedResult) {
@@ -678,102 +660,8 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     router.push('/dashboard');
   }
 
-  const QuickReportPrintView = () => {
-    const data = diagnosisForm.getValues();
-    const tcA = parseTimeToMinutes(data.cicloMinA, data.cicloSegA);
-    const nA = (data.filosA || 1) * (data.pzsPorFiloA || 1);
-
-    if (!quickResult && !netSavingsResult) return null;
-
-    return (
-        <div id="quick-print-area" className="printable-area space-y-8">
-            {/* Header */}
-             <div className="cover-page">
-                <header className="flex justify-between items-start">
-                    <div className="cover-logo">SECOCUT SRL</div>
-                    <div className="text-right">
-                        <h1 className="text-4xl font-bold text-primary">Diagnóstico Rápido de Ahorro</h1>
-                        <p className="text-lg text-muted-foreground">Estudio de Productividad</p>
-                    </div>
-                </header>
-                 <div className="cover-content mt-24">
-                     <div className="grid grid-cols-2 gap-8">
-                        <div>
-                            <p className="text-sm text-muted-foreground">Fecha del Análisis</p>
-                            <p className="text-2xl font-semibold">{new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                        </div>
-                    </div>
-                </div>
-                <footer className="mt-24 pt-4 border-t text-center text-sm text-muted-foreground">
-                    <p>Informe generado con la Herramienta de Productividad de SECOCUT SRL</p>
-                    <p className="text-lg font-bold text-primary mt-4">Se pueden conseguir Resultados o Excusas, no las dos cosas.</p>
-                </footer>
-            </div>
-            
-            <div className="report-content page-break-before space-y-6">
-                {/* Datos de Partida */}
-                <div className="no-break-inside">
-                    <h3 className="text-2xl font-bold mb-4">Datos de Partida</h3>
-                    <Table className="compact-table">
-                        <TableBody>
-                            <TableRow><TableCell>Costo Hora-Máquina</TableCell><TableCell className="text-right font-semibold">{formatCurrency(data.costoHoraMaquina)}</TableCell></TableRow>
-                            <TableRow><TableCell>Piezas por Mes (aprox.)</TableCell><TableCell className="text-right font-semibold">{data.piezasAlMes?.toLocaleString()}</TableCell></TableRow>
-                            <TableRow><TableCell className="font-bold pl-6 text-destructive">Herramienta Actual (A)</TableCell><TableCell></TableCell></TableRow>
-                            <TableRow><TableCell className="pl-8">Precio Inserto</TableCell><TableCell className="text-right">{formatCurrency(data.precioA || 0)}</TableCell></TableRow>
-                            <TableRow><TableCell className="pl-8">Rendimiento Total</TableCell><TableCell className="text-right">{nA.toFixed(0)} pzs/inserto</TableCell></TableRow>
-                            <TableRow><TableCell className="pl-8">Tiempo de Ciclo</TableCell><TableCell className="text-right">{formatMinutes(tcA)}</TableCell></TableRow>
-                            <TableRow><TableCell className="font-bold pl-6 text-primary">Herramienta Propuesta (B)</TableCell><TableCell></TableCell></TableRow>
-                            <TableRow><TableCell className="pl-8">Precio Inserto</TableCell><TableCell className="text-right">{formatCurrency(data.precioB || 0)}</TableCell></TableRow>
-                        </TableBody>
-                    </Table>
-                </div>
-                
-                {/* Paso 1: Punto de Equilibrio */}
-                {quickResult && (
-                     <div className="no-break-inside section-spacing">
-                        <h3 className="text-2xl font-bold mb-4 text-center">Paso 1: Objetivos de Punto de Equilibrio</h3>
-                         {quickResult.deltaP > 0 ? (
-                             <>
-                                <p className="text-center text-muted-foreground mb-4">Para justificar un costo extra de {formatCurrency(quickResult.deltaP)} por inserto, se necesita lograr <strong>UNA</strong> de estas dos metas:</p>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <StatCard title="Opción 1: Mejorar Rendimiento" value={`+${quickResult.breakEvenPieces.toFixed(1)} pzs/filo`} isCompact/>
-                                    <StatCard title="Opción 2: Mejorar Velocidad" value={`-${quickResult.breakEvenSeconds.toFixed(2)} seg/pza`} isCompact/>
-                                </div>
-                             </>
-                         ) : (
-                            <div className="text-center text-muted-foreground p-4 bg-green-100/50 rounded-lg">
-                                <p>El Precio B es igual o menor que el Precio A. No hay sobrecosto que justificar. Cualquier mejora resultará en un ahorro directo.</p>
-                            </div>
-                         )}
-                    </div>
-                )}
-                
-                {/* Paso 2: Ahorro Neto */}
-                {netSavingsResult && (
-                    <div className="no-break-inside section-spacing">
-                         <h3 className="text-2xl font-bold mb-4 text-center">Paso 2: Simulación de Ahorro Real</h3>
-                        <div className="text-center mb-6">
-                            <p className="text-lg font-medium">AHORRO NETO ANUAL</p>
-                            <p className={`text-5xl font-bold ${netSavingsResult.netAnnualSavings > 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(netSavingsResult.netAnnualSavings)}</p>
-                            <p className="text-lg text-muted-foreground">Mejora Total: {netSavingsResult.improvementPercentage.toFixed(1)}%</p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <StatCard title="Costo/Pieza Actual (A)" value={formatCurrency(netSavingsResult.cppA)} isCompact />
-                            <StatCard title="Nuevo Costo/Pieza (B)" value={formatCurrency(netSavingsResult.cppB)} isCompact />
-                            <StatCard title="Nuevo Tiempo de Ciclo" value={formatMinutes(netSavingsResult.newCycleTime)} isCompact />
-                            <StatCard title="Nuevo Rendimiento" value={`${netSavingsResult.newToolLife.toFixed(0)} pzs/filo`} isCompact />
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
-
-
   return (
     <>
-      <QuickReportPrintView />
       <Tabs defaultValue={initialData ? "detailed" : "quick"} className="w-full">
         <TabsList className="grid w-full grid-cols-2 no-print">
           <TabsTrigger value="quick" disabled={isReadOnly}>1. Diagnóstico</TabsTrigger>
@@ -911,9 +799,6 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                           
                           <div className="flex gap-4 items-center">
                             <Button type="button" onClick={diagnosisForm.handleSubmit(onNetSavingsSubmit)} variant="default" className="bg-green-600 hover:bg-green-700" disabled={isReadOnly}>Calcular Ahorro Neto Real</Button>
-                            <Button type="button" variant="outline" onClick={handleQuickPrint} disabled={!quickResult && !netSavingsResult}>
-                               <Printer className="mr-2 h-4 w-4" /> Imprimir Resumen
-                            </Button>
                           </div>
                            
                            {netSavingsResult && (

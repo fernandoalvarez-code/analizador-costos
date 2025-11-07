@@ -15,14 +15,6 @@
         margin: 0;
         padding: 0;
     }
-
-    body.printing-quick-report #detailed-print-area {
-        display: none;
-    }
-
-    body:not(.printing-quick-report) #quick-print-area {
-        display: none;
-    }
     
     .no-print {
         display: none !important;
