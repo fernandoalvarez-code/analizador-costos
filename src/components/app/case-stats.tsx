@@ -8,6 +8,7 @@ import { BarChart, BadgeCheck, XCircle, Clock } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 type CaseData = {
   id: string;
@@ -16,18 +17,16 @@ type CaseData = {
 
 const StatCard = ({ title, value, icon, isLoading }: { title: string, value: number, icon: React.ReactNode, isLoading: boolean }) => {
     if (isLoading) {
-        return <Skeleton className="h-[76px] w-full" />
+        return <Skeleton className="h-[48px] w-full" />
     }
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pb-0">
-                <CardTitle className="text-xs font-medium">{title}</CardTitle>
-                {icon}
-            </CardHeader>
-            <CardContent className="p-2 pt-0">
-                <div className="text-lg font-bold">{value}</div>
-            </CardContent>
-        </Card>
+        <div className="flex items-center p-2 border rounded-lg">
+            {icon}
+            <div className="ml-3">
+                <p className="text-xs text-muted-foreground">{title}</p>
+                <p className="text-base font-bold">{value}</p>
+            </div>
+        </div>
     )
 }
 
@@ -63,25 +62,25 @@ export default function CaseStats() {
                 title="Total de Casos"
                 value={stats.total}
                 isLoading={isLoading}
-                icon={<BarChart className="h-4 w-4 text-muted-foreground" />}
+                icon={<BarChart className="h-5 w-5 text-muted-foreground" />}
             />
             <StatCard 
                 title="Casos Exitosos"
                 value={stats.successful}
                 isLoading={isLoading}
-                icon={<BadgeCheck className="h-4 w-4 text-muted-foreground" />}
+                icon={<BadgeCheck className="h-5 w-5 text-green-500" />}
             />
             <StatCard 
                 title="Casos No Exitosos"
                 value={stats.unsuccessful}
                 isLoading={isLoading}
-                icon={<XCircle className="h-4 w-4 text-muted-foreground" />}
+                icon={<XCircle className="h-5 w-5 text-red-500" />}
             />
             <StatCard 
                 title="Casos Pendientes"
                 value={stats.pending}
                 isLoading={isLoading}
-                icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+                icon={<Clock className="h-5 w-5 text-yellow-500" />}
             />
         </div>
     </div>
