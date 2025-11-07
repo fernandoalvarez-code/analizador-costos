@@ -16,16 +16,16 @@ type CaseData = {
 
 const StatCard = ({ title, value, icon, isLoading }: { title: string, value: number, icon: React.ReactNode, isLoading: boolean }) => {
     if (isLoading) {
-        return <Skeleton className="h-28 w-full" />
+        return <Skeleton className="h-24 w-full" />
     }
     return (
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{title}</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+                <CardTitle className="text-xs font-medium">{title}</CardTitle>
                 {icon}
             </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">{value}</div>
+            <CardContent className="p-3 pt-0">
+                <div className="text-xl font-bold">{value}</div>
             </CardContent>
         </Card>
     )
