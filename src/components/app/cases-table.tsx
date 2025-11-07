@@ -85,21 +85,10 @@ function getStatusVariant(status: string) {
     }
 }
 
-const ActionCell = ({ row, user, firestore }: { row: Row<CaseData>, user: User | null, firestore: Firestore | null }) => {
+const ActionCell = ({ row, user, firestore, isAdmin }: { row: Row<CaseData>, user: User | null, firestore: Firestore | null, isAdmin: boolean }) => {
     const { toast } = useToast();
-    
-    const userProfileRef = useMemoFirebase(() => {
-        if (!firestore || !user) return null;
-        return doc(firestore, `users/${user.uid}`);
-    }, [firestore, user]);
-
-    const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
-    
     const caseData = row.original;
-    const isAdmin = userProfile?.role === 'admin';
     const isOwner = user?.uid === caseData.userId;
-
-    if (row.getIsGrouped()) return null;
 
     const handleDelete = React.useCallback(() => {
         if (!firestore || !caseData.id) return;
@@ -151,9 +140,16 @@ export default function CasesTable() {
   const { user } = useUser();
   const router = useRouter();
 
+  const userProfileRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return doc(firestore, `users/${user.uid}`);
+  }, [firestore, user]);
+
+  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+  const isAdmin = userProfile?.role === 'admin';
+
   const casesCollectionRef = useMemoFirebase(() => {
     if (!firestore) return null;
-    // Point to the global collection
     return collection(firestore, `cuttingToolAnalyses`);
   }, [firestore]);
 
@@ -248,9 +244,9 @@ export default function CasesTable() {
       },
       {
         id: "actions",
-        cell: ({ row }) => <ActionCell row={row} user={user} firestore={firestore} />,
+        cell: ({ row }) => <ActionCell row={row} user={user} firestore={firestore} isAdmin={isAdmin} />,
       },
-  ], [user, firestore]);
+  ], [user, firestore, isAdmin]);
   
   const table = useReactTable({
     data: casesData || [],
