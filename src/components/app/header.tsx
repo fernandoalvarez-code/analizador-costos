@@ -151,9 +151,11 @@ export default function AppHeader() {
                             <div className="flex flex-col">
                                 <p className="font-medium">{notif.title}</p>
                                 <p className="text-xs text-muted-foreground">{notif.message}</p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    {formatDistanceToNow(new Date(notif.createdAt.seconds * 1000), { addSuffix: true, locale: es })}
-                                </p>
+                                {notif.createdAt && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        {formatDistanceToNow(new Date(notif.createdAt.seconds * 1000), { addSuffix: true, locale: es })}
+                                    </p>
+                                )}
                             </div>
                         </DropdownMenuItem>
                     ))
