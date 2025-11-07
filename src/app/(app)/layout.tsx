@@ -8,6 +8,7 @@ import AppHeader from "@/components/app/header";
 import AppNav from "@/components/app/nav";
 import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import StaleCaseChecker from "@/components/app/stale-case-checker";
 
 export default function AppLayout({
   children,
@@ -55,6 +56,7 @@ export default function AppLayout({
           <AppHeader />
           <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
             {children}
+            <StaleCaseChecker />
           </main>
         </div>
       </SidebarInset>
