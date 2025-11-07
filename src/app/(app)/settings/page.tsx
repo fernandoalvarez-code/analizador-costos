@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { doc } from 'firebase/firestore';
+import { useTheme } from "next-themes"
 
 
 import { Button } from '@/components/ui/button';
@@ -159,6 +160,7 @@ const UserCreationForm = () => {
 }
 
 export default function SettingsPage() {
+  const { setTheme } = useTheme()
   const { user } = useUser();
   const firestore = useFirestore();
 
@@ -250,7 +252,7 @@ export default function SettingsPage() {
           <CardContent>
             <div className="space-y-2">
               <Label htmlFor="theme-select">Tema</Label>
-              <Select defaultValue="system">
+               <Select onValueChange={(theme) => setTheme(theme)} defaultValue="system">
                 <SelectTrigger id="theme-select">
                   <SelectValue placeholder="Selecciona un tema" />
                 </SelectTrigger>
