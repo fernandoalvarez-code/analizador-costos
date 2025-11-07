@@ -2,7 +2,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@/firebase/provider";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { useUser, useFirestore } from "@/firebase/provider";
 import AppHeader from "@/components/app/header";
 import AppNav from "@/components/app/nav";
 import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";
@@ -14,13 +15,27 @@ export default function AppLayout({
   children: React.ReactNode;
 }>) {
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const router = useRouter();
 
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push("/login");
+    } else if (!isUserLoading && user && firestore) {
+      // Ensure user profile exists
+      const userDocRef = doc(firestore, 'users', user.uid);
+      getDoc(userDocRef).then(docSnap => {
+        if (!docSnap.exists()) {
+          // If the document doesn't exist, create it with a default role.
+          setDoc(userDocRef, {
+            id: user.uid,
+            email: user.email,
+            role: 'user', // Assign default role
+          }, { merge: true });
+        }
+      });
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, firestore]);
 
   if (isUserLoading || !user) {
     return (
