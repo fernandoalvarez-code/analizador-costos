@@ -90,7 +90,7 @@ const ActionCell = ({ row, user, firestore, isAdmin }: { row: Row<CaseData>, use
     const caseData = row.original;
     const isOwner = user?.uid === caseData.userId;
 
-    const handleDelete = React.useCallback(() => {
+    const handleDelete = () => {
         if (!firestore || !caseData.id) return;
         const caseDocRef = doc(firestore, 'cuttingToolAnalyses', caseData.id);
         deleteDocumentNonBlocking(caseDocRef);
@@ -98,7 +98,7 @@ const ActionCell = ({ row, user, firestore, isAdmin }: { row: Row<CaseData>, use
             title: "Caso eliminado",
             description: `El caso "${caseData.name}" ha sido eliminado.`,
         });
-    }, [firestore, caseData, toast]);
+    };
 
     return (
         <div className="text-right">
@@ -159,7 +159,7 @@ export default function CasesTable() {
   const [globalFilter, setGlobalFilter] = React.useState('');
   const [grouping, setGrouping] = React.useState<GroupingState>([]);
 
-  const columns: ColumnDef<CaseData>[] = React.useMemo(() => [
+  const columns = React.useMemo<ColumnDef<CaseData>[]>(() => [
       {
         accessorKey: "name",
         header: "Nombre del Caso",
