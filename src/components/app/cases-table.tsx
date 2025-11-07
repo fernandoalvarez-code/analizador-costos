@@ -116,7 +116,7 @@ const ActionCell = ({ row }: { row: any }) => {
                     </Link>
                 </DropdownMenuItem>
                  <DropdownMenuItem asChild disabled={!isAdmin && !isOwner}>
-                    <Link href={`/cases/${caseData.id}`}>
+                    <Link href={`/cases/${caseData.id}?edit=true`}>
                         <Edit className="mr-2 h-4 w-4"/>
                         Editar
                     </Link>
@@ -368,3 +368,5 @@ export default function CasesTable() {
     </Card>
   );
 }
+
+    
