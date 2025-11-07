@@ -68,5 +68,16 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if isResourceOwner(resource) || isRequestingUserAdmin();
     }
+
+    /**
+     * @description Enforces access control for notifications.
+     * @path /notifications/{notificationId}
+     * @allow (read) - Any authenticated user can read notifications.
+     * @allow (write) - Writes are disallowed from the client to prevent spam/abuse.
+     */
+    match /notifications/{notificationId} {
+        allow read: if request.auth != null;
+        allow write: if false; // Notifications should be created server-side or via controlled functions
+    }
   }
 }
