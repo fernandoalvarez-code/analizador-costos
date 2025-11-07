@@ -543,6 +543,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
 
     const historyEntry = {
       modifiedBy: user.uid,
+      lastModifiedByEmail: user.email,
       modifiedAt: new Date(), // Use client-side timestamp for history arrays
       snapshot: formValues, // Snapshot of the form state
     };
@@ -550,7 +551,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     const fullCaseData = {
       ...formValues,
       results: detailedResult,
-      userId: user.uid,
+      userId: isExistingCase ? initialData.userId : user.uid,
       name: caseName,
       annualSavings: detailedResult.ahorroAnual,
       roi: detailedResult.roi,
@@ -559,10 +560,13 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
         ? { 
             dateModified: serverTimestamp(),
             modifiedBy: user.uid,
+            lastModifiedByEmail: user.email,
             history: [...(initialData.history || []), historyEntry],
           } 
         : { 
             dateCreated: serverTimestamp(),
+            modifiedBy: user.uid,
+            lastModifiedByEmail: user.email,
             history: [historyEntry],
           }),
     };
@@ -591,7 +595,10 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
       description: `El caso "${caseName}" ha sido ${isExistingCase ? 'actualizado' : 'guardado'} con éxito.`,
     });
     setSaveAlertOpen(false);
-    router.push('/cases');
+    // Only redirect if it's a new case
+    if (!isExistingCase) {
+      router.push('/cases');
+    }
   };
   
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD' }).format(value);

@@ -63,6 +63,10 @@
             "type": "string",
             "description": "Reference to the User who last modified this analysis."
         },
+        "lastModifiedByEmail": {
+          "type": "string",
+          "description": "Email of the user who last modified the case."
+        },
         "history": {
             "type": "array",
             "description": "A log of changes made to the analysis case.",
@@ -71,7 +75,8 @@
                 "properties": {
                     "modifiedBy": { "type": "string" },
                     "modifiedAt": { "type": "string", "format": "date-time" },
-                    "snapshot": { "type": "object" }
+                    "snapshot": { "type": "object" },
+                    "lastModifiedByEmail": { "type": "string" }
                 }
             }
         },

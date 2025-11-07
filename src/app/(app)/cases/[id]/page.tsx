@@ -1,10 +1,9 @@
 
 'use client';
 
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import React, { Suspense, useEffect } from 'react';
-
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 
 import DashboardTabs from '@/components/app/dashboard-tabs';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -39,17 +38,48 @@ function CaseDetailContent() {
 
   const caseDocRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
-    return doc(firestore, `cuttingToolAnalyses/${id}`);
+    return doc(firestore, `cuttingToolAnalyses/${id as string}`);
   }, [firestore, id]);
 
   const { data: caseData, isLoading } = useDoc(caseDocRef);
-  const [status, setStatus] = React.useState(caseData?.status || 'Pendiente');
+  const [status, setStatus] = useState(caseData?.status || 'Pendiente');
+  
+  // Ref to track the initial data load
+  const isInitialLoad = useRef(true);
 
   useEffect(() => {
-    if (caseData?.status) {
+    if (caseData) {
       setStatus(caseData.status);
+
+      // --- Concurrency Check ---
+      // Skip on initial load
+      if (isInitialLoad.current) {
+        isInitialLoad.current = false;
+        return;
+      }
+      
+      // Check if the document was modified by another user
+      if (caseData.modifiedBy && user && caseData.modifiedBy !== user.uid) {
+        toast({
+          title: "Caso Actualizado",
+          description: `Este caso fue actualizado por ${caseData.lastModifiedByEmail || 'otro usuario'}. Tus cambios podrían ser sobreescritos.`,
+          variant: "default",
+          duration: 5000,
+        });
+
+        // If current user is in edit mode, force them out to prevent overwrites
+        if (isEditMode) {
+          router.replace(`/cases/${id}`);
+          toast({
+            title: "Modo Edición Desactivado",
+            description: "Se ha desactivado el modo de edición para evitar la pérdida de datos. Por favor, revisa los cambios.",
+            variant: "destructive",
+            duration: 6000
+          })
+        }
+      }
     }
-  }, [caseData]);
+  }, [caseData, user, toast, router, id, isEditMode]);
   
   const handleEnableEditing = () => {
     router.push(`/cases/${id}?edit=true`);
@@ -60,8 +90,13 @@ function CaseDetailContent() {
   };
 
   const handleSaveStatus = () => {
-    if (!caseDocRef) return;
-    setDocumentNonBlocking(caseDocRef, { status: status }, { merge: true });
+    if (!caseDocRef || !user) return;
+    setDocumentNonBlocking(caseDocRef, { 
+      status: status,
+      modifiedBy: user.uid,
+      lastModifiedByEmail: user.email,
+      dateModified: new Date(),
+    }, { merge: true });
     toast({
         title: "Estado actualizado",
         description: `El estado del caso ha sido cambiado a "${status}".`
