@@ -1010,6 +1010,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                          <footer className="mt-24 pt-4 border-t text-center text-sm text-muted-foreground">
                             <p>Informe generado con la Herramienta de Productividad de SECOCUT SRL</p>
                             <p>Contacto: {detailedForm.getValues("contacto") || 'N/A'}</p>
+                             <p className="text-lg font-bold text-primary mt-4">Se pueden conseguir Resultados o Excusas, no las dos cosas.</p>
                         </footer>
                     </div>
                     
