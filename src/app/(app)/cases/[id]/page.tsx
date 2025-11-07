@@ -6,17 +6,17 @@ import { useParams } from 'next/navigation';
 
 import DashboardTabs from '@/components/app/dashboard-tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 
 export default function CaseDetailPage() {
   const { id } = useParams();
-  const { user } = useUser();
   const firestore = useFirestore();
 
   const caseDocRef = useMemoFirebase(() => {
-    if (!firestore || !user || !id) return null;
-    return doc(firestore, `users/${user.uid}/cuttingToolAnalyses/${id}`);
-  }, [firestore, user, id]);
+    if (!firestore || !id) return null;
+    // Point to the global collection
+    return doc(firestore, `cuttingToolAnalyses/${id}`);
+  }, [firestore, id]);
 
   const { data: caseData, isLoading } = useDoc(caseDocRef);
 

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -565,10 +566,10 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
 
 
     if (isExistingCase) {
-      const caseDocRef = doc(firestore, "users", user.uid, "cuttingToolAnalyses", initialData.id);
+      const caseDocRef = doc(firestore, "cuttingToolAnalyses", initialData.id);
       setDocumentNonBlocking(caseDocRef, fullCaseData, { merge: true });
     } else {
-      const casesCollection = collection(firestore, "users", user.uid, "cuttingToolAnalyses");
+      const casesCollection = collection(firestore, "cuttingToolAnalyses");
       addDocumentNonBlocking(casesCollection, fullCaseData);
     }
     
@@ -1088,7 +1089,7 @@ export default function DashboardTabs({ initialData }: DashboardTabsProps) {
                             </div>
                         </div>
                         
-                        <div className="mb-8 mt-8 no-break-inside compact-table">
+                        <div className="mb-8 mt-8 no-break-inside compact-table section-spacing">
                           <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Datos Detallados</h3>
                           <div className="overflow-x-auto rounded-lg border">
                               <Table>

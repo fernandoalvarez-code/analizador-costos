@@ -17,8 +17,8 @@ import {
   getExpandedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { MoreHorizontal, PlusCircle, Search, Trash2, Eye, ChevronDown, ChevronRight, GripVertical } from "lucide-react";
-import { collection, doc } from "firebase/firestore";
+import { MoreHorizontal, PlusCircle, Search, Trash2, Eye, ChevronDown, ChevronRight, GripVertical, Edit } from "lucide-react";
+import { collection, doc, deleteDoc } from "firebase/firestore";
 import Link from "next/link";
 
 
@@ -46,6 +46,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 const formatCurrency = (value: number | undefined) => {
     if (typeof value !== 'number' || !isFinite(value)) return 'N/A';
@@ -54,6 +56,7 @@ const formatCurrency = (value: number | undefined) => {
 
 type CaseData = {
   id: string;
+  userId: string;
   name: string;
   dateCreated: { seconds: number; nanoseconds: number; };
   annualSavings: number;
@@ -70,6 +73,7 @@ type UserProfile = {
 const ActionCell = ({ row }: { row: any }) => {
     const { user } = useUser();
     const firestore = useFirestore();
+    const { toast } = useToast();
     
     const userProfileRef = useMemoFirebase(() => {
         if (!firestore || !user) return null;
@@ -78,10 +82,21 @@ const ActionCell = ({ row }: { row: any }) => {
 
     const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
     
-    const caseData = row.original;
+    const caseData = row.original as CaseData;
     const isAdmin = userProfile?.role === 'admin';
+    const isOwner = user?.uid === caseData.userId;
 
     if (row.getIsGrouped()) return null;
+
+    const handleDelete = () => {
+        if (!firestore || !caseData.id) return;
+        const caseDocRef = doc(firestore, 'cuttingToolAnalyses', caseData.id);
+        deleteDocumentNonBlocking(caseDocRef);
+        toast({
+            title: "Caso eliminado",
+            description: `El caso "${caseData.name}" ha sido eliminado.`,
+        });
+    };
 
     return (
         <div className="text-right">
@@ -94,14 +109,20 @@ const ActionCell = ({ row }: { row: any }) => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                <DropdownMenuItem asChild disabled={!isAdmin}>
+                <DropdownMenuItem asChild>
                     <Link href={`/cases/${caseData.id}`}>
                         <Eye className="mr-2 h-4 w-4"/>
                         Ver detalles
                     </Link>
                 </DropdownMenuItem>
+                 <DropdownMenuItem asChild disabled={!isAdmin && !isOwner}>
+                    <Link href={`/cases/${caseData.id}`}>
+                        <Edit className="mr-2 h-4 w-4"/>
+                        Editar
+                    </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive" disabled={!isAdmin}>
+                <DropdownMenuItem className="text-destructive" disabled={!isAdmin && !isOwner} onClick={handleDelete}>
                     <Trash2 className="mr-2 h-4 w-4"/>
                     Eliminar caso
                 </DropdownMenuItem>
@@ -192,14 +213,14 @@ export const columns: ColumnDef<CaseData>[] = [
 ];
 
 export default function CasesTable() {
-  const { user } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
 
   const casesCollectionRef = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, `users/${user.uid}/cuttingToolAnalyses`);
-  }, [firestore, user]);
+    if (!firestore) return null;
+    // Point to the global collection
+    return collection(firestore, `cuttingToolAnalyses`);
+  }, [firestore]);
 
   const { data: casesData, isLoading } = useCollection<CaseData>(casesCollectionRef);
 

@@ -3,33 +3,31 @@
  * @fileoverview Firestore Security Rules for Analizador de Costos de Corte application.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model. Each user can only access their own data,
- * and no data is publicly accessible without authentication. Admins have elevated privileges.
+ * This ruleset enforces a user-ownership model for modifications but allows global read access
+ * for key data like cutting tool analyses to promote knowledge sharing.
  *
  * Data Structure:
  * - /users/{userId}: Stores user profiles, including a 'role' field ('admin' or 'user').
- *   - An admin can create/edit any user profile.
- *   - A user can only edit their own profile.
- * - /users/{userId}/cuttingToolAnalyses/{cuttingToolAnalysisId}: Stores cutting tool analysis cases.
- *   - An admin can read/write/update/delete any analysis.
- *   - A user can only manage their own analysis cases.
+ * - /cuttingToolAnalyses/{analysisId}: A global collection of all analysis cases.
+ *   - Any authenticated user can read all cases.
+ *   - Only the original creator ('userId' field) or an admin can update/delete a case.
  *
  * Key Security Decisions:
- * - User listing is explicitly denied.
- * - Path-based ownership is the primary security mechanism for regular users.
- * - Admin role provides override capabilities for management purposes.
+ * - User data is private.
+ * - Cutting tool analyses are public to all logged-in users.
+ * - Write/Delete permissions on analyses are restricted to owners and admins to maintain data integrity.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Determines if the requesting user is the owner of the document.
-     * @param userId The ID of the user to check against the authenticated user.
+     * @description Determines if the requesting user is the owner of the document based on a 'userId' field.
+     * @param resource The resource document being accessed.
      * @returns boolean
      */
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
+    function isResourceOwner(resource) {
+      return request.auth != null && request.auth.uid == resource.data.userId;
     }
 
     /**
@@ -44,34 +42,31 @@ service cloud.firestore {
     /**
      * @description Enforces access control for user profiles.
      * @path /users/{userId}
-     * @allow (get) - Authenticated user can get their own profile. Admins can get any profile.
-     * @allow (update) - Authenticated user can update their own profile. Admins can update any profile.
-     * @allow (create) - Admins can create new user profiles. A new user can create their own profile.
+     * @allow (get, update) - Authenticated user can get/update their own profile. Admins can manage any profile.
+     * @allow (create) - A new user can create their own profile. Admins can create new user profiles.
      * @deny (list, delete) - Prevents listing or deleting users.
      */
     match /users/{userId} {
-      allow get, update: if isOwner(userId) || isRequestingUserAdmin();
+      function isOwner() {
+        return request.auth != null && request.auth.uid == userId;
+      }
+      allow get, update: if isOwner() || isRequestingUserAdmin();
       allow list: if false;
-      allow create: if isRequestingUserAdmin() || (isOwner(userId) && request.resource.data.role == 'user');
+      allow create: if isRequestingUserAdmin() || (isOwner() && request.resource.data.role == 'user');
       allow delete: if false; // Protect against accidental deletion
     }
 
     /**
-     * @description Enforces access control for cutting tool analysis cases.
-     * @path /users/{userId}/cuttingToolAnalyses/{cuttingToolAnalysisId}
-     * @allow (get, list) - Owner or an admin can read cases.
-     * @allow (create) - Owner can create a case under their own ID.
-     * @allow (update, delete) - Only an admin can update or delete a case. This ensures data integrity.
-     * @principle Enforces document ownership for users and broad access for admins.
+     * @description Enforces access control for the global cutting tool analysis collection.
+     * @path /cuttingToolAnalyses/{analysisId}
+     * @allow (get, list) - Any authenticated user can read any case.
+     * @allow (create) - Any authenticated user can create a new case, ensuring they set themselves as the owner.
+     * @allow (update, delete) - Only the original owner or an admin can update or delete a case.
      */
-    match /users/{userId}/cuttingToolAnalyses/{cuttingToolAnalysisId} {
-        function isExistingOwner(userId) {
-            return isOwner(userId) && resource != null;
-        }
-
-        allow get, list: if isOwner(userId) || isRequestingUserAdmin();
-        allow create: if isOwner(userId) && request.resource.data.userId == request.auth.uid;
-        allow update, delete: if isRequestingUserAdmin();
+    match /cuttingToolAnalyses/{analysisId} {
+      allow get, list: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isResourceOwner(resource) || isRequestingUserAdmin();
     }
   }
 }
