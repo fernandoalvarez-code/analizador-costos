@@ -50,7 +50,13 @@ function getBreadcrumb(path: string) {
             return 'Gestión de Casos';
         case 'insights':
             return 'Perspectivas de IA';
+        case 'settings':
+            return 'Configuración';
         default:
+            // For dynamic routes like /cases/[id]
+            if (segments.length > 1 && segments[0] === 'cases') {
+                return 'Detalle del Caso';
+            }
             return pageName.charAt(0).toUpperCase() + pageName.slice(1);
     }
 }
@@ -102,10 +108,35 @@ export default function AppHeader() {
               className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
             />
         </form>
-        <Button variant="ghost" size="icon" className="rounded-full">
-            <Bell className="h-5 w-5" />
-            <span className="sr-only">Toggle notifications</span>
-        </Button>
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                    <Bell className="h-5 w-5" />
+                    <span className="sr-only">Toggle notifications</span>
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuLabel>Notificaciones</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                    <div className="flex flex-col">
+                        <p className="font-medium">Informe de Ahorro Generado</p>
+                        <p className="text-xs text-muted-foreground">Tu informe "Optimización Cliente X" está listo para ver.</p>
+                    </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                     <div className="flex flex-col">
+                        <p className="font-medium">Nuevo Caso de Éxito</p>
+                        <p className="text-xs text-muted-foreground">Se añadió un nuevo caso sobre fresado en titanio.</p>
+                    </div>
+                </DropdownMenuItem>
+                 <DropdownMenuSeparator />
+                 <DropdownMenuItem className="justify-center text-sm text-primary hover:underline">
+                    Ver todas las notificaciones
+                 </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
