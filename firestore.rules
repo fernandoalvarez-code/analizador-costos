@@ -4,18 +4,21 @@
  *
  * Core Philosophy:
  * This ruleset enforces a user-ownership model for modifications but allows global read access
- * for key data like cutting tool analyses to promote knowledge sharing.
+ * for key data like cutting tool analyses to promote knowledge sharing. It leverages
+ * custom authentication tokens (claims) for role-based access control (RBAC) to ensure
+ * scalability and offline compatibility.
  *
- * Data Structure:
- * - /users/{userId}: Stores user profiles, including a 'role' field ('admin' or 'user').
+ * Data Structure & Auth Claims:
+ * - /users/{userId}: Stores public user profiles. The 'role' is primarily read from the auth token.
  * - /cuttingToolAnalyses/{analysisId}: A global collection of all analysis cases.
- *   - Any authenticated user can read all cases.
- *   - Only the original creator ('userId' field) or an admin can update/delete a case.
+ * - Custom Claim 'role': Each user's auth token contains a `role` claim ('admin' or 'user').
  *
  * Key Security Decisions:
- * - User data is private.
+ * - User data is private to the owner, but admins can read/write it.
+ * - Role verification (`isAdmin`) is done via `request.auth.token.role`, which is fast, secure,
+ *   and works offline, avoiding server-side `get()` calls in rules.
  * - Cutting tool analyses are public to all logged-in users.
- * - Write/Delete permissions on analyses are restricted to owners and admins to maintain data integrity.
+ * - Write/Delete permissions on analyses are restricted to owners and admins.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -31,12 +34,12 @@ service cloud.firestore {
     }
 
     /**
-     * @description Checks if the requesting user has the 'admin' role.
-     * It fetches the user's profile from the /users collection.
+     * @description Checks if the requesting user has the 'admin' role by reading custom claims from their auth token.
+     * This method is fast, secure, and works offline.
      * @returns boolean
      */
     function isRequestingUserAdmin() {
-      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return request.auth != null && request.auth.token.role == 'admin';
     }
 
     /**
@@ -73,11 +76,14 @@ service cloud.firestore {
      * @description Enforces access control for notifications.
      * @path /notifications/{notificationId}
      * @allow (read) - Any authenticated user can read notifications.
-     * @allow (write) - Writes are disallowed from the client to prevent spam/abuse.
+     * @allow (write) - Client-side writes are only allowed if the request comes from an admin (e.g., a stale case notification function).
+     *                 For more security, this would typically be a Cloud Function.
      */
     match /notifications/{notificationId} {
         allow read: if request.auth != null;
-        allow write: if false; // Notifications should be created server-side or via controlled functions
+        // Allow admins to create notifications. This is a temporary measure for the stale case checker.
+        allow create: if isRequestingUserAdmin();
+        allow update, delete: if false;
     }
   }
 }

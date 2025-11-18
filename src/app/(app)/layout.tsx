@@ -9,6 +9,7 @@ import AppNav from "@/components/app/nav";
 import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import StaleCaseChecker from "@/components/app/stale-case-checker";
+import { setCustomUserClaims } from "@/firebase/auth/set-custom-claims";
 
 export default function AppLayout({
   children,
@@ -23,18 +24,36 @@ export default function AppLayout({
     if (!isUserLoading && !user) {
       router.push("/login");
     } else if (!isUserLoading && user && firestore) {
-      // Ensure user profile exists
       const userDocRef = doc(firestore, 'users', user.uid);
-      getDoc(userDocRef).then(docSnap => {
+      
+      const setupUser = async () => {
+        const docSnap = await getDoc(userDocRef);
         if (!docSnap.exists()) {
-          // If the document doesn't exist, create it with a default role.
-          setDoc(userDocRef, {
+          const defaultRole = 'user';
+          // 1. Create Firestore document
+          await setDoc(userDocRef, {
             id: user.uid,
             email: user.email,
-            role: 'user', // Assign default role
+            role: defaultRole,
           }, { merge: true });
+
+          // 2. Set custom claims for the new user
+          await setCustomUserClaims({ uid: user.uid, claims: { role: defaultRole } });
+
+          // 3. Force refresh the token to get the new claims on the client
+          await user.getIdToken(true);
+        } else {
+            // If user exists, check if claims are set. This is a fallback.
+            const idTokenResult = await user.getIdTokenResult();
+            if (!idTokenResult.claims.role) {
+                const existingRole = docSnap.data()?.role || 'user';
+                await setCustomUserClaims({ uid: user.uid, claims: { role: existingRole } });
+                await user.getIdToken(true);
+            }
         }
-      });
+      };
+
+      setupUser().catch(console.error);
     }
   }, [user, isUserLoading, router, firestore]);
 
