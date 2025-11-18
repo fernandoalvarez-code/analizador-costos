@@ -25,15 +25,6 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Determines if the requesting user is the owner of the document based on a 'userId' field.
-     * @param resource The resource document being accessed.
-     * @returns boolean
-     */
-    function isResourceOwner(resource) {
-      return request.auth != null && request.auth.uid == resource.data.userId;
-    }
-
-    /**
      * @description Checks if the requesting user has the 'admin' role by reading custom claims from their auth token.
      * This method is fast, secure, and works offline.
      * @returns boolean
@@ -41,6 +32,17 @@ service cloud.firestore {
     function isRequestingUserAdmin() {
       return request.auth != null && request.auth.token.role == 'admin';
     }
+    
+    /**
+     * @description Checks if the requesting user is the owner of the document being accessed.
+     * This is the correct way to check for ownership as it explicitly fetches the document from the server.
+     * @param docId The ID of the document to check.
+     * @returns boolean
+     */
+    function isOwner(docId) {
+        return get(/databases/$(database)/documents/cuttingToolAnalyses/$(docId)).data.userId == request.auth.uid;
+    }
+
 
     /**
      * @description Enforces access control for user profiles.
@@ -50,12 +52,12 @@ service cloud.firestore {
      * @deny (list, delete) - Prevents listing or deleting users.
      */
     match /users/{userId} {
-      function isOwner() {
+      function isSelf() {
         return request.auth != null && request.auth.uid == userId;
       }
-      allow get, update: if isOwner() || isRequestingUserAdmin();
+      allow get, update: if isSelf() || isRequestingUserAdmin();
       allow list: if false;
-      allow create: if isRequestingUserAdmin() || (isOwner() && request.resource.data.role == 'user');
+      allow create: if isRequestingUserAdmin() || (isSelf() && request.resource.data.role == 'user');
       allow delete: if false; // Protect against accidental deletion
     }
 
@@ -69,7 +71,7 @@ service cloud.firestore {
     match /cuttingToolAnalyses/{analysisId} {
       allow get, list: if request.auth != null;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isResourceOwner(resource) || isRequestingUserAdmin();
+      allow update, delete: if isOwner(analysisId) || isRequestingUserAdmin();
     }
 
     /**
