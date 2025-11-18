@@ -19,6 +19,8 @@
  *   and works offline, avoiding server-side `get()` calls in rules.
  * - Cutting tool analyses are public to all logged-in users.
  * - Write/Delete permissions on analyses are restricted to owners and admins.
+ * - Update operations work offline by ensuring the `userId` field is immutable.
+ * - Delete operations require an online connection to verify ownership securely.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -33,17 +35,6 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.role == 'admin';
     }
     
-    /**
-     * @description Checks if the requesting user is the owner of the document being accessed.
-     * This is the correct way to check for ownership as it explicitly fetches the document from the server.
-     * @param docId The ID of the document to check.
-     * @returns boolean
-     */
-    function isOwner(docId) {
-        return get(/databases/$(database)/documents/cuttingToolAnalyses/$(docId)).data.userId == request.auth.uid;
-    }
-
-
     /**
      * @description Enforces access control for user profiles.
      * @path /users/{userId}
@@ -66,12 +57,22 @@ service cloud.firestore {
      * @path /cuttingToolAnalyses/{analysisId}
      * @allow (get, list) - Any authenticated user can read any case.
      * @allow (create) - Any authenticated user can create a new case, ensuring they set themselves as the owner.
-     * @allow (update, delete) - Only the original owner or an admin can update or delete a case.
+     * @allow (update) - Only the original owner or an admin can update. The owner's userId cannot be changed. This rule works offline.
+     * @allow (delete) - Only the original owner or an admin can delete. This rule requires an online connection to work.
      */
     match /cuttingToolAnalyses/{analysisId} {
       allow get, list: if request.auth != null;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isOwner(analysisId) || isRequestingUserAdmin();
+      
+      // Allow update if the user is an admin, OR if they are the owner and are not trying to change the owner.
+      // This works offline for the owner because it doesn't need to read the existing document.
+      allow update: if isRequestingUserAdmin() || 
+                     (request.resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId);
+
+      // Allow delete if the user is an admin OR if they are the owner.
+      // This requires reading the document, so it will only work online.
+      allow delete: if isRequestingUserAdmin() || 
+                     get(/databases/$(database)/documents/cuttingToolAnalyses/$(analysisId)).data.userId == request.auth.uid;
     }
 
     /**
