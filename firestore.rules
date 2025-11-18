@@ -67,12 +67,13 @@ service cloud.firestore {
       // Allow update if the user is an admin, OR if they are the owner and are not trying to change the owner.
       // This works offline for the owner because it doesn't need to read the existing document.
       allow update: if isRequestingUserAdmin() || 
-                     (request.resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId);
+                     (request.auth != null && request.resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId);
 
       // Allow delete if the user is an admin OR if they are the owner.
-      // This requires reading the document, so it will only work online.
+      // This requires reading the document, so it will only work online. Offline delete attempts will be denied
+      // by the rules and queued by the SDK to retry on reconnection.
       allow delete: if isRequestingUserAdmin() || 
-                     get(/databases/$(database)/documents/cuttingToolAnalyses/$(analysisId)).data.userId == request.auth.uid;
+                     (request.auth != null && get(/databases/$(database)/documents/cuttingToolAnalyses/$(analysisId)).data.userId == request.auth.uid);
     }
 
     /**
