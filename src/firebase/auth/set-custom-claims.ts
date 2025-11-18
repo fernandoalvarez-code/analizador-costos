@@ -17,7 +17,7 @@ export async function setCustomUserClaims(params: SetCustomClaimsParams) {
 
   try {
     // Ensure the admin app is initialized
-    initializeAdminApp();
+    await initializeAdminApp();
 
     // Set custom claims
     await getAuth().setCustomUserClaims(uid, claims);

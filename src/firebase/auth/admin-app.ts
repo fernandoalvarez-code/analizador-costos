@@ -14,7 +14,7 @@ import { credential } from 'firebase-admin';
  * environment variable to point to your service account key file.
  * e.g., export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/service-account-file.json"
  */
-export function initializeAdminApp(): App {
+export async function initializeAdminApp(): Promise<App> {
   // If the app is already initialized, return it.
   if (getApps().length) {
     return getApps()[0];
