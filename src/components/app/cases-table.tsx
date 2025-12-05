@@ -100,8 +100,6 @@ const ActionCell = ({ row, user, firestore, isAdmin }: { row: Row<CaseData>, use
     const caseData = row.original;
     const isOwner = user?.uid === caseData.userId;
     const { toast } = useToast();
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-
 
     function handleDelete() {
         if (!firestore || !caseData.id) return;
@@ -111,12 +109,11 @@ const ActionCell = ({ row, user, firestore, isAdmin }: { row: Row<CaseData>, use
           title: "Caso eliminado",
           description: `El caso "${caseData.name}" ha sido eliminado.`,
         });
-        setIsDeleteDialogOpen(false);
     };
 
     return (
         <div className="text-right">
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialog>
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">
