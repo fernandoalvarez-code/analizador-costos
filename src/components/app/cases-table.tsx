@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -98,7 +99,7 @@ function getStatusVariant(status: string) {
 const ActionCell = ({ row, user, firestore, isAdmin }: { row: Row<CaseData>, user: User | null, firestore: Firestore | null, isAdmin: boolean }) => {
     const caseData = row.original;
     const isOwner = user?.uid === caseData.userId;
-    const toast = useToast();
+    const { toast } = useToast();
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
 
 
@@ -106,7 +107,10 @@ const ActionCell = ({ row, user, firestore, isAdmin }: { row: Row<CaseData>, use
         if (!firestore || !caseData.id) return;
         const caseDocRef = doc(firestore, 'cuttingToolAnalyses', caseData.id);
         deleteDocumentNonBlocking(caseDocRef);
-        // The toast notification is now handled by the useEffect in the main table component
+        toast({
+          title: "Caso eliminado",
+          description: `El caso "${caseData.name}" ha sido eliminado.`,
+        });
         setIsDeleteDialogOpen(false);
     };
 
@@ -173,26 +177,11 @@ const ActionCell = ({ row, user, firestore, isAdmin }: { row: Row<CaseData>, use
 const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseData[], isLoading: boolean, user: User | null, isAdmin: boolean }) => {
   const firestore = useFirestore();
   const router = useRouter();
-  const { toast } = useToast();
-  const prevCasesDataRef = React.useRef<CaseData[]>();
-
+  
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
   const [grouping, setGrouping] = React.useState<GroupingState>([]);
   
-  React.useEffect(() => {
-    if (prevCasesDataRef.current && casesData && prevCasesDataRef.current.length > casesData.length) {
-      const deletedCase = prevCasesDataRef.current.find(prevCase => !casesData.some(currentCase => currentCase.id === prevCase.id));
-      if (deletedCase) {
-        toast({
-          title: "Caso eliminado",
-          description: `El caso "${deletedCase.name}" ha sido eliminado.`,
-        });
-      }
-    }
-    prevCasesDataRef.current = casesData;
-  }, [casesData, toast]);
-
   const columns = React.useMemo<ColumnDef<CaseData>[]>(() => [
       {
         accessorKey: "name",
@@ -280,7 +269,7 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
         id: "actions",
         cell: ({ row }) => <ActionCell row={row} user={user} firestore={firestore} isAdmin={isAdmin} />,
       },
-  ], [user, firestore, isAdmin, toast]);
+  ], [user, firestore, isAdmin]);
   
   const table = useReactTable({
     data: casesData || [],
