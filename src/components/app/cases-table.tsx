@@ -16,7 +16,7 @@ import {
   Row,
   getFilteredRowModel,
 } from "@tanstack/react-table";
-import { MoreHorizontal, PlusCircle, Search, Trash2, Eye, ChevronDown, ChevronRight, GripVertical, Edit } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Search, Trash2, Eye, ChevronDown, ChevronRight, GripVertical, Edit, Printer } from "lucide-react";
 import { collection, doc } from "firebase/firestore";
 import Link from "next/link";
 import { User } from "firebase/auth";
@@ -95,20 +95,24 @@ function getStatusVariant(status: string) {
     }
 }
 
-const ActionCell = ({ row, user, firestore, isAdmin, onDelete }: { row: Row<CaseData>, user: User | null, firestore: Firestore | null, isAdmin: boolean, onDelete: (caseName: string) => void }) => {
+const ActionCell = ({ row, user, firestore, isAdmin }: { row: Row<CaseData>, user: User | null, firestore: Firestore | null, isAdmin: boolean }) => {
     const caseData = row.original;
     const isOwner = user?.uid === caseData.userId;
+    const toast = useToast();
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+
 
     function handleDelete() {
         if (!firestore || !caseData.id) return;
         const caseDocRef = doc(firestore, 'cuttingToolAnalyses', caseData.id);
         deleteDocumentNonBlocking(caseDocRef);
-        onDelete(caseData.name);
+        // The toast notification is now handled by the useEffect in the main table component
+        setIsDeleteDialogOpen(false);
     };
 
     return (
         <div className="text-right">
-            <AlertDialog>
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">
@@ -122,6 +126,12 @@ const ActionCell = ({ row, user, firestore, isAdmin, onDelete }: { row: Row<Case
                             <Link href={`/cases/${caseData.id}`}>
                                 <Eye className="mr-2 h-4 w-4"/>
                                 Ver detalles
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                            <Link href={`/cases/${caseData.id}?print=true`} target="_blank">
+                                <Printer className="mr-2 h-4 w-4"/>
+                                Descargar PDF
                             </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild disabled={!isAdmin && !isOwner}>
@@ -171,7 +181,7 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
   const [grouping, setGrouping] = React.useState<GroupingState>([]);
   
   React.useEffect(() => {
-    if (prevCasesDataRef.current && prevCasesDataRef.current.length > casesData.length) {
+    if (prevCasesDataRef.current && casesData && prevCasesDataRef.current.length > casesData.length) {
       const deletedCase = prevCasesDataRef.current.find(prevCase => !casesData.some(currentCase => currentCase.id === prevCase.id));
       if (deletedCase) {
         toast({
@@ -182,11 +192,6 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
     }
     prevCasesDataRef.current = casesData;
   }, [casesData, toast]);
-
-  const handleDelete = React.useCallback(() => {
-     // This function now primarily serves to trigger the useEffect logic
-     // by causing a data re-fetch which updates casesData.
-  }, []);
 
   const columns = React.useMemo<ColumnDef<CaseData>[]>(() => [
       {
@@ -273,9 +278,9 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
       },
       {
         id: "actions",
-        cell: ({ row }) => <ActionCell row={row} user={user} firestore={firestore} isAdmin={isAdmin} onDelete={handleDelete} />,
+        cell: ({ row }) => <ActionCell row={row} user={user} firestore={firestore} isAdmin={isAdmin} />,
       },
-  ], [user, firestore, isAdmin, handleDelete]);
+  ], [user, firestore, isAdmin, toast]);
   
   const table = useReactTable({
     data: casesData || [],

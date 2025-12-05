@@ -35,6 +35,7 @@ function CaseDetailContent() {
   const { toast } = useToast();
 
   const isEditMode = searchParams.get('edit') === 'true';
+  const isPrintMode = searchParams.get('print') === 'true';
 
   const caseDocRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -50,6 +51,16 @@ function CaseDetailContent() {
   useEffect(() => {
     if (caseData) {
       setStatus(caseData.status);
+
+      // --- Print Mode ---
+      if (isPrintMode && caseData.results) {
+        // Timeout to allow the report to render before printing
+        setTimeout(() => {
+            window.print();
+            // Optional: remove the print param from url after printing
+            router.replace(`/cases/${id}`, { scroll: false });
+        }, 500);
+      }
 
       // --- Concurrency Check ---
       // Skip on initial load
@@ -79,7 +90,7 @@ function CaseDetailContent() {
         }
       }
     }
-  }, [caseData, user, toast, router, id, isEditMode]);
+  }, [caseData, user, toast, router, id, isEditMode, isPrintMode]);
   
   const handleEnableEditing = () => {
     router.push(`/cases/${id}?edit=true`);
@@ -127,7 +138,7 @@ function CaseDetailContent() {
 
   return (
     <div className="container mx-auto">
-      <div className="flex justify-between items-start mb-6 gap-4">
+      <div className="flex justify-between items-start mb-6 gap-4 no-print">
         <div>
             <div className="flex items-center gap-4">
                 <h1 className="text-3xl font-bold tracking-tight font-headline">
