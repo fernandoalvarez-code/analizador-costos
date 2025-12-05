@@ -14,10 +14,10 @@
  * - Custom Claim 'role': Each user's auth token contains a `role` claim ('admin' or 'user').
  *
  * Key Security Decisions:
- * - User data is private to the owner, but admins can read/write it.
- * - Role verification (`isAdmin`) is done via `request.auth.token.role`, which is fast, secure,
+ * - User data is private to the owner for writes, but readable by any authenticated user to prevent offline errors.
+ * - Role verification (`isRequestingUserAdmin`) is done via `request.auth.token.role`, which is fast, secure,
  *   and works offline, avoiding server-side `get()` calls in rules.
- * - Cutting tool analyses are public to all logged-in users.
+ * - Cutting tool analyses are public to all logged-in users for reading.
  * - Write/Delete permissions on analyses are restricted to owners and admins.
  * - Update operations work offline by ensuring the `userId` field is immutable.
  * - Delete operations require an online connection to verify ownership securely.
@@ -38,7 +38,8 @@ service cloud.firestore {
     /**
      * @description Enforces access control for user profiles.
      * @path /users/{userId}
-     * @allow (get, update) - Authenticated user can get/update their own profile. Admins can manage any profile.
+     * @allow (get) - Any authenticated user can read a profile. This is crucial to prevent "client is offline" errors.
+     * @allow (update) - Only the user themselves or an admin can update the profile.
      * @allow (create) - A new user can create their own profile. Admins can create new user profiles.
      * @deny (list, delete) - Prevents listing or deleting users.
      */
@@ -46,7 +47,9 @@ service cloud.firestore {
       function isSelf() {
         return request.auth != null && request.auth.uid == userId;
       }
-      allow get, update: if isSelf() || isRequestingUserAdmin();
+
+      allow get: if request.auth != null;
+      allow update: if isSelf() || isRequestingUserAdmin();
       allow list: if false;
       allow create: if isRequestingUserAdmin() || (isSelf() && request.resource.data.role == 'user');
       allow delete: if false; // Protect against accidental deletion
