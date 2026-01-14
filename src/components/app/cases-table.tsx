@@ -95,9 +95,10 @@ function getStatusVariant(status: string) {
     }
 }
 
-const ActionCell = ({ caseData, user, firestore, toast, isAdmin }: { caseData: CaseData; user: User | null; firestore: Firestore | null; toast: any; isAdmin: boolean }) => {
-    const isOwner = user?.uid === caseData.userId;
+const ActionCell = ({ caseData, user, firestore, isAdmin }: { caseData: CaseData; user: User | null; firestore: Firestore | null; isAdmin: boolean }) => {
+    const { toast } = useToast();
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+    const isOwner = user?.uid === caseData.userId;
 
     const handleDelete = () => {
         if (!firestore) return;
@@ -179,7 +180,6 @@ const ActionCell = ({ caseData, user, firestore, toast, isAdmin }: { caseData: C
 const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseData[], isLoading: boolean, user: User | null, isAdmin: boolean }) => {
   const firestore = useFirestore();
   const router = useRouter();
-  const { toast } = useToast();
   
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
@@ -270,9 +270,9 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
       },
       {
         id: "actions",
-        cell: ({ row }) => <ActionCell caseData={row.original} user={user} firestore={firestore} toast={toast} isAdmin={isAdmin} />,
+        cell: ({ row }) => <ActionCell caseData={row.original} user={user} firestore={firestore} isAdmin={isAdmin} />,
       },
-  ], [user, firestore, isAdmin, toast]);
+  ], [user, firestore, isAdmin]);
   
   const table = useReactTable({
     data: casesData || [],
