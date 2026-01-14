@@ -407,7 +407,7 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
               </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setCaseToDelete(null)}>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
               <AlertDialogAction onClick={handleDelete} className={cn(buttonVariants({ variant: "destructive" }))}>
                   Continuar
               </AlertDialogAction>
