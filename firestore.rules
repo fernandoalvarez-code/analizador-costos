@@ -75,8 +75,7 @@ service cloud.firestore {
       // Allow delete if the user is an admin OR if they are the owner.
       // This requires reading the document, so it will only work online. Offline delete attempts will be denied
       // by the rules and queued by the SDK to retry on reconnection.
-      allow delete: if isRequestingUserAdmin() || 
-                     (request.auth != null && get(/databases/$(database)/documents/cuttingToolAnalyses/$(analysisId)).data.userId == request.auth.uid);
+      allow delete: if isRequestingUserAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
     }
 
     /**
