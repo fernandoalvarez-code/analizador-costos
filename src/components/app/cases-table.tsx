@@ -95,8 +95,7 @@ function getStatusVariant(status: string) {
     }
 }
 
-const ActionCell = ({ row, user, isAdmin, onSelectDelete }: { row: Row<CaseData>, user: User | null, isAdmin: boolean, onSelectDelete: (caseData: CaseData) => void }) => {
-    const caseData = row.original;
+const ActionCell = ({ caseData, user, isAdmin, onSelectDelete }: { caseData: CaseData, user: User | null, isAdmin: boolean, onSelectDelete: (caseData: CaseData) => void }) => {
     const isOwner = user?.uid === caseData.userId;
 
     return (
@@ -160,11 +159,14 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
   const handleDelete = () => {
     if (!firestore || !caseToDelete) return;
     const caseDocRef = doc(firestore, 'cuttingToolAnalyses', caseToDelete.id);
+    
     deleteDocumentNonBlocking(caseDocRef);
+
     toast({
       title: "Caso eliminado",
       description: `El caso "${caseToDelete.name}" ha sido eliminado.`,
     });
+    
     setCaseToDelete(null); // Close the dialog
   };
   
@@ -253,7 +255,7 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
       },
       {
         id: "actions",
-        cell: ({ row }) => <ActionCell row={row} user={user} isAdmin={isAdmin} onSelectDelete={setCaseToDelete} />,
+        cell: ({ row }) => <ActionCell caseData={row.original} user={user} isAdmin={isAdmin} onSelectDelete={setCaseToDelete} />,
       },
   ], [user, firestore, isAdmin]);
   
