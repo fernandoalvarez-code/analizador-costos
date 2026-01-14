@@ -95,11 +95,23 @@ function getStatusVariant(status: string) {
     }
 }
 
-const ActionCell = ({ caseData, user, isAdmin, onSelectDelete }: { caseData: CaseData, user: User | null, isAdmin: boolean, onSelectDelete: (caseData: CaseData) => void }) => {
+const ActionCell = ({ caseData, user, firestore, toast, isAdmin }: { caseData: CaseData; user: User | null; firestore: Firestore | null; toast: any; isAdmin: boolean }) => {
     const isOwner = user?.uid === caseData.userId;
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+
+    const handleDelete = () => {
+        if (!firestore) return;
+        const caseDocRef = doc(firestore, 'cuttingToolAnalyses', caseData.id);
+        deleteDocumentNonBlocking(caseDocRef);
+        toast({
+            title: "Caso eliminado",
+            description: `El caso "${caseData.name}" ha sido eliminado.`,
+        });
+        setIsDeleteDialogOpen(false);
+    };
 
     return (
-        <div className="text-right">
+        <>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
@@ -133,7 +145,7 @@ const ActionCell = ({ caseData, user, isAdmin, onSelectDelete }: { caseData: Cas
                         disabled={!isAdmin && !isOwner} 
                         onSelect={(e) => {
                             e.preventDefault();
-                            onSelectDelete(caseData);
+                            setIsDeleteDialogOpen(true);
                         }}
                     >
                         <Trash2 className="mr-2 h-4 w-4"/>
@@ -141,7 +153,25 @@ const ActionCell = ({ caseData, user, isAdmin, onSelectDelete }: { caseData: Cas
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
-        </div>
+
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Esta acción no se puede deshacer. Esto eliminará permanentemente el caso
+                        de éxito "{caseData?.name}" y todos sus datos asociados de nuestros servidores.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className={cn(buttonVariants({ variant: "destructive" }))}>
+                        Continuar
+                    </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     );
 };
 
@@ -154,21 +184,6 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
   const [grouping, setGrouping] = React.useState<GroupingState>([]);
-  const [caseToDelete, setCaseToDelete] = React.useState<CaseData | null>(null);
-
-  const handleDelete = () => {
-    if (!firestore || !caseToDelete) return;
-    const caseDocRef = doc(firestore, 'cuttingToolAnalyses', caseToDelete.id);
-    
-    deleteDocumentNonBlocking(caseDocRef);
-
-    toast({
-      title: "Caso eliminado",
-      description: `El caso "${caseToDelete.name}" ha sido eliminado.`,
-    });
-    
-    setCaseToDelete(null); // Close the dialog
-  };
   
   const columns = React.useMemo<ColumnDef<CaseData>[]>(() => [
       {
@@ -255,9 +270,9 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
       },
       {
         id: "actions",
-        cell: ({ row }) => <ActionCell caseData={row.original} user={user} isAdmin={isAdmin} onSelectDelete={setCaseToDelete} />,
+        cell: ({ row }) => <ActionCell caseData={row.original} user={user} firestore={firestore} toast={toast} isAdmin={isAdmin} />,
       },
-  ], [user, firestore, isAdmin]);
+  ], [user, firestore, isAdmin, toast]);
   
   const table = useReactTable({
     data: casesData || [],
@@ -399,23 +414,6 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
             </div>
         </CardContent>
     </Card>
-      <AlertDialog open={!!caseToDelete} onOpenChange={(open) => !open && setCaseToDelete(null)}>
-          <AlertDialogContent>
-              <AlertDialogHeader>
-              <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
-              <AlertDialogDescription>
-                  Esta acción no se puede deshacer. Esto eliminará permanentemente el caso
-                  de éxito "{caseToDelete?.name}" y todos sus datos asociados de nuestros servidores.
-              </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className={cn(buttonVariants({ variant: "destructive" }))}>
-                  Continuar
-              </AlertDialogAction>
-              </AlertDialogFooter>
-          </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
