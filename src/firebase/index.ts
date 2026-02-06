@@ -37,7 +37,7 @@ const app: FirebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebas
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// --- 3. HOOKS PERSONALIZADOS ---
+// --- 3. HOOKS PERSONALIZADOS (SOLUCIÓN DEFINITIVA ASYNC) ---
 
 export const useFirestore = () => {
   return db;
@@ -54,18 +54,24 @@ export const useUser = () => {
 
   useEffect(() => {
     let isMounted = true;
+    
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (isMounted) {
-        setUser(currentUser);
-        setLoading(false);
-      }
+      setTimeout(() => {
+        if (isMounted) {
+          setUser(currentUser);
+          setLoading(false);
+        }
+      }, 0);
     }, (error) => {
-      if (isMounted) {
-        console.error("Error en onAuthStateChanged:", error);
-        setError(error);
-        setLoading(false);
-      }
+      setTimeout(() => {
+        if (isMounted) {
+          console.error("Error en onAuthStateChanged:", error);
+          setError(error);
+          setLoading(false);
+        }
+      }, 0);
     });
+
     return () => { 
         isMounted = false;
         unsubscribe(); 
@@ -95,22 +101,26 @@ export const useCollection = <T>(queryRef: Query | CollectionReference | null) =
 
     const unsubscribe = onSnapshot(queryRef, 
       (snapshot: QuerySnapshot) => {
-        if (!isMounted) return;
-        
-        const docs = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as WithId<T>[];
-        
-        setData(docs);
-        setIsLoading(false);
-        setError(null);
+        setTimeout(() => {
+            if (!isMounted) return;
+            
+            const docs = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            })) as WithId<T>[];
+            
+            setData(docs);
+            setIsLoading(false);
+            setError(null);
+        }, 0);
       },
       (err: FirestoreError) => {
-        if (!isMounted) return;
-        console.error("Error en useCollection:", err);
-        setError(err);
-        setIsLoading(false);
+        setTimeout(() => {
+            if (!isMounted) return;
+            console.error("Error en useCollection:", err);
+            setError(err);
+            setIsLoading(false);
+        }, 0);
       }
     );
 
@@ -140,21 +150,25 @@ export const useDoc = <T>(docRef: DocumentReference | null) => {
 
     const unsubscribe = onSnapshot(docRef, 
       (snapshot: DocumentSnapshot) => {
-        if (!isMounted) return;
-        
-        if (snapshot.exists()) {
-          setData({ id: snapshot.id, ...snapshot.data() } as WithId<T>);
-        } else {
-          setData(null);
-        }
-        setIsLoading(false);
-        setError(null);
+        setTimeout(() => {
+            if (!isMounted) return;
+
+            if (snapshot.exists()) {
+              setData({ id: snapshot.id, ...snapshot.data() } as WithId<T>);
+            } else {
+              setData(null);
+            }
+            setIsLoading(false);
+            setError(null);
+        }, 0);
       },
       (err: FirestoreError) => {
-        if (!isMounted) return;
-        console.error("Error leyendo documento:", err);
-        setError(err);
-        setIsLoading(false);
+        setTimeout(() => {
+            if (!isMounted) return;
+            console.error("Error leyendo documento:", err);
+            setError(err);
+            setIsLoading(false);
+        }, 0);
       }
     );
 
