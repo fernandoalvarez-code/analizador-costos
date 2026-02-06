@@ -1,95 +1,65 @@
 
-/**
- * @fileoverview Firestore Security Rules for Analizador de Costos de Corte application.
- *
- * Core Philosophy:
- * This ruleset enforces a user-ownership model for modifications but allows global read access
- * for key data like cutting tool analyses to promote knowledge sharing. It leverages
- * custom authentication tokens (claims) for role-based access control (RBAC) to ensure
- * scalability and offline compatibility.
- *
- * Data Structure & Auth Claims:
- * - /users/{userId}: Stores public user profiles. The 'role' is primarily read from the auth token.
- * - /cuttingToolAnalyses/{analysisId}: A global collection of all analysis cases.
- * - Custom Claim 'role': Each user's auth token contains a `role` claim ('admin' or 'user').
- *
- * Key Security Decisions:
- * - User data is private to the owner for writes, but readable by any authenticated user to prevent offline errors.
- * - Role verification (`isRequestingUserAdmin`) is done via `request.auth.token.role`, which is fast, secure,
- *   and works offline, avoiding server-side `get()` calls in rules.
- * - Cutting tool analyses are public to all logged-in users for reading.
- * - Write/Delete permissions on analyses are restricted to owners and admins.
- * - The 'update' rule is now structured to be compatible with the offline SDK,
- *   preventing client-side crashes, while the 'delete' rule remains an online-only,
- *   secure operation.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the requesting user has the 'admin' role by reading custom claims from their auth token.
-     * This method is fast, secure, and works offline.
-     * @returns boolean
+     * @description Verifica si el usuario es admin leyendo su documento en la colección 'users'.
+     * CAMBIO IMPORTANTE: Ahora lee la BD en lugar del token (claims), alineándose con tu frontend.
      */
     function isRequestingUserAdmin() {
-      return request.auth != null && request.auth.token.role == 'admin';
+      // Opción A: Lectura de base de datos (Sincronizado con tu React)
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Función auxiliar para verificar propiedad
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
     }
     
     /**
-     * @description Enforces access control for user profiles.
-     * @path /users/{userId}
-     * @allow (get) - Any authenticated user can read a profile. This is crucial to prevent "client is offline" errors.
-     * @allow (update) - Only the user themselves or an admin can update the profile.
-     * @allow (create) - A new user can create their own profile. Admins can create new user profiles.
-     * @deny (list, delete) - Prevents listing or deleting users.
+     * COLECCIÓN DE USUARIOS
+     * Se permite leer para evitar errores de UI, pero solo el dueño edita.
      */
     match /users/{userId} {
-      function isSelf() {
-        return request.auth != null && request.auth.uid == userId;
-      }
-
       allow get: if request.auth != null;
-      allow update: if isSelf() || isRequestingUserAdmin();
-      allow list: if false;
-      allow create: if isRequestingUserAdmin() || (isSelf() && request.resource.data.role == 'user');
-      allow delete: if false; // Protect against accidental deletion
+      // Permitimos list solo a admins para paneles de administración
+      allow list: if isRequestingUserAdmin();
+      
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isRequestingUserAdmin();
+      allow delete: if false; 
     }
 
     /**
-     * @description Enforces access control for the global cutting tool analysis collection.
-     * @path /cuttingToolAnalyses/{analysisId}
-     * @allow (get, list) - Any authenticated user can read any case. This works offline.
-     * @allow (create) - Any authenticated user can create a new case, ensuring they set themselves as the owner. This works offline.
-     * @allow (update) - Admins can update. Owners can update if they are sending their own UID in the 'userId' field. This rule is now offline-safe.
-     * @allow (delete) - Only the original owner or an admin can delete. This rule requires an online connection to verify ownership securely.
+     * COLECCIÓN DE ANÁLISIS (CASOS)
      */
     match /cuttingToolAnalyses/{analysisId} {
+      // Cualquiera logueado puede leer (necesario para tu tabla pública interna)
       allow get, list: if request.auth != null;
+      
+      // Crear: Solo si el userId del documento coincide con el usuario logueado
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       
-      // The update rule is now offline-safe. It checks the incoming data (`request.resource`)
-      // which the client SDK can evaluate without network access.
-      allow update: if isRequestingUserAdmin() || (request.auth.uid == request.resource.data.userId);
+      // Actualizar: Dueño o Admin
+      // NOTA: request.resource.data es lo que ENVÍAS, resource.data es lo que YA EXISTE
+      allow update: if isRequestingUserAdmin() || 
+                    (request.auth != null && resource.data.userId == request.auth.uid);
 
-      // The delete rule remains an online-only operation for security.
-      // It must check the existing data on the server (`resource`).
-      // Deletes made offline will be queued by the SDK and processed upon reconnection.
-      allow delete: if isRequestingUserAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
+      // Eliminar: Dueño o Admin
+      allow delete: if isRequestingUserAdmin() || 
+                    (request.auth != null && resource.data.userId == request.auth.uid);
     }
 
     /**
-     * @description Enforces access control for notifications.
-     * @path /notifications/{notificationId}
-     * @allow (read) - Any authenticated user can read notifications.
-     * @allow (write) - Client-side writes are only allowed if the request comes from an admin (e.g., a stale case notification function).
-     *                 For more security, this would typically be a Cloud Function.
+     * NOTIFICACIONES
      */
     match /notifications/{notificationId} {
         allow read: if request.auth != null;
-        // Allow admins to create notifications. This is a temporary measure for the stale case checker.
-        allow create: if isRequestingUserAdmin();
-        allow update, delete: if false;
+        allow create: if isRequestingUserAdmin(); // O puedes permitir a usuarios si es necesario
+        allow update, delete: if isRequestingUserAdmin();
     }
   }
 }
