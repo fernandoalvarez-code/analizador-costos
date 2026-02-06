@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { useUser, useFirestore } from "@/firebase/provider";
+import { getDoc, setDoc } from "firebase/firestore";
+import { useUser, useFirestore, doc } from "@/firebase";
 import AppHeader from "@/components/app/header";
 import AppNav from "@/components/app/nav";
 import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";

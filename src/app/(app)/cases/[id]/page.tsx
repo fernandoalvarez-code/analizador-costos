@@ -1,18 +1,16 @@
 
 'use client';
 
-import { doc } from 'firebase/firestore';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import React, { Suspense, useEffect, useRef, useState } from 'react';
 
 import DashboardTabs from '@/components/app/dashboard-tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useUser, doc, setDocumentNonBlocking } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { Edit, Save } from 'lucide-react';
+import { Edit, Save, Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 
 function getStatusVariant(status?: string) {

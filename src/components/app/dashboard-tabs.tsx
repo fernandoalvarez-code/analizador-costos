@@ -7,10 +7,9 @@ import { useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
 import React, { useEffect, useState, useCallback } from "react";
 import { Download, Save, Printer } from "lucide-react";
-import { collection, serverTimestamp, doc, Timestamp, addDoc } from "firebase/firestore";
+import { serverTimestamp, Timestamp, addDoc } from "firebase/firestore";
 
 
-import { addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,7 +38,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "../ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { useFirestore, useUser } from "@/firebase/provider";
+import { useFirestore, useUser, collection, doc, addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../ui/alert-dialog";
 import { useRouter } from "next/navigation";
 

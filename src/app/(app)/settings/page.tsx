@@ -4,8 +4,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { doc } from 'firebase/firestore';
-import { useTheme } from "next-themes"
 import { updateProfile } from 'firebase/auth';
 import { useEffect } from 'react';
 
@@ -37,12 +35,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth, updateDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth, updateDocumentNonBlocking, doc } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { createUserWithRole } from '@/firebase/admin-actions';
 import { Auth } from 'firebase/auth';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { useTheme } from 'next-themes';
+
 
 type UserProfile = {
   role?: 'admin' | 'user';
@@ -209,19 +207,12 @@ export default function SettingsPage() {
             description: "Tu nombre para mostrar ha sido guardado.",
         });
     } catch (error: any) {
-        if (error.code === 'permission-denied' && userProfileRef) {
-             errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: userProfileRef.path,
-                operation: 'update',
-                requestResourceData: { name: data.name }
-            }));
-        } else {
-             toast({
-                variant: "destructive",
-                title: "Error al actualizar",
-                description: error.message || "No se pudo guardar tu perfil.",
-            });
-        }
+        console.error("Error updating profile:", error);
+         toast({
+            variant: "destructive",
+            title: "Error al actualizar",
+            description: error.message || "No se pudo guardar tu perfil.",
+        });
     }
   }
 

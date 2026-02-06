@@ -14,12 +14,12 @@ import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { collection, query, orderBy, limit } from "firebase/firestore";
+import { query, orderBy, limit } from "firebase/firestore";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 
-import { useAuth, useUser, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useAuth, useUser, useCollection, useFirestore, useMemoFirebase, collection } from "@/firebase";
 import {
   Breadcrumb,
   BreadcrumbItem,

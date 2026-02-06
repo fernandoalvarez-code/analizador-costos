@@ -1,9 +1,9 @@
+
 'use client';
 
 import { useEffect } from 'react';
-import { collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, collection, addDocumentNonBlocking } from '@/firebase';
 
 type CaseData = {
   id: string;

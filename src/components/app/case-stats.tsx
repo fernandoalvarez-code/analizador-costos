@@ -1,11 +1,10 @@
 
 'use client';
 
-import { collection } from 'firebase/firestore';
 import React from 'react';
 import { BarChart, BadgeCheck, XCircle, Clock } from 'lucide-react';
 
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, collection } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 
 type CaseData = {

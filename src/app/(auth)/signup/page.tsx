@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -7,8 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
-import { useAuth, useUser } from "@/firebase/provider";
-import { initiateEmailSignUp } from "@/firebase/non-blocking-login";
+import { useAuth, useUser, initiateEmailSignUp } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import {
   Form,

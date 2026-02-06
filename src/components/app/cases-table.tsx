@@ -18,13 +18,11 @@ import {
   getFilteredRowModel,
 } from "@tanstack/react-table";
 import { MoreHorizontal, PlusCircle, Search, Trash2, Eye, ChevronDown, ChevronRight, GripVertical, Edit, Printer } from "lucide-react";
-import { collection, doc } from "firebase/firestore";
 import Link from "next/link";
-import { User } from "firebase/auth";
 import { Firestore } from "firebase/firestore";
 
 
-import { useCollection, useFirestore, useUser, useMemoFirebase, useDoc } from "@/firebase";
+import { useCollection, useFirestore, useUser, useMemoFirebase, useDoc, doc, collection, deleteDocumentNonBlocking, User } from "@/firebase";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -49,7 +47,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import {
   AlertDialog,
   AlertDialogAction,
