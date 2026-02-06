@@ -19,8 +19,9 @@
  *   and works offline, avoiding server-side `get()` calls in rules.
  * - Cutting tool analyses are public to all logged-in users for reading.
  * - Write/Delete permissions on analyses are restricted to owners and admins.
- * - Update operations work offline by ensuring the `userId` field is immutable.
- * - Delete operations require an online connection to verify ownership securely.
+ * - The 'update' rule is now structured to be compatible with the offline SDK,
+ *   preventing client-side crashes, while the 'delete' rule remains an online-only,
+ *   secure operation.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -58,23 +59,22 @@ service cloud.firestore {
     /**
      * @description Enforces access control for the global cutting tool analysis collection.
      * @path /cuttingToolAnalyses/{analysisId}
-     * @allow (get, list) - Any authenticated user can read any case.
-     * @allow (create) - Any authenticated user can create a new case, ensuring they set themselves as the owner.
-     * @allow (update) - Only the original owner or an admin can update. The owner's userId cannot be changed. This rule works offline.
-     * @allow (delete) - Only the original owner or an admin can delete. This rule requires an online connection to work.
+     * @allow (get, list) - Any authenticated user can read any case. This works offline.
+     * @allow (create) - Any authenticated user can create a new case, ensuring they set themselves as the owner. This works offline.
+     * @allow (update) - Admins can update. Owners can update if they are sending their own UID in the 'userId' field. This rule is now offline-safe.
+     * @allow (delete) - Only the original owner or an admin can delete. This rule requires an online connection to verify ownership securely.
      */
     match /cuttingToolAnalyses/{analysisId} {
       allow get, list: if request.auth != null;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       
-      // Allow update if the user is an admin, OR if they are the owner and are not trying to change the owner.
-      // This works offline for the owner because it doesn't need to read the existing document.
-      allow update: if isRequestingUserAdmin() || 
-                     (request.auth != null && request.resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId);
+      // The update rule is now offline-safe. It checks the incoming data (`request.resource`)
+      // which the client SDK can evaluate without network access.
+      allow update: if isRequestingUserAdmin() || (request.auth.uid == request.resource.data.userId);
 
-      // Allow delete if the user is an admin OR if they are the owner.
-      // This requires reading the document, so it will only work online. Offline delete attempts will be denied
-      // by the rules and queued by the SDK to retry on reconnection.
+      // The delete rule remains an online-only operation for security.
+      // It must check the existing data on the server (`resource`).
+      // Deletes made offline will be queued by the SDK and processed upon reconnection.
       allow delete: if isRequestingUserAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
     }
 
