@@ -95,84 +95,51 @@ function getStatusVariant(status: string) {
     }
 }
 
-const ActionCell = ({ caseData, user, firestore, isAdmin }: { caseData: CaseData; user: User | null; firestore: Firestore | null; isAdmin: boolean }) => {
-    const { toast } = useToast();
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+const ActionCell = ({ caseData, user, isAdmin, onDeleteClick }: { caseData: CaseData; user: User | null; isAdmin: boolean; onDeleteClick: (caseData: CaseData) => void; }) => {
     const isOwner = user?.uid === caseData.userId;
 
-    const handleDelete = () => {
-        if (!firestore) return;
-        const caseDocRef = doc(firestore, 'cuttingToolAnalyses', caseData.id);
-        deleteDocumentNonBlocking(caseDocRef);
-        toast({
-            title: "Caso eliminado",
-            description: `El caso "${caseData.name}" ha sido eliminado.`,
-        });
-        setIsDeleteDialogOpen(false);
-    };
-
     return (
-        <>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                    <span className="sr-only">Abrir menú</span>
-                    <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                    <DropdownMenuItem asChild>
-                        <Link href={`/cases/${caseData.id}`}>
-                            <Eye className="mr-2 h-4 w-4"/>
-                            Ver detalles
-                        </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                        <Link href={`/cases/${caseData.id}?print=true`} target="_blank">
-                            <Printer className="mr-2 h-4 w-4"/>
-                            Descargar PDF
-                        </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild disabled={!isAdmin && !isOwner}>
-                        <Link href={`/cases/${caseData.id}?edit=true`}>
-                            <Edit className="mr-2 h-4 w-4"/>
-                            Editar
-                        </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                     <DropdownMenuItem 
-                        className="text-destructive" 
-                        disabled={!isAdmin && !isOwner} 
-                        onSelect={(e) => {
-                            e.preventDefault();
-                            setIsDeleteDialogOpen(true);
-                        }}
-                    >
-                        <Trash2 className="mr-2 h-4 w-4"/>
-                        Eliminar caso
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                    <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Esta acción no se puede deshacer. Esto eliminará permanentemente el caso
-                        de éxito "{caseData?.name}" y todos sus datos asociados de nuestros servidores.
-                    </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className={cn(buttonVariants({ variant: "destructive" }))}>
-                        Continuar
-                    </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </>
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Abrir menú</span>
+                <MoreHorizontal className="h-4 w-4" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                <DropdownMenuItem asChild>
+                    <Link href={`/cases/${caseData.id}`}>
+                        <Eye className="mr-2 h-4 w-4"/>
+                        Ver detalles
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <Link href={`/cases/${caseData.id}?print=true`} target="_blank">
+                        <Printer className="mr-2 h-4 w-4"/>
+                        Descargar PDF
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild disabled={!isAdmin && !isOwner}>
+                    <Link href={`/cases/${caseData.id}?edit=true`}>
+                        <Edit className="mr-2 h-4 w-4"/>
+                        Editar
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                 <DropdownMenuItem 
+                    className="text-destructive" 
+                    disabled={!isAdmin && !isOwner} 
+                    onSelect={(e) => {
+                        e.preventDefault();
+                        onDeleteClick(caseData);
+                    }}
+                >
+                    <Trash2 className="mr-2 h-4 w-4"/>
+                    Eliminar caso
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 };
 
@@ -180,11 +147,32 @@ const ActionCell = ({ caseData, user, firestore, isAdmin }: { caseData: CaseData
 const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseData[], isLoading: boolean, user: User | null, isAdmin: boolean }) => {
   const firestore = useFirestore();
   const router = useRouter();
+  const { toast } = useToast();
   
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
   const [grouping, setGrouping] = React.useState<GroupingState>([]);
+  const [caseToDelete, setCaseToDelete] = React.useState<CaseData | null>(null);
   
+  const handleDelete = () => {
+    if (!caseToDelete || !firestore) return;
+
+    // Grab details before closing dialog, to use in the toast.
+    const caseName = caseToDelete.name;
+    const caseId = caseToDelete.id;
+    
+    // Close the dialog first. This is a safe state update.
+    setCaseToDelete(null);
+    
+    // Then, fire off the asynchronous actions.
+    const caseDocRef = doc(firestore, 'cuttingToolAnalyses', caseId);
+    deleteDocumentNonBlocking(caseDocRef);
+    toast({
+        title: "Caso eliminado",
+        description: `El caso "${caseName}" ha sido eliminado.`,
+    });
+  };
+
   const columns = React.useMemo<ColumnDef<CaseData>[]>(() => [
       {
         accessorKey: "name",
@@ -270,9 +258,9 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
       },
       {
         id: "actions",
-        cell: ({ row }) => <ActionCell caseData={row.original} user={user} firestore={firestore} isAdmin={isAdmin} />,
+        cell: ({ row }) => <ActionCell caseData={row.original} user={user} isAdmin={isAdmin} onDeleteClick={setCaseToDelete} />,
       },
-  ], [user, firestore, isAdmin]);
+  ], [user, isAdmin]);
   
   const table = useReactTable({
     data: casesData || [],
@@ -414,6 +402,24 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
             </div>
         </CardContent>
     </Card>
+
+    <AlertDialog open={!!caseToDelete} onOpenChange={(isOpen) => !isOpen && setCaseToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+                Esta acción no se puede deshacer. Esto eliminará permanentemente el caso
+                de éxito "{caseToDelete?.name}" y todos sus datos asociados de nuestros servidores.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className={cn(buttonVariants({ variant: "destructive" }))}>
+                Continuar
+            </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
