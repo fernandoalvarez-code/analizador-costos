@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -422,6 +421,14 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
 }
 
 const CasesTableWrapper = () => {
+  // 1. ESTADO DE MONTAJE (La solución al error)
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  // Solo marcamos como montado cuando el efecto se ejecuta (navegador listo)
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const firestore = useFirestore();
   const { user } = useUser();
   
@@ -439,6 +446,26 @@ const CasesTableWrapper = () => {
   }, [firestore]);
 
   const { data: casesData, isLoading } = useCollection<CaseData>(casesCollectionRef);
+
+  // 2. PROTECCIÓN DE RENDERIZADO
+  // Si no está montado en el cliente, devolvemos un Skeleton o null.
+  // Esto evita el error "update on unmounted component".
+  if (!isMounted) {
+    return (
+      <Card>
+        <CardContent className="p-4">
+           <div className="flex items-center py-4 gap-2">
+             <Skeleton className="h-10 w-full" />
+           </div>
+           <div className="space-y-2">
+             <Skeleton className="h-8 w-full" />
+             <Skeleton className="h-8 w-full" />
+             <Skeleton className="h-8 w-full" />
+           </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <CasesTable 
