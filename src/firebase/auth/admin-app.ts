@@ -3,7 +3,7 @@
 import { initializeApp, getApps, App } from 'firebase-admin/app';
 import { credential } from 'firebase-admin';
 
-// This is a server-side only file.
+const ADMIN_APP_NAME = 'firebase-admin-app-for-studio';
 
 /**
  * Initializes the Firebase Admin SDK if it hasn't been initialized yet.
@@ -15,16 +15,17 @@ import { credential } from 'firebase-admin';
  * e.g., export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/service-account-file.json"
  */
 export async function initializeAdminApp(): Promise<App> {
-  // If the app is already initialized, return it.
-  if (getApps().length) {
-    return getApps()[0];
+  // Find if the named admin app has already been initialized.
+  const existingApp = getApps().find(app => app.name === ADMIN_APP_NAME);
+  if (existingApp) {
+    return existingApp;
   }
 
-  // If not initialized, initialize it with Application Default Credentials.
+  // If not initialized, initialize it with a unique name and Application Default Credentials.
   // The SDK will automatically find the credentials from the environment.
   const app = initializeApp({
      credential: credential.applicationDefault(),
-  });
+  }, ADMIN_APP_NAME);
 
   return app;
 }
