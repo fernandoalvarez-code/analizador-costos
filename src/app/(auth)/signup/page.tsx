@@ -24,14 +24,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export default function SignupPage() {
   const auth = useAuth();
-  const { user, isUserLoading } = useUser();
+  const { user, loading } = useUser();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isUserLoading && user) {
+    if (!loading && user) {
         router.push("/dashboard");
     }
-  }, [user, isUserLoading, router]);
+  }, [user, loading, router]);
 
   const form = useForm<z.infer<typeof SignupSchema>>({
     resolver: zodResolver(SignupSchema),
@@ -47,7 +47,7 @@ export default function SignupPage() {
     initiateEmailSignUp(auth, data.email, data.password);
   }
 
-  if (isUserLoading || user) {
+  if (loading || user) {
     return null; // Or a loading spinner
   }
 

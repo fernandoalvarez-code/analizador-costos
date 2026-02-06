@@ -27,14 +27,14 @@ import { useToast } from "@/hooks/use-toast";
 export default function LoginPage() {
   const { toast } = useToast();
   const auth = useAuth();
-  const { user, isUserLoading } = useUser();
+  const { user, loading } = useUser();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isUserLoading && user) {
+    if (!loading && user) {
       router.push("/dashboard");
     }
-  }, [user, isUserLoading, router]);
+  }, [user, loading, router]);
 
   const form = useForm<z.infer<typeof LoginSchema>>({
     resolver: zodResolver(LoginSchema),
@@ -64,7 +64,7 @@ export default function LoginPage() {
     initiateEmailSignIn(auth, data.email, data.password);
   }
 
-  if (isUserLoading || user) {
+  if (loading || user) {
     return null; // Or a loading spinner
   }
 

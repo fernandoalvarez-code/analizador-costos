@@ -17,14 +17,14 @@ export default function AppLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { user, isUserLoading } = useUser();
+  const { user, loading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
+    if (!loading && !user) {
       router.push("/login");
-    } else if (!isUserLoading && user && firestore) {
+    } else if (!loading && user && firestore) {
       const userDocRef = doc(firestore, 'users', user.uid);
       
       const setupUser = async () => {
@@ -56,9 +56,9 @@ export default function AppLayout({
 
       setupUser().catch(console.error);
     }
-  }, [user, isUserLoading, router, firestore]);
+  }, [user, loading, router, firestore]);
 
-  if (isUserLoading || !user) {
+  if (loading || !user) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
         <Skeleton className="h-full w-full" />

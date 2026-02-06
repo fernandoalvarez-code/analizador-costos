@@ -49,8 +49,7 @@ export const useAuth = () => {
 
 export const useUser = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [isUserLoading, setLoading] = useState(true);
-  const [userError, setError] = useState<Error | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -62,23 +61,15 @@ export const useUser = () => {
           setLoading(false);
         }
       }, 0);
-    }, (error) => {
-      setTimeout(() => {
-        if (isMounted) {
-          console.error("Error en onAuthStateChanged:", error);
-          setError(error);
-          setLoading(false);
-        }
-      }, 0);
     });
 
-    return () => { 
-        isMounted = false;
-        unsubscribe(); 
+    return () => {
+      isMounted = false;
+      unsubscribe();
     };
   }, []);
 
-  return { user, isUserLoading, userError };
+  return { user, loading };
 };
 
 /** Utility type to add an 'id' field to a given type T. */
