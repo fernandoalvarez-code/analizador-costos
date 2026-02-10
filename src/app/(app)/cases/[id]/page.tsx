@@ -32,7 +32,7 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
   }, [firestore, id]);
   const { data: rawData, isLoading } = useDoc<any>(docRef);
 
-  // 2. Obtener CONFIGURACIÓN DE LOGOS (Settings General)
+  // 2. Obtener CONFIGURACIÓN DE LOGOS
   const settingsRef = useMemoFirebase(() => {
     if (!firestore) return null;
     return doc(firestore, "settings", "general");
@@ -85,30 +85,24 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
         
         {/* ENCABEZADO CON LOGOS DINÁMICOS */}
         <div className="flex justify-between items-center mb-10 h-20">
-            {/* Logo Izquierdo (Empresa/Usuario) */}
+            {/* Logo Izquierdo */}
             <div className="w-1/3 flex justify-start">
                 {settings?.companyLogoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={settings.companyLogoUrl} alt="Logo Empresa" className="h-16 object-contain" />
-                ) : (
-                    // Placeholder invisible si no hay logo para mantener espacio
-                    <div className="h-12 w-32"></div>
-                )}
+                ) : ( <div className="h-12 w-32"></div> )}
             </div>
-
-            {/* Logo Derecho (Seco Tools) */}
+            {/* Logo Derecho */}
             <div className="w-1/3 flex justify-end">
                 {settings?.secoLogoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={settings.secoLogoUrl} alt="Logo Seco" className="h-14 object-contain" />
-                ) : (
-                    <div className="h-12 w-32"></div>
-                )}
+                ) : ( <div className="h-12 w-32"></div> )}
             </div>
         </div>
 
         {/* Título Principal */}
-        <div className="mb-12 border-b-2 border-slate-800 pb-6">
+        <div className="mb-10 border-b-2 border-slate-800 pb-6">
             <h1 className="text-5xl font-black text-slate-800 uppercase leading-none tracking-tight">
                 ANALIZADOR<br/>DE COSTOS
             </h1>
@@ -143,26 +137,33 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
             </div>
         </div>
 
-        {/* Imágenes */}
+        {/* --- SECCIÓN DE IMÁGENES CON FRASE --- */}
         {validImages.length > 0 ? (
-            <div className="flex-grow flex flex-col justify-center mb-8">
-                <h3 className="text-center text-xs font-bold text-slate-400 uppercase mb-4 tracking-[0.2em]">Evidencia Fotográfica</h3>
+            <div className="flex-grow flex flex-col justify-center mb-4">
                 
+                {/* FRASE DE IMPACTO COMO TÍTULO */}
+                <div className="text-center mb-6 px-4">
+                    <h3 className="text-xl md:text-2xl font-bold text-blue-900 italic font-serif leading-relaxed">
+                        &ldquo;Se pueden conseguir Resultados o Excusas, no las dos cosas.&rdquo;
+                    </h3>
+                    <div className="h-1 w-24 bg-blue-500 mx-auto mt-3 rounded-full opacity-50"></div>
+                </div>
+
+                {/* IMÁGENES */}
                 {validImages.length === 1 && (
                     <div className="flex flex-col items-center justify-center">
-                        <div className="border-4 border-white shadow-xl rounded-lg overflow-hidden bg-white max-h-[400px]">
+                        <div className="border-4 border-white shadow-xl rounded-lg overflow-hidden bg-white max-h-[350px]">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={validImages[0]} alt="Evidencia" className="object-contain max-h-[400px] w-auto mx-auto" />
+                            <img src={validImages[0]} alt="Evidencia" className="object-contain max-h-[350px] w-auto mx-auto" />
                         </div>
                         {data.imageDescriptions?.[0] && <p className="mt-3 text-sm font-bold text-slate-700 bg-slate-100 px-4 py-1 rounded-full uppercase">{data.imageDescriptions[0]}</p>}
                     </div>
                 )}
-
                 {validImages.length > 1 && (
                     <div className="grid grid-cols-2 gap-6 items-center">
                         {validImages.map((url: string, index: number) => (
                             <div key={index} className="flex flex-col items-center">
-                                <div className="border-4 border-white shadow-lg rounded-lg overflow-hidden w-full h-[280px] bg-white flex items-center justify-center">
+                                <div className="border-4 border-white shadow-lg rounded-lg overflow-hidden w-full h-[250px] bg-white flex items-center justify-center">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img src={url} alt={`Evidencia ${index + 1}`} className="object-contain max-h-full max-w-full" />
                                 </div>
@@ -173,12 +174,13 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
                 )}
             </div>
         ) : (
-            <div className="flex-grow flex items-center justify-center border-2 border-dashed border-slate-100 rounded-xl m-10">
-                <p className="text-slate-300 italic">Sin imágenes adjuntas</p>
+            <div className="flex-grow flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-xl m-4 h-40">
+                <p className="text-slate-300 italic mb-2">Sin evidencia visual</p>
+                <p className="text-sm font-bold text-slate-400 italic font-serif">"Se pueden conseguir Resultados o Excusas, no las dos cosas."</p>
             </div>
         )}
 
-        <div className="text-center pt-4 border-t border-slate-100">
+        <div className="text-center pt-2 border-t border-slate-100">
             <p className="text-[10px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos</p>
         </div>
       </div>
@@ -223,7 +225,51 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
             </div>
         </div>
 
-        {/* 2. Tabla Datos */}
+        {/* 2. Análisis de Inversión vs Ahorro */}
+        <div className="mb-8 bg-blue-50/50 border border-blue-100 rounded-lg p-4 shadow-sm break-inside-avoid">
+            <h3 className="text-center text-lg font-bold text-slate-800 mb-4 uppercase">Análisis de Inversión vs. Ahorro</h3>
+            <div className="grid grid-cols-2 gap-6">
+                <div className="bg-white rounded border border-slate-200 p-4 shadow-sm">
+                    <p className="text-xs font-bold text-slate-500 uppercase mb-1">Inversión en Herramienta</p>
+                    <p className={cn("text-3xl font-black mb-1", r.toolCostIncreasePercent > 0 ? "text-green-600" : "text-slate-700")}>
+                        {formatPercent(r.toolCostIncreasePercent)}
+                    </p>
+                    <p className="text-[10px] text-slate-400">Variación en costo de herramienta por pieza</p>
+                </div>
+                <div className="bg-white rounded border border-slate-200 p-4 shadow-sm">
+                    <p className="text-xs font-bold text-slate-500 uppercase mb-1">Mejora en Costo Total</p>
+                    <p className={cn("text-3xl font-black mb-1", r.totalCostReductionPercent > 0 ? "text-red-500" : "text-slate-700")}>
+                        {formatPercent(r.totalCostReductionPercent)}
+                    </p>
+                    <p className="text-[10px] text-slate-400">Reducción de costo total por pieza</p>
+                </div>
+            </div>
+        </div>
+
+        {/* 3. Análisis Capacidad */}
+        <div className="mb-8 border border-blue-200 rounded-lg overflow-hidden shadow-sm break-inside-avoid">
+            <div className="bg-blue-600 text-white text-center py-1.5 font-bold uppercase tracking-widest text-[10px]">
+                Análisis de Horas de Máquina Liberadas (Anual)
+            </div>
+            <div className="p-3 grid grid-cols-3 gap-4 bg-blue-50/30">
+                <div className="bg-white p-2 rounded border border-blue-100 shadow-sm text-center">
+                    <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Tiempo Liberado</p>
+                    <p className="text-xl font-bold text-blue-600">{r.machineHoursFreedAnnual?.toFixed(2)} hs</p>
+                </div>
+                <div className="bg-white p-2 rounded border border-blue-100 shadow-sm text-center">
+                    <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Valor Prod. Adicional</p>
+                    <p className="text-xl font-bold text-green-600">{formatCurrency(r.machineHoursFreedValueAnnual)}</p>
+                    <p className="text-[8px] text-slate-400 mt-0.5">a {formatCurrency(data.machineHourlyRate)}/hr</p>
+                </div>
+                <div className="bg-white p-2 rounded border border-blue-100 shadow-sm text-center">
+                    <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Piezas Adicionales</p>
+                    <p className="text-xl font-bold text-slate-700">{r.piezasAdicionalesAnual?.toFixed(0)}</p>
+                    <p className="text-[8px] text-slate-400 mt-0.5">Potencial Extra</p>
+                </div>
+            </div>
+        </div>
+
+        {/* 4. Tabla Datos Técnicos */}
         <div className="mb-8 border border-slate-300 rounded overflow-hidden text-sm shadow-sm">
             <div className="grid grid-cols-10 bg-slate-100 font-bold border-b border-slate-300 py-2 px-3 text-[11px]">
                 <div className="col-span-4">PARÁMETRO</div>
@@ -256,30 +302,7 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
             </div>
         </div>
 
-        {/* 3. Análisis Capacidad */}
-        <div className="mb-8 border border-blue-200 rounded-lg overflow-hidden shadow-sm break-inside-avoid">
-            <div className="bg-blue-600 text-white text-center py-1.5 font-bold uppercase tracking-widest text-[10px]">
-                Análisis de Horas de Máquina Liberadas (Anual)
-            </div>
-            <div className="p-3 grid grid-cols-3 gap-4 bg-blue-50/30">
-                <div className="bg-white p-2 rounded border border-blue-100 shadow-sm text-center">
-                    <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Tiempo Liberado</p>
-                    <p className="text-xl font-bold text-blue-600">{r.machineHoursFreedAnnual?.toFixed(2)} hs</p>
-                </div>
-                <div className="bg-white p-2 rounded border border-blue-100 shadow-sm text-center">
-                    <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Valor Prod. Adicional</p>
-                    <p className="text-xl font-bold text-green-600">{formatCurrency(r.machineHoursFreedValueAnnual)}</p>
-                    <p className="text-[8px] text-slate-400 mt-0.5">a {formatCurrency(data.machineHourlyRate)}/hr</p>
-                </div>
-                <div className="bg-white p-2 rounded border border-blue-100 shadow-sm text-center">
-                    <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Piezas Adicionales</p>
-                    <p className="text-xl font-bold text-slate-700">{r.piezasAdicionalesAnual?.toFixed(0)}</p>
-                    <p className="text-[8px] text-slate-400 mt-0.5">Potencial Extra</p>
-                </div>
-            </div>
-        </div>
-
-        {/* 4. Tabla Financiera */}
+        {/* 5. Tabla Financiera */}
         <div className="border border-green-200 rounded overflow-hidden text-sm shadow-sm break-inside-avoid">
             <div className="grid grid-cols-12 bg-green-50 py-2 px-3 font-bold text-green-900 border-b border-green-200 text-[11px] text-center">
                 <div className="col-span-3 text-left">MÉTRICA</div>
