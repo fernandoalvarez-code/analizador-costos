@@ -66,7 +66,7 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
     }
   }, [searchParams, isLoading, rawData]);
 
-  // --- FUNCIÓN DE DESCARGA DIRECTA (CORREGIDA) ---
+  // --- FUNCIÓN DE DESCARGA DIRECTA ---
   const handleDownloadPDF = async () => {
     setIsDownloading(true);
     try {
@@ -77,7 +77,6 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
             margin:       0,
             filename:     `Informe_${data.name || 'Caso'}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
-            // CORRECCIÓN: scrollY: 0 obliga a capturar desde arriba, evitando hojas en blanco
             html2canvas:  { scale: 2, useCORS: true, logging: true, scrollY: 0, x: 0 }, 
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
@@ -117,7 +116,6 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* ================= CONTENEDOR DEL REPORTE ================= */}
-      {/* Es importante que este ID envuelva todo el contenido imprimible y tenga fondo blanco */}
       <div id="report-container" className="bg-white">
         
         {/* ================= HOJA 1: CARÁTULA ================= */}
