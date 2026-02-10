@@ -19,13 +19,14 @@ import {
   FirestoreError,
   DocumentSnapshot
 } from "firebase/firestore";
-// ✅ IMPORTANTE: Agregamos getStorage aquí
+// ✅ IMPORTANTE: Importar getStorage
 import { getStorage } from "firebase/storage"; 
 import { getAuth, onAuthStateChanged, User, createUserWithEmailAndPassword, signInWithEmailAndPassword, Auth } from "firebase/auth";
 import { useState, useEffect, useMemo, DependencyList } from "react";
 
 // --- 1. CONFIGURACIÓN ---
-// Función auxiliar para limpiar el bucket si viene con gs://
+
+// Función para limpiar el nombre del bucket (quita el gs:// si existe)
 const cleanBucket = (bucket: string | undefined) => {
   if (!bucket) return "";
   return bucket.replace("gs://", "");
@@ -35,7 +36,7 @@ const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  // ✅ LIMPIEZA AUTOMÁTICA DE GS://
+  // ✅ Usamos cleanBucket para evitar que se cuelgue si pusiste gs://
   storageBucket: cleanBucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET),
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
@@ -45,7 +46,7 @@ const firebaseConfig = {
 const app: FirebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-// ✅ INICIALIZAMOS STORAGE AQUÍ
+// ✅ INICIALIZAMOS STORAGE
 const storage = getStorage(app); 
 
 // --- 3. HOOKS PERSONALIZADOS ---
@@ -83,7 +84,6 @@ export const useUser = () => {
   return { user, loading };
 };
 
-/** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
 
 export const useCollection = <T>(queryRef: Query | CollectionReference | null) => {
@@ -105,12 +105,10 @@ export const useCollection = <T>(queryRef: Query | CollectionReference | null) =
       (snapshot: QuerySnapshot) => {
         setTimeout(() => {
             if (!isMounted) return;
-            
             const docs = snapshot.docs.map((doc) => ({
               id: doc.id,
               ...doc.data(),
             })) as WithId<T>[];
-            
             setData(docs);
             setIsLoading(false);
             setError(null);
@@ -154,7 +152,6 @@ export const useDoc = <T>(docRef: DocumentReference | null) => {
       (snapshot: DocumentSnapshot) => {
         setTimeout(() => {
             if (!isMounted) return;
-
             if (snapshot.exists()) {
               setData({ id: snapshot.id, ...snapshot.data() } as WithId<T>);
             } else {
@@ -224,6 +221,6 @@ export function deleteDocumentNonBlocking(docRef: DocumentReference) {
 }
 
 // --- 5. EXPORTS ---
-// ✅ AGREGAMOS 'storage' A LA EXPORTACIÓN
+// ✅ AHORA SÍ EXPORTAMOS 'storage'
 export { app, db, auth, storage, firestoreDoc as doc, firestoreCollection as collection };
 export type { User };
