@@ -1,3 +1,4 @@
+
 "use client";
 
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
@@ -15,19 +16,27 @@ import {
   deleteDoc,
   SetOptions,
   QuerySnapshot,
-  DocumentData,
   FirestoreError,
   DocumentSnapshot
 } from "firebase/firestore";
+// ✅ IMPORTANTE: Agregamos getStorage aquí
+import { getStorage } from "firebase/storage"; 
 import { getAuth, onAuthStateChanged, User, createUserWithEmailAndPassword, signInWithEmailAndPassword, Auth } from "firebase/auth";
 import { useState, useEffect, useMemo, DependencyList } from "react";
 
 // --- 1. CONFIGURACIÓN ---
+// Función auxiliar para limpiar el bucket si viene con gs://
+const cleanBucket = (bucket: string | undefined) => {
+  if (!bucket) return "";
+  return bucket.replace("gs://", "");
+};
+
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  // ✅ LIMPIEZA AUTOMÁTICA DE GS://
+  storageBucket: cleanBucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET),
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
@@ -36,8 +45,10 @@ const firebaseConfig = {
 const app: FirebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+// ✅ INICIALIZAMOS STORAGE AQUÍ
+const storage = getStorage(app); 
 
-// --- 3. HOOKS PERSONALIZADOS (SOLUCIÓN DEFINITIVA ASYNC) ---
+// --- 3. HOOKS PERSONALIZADOS ---
 
 export const useFirestore = () => {
   return db;
@@ -213,5 +224,6 @@ export function deleteDocumentNonBlocking(docRef: DocumentReference) {
 }
 
 // --- 5. EXPORTS ---
-export { app, db, auth, firestoreDoc as doc, firestoreCollection as collection };
+// ✅ AGREGAMOS 'storage' A LA EXPORTACIÓN
+export { app, db, auth, storage, firestoreDoc as doc, firestoreCollection as collection };
 export type { User };
