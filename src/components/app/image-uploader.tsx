@@ -17,27 +17,19 @@ export function ImageUploader({
   initialDescriptions = [] 
 }: ImageUploaderProps) {
   
-  // Seguridad: Asegurar que siempre sean arrays
   const safeInitialImages = initialImages || [];
   const safeInitialDescriptions = initialDescriptions || [];
 
   const [keptImages, setKeptImages] = useState<{url: string, desc: string}[]>([]);
   const [newImages, setNewImages] = useState<{file: File, preview: string, desc: string}[]>([]);
 
-  // Carga inicial (Solo ocurre una vez)
   useEffect(() => {
-    // Verificamos si tenemos imágenes iniciales y si el estado local aún está vacío
     if (safeInitialImages.length > 0 && keptImages.length === 0 && newImages.length === 0) {
-      
+      // Filtramos desde el inicio cualquier URL vacía
       const formatted = safeInitialImages
-        .map((url, i) => ({
-          url,
-          desc: safeInitialDescriptions[i] || "" 
-        }))
-        // ✅ FILTRO CRÍTICO: Eliminamos cualquier imagen que tenga URL vacía
-        // Esto evita el error "empty string passed to src"
-        .filter(img => img.url && img.url.trim() !== "");
-
+        .map((url, i) => ({ url, desc: safeInitialDescriptions[i] || "" }))
+        .filter(img => img.url && img.url.trim() !== ""); 
+      
       setKeptImages(formatted);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -46,32 +38,17 @@ export function ImageUploader({
   const notifyParent = (currentKept: typeof keptImages, currentNew: typeof newImages) => {
     const filesToUpload = currentNew.map(img => img.file);
     const urlsToKeep = currentKept.map(img => img.url);
-    
-    const allDescs = [
-      ...currentKept.map(img => img.desc),
-      ...currentNew.map(img => img.desc)
-    ];
-
+    const allDescs = [...currentKept.map(img => img.desc), ...currentNew.map(img => img.desc)];
     onImagesChange(filesToUpload, urlsToKeep, allDescs);
   };
 
-  // --- IMÁGENES NUEVAS ---
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      const total = keptImages.length + newImages.length + files.length;
-      
-      if (total > 4) {
-        alert("Máximo 4 imágenes en total.");
-        return;
+      if (keptImages.length + newImages.length + files.length > 4) {
+        alert("Máximo 4 imágenes en total."); return;
       }
-
-      const addedImages = files.map(file => ({
-        file,
-        preview: URL.createObjectURL(file),
-        desc: ""
-      }));
-
+      const addedImages = files.map(file => ({ file, preview: URL.createObjectURL(file), desc: "" }));
       const updatedNew = [...newImages, ...addedImages];
       setNewImages(updatedNew);
       notifyParent(keptImages, updatedNew);
@@ -85,13 +62,9 @@ export function ImageUploader({
   };
 
   const updateNewDesc = (index: number, text: string) => {
-    const updated = [...newImages];
-    updated[index].desc = text;
-    setNewImages(updated);
-    notifyParent(keptImages, updated);
+    const updated = [...newImages]; updated[index].desc = text; setNewImages(updated); notifyParent(keptImages, updated);
   };
 
-  // --- IMÁGENES VIEJAS ---
   const removeOldImage = (index: number) => {
     const updated = keptImages.filter((_, i) => i !== index);
     setKeptImages(updated);
@@ -99,99 +72,47 @@ export function ImageUploader({
   };
 
   const updateOldDesc = (index: number, text: string) => {
-    const updated = [...keptImages];
-    updated[index].desc = text;
-    setKeptImages(updated);
-    notifyParent(updated, newImages);
+    const updated = [...keptImages]; updated[index].desc = text; setKeptImages(updated); notifyParent(updated, newImages);
   };
 
   return (
     <div className="border rounded-lg p-4 bg-blue-50/50 shadow-sm break-inside-avoid">
-      
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => document.getElementById("file-upload")?.click()}
-          disabled={keptImages.length + newImages.length >= 4}
-          className="bg-white border hover:bg-slate-50 text-blue-700"
-        >
-          <UploadCloud className="mr-2 h-4 w-4" />
-          {keptImages.length + newImages.length === 0 ? "Agregar Evidencia" : "Agregar más"}
+        <Button type="button" variant="secondary" onClick={() => document.getElementById("file-upload")?.click()} disabled={keptImages.length + newImages.length >= 4} className="bg-white border hover:bg-slate-50 text-blue-700">
+          <UploadCloud className="mr-2 h-4 w-4" /> {keptImages.length + newImages.length === 0 ? "Agregar Evidencia" : "Agregar más"}
         </Button>
-        <span className="text-xs text-muted-foreground">Máx 4 imágenes. (.jpg, .png)</span>
-        <Input
-          id="file-upload"
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={handleFileChange}
-        />
+        <Input id="file-upload" type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        
-        {/* Imágenes YA GUARDADAS */}
-        {keptImages.map((img, index) => (
+        {keptImages.map((img, index) => {
+          // ✅ DOBLE CHEQUEO DE SEGURIDAD EN EL RENDER
+          if (!img.url || img.url === "") return null;
+          
+          return (
           <div key={`old-${index}`} className="relative bg-white p-2 rounded-md border border-blue-200 shadow-sm">
-            <div className="absolute -top-2 -left-2 bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-full font-bold z-10 border border-blue-200">
-              GUARDADA
-            </div>
+            <div className="absolute -top-2 -left-2 bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-full font-bold z-10 border border-blue-200">GUARDADA</div>
             <div className="relative aspect-video rounded overflow-hidden bg-slate-100 mb-2 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={img.url} alt="Guardada" className="w-full h-full object-contain" />
-              <button
-                type="button"
-                onClick={() => removeOldImage(index)}
-                className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full shadow hover:bg-red-600 transition-opacity"
-                title="Borrar"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              <button type="button" onClick={() => removeOldImage(index)} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full shadow hover:bg-red-600"><Trash2 className="h-4 w-4" /></button>
             </div>
-            <Input 
-              placeholder="Descripción..." 
-              value={img.desc}
-              onChange={(e) => updateOldDesc(index, e.target.value)}
-              className="text-sm h-8"
-            />
+            <Input placeholder="Descripción..." value={img.desc} onChange={(e) => updateOldDesc(index, e.target.value)} className="text-sm h-8" />
           </div>
-        ))}
+        )})}
 
-        {/* Imágenes NUEVAS */}
         {newImages.map((img, index) => (
           <div key={`new-${index}`} className="relative bg-white p-2 rounded-md border border-green-300 shadow-sm">
-             <div className="absolute -top-2 -left-2 bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-bold z-10 border border-green-200">
-              NUEVA
-            </div>
+             <div className="absolute -top-2 -left-2 bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-bold z-10 border border-green-200">NUEVA</div>
             <div className="relative aspect-video rounded overflow-hidden bg-slate-100 mb-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={img.preview} alt="Nueva" className="w-full h-full object-contain" />
-              <button
-                type="button"
-                onClick={() => removeNewImage(index)}
-                className="absolute top-2 right-2 bg-slate-500 text-white p-1.5 rounded-full shadow hover:bg-red-600 transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <button type="button" onClick={() => removeNewImage(index)} className="absolute top-2 right-2 bg-slate-500 text-white p-1.5 rounded-full shadow hover:bg-red-600"><X className="h-4 w-4" /></button>
             </div>
-            <Input 
-              placeholder="Descripción..." 
-              value={img.desc}
-              onChange={(e) => updateNewDesc(index, e.target.value)}
-              className="text-sm h-8"
-            />
+            <Input placeholder="Descripción..." value={img.desc} onChange={(e) => updateNewDesc(index, e.target.value)} className="text-sm h-8" />
           </div>
         ))}
       </div>
-
-      {keptImages.length === 0 && newImages.length === 0 && (
-        <div className="h-24 border-2 border-dashed border-blue-200 rounded flex flex-col items-center justify-center text-blue-300 bg-white/50 mt-2">
-            <ImageIcon className="h-8 w-8 mb-1" />
-            <span className="text-xs">Sin imágenes</span>
-        </div>
-      )}
     </div>
   );
 }
