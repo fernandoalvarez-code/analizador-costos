@@ -6,9 +6,7 @@ import { Input } from "@/components/ui/input";
 import { X, Image as ImageIcon, UploadCloud } from "lucide-react";
 
 interface ImageUploaderProps {
-  // Callback para devolver los archivos y sus descripciones al padre
   onImagesChange: (files: File[], descriptions: string[]) => void;
-  // Para mostrar lo que ya existe si estamos editando
   initialImages?: string[];
   initialDescriptions?: string[];
 }
@@ -22,16 +20,10 @@ export function ImageUploader({
   const [previews, setPreviews] = useState<string[]>([]);
   const [descriptions, setDescriptions] = useState<string[]>([]);
 
-  // Efecto inicial para cargar datos existentes (si hay)
-  // Nota: Este componente se enfoca principalmente en nuevas subidas,
-  // pero mantenemos la estructura por si se desea extender la lógica de edición visual.
-  useEffect(() => {
-    if (initialImages.length > 0 && previews.length === 0) {
-      // Lógica opcional si quisieras convertir URLs a previews editables
-    }
-  }, [initialImages, previews.length]);
+  // NOTA: Para este caso simple, no cargamos visualmente las imágenes iniciales en el editor
+  // para evitar mezclar lógica de "borrar existente" vs "borrar nueva".
+  // Solo se manejan las nuevas cargas.
 
-  // Limpieza de memoria de previsualizaciones
   useEffect(() => {
     return () => previews.forEach((url) => {
       if (url.startsWith('blob:')) URL.revokeObjectURL(url);
@@ -49,7 +41,7 @@ export function ImageUploader({
       }
 
       const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
-      const newDescriptions = newFiles.map(() => ""); // Descripciones vacías por defecto
+      const newDescriptions = newFiles.map(() => ""); 
 
       const updatedFiles = [...selectedFiles, ...newFiles];
       const updatedPreviews = [...previews, ...newPreviews];
@@ -59,7 +51,6 @@ export function ImageUploader({
       setPreviews(updatedPreviews);
       setDescriptions(updatedDescriptions);
       
-      // Notificamos al padre
       onImagesChange(updatedFiles, updatedDescriptions);
     }
   };
