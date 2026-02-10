@@ -18,24 +18,18 @@ import {
   FirestoreError,
   DocumentSnapshot
 } from "firebase/firestore";
-// ✅ 1. ESTO FALTABA: Importar la función para el Storage
 import { getStorage } from "firebase/storage"; 
 import { getAuth, onAuthStateChanged, User, createUserWithEmailAndPassword, signInWithEmailAndPassword, Auth } from "firebase/auth";
 import { useState, useEffect, useMemo, DependencyList } from "react";
 
 // --- 1. CONFIGURACIÓN ---
-// Limpieza de seguridad por si el bucket tiene "gs://"
-const cleanBucket = (bucket: string | undefined) => {
-  if (!bucket) return "";
-  return bucket.replace("gs://", "");
-};
-
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  // Limpiamos el bucket automáticamente
-  storageBucket: cleanBucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET),
+  
+  storageBucket: "studio-1546170521-5d9b0.firebasestorage.app",
+  
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
@@ -44,8 +38,6 @@ const firebaseConfig = {
 const app: FirebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-
-// ✅ 2. ESTO FALTABA: Inicializar la variable storage
 const storage = getStorage(app); 
 
 // --- 3. HOOKS PERSONALIZADOS ---
@@ -163,6 +155,5 @@ export function deleteDocumentNonBlocking(docRef: DocumentReference) {
 }
 
 // --- 5. EXPORTS ---
-// ✅ 3. ESTO FALTABA: Agregar 'storage' a la lista de exportaciones
 export { app, db, auth, storage, firestoreDoc as doc, firestoreCollection as collection };
 export type { User };
