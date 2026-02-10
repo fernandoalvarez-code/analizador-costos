@@ -4,8 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
 import React, { useEffect, useState, useCallback } from "react";
-import { Download, Save, Printer } from "lucide-react";
-import { serverTimestamp, Timestamp, setDoc } from "firebase/firestore";
+import { Download, Save, Printer, TrendingUp, AlertCircle } from "lucide-react";
+import { serverTimestamp, setDoc, onSnapshot } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,12 @@ const sanitizeData = (data: any) => {
   }));
 };
 
+// Formato Moneda
+const formatCurrency = (val?: number) => {
+    if (typeof val !== 'number' || !isFinite(val)) return '$0.00';
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+}
+
 // Tipos
 type QuickDiagnosisResult = { breakEvenSeconds: number; breakEvenPieces: number; deltaP: number; tcA: number; vcBTarget: number; newCycleTimeTarget: number; };
 type NetSavingsResult = { netAnnualSavings: number; cppA: number; cppB: number; savingsPerPiece: number; improvementPercentage: number; newCycleTime: number; newToolLife: number; };
@@ -49,6 +55,11 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   const [detailedResult, setDetailedResult] = useState<DetailedReportResult | null>(initialData?.results || null);
   const [isSaveAlertOpen, setSaveAlertOpen] = useState(false);
   
+  // Estados para Logos (Configuración)
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const [secoLogo, setSecoLogo] = useState<string | null>(null);
+  const [isGeneratingQuickPDF, setIsGeneratingQuickPDF] = useState(false);
+
   // Imágenes
   const [imagesToUpload, setImagesToUpload] = useState<File[]>([]);
   const [keptImageUrls, setKeptImageUrls] = useState<string[]>([]); 
@@ -61,6 +72,20 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   const saveCaseForm = useForm<z.infer<typeof SaveCaseSchema>>({ resolver: zodResolver(SaveCaseSchema), defaultValues: { caseName: initialData?.name || "", }, });
 
   const parseTimeToMinutes = (min: number | undefined, sec: number | undefined) => { const minVal = min || 0; const secVal = sec || 0; return minVal + (secVal / 60); }
+
+  // Cargar configuración de Logos
+  useEffect(() => {
+    if (firestore) {
+        const unsub = onSnapshot(doc(firestore, "settings", "general"), (doc) => {
+            if (doc.exists()) {
+                const data = doc.data();
+                if (data.companyLogoUrl) setCompanyLogo(data.companyLogoUrl);
+                if (data.secoLogoUrl) setSecoLogo(data.secoLogoUrl);
+            }
+        });
+        return () => unsub();
+    }
+  }, [firestore]);
 
   useEffect(() => {
     if (initialData) {
@@ -101,6 +126,33 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     detailedForm.setValue("cicloMinB", newCicloMin); detailedForm.setValue("cicloSegB", newCicloSeg); detailedForm.setValue("piezasFiloB", (pzsPorFiloA || 0) + (piezasMasReales || 0)); detailedForm.setValue("vcB", parseFloat(actualVcB.toFixed(2))); detailedForm.setValue("filosB", filosA || 0); detailedForm.setValue("modoVidaB", "piezas");
   }
 
+  // --- IMPRESIÓN DIAGNÓSTICO RÁPIDO ---
+  const handlePrintQuickDiagnosis = async () => {
+    if (!quickResult) {
+        toast({ variant: "destructive", title: "Sin datos", description: "Primero calcula el punto de equilibrio." });
+        return;
+    }
+    setIsGeneratingQuickPDF(true);
+    try {
+        const html2pdf = (await import('html2pdf.js')).default;
+        const element = document.getElementById('quick-diagnosis-pdf');
+        const opt = {
+            margin: 0,
+            filename: `Diagnostico_Rapido_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        await html2pdf().set(opt).from(element).save();
+    } catch (error) {
+        console.error("Error PDF:", error);
+        toast({ variant: "destructive", title: "Error", description: "No se pudo generar el PDF." });
+    } finally {
+        setIsGeneratingQuickPDF(false);
+    }
+  };
+
+  // --- SUBMIT INFORME DETALLADO ---
   function onDetailedSubmit(data: z.infer<typeof DetailedReportSchema>) {
     const { machineHourlyRate, piezasAlMes, tiempoParada } = data;
     if (!machineHourlyRate || !piezasAlMes) { toast({ variant: "destructive", title: "Datos incompletos", description: "Complete 'Datos Generales'."}); return; }
@@ -185,12 +237,8 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   
   // Helpers
   const handleNewCase = () => { router.push('/dashboard'); }
-  const syncDiagToDetail = useCallback((fieldName: any, value: any) => { 
-    detailedForm.setValue(fieldName, value, { shouldValidate: true });
-  }, [detailedForm]);
-  const syncDetailToDiag = useCallback((fieldName: any, value: any) => { 
-    diagnosisForm.setValue(fieldName, value, { shouldValidate: true });
-  }, [diagnosisForm]);
+  const syncDiagToDetail = useCallback((fieldName: any, value: any) => { /* ... */ }, [detailedForm]);
+  const syncDetailToDiag = useCallback((fieldName: any, value: any) => { /* ... */ }, [diagnosisForm]);
   const watchedModoVidaA = useWatch({ control: detailedForm.control, name: 'modoVidaA' });
   const watchedModoVidaB = useWatch({ control: detailedForm.control, name: 'modoVidaB' });
   const watchedSimTimeMode = useWatch({ control: diagnosisForm.control, name: 'modoSimulacionTiempo' });
@@ -209,12 +257,21 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
           <TabsTrigger value="detailed">2. Informe</TabsTrigger>
         </TabsList>
         
-        {/* --- PESTAÑA 1: DIAGNÓSTICO RÁPIDO (RESTAURADA) --- */}
+        {/* --- PESTAÑA 1: DIAGNÓSTICO RÁPIDO --- */}
         <TabsContent value="quick">
             <Card>
-            <CardHeader>
-              <CardTitle className="font-headline">Diagnóstico Rápido</CardTitle>
-              <CardDescription>Calcula rápidamente el punto de equilibrio.</CardDescription>
+            <CardHeader className="flex flex-row justify-between items-start">
+              <div>
+                <CardTitle className="font-headline">Diagnóstico Rápido</CardTitle>
+                <CardDescription>Calcula rápidamente el punto de equilibrio.</CardDescription>
+              </div>
+              {/* BOTÓN DE DESCARGA RÁPIDA */}
+              {quickResult && (
+                  <Button onClick={handlePrintQuickDiagnosis} disabled={isGeneratingQuickPDF} variant="outline" className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100">
+                      <Download className="mr-2 h-4 w-4" />
+                      {isGeneratingQuickPDF ? 'Generando...' : 'Descargar PDF'}
+                  </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-6">
               <Form {...diagnosisForm}>
@@ -230,20 +287,20 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                           <div className="space-y-3">
                             <h4 className="font-medium text-destructive mb-2">Inserto A (Actual)</h4>
-                              <FormField control={diagnosisForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio Inserto (USD)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDetailToDiag('precioA', val); }} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={diagnosisForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio Inserto (USD)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('precioA', val); }} /></FormControl><FormMessage /></FormItem>)} />
                               <div className="flex space-x-2">
-                                  <FormField control={diagnosisForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDetailToDiag('filosA', val); }} /></FormControl><FormMessage /></FormItem>)} />
-                                  <FormField control={diagnosisForm.control} name="pzsPorFiloA" render={({ field }) => (<FormItem><FormLabel>Pzs/Filo</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDetailToDiag('piezasFiloA', val); }} /></FormControl><FormMessage /></FormItem>)} />
+                                  <FormField control={diagnosisForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('filosA', val); }} /></FormControl><FormMessage /></FormItem>)} />
+                                  <FormField control={diagnosisForm.control} name="pzsPorFiloA" render={({ field }) => (<FormItem><FormLabel>Pzs/Filo</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('piezasFiloA', val); }} /></FormControl><FormMessage /></FormItem>)} />
                               </div>
                                 <div className="flex space-x-2">
-                                  <FormField control={diagnosisForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Min</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDetailToDiag('cicloMinA', val); }} /></FormControl><FormMessage /></FormItem>)} />
-                                  <FormField control={diagnosisForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>Seg</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDetailToDiag('cicloSegA', val); }} /></FormControl><FormMessage /></FormItem>)} />
+                                  <FormField control={diagnosisForm.control} name="cicloMinA" render={({ field }) => (<FormItem><FormLabel>Min</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('cicloMinA', val); }} /></FormControl><FormMessage /></FormItem>)} />
+                                  <FormField control={diagnosisForm.control} name="cicloSegA" render={({ field }) => (<FormItem><FormLabel>Seg</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('cicloSegA', val); }} /></FormControl><FormMessage /></FormItem>)} />
                               </div>
-                              <FormField control={diagnosisForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDetailToDiag('vcA', val); }} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={diagnosisForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('vcA', val); }} /></FormControl><FormMessage /></FormItem>)} />
                           </div>
                           <div className="space-y-3">
                             <h4 className="font-medium text-primary mb-2">Inserto B (Propuesta)</h4>
-                              <FormField control={diagnosisForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio Inserto (USD)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDetailToDiag('precioB', val); }} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={diagnosisForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio Inserto (USD)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('precioB', val); }} /></FormControl><FormMessage /></FormItem>)} />
                           </div>
                       </div>
                     </div>
@@ -253,12 +310,12 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                   <div className="space-y-4">
                       <h3 className="text-xl font-semibold font-headline">Paso 1: Punto de Equilibrio</h3>
                       <div className="p-6 border rounded-lg space-y-4">
-                          <Button type="button" onClick={diagnosisForm.handleSubmit(onQuickSubmit)} disabled={isReadOnly}>Calcular Punto de Equilibrio</Button>
+                          <Button type="button" onClick={diagnosisForm.handleSubmit(onQuickSubmit)} disabled={isReadOnly}>Calcular</Button>
                            {quickResult && (
                               <div className="mt-6 pt-6 border-t">
                                   <div className="grid gap-6 md:grid-cols-2">
-                                      <Card className="text-center"><CardHeader><CardTitle>Opción 1: Mejorar Rendimiento</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-primary">+{quickResult.breakEvenPieces.toFixed(1)} pzs/filo</p></CardContent></Card>
-                                      <Card className="text-center"><CardHeader><CardTitle>Opción 2: Mejorar Velocidad</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-primary">-{quickResult.breakEvenSeconds.toFixed(2)} seg/pieza</p></CardContent></Card>
+                                      <Card className="text-center bg-slate-50"><CardHeader><CardTitle className="text-lg">Opción 1: Mejorar Rendimiento</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-blue-600">+{quickResult.breakEvenPieces.toFixed(1)} pzs/filo</p><p className="text-xs text-muted-foreground mt-2">Necesario para igualar costo</p></CardContent></Card>
+                                      <Card className="text-center bg-slate-50"><CardHeader><CardTitle className="text-lg">Opción 2: Mejorar Velocidad</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-blue-600">-{quickResult.breakEvenSeconds.toFixed(2)} seg/pieza</p><p className="text-xs text-muted-foreground mt-2">Necesario para igualar costo</p></CardContent></Card>
                                   </div>
                               </div>
                           )}
@@ -401,6 +458,82 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
           </Card>
         </TabsContent>
       </Tabs>
+      {/* Contenedor Oculto para el PDF del Diagnóstico Rápido */}
+      {quickResult && (
+          <div id="quick-diagnosis-pdf" className="opacity-0 absolute -z-10 -top-full left-0 w-[210mm] h-[297mm] p-10 bg-white text-slate-900 font-sans">
+              <div className="flex flex-col h-full">
+                  {/* Encabezado PDF */}
+                  <div className="flex justify-between items-center mb-8 h-16">
+                      <div className="w-1/3 flex justify-start">
+                          {companyLogo && <img src={companyLogo} alt="Logo Empresa" className="h-14 object-contain" />}
+                      </div>
+                      <div className="w-1/3 flex justify-end">
+                          {secoLogo && <img src={secoLogo} alt="Logo Seco" className="h-12 object-contain" />}
+                      </div>
+                  </div>
+                  
+                  {/* Titulo PDF */}
+                  <div className="text-center mb-10 border-y-2 border-slate-800 py-4">
+                      <h1 className="text-3xl font-black text-slate-800 uppercase tracking-tight">Diagnóstico Rápido de Costos</h1>
+                  </div>
+
+                  {/* Datos de Entrada */}
+                  <div className="mb-8">
+                      <h2 className="text-xl font-bold text-blue-700 mb-4 border-b-2 border-blue-200 pb-2">Parámetros de Entrada</h2>
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm p-4 bg-slate-50 rounded-lg">
+                          <div><span className="font-semibold">Costo Hora Máquina:</span> {formatCurrency(diagnosisForm.getValues('costoHoraMaquina'))}</div>
+                          <div><span className="font-semibold">Piezas por Mes:</span> {diagnosisForm.getValues('piezasAlMes')?.toLocaleString() || 'N/A'}</div>
+                          
+                          <div className="col-span-2 my-2"><Separator/></div>
+
+                          <div><span className="font-semibold">Precio Inserto A:</span> {formatCurrency(diagnosisForm.getValues('precioA'))}</div>
+                          <div><span className="font-semibold">Precio Inserto B:</span> {formatCurrency(diagnosisForm.getValues('precioB'))}</div>
+                          <div><span className="font-semibold">Filos Inserto A:</span> {diagnosisForm.getValues('filosA')}</div>
+                          <div><span className="font-semibold">Piezas/Filo A:</span> {diagnosisForm.getValues('pzsPorFiloA')}</div>
+                          <div><span className="font-semibold">Ciclo A:</span> {diagnosisForm.getValues('cicloMinA')}m {diagnosisForm.getValues('cicloSegA')}s</div>
+                          <div><span className="font-semibold">Vc Actual A:</span> {diagnosisForm.getValues('vcA')} m/min</div>
+                      </div>
+                  </div>
+
+                  {/* Resultados Punto de Equilibrio */}
+                  <div className="mb-8">
+                       <h2 className="text-xl font-bold text-blue-700 mb-4 border-b-2 border-blue-200 pb-2">Punto de Equilibrio</h2>
+                       <p className="text-sm text-slate-600 mb-4">Para justificar un sobrecosto de <span className="font-bold text-slate-800">{formatCurrency(quickResult.deltaP)}</span> por inserto, se necesita una de las siguientes mejoras:</p>
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="p-4 border rounded-lg text-center shadow-sm bg-blue-50/50">
+                                <TrendingUp className="mx-auto h-8 w-8 text-blue-600 mb-2"/>
+                                <h3 className="font-bold text-slate-800">Mejorar Rendimiento</h3>
+                                <p className="text-2xl font-black text-blue-800 mt-1">+{quickResult.breakEvenPieces.toFixed(1)}</p>
+                                <p className="text-sm text-slate-600">piezas por filo</p>
+                            </div>
+                            <div className="p-4 border rounded-lg text-center shadow-sm bg-blue-50/50">
+                               <TrendingUp className="mx-auto h-8 w-8 text-blue-600 mb-2"/>
+                                <h3 className="font-bold text-slate-800">Mejorar Velocidad</h3>
+                                <p className="text-2xl font-black text-blue-800 mt-1">-{quickResult.breakEvenSeconds.toFixed(2)}</p>
+                                <p className="text-sm text-slate-600">segundos por pieza</p>
+                            </div>
+                        </div>
+                  </div>
+
+                  {/* Resultados Simulación Real */}
+                  {netSavingsResult && (
+                       <div className="mb-8">
+                           <h2 className="text-xl font-bold text-green-700 mb-4 border-b-2 border-green-200 pb-2">Simulación de Ahorro Real</h2>
+                           <div className="p-6 text-center bg-green-50/80 rounded-lg border border-green-200">
+                               <p className="text-lg font-semibold text-slate-800">Con los datos simulados, el ahorro neto anual estimado es de:</p>
+                               <p className={`text-5xl font-black mt-2 ${netSavingsResult.netAnnualSavings > 0 ? 'text-green-600' : 'text-red-500'}`}>{formatCurrency(netSavingsResult.netAnnualSavings)}</p>
+                           </div>
+                       </div>
+                  )}
+
+                  {/* Footer PDF */}
+                  <div className="mt-auto text-center border-t pt-4">
+                      <p className="text-xs text-slate-500">Este es un diagnóstico preliminar. Los resultados pueden variar.</p>
+                      <p className="text-[10px] text-slate-400 mt-1">https://secocut-app.web.app</p>
+                  </div>
+              </div>
+          </div>
+      )}
     </>
   );
 }
