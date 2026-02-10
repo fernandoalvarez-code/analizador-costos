@@ -8,7 +8,7 @@ import * as z from "zod";
 import React, { useEffect, useState, useCallback } from "react";
 import { Download, Save, Printer } from "lucide-react";
 import { serverTimestamp, Timestamp, addDoc } from "firebase/firestore";
-
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -38,9 +38,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "../ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { useFirestore, useUser, collection, doc, addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase";
+import { useFirestore, useUser, collection, doc, addDocumentNonBlocking, setDocumentNonBlocking, storage } from "@/firebase";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../ui/alert-dialog";
 import { useRouter } from "next/navigation";
+import { ImageUploader } from "./image-uploader";
 
 type QuickDiagnosisResult = {
   breakEvenSeconds: number;
@@ -117,6 +118,12 @@ type DashboardTabsProps = {
   isReadOnly?: boolean;
 };
 
+const sanitizeData = (data: any) => {
+  return JSON.parse(JSON.stringify(data, (key, value) => {
+    return value === undefined ? null : value;
+  }));
+};
+
 export default function DashboardTabs({ initialData, isReadOnly = false }: DashboardTabsProps) {
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -126,6 +133,11 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   const [netSavingsResult, setNetSavingsResult] = useState<NetSavingsResult | null>(null);
   const [detailedResult, setDetailedResult] = useState<DetailedReportResult | null>(initialData?.results || null);
   const [isSaveAlertOpen, setSaveAlertOpen] = useState(false);
+  
+  const [imagesToUpload, setImagesToUpload] = useState<File[]>([]);
+  const [imageDescriptions, setImageDescriptions] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState(initialData?.imageUrls || []);
+  const [isUploading, setIsUploading] = useState(false);
 
   const diagnosisForm = useForm<z.infer<typeof QuickDiagnosisSchema>>({
     resolver: zodResolver(QuickDiagnosisSchema),
@@ -216,6 +228,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
       if (initialData.name) {
         saveCaseForm.reset({ caseName: initialData.name });
       }
+      setExistingImages(initialData.imageUrls || []);
     }
   }, [initialData, detailedForm, diagnosisForm, saveCaseForm]);
 
@@ -466,99 +479,119 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   }
 
   const handleDetailedPrint = () => {
-    if (detailedResult) {
-      window.print();
+    if (initialData?.id) {
+       window.open(`/cases/${id}?print=true`, '_blank');
+    } else if (detailedResult) {
+       window.print();
     } else {
-      toast({
-        variant: "destructive",
-        title: "Informe no generado",
-        description: "Primero debes generar el informe para poder imprimirlo.",
-      });
+       toast({ variant: "destructive", title: "Informe no generado", description: "Primero genera el informe." });
     }
   };
 
   const handleSaveCase = async (caseName: string) => {
     if (!detailedResult) {
-      toast({
-        variant: "destructive",
-        title: "No hay informe para guardar",
-        description: "Primero debes generar un informe detallado.",
-      });
+      toast({ variant: "destructive", title: "No hay informe para guardar", description: "Primero debes generar un informe detallado." });
       return;
     }
     if (!user || !firestore) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Debes iniciar sesión para guardar un caso.",
-      });
+      toast({ variant: "destructive", title: "Error", description: "Debes iniciar sesión para guardar un caso." });
       return;
     }
 
-    const formValues = detailedForm.getValues();
-    const isExistingCase = !!initialData?.id;
+    setIsUploading(true);
 
-    const historyEntry = {
-      modifiedBy: user.uid,
-      lastModifiedByEmail: user.email,
-      modifiedAt: new Date(), // Use client-side timestamp for history arrays
-      snapshot: formValues, // Snapshot of the form state
-    };
-    
-    const fullCaseData = {
-      ...formValues,
-      results: detailedResult,
-      userId: isExistingCase ? initialData.userId : user.uid,
-      name: caseName,
-      annualSavings: detailedResult.ahorroAnual,
-      roi: detailedResult.roi,
-      status: formValues.status || "Pendiente",
-      ...(isExistingCase 
-        ? { 
-            dateModified: serverTimestamp(),
-            modifiedBy: user.uid,
-            lastModifiedByEmail: user.email,
-            history: [...(initialData.history || []), historyEntry],
-          } 
-        : { 
-            dateCreated: serverTimestamp(),
-            modifiedBy: user.uid,
-            lastModifiedByEmail: user.email,
-            history: [historyEntry],
-          }),
-    };
+    try {
+        const formValues = detailedForm.getValues();
+        const isExistingCase = !!initialData?.id;
+        const caseId = isExistingCase ? initialData.id : doc(collection(firestore, "cuttingToolAnalyses")).id;
+        const caseDocRef = doc(firestore, "cuttingToolAnalyses", caseId);
 
+        // Filter out images marked for deletion and combine with new uploads
+        const finalImageDescriptions = [...existingImages.map(img => img.description), ...imageDescriptions];
 
-    if (isExistingCase) {
-      const caseDocRef = doc(firestore, "cuttingToolAnalyses", initialData.id);
-      setDocumentNonBlocking(caseDocRef, fullCaseData, { merge: true });
-    } else {
-      const casesCollection = collection(firestore, "cuttingToolAnalyses");
-      const docRef = await addDocumentNonBlocking(casesCollection, fullCaseData);
-      
-      // Create notification
-      const notificationsCollection = collection(firestore, "notifications");
-      await addDoc(notificationsCollection, {
-          title: "Nuevo Caso de Éxito",
-          message: `Se añadió un nuevo caso: "${caseName}"`,
-          caseId: docRef?.id,
-          createdAt: serverTimestamp(),
-          readBy: [],
-      });
-    }
-    
-    toast({
-      title: `Caso ${isExistingCase ? 'actualizado' : 'guardado'}`,
-      description: `El caso "${caseName}" ha sido ${isExistingCase ? 'actualizado' : 'guardado'} con éxito.`,
-    });
-    setSaveAlertOpen(false);
-    // Only redirect if it's a new case
-    if (!isExistingCase) {
-      router.push('/cases');
+        // 1. Upload NEW files
+        const newUploadedUrls: string[] = [];
+        if (imagesToUpload.length > 0) {
+          const uploadPromises = imagesToUpload.map(file => {
+            const storageRef = ref(storage, `cases/${caseId}/${Date.now()}_${file.name}`);
+            return uploadBytes(storageRef, file).then(snapshot => getDownloadURL(snapshot.ref));
+          });
+          newUploadedUrls = await Promise.all(uploadPromises);
+        }
+        
+        const finalImageUrls = [...existingImages.map(img => img.url), ...newUploadedUrls];
+        
+        const historyEntry = {
+          modifiedBy: user.uid,
+          lastModifiedByEmail: user.email,
+          modifiedAt: new Date(),
+          snapshot: formValues,
+        };
+        
+        const rawData = {
+          ...formValues,
+          results: detailedResult,
+          imageUrls: finalImageUrls,
+          imageDescriptions: finalImageDescriptions,
+          userId: isExistingCase ? initialData.userId : user.uid,
+          name: caseName,
+          annualSavings: detailedResult.ahorroAnual || 0,
+          roi: detailedResult.roi || 0,
+          status: formValues.status || "Pendiente",
+          ...(isExistingCase 
+            ? { 
+                dateModified: serverTimestamp(),
+                modifiedBy: user.uid,
+                lastModifiedByEmail: user.email,
+                history: [...(initialData.history || []), historyEntry],
+              } 
+            : { 
+                dateCreated: serverTimestamp(),
+                modifiedBy: user.uid,
+                lastModifiedByEmail: user.email,
+                history: [historyEntry],
+              }),
+        };
+
+        const fullCaseData = sanitizeData(rawData);
+
+        if (isExistingCase) {
+          await setDoc(caseDocRef, fullCaseData, { merge: true });
+        } else {
+          await setDoc(caseDocRef, fullCaseData);
+          const notificationsCollection = collection(firestore, "notifications");
+          await addDoc(notificationsCollection, {
+              title: "Nuevo Caso de Éxito",
+              message: `Se añadió un nuevo caso: "${caseName}"`,
+              caseId: caseId,
+              createdAt: serverTimestamp(),
+              readBy: [],
+          });
+        }
+        
+        toast({
+          title: `Caso ${isExistingCase ? 'actualizado' : 'guardado'}`,
+          description: `El caso "${caseName}" ha sido ${isExistingCase ? 'actualizado' : 'guardado'} con éxito.`,
+        });
+        setSaveAlertOpen(false);
+
+        if (!isExistingCase) {
+          router.push(`/cases/${caseId}`);
+        } else {
+           window.location.reload();
+        }
+    } catch(e) {
+         console.error("Error al guardar:", e);
+         toast({
+            variant: "destructive",
+            title: "Error al guardar",
+            description: "No se pudo guardar el caso. Revisa la consola para más detalles."
+         })
+    } finally {
+        setIsUploading(false);
     }
   };
   
-  const formatCurrency = (value: number) => new Intl.NumberFormat('es-US', { style: 'currency', currency: 'USD' }).format(value);
   const formatMinutes = (timeInMinutes: number) => {
     const minutes = Math.floor(timeInMinutes);
     const seconds = Math.round((timeInMinutes - minutes) * 60);
@@ -928,6 +961,19 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                               </CardContent>
                           </Card>
                       </div>
+
+                      <div className="mt-8 space-y-3 page-break-inside-avoid">
+                        <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Evidencia Fotográfica (Opcional)</h3>
+                        <ImageUploader 
+                            onImagesChange={(files, descs, existing) => {
+                                setImagesToUpload(files);
+                                setImageDescriptions(descs);
+                                setExistingImages(existing);
+                            }}
+                            initialImages={initialData?.imageUrls}
+                            initialDescriptions={initialData?.imageDescriptions}
+                        />
+                      </div>
                   </fieldset>
                   
                   {!isReadOnly && 
@@ -935,8 +981,8 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                       <Button type="submit">Generar Informe</Button>
                         <AlertDialog open={isSaveAlertOpen} onOpenChange={setSaveAlertOpen}>
                             <AlertDialogTrigger asChild>
-                                <Button type="button" variant="secondary" disabled={!detailedResult}>
-                                    <Save className="mr-2 h-4 w-4" />Guardar Caso
+                                <Button type="button" variant="secondary" disabled={!detailedResult || isUploading}>
+                                    {isUploading ? "Guardando..." : <><Save className="mr-2 h-4 w-4" />Guardar Caso</>}
                                 </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
@@ -965,13 +1011,13 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                                 </Form>
                                 <AlertDialogFooter>
                                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction type="submit" form="save-case-form">
-                                        Guardar
+                                    <AlertDialogAction type="submit" form="save-case-form" disabled={isUploading}>
+                                        {isUploading ? "Guardando..." : "Guardar"}
                                     </AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
-                      <Button type="button" variant="secondary" onClick={handleDetailedPrint} disabled={!detailedResult}><Download className="mr-2 h-4 w-4" />Imprimir / Guardar PDF</Button>
+                      <Button type="button" variant="secondary" onClick={handleDetailedPrint} disabled={!detailedResult}><Printer className="mr-2 h-4 w-4" />Imprimir / Guardar PDF</Button>
                     </div>
                   }
                 </form>
@@ -1023,9 +1069,9 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                               <h3 className="text-3xl font-bold tracking-tight">Análisis de Costo por Pieza (CPP)</h3>
                               <p className="text-lg text-muted-foreground">Basado en {detailedForm.getValues("piezasAlMes")?.toLocaleString()} pzs/mes y un costo de {formatCurrency(detailedForm.getValues("machineHourlyRate"))}/hr</p>
                               <div className="mt-4">
-                                  <p className="text-xl font-medium text-foreground">{detailedResult.ahorroAnual > 0 ? 'AHORRO ANUAL PROYECTADO' : 'PÉRDIDA ANUAL PROYECTADA'}</p>
-                                  <p className={`text-6xl font-bold ${detailedResult.ahorroAnual > 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(detailedResult.ahorroAnual)}</p>
-                                  <p className="text-xl text-muted-foreground mt-1">({formatCurrency(detailedResult.ahorroMensual)} / Mes)</p>
+                                  <p className="text-xl font-medium text-foreground">{r.ahorroAnual > 0 ? 'AHORRO ANUAL PROYECTADO' : 'PÉRDIDA ANUAL PROYECTADA'}</p>
+                                  <p className={`text-6xl font-bold ${r.ahorroAnual > 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(r.ahorroAnual)}</p>
+                                  <p className="text-xl text-muted-foreground mt-1">({formatCurrency(r.ahorroMensual)} / Mes)</p>
                               </div>
                           </div>
                           
@@ -1034,31 +1080,31 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                             <div className="grid grid-cols-2 gap-4 md:gap-8 justify-items-center">
                                 {/* Columna Actual */}
                                 <div className="w-full max-w-xs flex flex-col items-center">
-                                    <div className="text-2xl font-bold text-destructive">{formatCurrency(detailedResult.cppA)}</div>
+                                    <div className="text-2xl font-bold text-destructive">{formatCurrency(r.cppA)}</div>
                                     <div className="text-md font-semibold text-muted-foreground mb-2">Actual</div>
                                     <div className="w-full rounded-lg overflow-hidden shadow-md">
                                         <div className="bg-destructive text-destructive-foreground p-2 text-center">
                                             <div className="font-bold text-sm">Máquina</div>
-                                            <div className="text-sm">{formatCurrency(detailedResult.costoMaquinaA)}</div>
+                                            <div className="text-sm">{formatCurrency(r.costoMaquinaA)}</div>
                                         </div>
                                         <div className="bg-red-300 text-red-900 p-2 text-center">
                                             <div className="font-bold text-sm">Herram.</div>
-                                            <div className="text-sm">{formatCurrency(detailedResult.costoHerramientaA)}</div>
+                                            <div className="text-sm">{formatCurrency(r.costoHerramientaA)}</div>
                                         </div>
                                     </div>
                                 </div>
                                 {/* Columna Propuesta */}
                                 <div className="w-full max-w-xs flex flex-col items-center">
-                                    <div className="text-2xl font-bold text-primary">{formatCurrency(detailedResult.cppB)}</div>
+                                    <div className="text-2xl font-bold text-primary">{formatCurrency(r.cppB)}</div>
                                     <div className="text-md font-semibold text-muted-foreground mb-2">Propuesta</div>
                                     <div className="w-full rounded-lg overflow-hidden shadow-md">
                                         <div className="bg-primary text-primary-foreground p-2 text-center">
                                             <div className="font-bold text-sm">Máquina</div>
-                                            <div className="text-sm">{formatCurrency(detailedResult.costoMaquinaB)}</div>
+                                            <div className="text-sm">{formatCurrency(r.costoMaquinaB)}</div>
                                         </div>
                                         <div className="bg-blue-300 text-blue-900 p-2 text-center">
                                             <div className="font-bold text-sm">Herram.</div>
-                                            <div className="text-sm">{formatCurrency(detailedResult.costoHerramientaB)}</div>
+                                            <div className="text-sm">{formatCurrency(r.costoHerramientaB)}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -1072,15 +1118,15 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                                   <StatCard 
                                       title="Inversión en Herramienta" 
                                       description="Variación en costo de herramienta por pieza"
-                                      value={`${detailedResult.toolCostIncreasePercent > 0 ? '+' : ''}${detailedResult.toolCostIncreasePercent.toFixed(1)}%`}
-                                      valueClassName={detailedResult.toolCostIncreasePercent > 0 ? 'text-red-600' : 'text-green-600'}
+                                      value={`${r.toolCostIncreasePercent > 0 ? '+' : ''}${r.toolCostIncreasePercent.toFixed(1)}%`}
+                                      valueClassName={r.toolCostIncreasePercent > 0 ? 'text-red-600' : 'text-green-600'}
                                       isCompact
                                   />
                                   <StatCard 
                                       title="Mejora en Costo Total" 
                                       description="Reducción de costo total por pieza"
-                                      value={`${detailedResult.totalCostReductionPercent.toFixed(1)}%`}
-                                      valueClassName={detailedResult.totalCostReductionPercent > 0 ? 'text-green-600' : 'text-red-600'}
+                                      value={`${r.totalCostReductionPercent.toFixed(1)}%`}
+                                      valueClassName={r.totalCostReductionPercent > 0 ? 'text-green-600' : 'text-red-600'}
                                       isCompact
                                   />
                               </div>
@@ -1091,21 +1137,21 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                   <StatCard 
                                       title="Tiempo de Máquina Liberado (Anual)"
-                                      value={`${detailedResult.machineHoursFreedAnnual.toFixed(2)} horas`}
+                                      value={`${r.machineHoursFreedAnnual.toFixed(2)} horas`}
                                       valueClassName="text-primary"
                                       isCompact
                                   />
                                   <StatCard 
                                       title="Valor de Producción Adicional"
                                       description={`Tiempo liberado valorizado a ${formatCurrency(detailedForm.getValues("machineHourlyRate"))}/hr`}
-                                      value={formatCurrency(detailedResult.machineHoursFreedValueAnnual)}
+                                      value={formatCurrency(r.machineHoursFreedValueAnnual)}
                                       valueClassName="text-green-600"
                                       isCompact
                                   />
                                   <StatCard 
                                       title="Piezas Adicionales Anuales"
                                       description={`Producibles en las horas liberadas`}
-                                      value={detailedResult.piezasAdicionalesAnual.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                                      value={r.piezasAdicionalesAnual.toLocaleString(undefined, {maximumFractionDigits: 0})}
                                       valueClassName="text-primary"
                                       isCompact
                                   />
@@ -1125,30 +1171,30 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                                     </TableHeader>
                                     <TableBody>
                                         <TableRow className="bg-muted/50"><TableCell colSpan={3} className="font-semibold text-muted-foreground">Datos del Inserto</TableCell></TableRow>
-                                        <TableRow><TableCell>Descripción</TableCell><TableCell className="text-center">{detailedForm.getValues("descA")}</TableCell><TableCell className="text-center">{detailedForm.getValues("descB")}</TableCell></TableRow>
-                                        <TableRow><TableCell>Precio del Inserto</TableCell><TableCell className="text-center">{formatCurrency(detailedForm.getValues("precioA") || 0)}</TableCell><TableCell className="text-center">{formatCurrency(detailedForm.getValues("precioB") || 0)}</TableCell></TableRow>
-                                        <TableRow><TableCell>Filos por Inserto</TableCell><TableCell className="text-center">{detailedForm.getValues("filosA")}</TableCell><TableCell className="text-center">{detailedForm.getValues("filosB")}</TableCell></TableRow>
-                                        <TableRow><TableCell>Vida por Filo (Minutos)</TableCell><TableCell className="text-center">{detailedResult.minutosFiloA.toFixed(2)} {detailedForm.getValues("modoVidaA") === 'minutos' ? '(input)' : '(calc.)'}</TableCell><TableCell className="text-center">{detailedResult.minutosFiloB.toFixed(2)} {detailedForm.getValues("modoVidaB") === 'minutos' ? '(input)' : '(calc.)'}</TableCell></TableRow>
-                                        <TableRow><TableCell>Piezas por Filo</TableCell><TableCell className="text-center font-bold">{(detailedResult.piezasTotalA / (detailedForm.getValues("filosA") || 1)).toFixed(2)} {detailedForm.getValues("modoVidaA") === 'piezas' ? '(input)' : '(calc.)'}</TableCell><TableCell className="text-center font-bold">{(detailedResult.piezasTotalB / (detailedForm.getValues("filosB") || 1)).toFixed(2)} {detailedForm.getValues("modoVidaB") === 'piezas' ? '(input)' : '(calc.)'}</TableCell></TableRow>
-                                        <TableRow><TableCell>Piezas Totales / Inserto</TableCell><TableCell className="text-center font-semibold">{detailedResult.piezasTotalA.toFixed(0)}</TableCell><TableCell className="text-center font-semibold">{detailedResult.piezasTotalB.toFixed(0)}</TableCell></TableRow>
-                                        <TableRow><TableCell>Insertos Requeridos / Mes</TableCell><TableCell className="text-center">{detailedResult.insertosNecesariosA.toFixed(2)} ({formatCurrency(detailedResult.costoTotalInsertosA)})</TableCell><TableCell className="text-center">{detailedResult.insertosNecesariosB.toFixed(2)} ({formatCurrency(detailedResult.costoTotalInsertosB)})</TableCell></TableRow>
-                                        <TableRow className="bg-muted/50"><TableCell className="font-bold">Costo Herramienta / Pieza</TableCell><TableCell className="text-center font-bold text-destructive">{formatCurrency(detailedResult.costoHerramientaA)}</TableCell><TableCell className="text-center font-bold text-primary">{formatCurrency(detailedResult.costoHerramientaB)}</TableCell></TableRow>
+                                        <TableRow><TableCell>Descripción</TableCell><TableCell className="text-center">{data.descA}</TableCell><TableCell className="text-center">{data.descB}</TableCell></TableRow>
+                                        <TableRow><TableCell>Precio del Inserto</TableCell><TableCell className="text-center">{formatCurrency(data.precioA || 0)}</TableCell><TableCell className="text-center">{formatCurrency(data.precioB || 0)}</TableCell></TableRow>
+                                        <TableRow><TableCell>Filos por Inserto</TableCell><TableCell className="text-center">{data.filosA}</TableCell><TableCell className="text-center">{data.filosB}</TableCell></TableRow>
+                                        <TableRow><TableCell>Vida por Filo (Minutos)</TableCell><TableCell className="text-center">{r.minutosFiloA.toFixed(2)} {data.modoVidaA === 'minutos' ? '(input)' : '(calc.)'}</TableCell><TableCell className="text-center">{r.minutosFiloB.toFixed(2)} {data.modoVidaB === 'minutos' ? '(input)' : '(calc.)'}</TableCell></TableRow>
+                                        <TableRow><TableCell>Piezas por Filo</TableCell><TableCell className="text-center font-bold">{(r.piezasTotalA / (data.filosA || 1)).toFixed(2)} {data.modoVidaA === 'piezas' ? '(input)' : '(calc.)'}</TableCell><TableCell className="text-center font-bold">{(r.piezasTotalB / (data.filosB || 1)).toFixed(2)} {data.modoVidaB === 'piezas' ? '(input)' : '(calc.)'}</TableCell></TableRow>
+                                        <TableRow><TableCell>Piezas Totales / Inserto</TableCell><TableCell className="text-center font-semibold">{r.piezasTotalA.toFixed(0)}</TableCell><TableCell className="text-center font-semibold">{r.piezasTotalB.toFixed(0)}</TableCell></TableRow>
+                                        <TableRow><TableCell>Insertos Requeridos / Mes</TableCell><TableCell className="text-center">{r.insertosNecesariosA.toFixed(2)} ({formatCurrency(r.costoTotalInsertosA)})</TableCell><TableCell className="text-center">{r.insertosNecesariosB.toFixed(2)} ({formatCurrency(r.costoTotalInsertosB)})</TableCell></TableRow>
+                                        <TableRow className="bg-muted/50"><TableCell className="font-bold">Costo Herramienta / Pieza</TableCell><TableCell className="text-center font-bold text-destructive">{formatCurrency(r.costoHerramientaA)}</TableCell><TableCell className="text-center font-bold text-primary">{formatCurrency(r.costoHerramientaB)}</TableCell></TableRow>
                                         
                                         <TableRow className="bg-muted/50"><TableCell colSpan={3} className="font-semibold text-muted-foreground">Datos del Proceso</TableCell></TableRow>
-                                        <TableRow><TableCell>Tiempo de Ciclo (min)</TableCell><TableCell className="text-center">{detailedResult.tiempoCicloA.toFixed(3)} min</TableCell><TableCell className="text-center">{detailedResult.tiempoCicloB.toFixed(3)} min</TableCell></TableRow>
-                                        <TableRow><TableCell>Velocidad de Corte (Vc)</TableCell><TableCell className="text-center">{detailedForm.getValues("vcA")} m/min</TableCell><TableCell className="text-center">{detailedForm.getValues("vcB")} m/min</TableCell></TableRow>
-                                        <TableRow><TableCell>Costo Hora-Máquina</TableCell><TableCell colSpan={2} className="text-center">{formatCurrency(detailedForm.getValues("machineHourlyRate"))} ({formatCurrency(detailedForm.getValues("machineHourlyRate")/60)}/min)</TableCell></TableRow>
-                                        <TableRow><TableCell>Parada por Cambio (costo/pza)</TableCell><TableCell className="text-center">{formatCurrency(detailedResult.costoParadaA)}</TableCell><TableCell className="text-center">{formatCurrency(detailedResult.costoParadaB)}</TableCell></TableRow>
-                                        <TableRow className="bg-muted/50"><TableCell className="font-bold">Costo Máquina / Pieza</TableCell><TableCell className="text-center font-bold text-destructive">{formatCurrency(detailedResult.costoMaquinaA)}</TableCell><TableCell className="text-center font-bold text-primary">{formatCurrency(detailedResult.costoMaquinaB)}</TableCell></TableRow>
+                                        <TableRow><TableCell>Tiempo de Ciclo (min)</TableCell><TableCell className="text-center">{r.tiempoCicloA.toFixed(3)} min</TableCell><TableCell className="text-center">{r.tiempoCicloB.toFixed(3)} min</TableCell></TableRow>
+                                        <TableRow><TableCell>Velocidad de Corte (Vc)</TableCell><TableCell className="text-center">{data.vcA} m/min</TableCell><TableCell className="text-center">{data.vcB} m/min</TableCell></TableRow>
+                                        <TableRow><TableCell>Costo Hora-Máquina</TableCell><TableCell colSpan={2} className="text-center">{formatCurrency(data.machineHourlyRate)} ({formatCurrency(data.machineHourlyRate/60)}/min)</TableCell></TableRow>
+                                        <TableRow><TableCell>Parada por Cambio (costo/pza)</TableCell><TableCell className="text-center">{formatCurrency(r.costoParadaA)}</TableCell><TableCell className="text-center">{formatCurrency(r.costoParadaB)}</TableCell></TableRow>
+                                        <TableRow className="bg-muted/50"><TableCell className="font-bold">Costo Máquina / Pieza</TableCell><TableCell className="text-center font-bold text-destructive">{formatCurrency(r.costoMaquinaA)}</TableCell><TableCell className="text-center font-bold text-primary">{formatCurrency(r.costoMaquinaB)}</TableCell></TableRow>
 
-                                        <TableRow className="bg-foreground/10"><TableCell className="font-extrabold text-lg">COSTO TOTAL / PIEZA</TableCell><TableCell className="text-center font-extrabold text-lg text-destructive">{formatCurrency(detailedResult.cppA)}</TableCell><TableCell className="text-center font-extrabold text-lg text-primary">{formatCurrency(detailedResult.cppB)}</TableCell></TableRow>
+                                        <TableRow className="bg-foreground/10"><TableCell className="font-extrabold text-lg">COSTO TOTAL / PIEZA</TableCell><TableCell className="text-center font-extrabold text-lg text-destructive">{formatCurrency(r.cppA)}</TableCell><TableCell className="text-center font-extrabold text-lg text-primary">{formatCurrency(r.cppB)}</TableCell></TableRow>
                                     </TableBody>
                                 </Table>
                             </div>
                           </div>
                           
                           <div className="no-break-inside section-spacing compact-table">
-                              <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Resumen Financiero (para {detailedForm.getValues("piezasAlMes")?.toLocaleString()} piezas/mes)</h3>
+                              <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Resumen Financiero (para {data.piezasAlMes?.toLocaleString()} piezas/mes)</h3>
                               <div className="overflow-x-auto rounded-lg border">
                               <Table>
                                   <TableHeader>
@@ -1163,38 +1209,38 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                                   <TableBody>
                                   <TableRow>
                                       <TableCell>Costo Total por Pieza</TableCell>
-                                      <TableCell>{formatCurrency(detailedResult.cppA)}</TableCell>
-                                      <TableCell>{formatCurrency(detailedResult.cppB)}</TableCell>
-                                      <TableCell className="font-semibold text-green-700 bg-green-100/50">{formatCurrency(detailedResult.ahorroPorPieza)}</TableCell>
-                                      <TableCell className="font-semibold text-green-700 bg-green-100/50">{detailedResult.totalCostReductionPercent.toFixed(1)}%</TableCell>
+                                      <TableCell>{formatCurrency(r.cppA)}</TableCell>
+                                      <TableCell>{formatCurrency(r.cppB)}</TableCell>
+                                      <TableCell className="font-semibold text-green-700 bg-green-100/50">{formatCurrency(r.ahorroPorPieza)}</TableCell>
+                                      <TableCell className="font-semibold text-green-700 bg-green-100/50">{r.totalCostReductionPercent.toFixed(1)}%</TableCell>
                                   </TableRow>
                                   <TableRow>
                                       <TableCell>Costo Total (Mensual)</TableCell>
-                                      <TableCell>{formatCurrency(detailedResult.costoTotalMensualA)}</TableCell>
-                                      <TableCell>{formatCurrency(detailedResult.costoTotalMensualB)}</TableCell>
-                                      <TableCell className="font-semibold text-green-700 bg-green-100/50">{formatCurrency(detailedResult.ahorroMensual)}</TableCell>
-                                      <TableCell className="font-semibold text-green-700 bg-green-100/50">{detailedResult.totalCostReductionPercent.toFixed(1)}%</TableCell>
+                                      <TableCell>{formatCurrency(r.costoTotalMensualA)}</TableCell>
+                                      <TableCell>{formatCurrency(r.costoTotalMensualB)}</TableCell>
+                                      <TableCell className="font-semibold text-green-700 bg-green-100/50">{formatCurrency(r.ahorroMensual)}</TableCell>
+                                      <TableCell className="font-semibold text-green-700 bg-green-100/50">{r.totalCostReductionPercent.toFixed(1)}%</TableCell>
                                   </TableRow>
                                   <TableRow>
                                       <TableCell>Tiempo de Máquina (Mensual)</TableCell>
-                                      <TableCell>{formatCurrency(detailedResult.tiempoMaquinaMensualValorA)} ({detailedResult.tiempoMaquinaMensualHorasA.toFixed(2)} hs)</TableCell>
-                                      <TableCell>{formatCurrency(detailedResult.tiempoMaquinaMensualValorB)} ({detailedResult.tiempoMaquinaMensualHorasB.toFixed(2)} hs)</TableCell>
-                                      <TableCell className="font-semibold text-green-700 bg-green-100/50">{formatCurrency(detailedResult.machineHoursFreedValueAnnual / 12)} ({detailedResult.machineHoursFreedMonthly.toFixed(2)} hs)</TableCell>
-                                      <TableCell className="font-semibold text-green-700 bg-green-100/50">{detailedResult.timeReductionPercent.toFixed(1)}%</TableCell>
+                                      <TableCell>{formatCurrency(r.tiempoMaquinaMensualValorA)} ({r.tiempoMaquinaMensualHorasA.toFixed(2)} hs)</TableCell>
+                                      <TableCell>{formatCurrency(r.tiempoMaquinaMensualValorB)} ({r.tiempoMaquinaMensualHorasB.toFixed(2)} hs)</TableCell>
+                                      <TableCell className="font-semibold text-green-700 bg-green-100/50">{formatCurrency(r.machineHoursFreedValueAnnual / 12)} ({r.machineHoursFreedMonthly.toFixed(2)} hs)</TableCell>
+                                      <TableCell className="font-semibold text-green-700 bg-green-100/50">{r.timeReductionPercent.toFixed(1)}%</TableCell>
                                   </TableRow>
                                   <TableRow>
                                       <TableCell>Turnos de 8hs (Mensual)</TableCell>
-                                      <TableCell>{detailedResult.turnosMensualesA.toFixed(2)} turnos</TableCell>
-                                      <TableCell>{detailedResult.turnosMensualesB.toFixed(2)} turnos</TableCell>
-                                      <TableCell className="font-semibold text-green-700 bg-green-100/50">{(detailedResult.turnosMensualesA - detailedResult.turnosMensualesB).toFixed(2)} turnos liberados</TableCell>
-                                      <TableCell className="font-semibold text-green-700 bg-green-100/50">{detailedResult.timeReductionPercent.toFixed(1)}%</TableCell>
+                                      <TableCell>{r.turnosMensualesA.toFixed(2)} turnos</TableCell>
+                                      <TableCell>{r.turnosMensualesB.toFixed(2)} turnos</TableCell>
+                                      <TableCell className="font-semibold text-green-700 bg-green-100/50">{(r.turnosMensualesA - r.turnosMensualesB).toFixed(2)} turnos liberados</TableCell>
+                                      <TableCell className="font-semibold text-green-700 bg-green-100/50">{r.timeReductionPercent.toFixed(1)}%</TableCell>
                                   </TableRow>
                                   <TableRow className="bg-muted/80">
                                       <TableCell className="font-bold">Costo Total (Anual)</TableCell>
-                                      <TableCell className="font-bold">{formatCurrency(detailedResult.costoTotalMensualA * 12)}</TableCell>
-                                      <TableCell className="font-bold">{formatCurrency(detailedResult.costoTotalMensualB * 12)}</TableCell>
-                                      <TableCell className="font-bold text-lg text-green-700 bg-green-100/50">{formatCurrency(detailedResult.ahorroAnual)}</TableCell>
-                                      <TableCell className="font-bold text-lg text-green-700 bg-green-100/50">{detailedResult.totalCostReductionPercent.toFixed(1)}%</TableCell>
+                                      <TableCell className="font-bold">{formatCurrency(r.costoTotalMensualA * 12)}</TableCell>
+                                      <TableCell className="font-bold">{formatCurrency(r.costoTotalMensualB * 12)}</TableCell>
+                                      <TableCell className="font-bold text-lg text-green-700 bg-green-100/50">{formatCurrency(r.ahorroAnual)}</TableCell>
+                                      <TableCell className="font-bold text-lg text-green-700 bg-green-100/50">{r.totalCostReductionPercent.toFixed(1)}%</TableCell>
                                   </TableRow>
                                   </TableBody>
                               </Table>
@@ -1210,5 +1256,3 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     </>
   );
 }
-
-    
