@@ -36,10 +36,9 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
   const data = rawData || {};
   const r = data.results || {}; 
 
-  // --- CÁLCULOS AUXILIARES PARA REPLICAR TU TABLA EXACTA ---
+  // Cálculos auxiliares
   const costoMinuto = (data.machineHourlyRate || 0) / 60;
   
-  // Insertos requeridos por mes = PiezasMes / (Filos * PiezasPorFilo)
   const totalPiezasPorInsertoA = (data.filosA || 1) * (data.piezasFiloA || 1);
   const insertosMesA = totalPiezasPorInsertoA > 0 ? (data.piezasAlMes || 0) / totalPiezasPorInsertoA : 0;
   const costoInsertosMesA = insertosMesA * (data.precioA || 0);
@@ -48,7 +47,6 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
   const insertosMesB = totalPiezasPorInsertoB > 0 ? (data.piezasAlMes || 0) / totalPiezasPorInsertoB : 0;
   const costoInsertosMesB = insertosMesB * (data.precioB || 0);
 
-  // Turnos (Horas mensuales / 8)
   const turnosA = (r.tiempoMaquinaMensualHorasA || 0) / 8;
   const turnosB = (r.tiempoMaquinaMensualHorasB || 0) / 8;
   const turnosAhorrados = turnosA - turnosB;
@@ -57,7 +55,8 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     const shouldPrint = searchParams.get("print") === "true";
     if (shouldPrint && !isLoading && rawData) {
-      const timer = setTimeout(() => { window.print(); }, 1500);
+      // Damos 2 segundos para asegurar que las imágenes bajen antes de imprimir
+      const timer = setTimeout(() => { window.print(); }, 2000);
       return () => clearTimeout(timer);
     }
   }, [searchParams, isLoading, rawData]);
@@ -77,160 +76,148 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      <div className="report-content">
+      <div className="report-content space-y-6">
         
-        {/* 1. ENCABEZADO AZUL (Igual a captura 15.07.47) */}
-        <div className="bg-blue-50 border-l-8 border-blue-600 p-6 mb-8 flex justify-between items-center">
+        {/* 1. ENCABEZADO */}
+        <div className="flex justify-between items-end border-b-2 border-slate-300 pb-4">
             <div>
-                <h3 className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">ANALIZADOR DE COSTOS DE CORTE</h3>
-                <h1 className="text-4xl font-black text-slate-900 leading-tight">{data.name || 'Sin Título'}</h1>
-                <div className="flex items-center gap-2 mt-2 text-sm text-slate-500">
-                    <span className="font-semibold">Cliente:</span> {data.cliente || 'N/A'} 
-                    <span className="mx-2">•</span>
-                    <span className="font-semibold">{new Date().toLocaleDateString()}</span>
-                </div>
+                <h3 className="text-xs font-bold text-slate-500 uppercase mb-1">Analizador de Costos de Corte</h3>
+                <h1 className="text-3xl font-black text-slate-900">{data.name || 'Sin Título'}</h1>
             </div>
             <div className="text-right">
-                <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full uppercase">{data.status || 'Pendiente'}</span>
+                <h2 className="text-xl font-bold text-slate-400 uppercase tracking-widest">SECOCUT SRL</h2>
+                <p className="text-xs text-slate-500 mt-1">Análisis de Productividad</p>
             </div>
         </div>
 
-        {/* 2. RESUMEN KPI (Tarjetas superiores) */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
-            <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg">
-                <p className="text-xs font-bold text-blue-600 uppercase">AHORRO ANUAL</p>
-                <p className={`text-3xl font-black ${r.ahorroAnual > 0 ? 'text-green-600' : 'text-slate-700'}`}>{formatCurrency(r.ahorroAnual)}</p>
-            </div>
-            <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg">
-                <p className="text-xs font-bold text-blue-600 uppercase">ROI</p>
-                <p className="text-3xl font-black text-slate-700">{r.roi?.toFixed(0)}%</p>
+        {/* Datos Generales */}
+        <div className="grid grid-cols-4 gap-4 text-sm border-b border-slate-200 pb-6">
+            <div><span className="block text-xs font-bold text-slate-400 uppercase">Cliente</span><span className="font-semibold">{data.cliente || 'N/A'}</span></div>
+            <div><span className="block text-xs font-bold text-slate-400 uppercase">Fecha</span><span className="font-semibold">{data.fecha || '-'}</span></div>
+            <div><span className="block text-xs font-bold text-slate-400 uppercase">Operación</span><span className="font-semibold">{data.operacion || '-'}</span></div>
+            <div><span className="block text-xs font-bold text-slate-400 uppercase">Material</span><span className="font-semibold">{data.material || '-'}</span></div>
+        </div>
+
+        {/* 2. RESUMEN KPI */}
+        <div className="bg-blue-50/50 border border-blue-100 p-6 rounded-lg text-center break-inside-avoid">
+            <h3 className="text-sm font-bold text-blue-800 uppercase mb-4">Resumen de Impacto Económico</h3>
+            <div className="grid grid-cols-3 gap-8 divide-x divide-blue-200">
+                <div>
+                    <p className="text-xs text-slate-500 uppercase font-bold">Costo Actual (Mes)</p>
+                    <p className="text-2xl font-bold text-slate-700">{formatCurrency(r.costoTotalMensualA)}</p>
+                </div>
+                <div>
+                    <p className="text-xs text-slate-500 uppercase font-bold">Costo Propuesto (Mes)</p>
+                    <p className="text-2xl font-bold text-blue-600">{formatCurrency(r.costoTotalMensualB)}</p>
+                </div>
+                <div>
+                    <p className="text-xs text-green-600 uppercase font-bold">Ahorro Anual</p>
+                    <p className="text-3xl font-black text-green-600">{formatCurrency(r.ahorroAnual)}</p>
+                </div>
             </div>
         </div>
 
-        {/* 3. DATOS DETALLADOS DEL PROCESO (Réplica exacta de captura 09.18.11) */}
-        <div className="mb-10">
-            <h2 className="text-2xl font-bold text-slate-800 mb-4 border-l-4 border-blue-600 pl-3">Datos Detallados del Proceso</h2>
+        {/* 3. TABLA DETALLADA */}
+        <div className="break-inside-avoid">
+            <h3 className="text-lg font-bold text-slate-800 mb-3 border-l-4 border-slate-500 pl-3">Datos Detallados</h3>
             
-            <div className="border border-blue-200 rounded-lg overflow-hidden text-sm">
-                {/* Header Tabla */}
-                <div className="grid grid-cols-10 bg-blue-50 border-b border-blue-200 font-bold text-blue-900 py-3 px-4">
-                    <div className="col-span-4">Parámetro</div>
-                    <div className="col-span-3 text-center text-red-600 bg-red-50/50 rounded py-1">Inserto A (Actual)</div>
-                    <div className="col-span-3 text-center text-blue-600 bg-blue-100/50 rounded py-1 ml-1">Inserto B (Propuesta)</div>
+            <div className="border border-slate-300 text-sm">
+                {/* Header */}
+                <div className="grid grid-cols-10 bg-slate-100 font-bold border-b border-slate-300 py-2 px-2 text-center">
+                    <div className="col-span-4 text-left">Parámetro</div>
+                    <div className="col-span-3 text-red-600">Actual (A)</div>
+                    <div className="col-span-3 text-blue-600">Propuesta (B)</div>
                 </div>
 
-                {/* Sección: Datos del Inserto */}
-                <div className="bg-yellow-50/50 px-4 py-1 text-xs font-bold text-slate-500 uppercase border-b border-blue-100">Datos del Inserto</div>
-                
+                <SectionTitle title="Datos del Inserto" />
                 <Row label="Descripción" valA={data.descA} valB={data.descB} />
                 <Row label="Precio del Inserto" valA={formatCurrency(data.precioA)} valB={formatCurrency(data.precioB)} />
                 <Row label="Filos por Inserto" valA={data.filosA} valB={data.filosB} />
-                <Row label="Vida por Filo (Minutos)" valA={`${r.minutosFiloA?.toFixed(1)} min`} valB={`${r.minutosFiloB?.toFixed(1)} min`} />
+                <Row label="Vida por Filo (min)" valA={r.minutosFiloA?.toFixed(1)} valB={r.minutosFiloB?.toFixed(1)} />
                 <Row label="Piezas por Filo" valA={data.piezasFiloA} valB={data.piezasFiloB} bold />
-                <Row label="Piezas Totales / Inserto" valA={(data.filosA * data.piezasFiloA)} valB={(data.filosB * data.piezasFiloB)} />
-                
-                {/* Insertos Requeridos / Mes con Costo */}
-                <div className="grid grid-cols-10 border-b border-slate-100 py-2 px-4 hover:bg-slate-50">
+                <div className="grid grid-cols-10 border-b border-slate-200 py-1 px-2">
                     <div className="col-span-4 font-medium text-slate-700">Insertos Req. / Mes</div>
-                    <div className="col-span-3 text-center text-slate-600">{insertosMesA.toFixed(2)} <span className="text-xs text-slate-400">({formatCurrency(costoInsertosMesA)})</span></div>
-                    <div className="col-span-3 text-center text-slate-600">{insertosMesB.toFixed(2)} <span className="text-xs text-slate-400">({formatCurrency(costoInsertosMesB)})</span></div>
+                    <div className="col-span-3 text-center">{insertosMesA.toFixed(1)} <span className="text-[10px] text-slate-400">({formatCurrency(costoInsertosMesA)})</span></div>
+                    <div className="col-span-3 text-center">{insertosMesB.toFixed(1)} <span className="text-[10px] text-slate-400">({formatCurrency(costoInsertosMesB)})</span></div>
                 </div>
-
                 <Row label="Costo Herramienta / Pieza" valA={formatCurrency(r.costoHerramientaA)} valB={formatCurrency(r.costoHerramientaB)} isRed />
 
-                {/* Sección: Datos del Proceso */}
-                <div className="bg-blue-50/30 px-4 py-1 text-xs font-bold text-blue-500 uppercase border-y border-blue-100 mt-2">Datos del Proceso</div>
-                
-                <Row label="Tiempo de Ciclo (min)" valA={`${r.tiempoCicloA?.toFixed(3)} min`} valB={`${r.tiempoCicloB?.toFixed(3)} min`} />
-                <Row label="Velocidad de Corte (Vc)" valA={`${data.vcA || 0} m/min`} valB={`${data.vcB || 0} m/min`} />
-                
-                {/* Costo Hora Máquina Especial */}
-                <div className="grid grid-cols-10 border-b border-slate-100 py-2 px-4">
-                    <div className="col-span-4 font-medium text-slate-700">Costo Hora-Máquina</div>
-                    <div className="col-span-6 text-right pr-8 text-slate-600">{formatCurrency(data.machineHourlyRate)} <span className="text-slate-400">({formatCurrency(costoMinuto)}/min)</span></div>
-                </div>
-
-                <Row label="Parada por Cambio (costo/pza)" valA={formatCurrency(r.costoParadaA)} valB={formatCurrency(r.costoParadaB)} />
+                <SectionTitle title="Datos del Proceso" />
+                <Row label="Tiempo de Ciclo (min)" valA={r.tiempoCicloA?.toFixed(3)} valB={r.tiempoCicloB?.toFixed(3)} />
+                <Row label="Costo Hora-Máquina" valA={formatCurrency(data.machineHourlyRate)} valB={`(${formatCurrency(costoMinuto)}/min)`} />
                 <Row label="Costo Máquina / Pieza" valA={formatCurrency(r.costoMaquinaA)} valB={formatCurrency(r.costoMaquinaB)} isRed />
                 
-                {/* ROW FINAL TOTAL */}
-                <div className="grid grid-cols-10 bg-slate-100 py-3 px-4 font-black text-base border-t border-slate-300">
-                    <div className="col-span-4 text-slate-800 uppercase">COSTO TOTAL / PIEZA</div>
+                {/* TOTAL ROW */}
+                <div className="grid grid-cols-10 bg-slate-200 py-2 px-2 font-black border-t border-slate-300">
+                    <div className="col-span-4 uppercase">Costo Total / Pieza</div>
                     <div className="col-span-3 text-center text-red-600">{formatCurrency(r.cppA)}</div>
                     <div className="col-span-3 text-center text-blue-600">{formatCurrency(r.cppB)}</div>
                 </div>
             </div>
         </div>
 
-        {/* 4. RESUMEN FINANCIERO (Réplica exacta captura 15.42.58) */}
-        <div className="mb-10 break-inside-avoid">
-            <h2 className="text-2xl font-bold text-slate-800 mb-4 text-center">Resumen Financiero (para {data.piezasAlMes?.toLocaleString()} piezas/mes)</h2>
-            
-            <div className="border border-green-200 rounded-lg overflow-hidden text-sm shadow-sm">
-                <div className="grid grid-cols-12 bg-green-50/50 py-3 px-4 font-bold text-green-900 border-b border-green-200">
-                    <div className="col-span-3">Métrica</div>
-                    <div className="col-span-2 text-center text-slate-600">Actual</div>
-                    <div className="col-span-2 text-center text-blue-600">Propuesta</div>
-                    <div className="col-span-3 text-right">Ahorro</div>
-                    <div className="col-span-2 text-right">% Mejora</div>
+        {/* 4. RESUMEN FINANCIERO */}
+        <div className="break-inside-avoid">
+            <h3 className="text-lg font-bold text-slate-800 mb-3 border-l-4 border-green-500 pl-3">Resumen Financiero</h3>
+            <div className="border border-green-200 rounded text-sm overflow-hidden">
+                <div className="grid grid-cols-12 bg-green-50 py-2 px-2 font-bold text-green-900 border-b border-green-200 text-center">
+                    <div className="col-span-3 text-left">Métrica</div>
+                    <div className="col-span-2">Actual</div>
+                    <div className="col-span-2">Propuesta</div>
+                    <div className="col-span-3">Ahorro</div>
+                    <div className="col-span-2">%</div>
                 </div>
-
-                <FinancialRow label="Costo Total por Pieza" valA={formatCurrency(r.cppA)} valB={formatCurrency(r.cppB)} save={formatCurrency(r.ahorroPorPieza)} pct={formatPercent(r.totalCostReductionPercent)} />
                 <FinancialRow label="Costo Total (Mensual)" valA={formatCurrency(r.costoTotalMensualA)} valB={formatCurrency(r.costoTotalMensualB)} save={formatCurrency(r.ahorroMensual)} pct={formatPercent(r.totalCostReductionPercent)} />
-                
-                {/* Tiempo Máquina con Horas */}
-                <div className="grid grid-cols-12 border-b border-slate-100 py-3 px-4 hover:bg-slate-50 items-center">
-                    <div className="col-span-3 font-medium text-slate-700">Tiempo Máquina (Mensual)</div>
-                    <div className="col-span-2 text-center text-slate-600">{formatCurrency(r.tiempoMaquinaMensualValorA)} <div className="text-xs text-slate-400">{r.tiempoMaquinaMensualHorasA?.toFixed(2)} hs</div></div>
-                    <div className="col-span-2 text-center text-slate-600">{formatCurrency(r.tiempoMaquinaMensualValorB)} <div className="text-xs text-slate-400">{r.tiempoMaquinaMensualHorasB?.toFixed(2)} hs</div></div>
-                    <div className="col-span-3 text-right font-bold text-green-600">- {r.machineHoursFreedMonthly?.toFixed(2)} hs liberadas</div>
-                    <div className="col-span-2 text-right text-green-600 font-bold">{formatPercent(r.timeReductionPercent)}</div>
+                <div className="grid grid-cols-12 border-b border-green-100 py-2 px-2 hover:bg-white items-center text-center">
+                    <div className="col-span-3 font-medium text-slate-700 text-left">Tiempo Máquina</div>
+                    <div className="col-span-2 text-slate-600">{r.tiempoMaquinaMensualHorasA?.toFixed(0)} hs</div>
+                    <div className="col-span-2 text-slate-600">{r.tiempoMaquinaMensualHorasB?.toFixed(0)} hs</div>
+                    <div className="col-span-3 font-bold text-green-600">-{r.machineHoursFreedMonthly?.toFixed(0)} hs</div>
+                    <div className="col-span-2 text-green-600 font-bold">{formatPercent(r.timeReductionPercent)}</div>
                 </div>
-
-                <div className="grid grid-cols-12 border-b border-slate-100 py-3 px-4 hover:bg-slate-50 items-center">
-                    <div className="col-span-3 font-medium text-slate-700">Turnos de 8hs (Mensual)</div>
-                    <div className="col-span-2 text-center text-slate-600">{turnosA.toFixed(2)} turnos</div>
-                    <div className="col-span-2 text-center text-slate-600">{turnosB.toFixed(2)} turnos</div>
-                    <div className="col-span-3 text-right font-bold text-green-600">{turnosAhorrados.toFixed(2)} turnos liberados</div>
-                    <div className="col-span-2 text-right text-green-600 font-bold">{formatPercent(r.timeReductionPercent)}</div>
-                </div>
-
-                <div className="grid grid-cols-12 bg-green-100/50 py-4 px-4 font-black border-t border-green-200">
-                    <div className="col-span-3 text-slate-800">COSTO TOTAL (ANUAL)</div>
-                    <div className="col-span-2 text-center text-slate-800">{formatCurrency((r.costoTotalMensualA || 0) * 12)}</div>
-                    <div className="col-span-2 text-center text-blue-700">{formatCurrency((r.costoTotalMensualB || 0) * 12)}</div>
-                    <div className="col-span-3 text-right text-green-700 text-lg">{formatCurrency(r.ahorroAnual)}</div>
-                    <div className="col-span-2 text-right text-green-700 text-lg">{formatPercent(r.totalCostReductionPercent)}</div>
+                <div className="grid grid-cols-12 bg-green-100 py-3 px-2 font-black border-t border-green-300 text-center">
+                    <div className="col-span-3 text-slate-800 text-left">ANUAL</div>
+                    <div className="col-span-2 text-slate-800">{formatCurrency((r.costoTotalMensualA || 0) * 12)}</div>
+                    <div className="col-span-2 text-blue-700">{formatCurrency((r.costoTotalMensualB || 0) * 12)}</div>
+                    <div className="col-span-3 text-green-700 text-lg">{formatCurrency(r.ahorroAnual)}</div>
+                    <div className="col-span-2 text-green-700">{formatPercent(r.totalCostReductionPercent)}</div>
                 </div>
             </div>
         </div>
 
-        {/* 5. EVIDENCIA FOTOGRÁFICA (2 Columnas) */}
+        {/* 5. EVIDENCIA FOTOGRÁFICA (CORREGIDA) */}
         {data.imageUrls && data.imageUrls.length > 0 && (
-          <div className="mt-8 break-inside-avoid page-break-before-always">
-            <h3 className="text-2xl font-bold text-slate-800 mb-6 border-l-4 border-slate-800 pl-3">
+          <div className="mt-6 break-inside-avoid page-break-before-always">
+            <h3 className="text-xl font-bold text-slate-800 mb-4 border-l-4 border-slate-800 pl-3">
               Evidencia Fotográfica
             </h3>
-            <div className="grid grid-cols-2 gap-8">
+            
+            {/* GRID SIMPLE DE 2 COLUMNAS */}
+            <div className="grid grid-cols-2 gap-6">
               {data.imageUrls.map((url: string, index: number) => (
-                <div key={index} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
-                   <div className="bg-blue-50 py-2 text-center border-b border-blue-100">
-                     <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">
-                       {data.imageDescriptions?.[index] ? "Evidencia" : `Imagen ${index + 1}`}
+                <div key={index} className="border border-slate-300 bg-white p-1 shadow-sm break-inside-avoid">
+                   {/* Título */}
+                   <div className="bg-slate-100 py-1 text-center border-b border-slate-200 mb-2">
+                     <span className="text-xs font-bold text-slate-600 uppercase">
+                       {data.imageDescriptions?.[index] ? "EVIDENCIA" : `IMAGEN ${index + 1}`}
                      </span>
                    </div>
-                   <div className="h-64 bg-white p-2 flex items-center justify-center">
+                   
+                   {/* IMAGEN SIN RESTRICCIONES DE SEGURIDAD (CORS) */}
+                   <div className="h-64 w-full flex items-center justify-center bg-white overflow-hidden">
                      {/* eslint-disable-next-line @next/next/no-img-element */}
                      <img 
                         src={url} 
                         alt={`Evidencia ${index + 1}`} 
-                        className="max-h-full max-w-full object-contain"
-                        crossOrigin="anonymous" 
+                        className="object-contain max-h-full max-w-full"
+                        style={{ display: 'block', margin: '0 auto' }}
                      />
                    </div>
+
+                   {/* Descripción al pie */}
                    {data.imageDescriptions?.[index] && (
-                     <div className="py-3 px-4 bg-slate-50 border-t border-slate-100 text-center">
-                       <p className="text-sm font-bold text-slate-700 uppercase">{data.imageDescriptions[index]}</p>
+                     <div className="pt-2 text-center border-t border-slate-100 mt-2">
+                       <p className="text-sm font-bold text-slate-800 uppercase">{data.imageDescriptions[index]}</p>
                      </div>
                    )}
                 </div>
@@ -239,31 +226,36 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* FOOTER */}
-        <div className="mt-12 pt-6 border-t border-slate-200 text-center text-xs text-slate-400">
-            <p>Generado con Analizador de Costos de Corte</p>
-            <p>Documento confidencial - {new Date().toLocaleDateString()}</p>
+        {/* Footer */}
+        <div className="mt-8 pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400">
+            <p>Documento generado el {new Date().toLocaleDateString()}</p>
+            <p>https://secocut-app.web.app</p>
         </div>
+
       </div>
     </div>
   );
 }
 
-// COMPONENTES AUXILIARES PARA LIMPIEZA DEL CÓDIGO
+// Componentes simples
 const Row = ({ label, valA, valB, bold = false, isRed = false }: any) => (
-    <div className={cn("grid grid-cols-10 border-b border-slate-100 py-2 px-4 hover:bg-slate-50", bold && "font-bold bg-slate-50/50")}>
-        <div className="col-span-4 font-medium text-slate-700">{label}</div>
-        <div className={cn("col-span-3 text-center", isRed ? "text-red-600 font-bold" : "text-slate-600")}>{valA}</div>
-        <div className={cn("col-span-3 text-center", isRed ? "text-blue-600 font-bold" : "text-slate-600")}>{valB}</div>
+    <div className={cn("grid grid-cols-10 border-b border-slate-200 py-1 px-2 hover:bg-slate-50 text-center", bold && "font-bold bg-slate-50")}>
+        <div className="col-span-4 font-medium text-slate-700 text-left">{label}</div>
+        <div className={cn("col-span-3", isRed ? "text-red-600 font-bold" : "text-slate-600")}>{valA}</div>
+        <div className={cn("col-span-3", isRed ? "text-blue-600 font-bold" : "text-slate-600")}>{valB}</div>
     </div>
 );
 
+const SectionTitle = ({ title }: { title: string }) => (
+    <div className="bg-slate-200 px-2 py-1 text-xs font-bold text-slate-600 uppercase border-y border-slate-300 text-left">{title}</div>
+);
+
 const FinancialRow = ({ label, valA, valB, save, pct }: any) => (
-    <div className="grid grid-cols-12 border-b border-slate-100 py-3 px-4 hover:bg-slate-50 items-center">
-        <div className="col-span-3 font-medium text-slate-700">{label}</div>
-        <div className="col-span-2 text-center text-slate-600">{valA}</div>
-        <div className="col-span-2 text-center text-slate-600">{valB}</div>
-        <div className="col-span-3 text-right font-bold text-green-600">{save}</div>
-        <div className="col-span-2 text-right text-green-600 font-bold">{pct}</div>
+    <div className="grid grid-cols-12 border-b border-green-100 py-2 px-2 hover:bg-white text-center">
+        <div className="col-span-3 font-medium text-slate-700 text-left">{label}</div>
+        <div className="col-span-2 text-slate-600">{valA}</div>
+        <div className="col-span-2 text-slate-600">{valB}</div>
+        <div className="col-span-3 font-bold text-green-600">{save}</div>
+        <div className="col-span-2 text-green-600 font-bold">{pct}</div>
     </div>
 );
