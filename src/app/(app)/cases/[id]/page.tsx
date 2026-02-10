@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, use, useState } from "react";
+import { useEffect, use } from "react";
 import { doc } from "firebase/firestore";
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { Button } from "@/components/ui/button";
@@ -392,6 +392,3 @@ const FinancialRow = ({ label, valA, valB, save, pct }: any) => (
         <div className="col-span-2 text-slate-600">{valA}</div>
         <div className="col-span-2 text-slate-600">{valB}</div>
         <div className="col-span-3 font-bold text-green-600">{save}</div>
-        <div className="col-span-2 text-green-600 font-bold">{pct}</div>
-    </div>
-);

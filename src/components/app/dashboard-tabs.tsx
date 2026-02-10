@@ -4,10 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
 import React, { useEffect, useState, useCallback } from "react";
-import { Download, Save, Printer, TrendingUp, AlertCircle } from "lucide-react";
+import { Download, Save, Printer, Loader2 } from "lucide-react";
 import { serverTimestamp, setDoc, onSnapshot } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -36,6 +35,11 @@ const formatCurrency = (val?: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 }
 
+const formatCurrencyDisplay = (value?: number) => {
+    if (typeof value !== 'number' || !isFinite(value)) return 'N/A';
+    return new Intl.NumberFormat('es-US', { style: 'currency', currency: 'USD' }).format(value);
+}
+
 // Tipos
 type QuickDiagnosisResult = { breakEvenSeconds: number; breakEvenPieces: number; deltaP: number; tcA: number; vcBTarget: number; newCycleTimeTarget: number; };
 type NetSavingsResult = { netAnnualSavings: number; cppA: number; cppB: number; savingsPerPiece: number; improvementPercentage: number; newCycleTime: number; newToolLife: number; };
@@ -55,7 +59,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   const [detailedResult, setDetailedResult] = useState<DetailedReportResult | null>(initialData?.results || null);
   const [isSaveAlertOpen, setSaveAlertOpen] = useState(false);
   
-  // Estados para Logos (Configuración)
+  // Estados para Logos y PDF
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [secoLogo, setSecoLogo] = useState<string | null>(null);
   const [isGeneratingQuickPDF, setIsGeneratingQuickPDF] = useState(false);
@@ -73,7 +77,6 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
 
   const parseTimeToMinutes = (min: number | undefined, sec: number | undefined) => { const minVal = min || 0; const secVal = sec || 0; return minVal + (secVal / 60); }
 
-  // Cargar configuración de Logos
   useEffect(() => {
     if (firestore) {
         const unsub = onSnapshot(doc(firestore, "settings", "general"), (doc) => {
@@ -97,7 +100,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     }
   }, [initialData, detailedForm, diagnosisForm, saveCaseForm]);
 
-  // --- LÓGICA DE CÁLCULO ---
+  // --- LOGICA DE CALCULO ---
   function onQuickSubmit(data: z.infer<typeof QuickDiagnosisSchema>) {
     const { precioA, precioB, filosA, pzsPorFiloA, costoHoraMaquina, cicloMinA, cicloSegA, vcA } = data;
     if (!precioA || !precioB || !filosA || !pzsPorFiloA || !costoHoraMaquina || cicloMinA === undefined) { toast({ variant: "destructive", title: "Datos incompletos", description: "Complete 'Datos de Partida'." }); return; }
@@ -126,24 +129,44 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     detailedForm.setValue("cicloMinB", newCicloMin); detailedForm.setValue("cicloSegB", newCicloSeg); detailedForm.setValue("piezasFiloB", (pzsPorFiloA || 0) + (piezasMasReales || 0)); detailedForm.setValue("vcB", parseFloat(actualVcB.toFixed(2))); detailedForm.setValue("filosB", filosA || 0); detailedForm.setValue("modoVidaB", "piezas");
   }
 
-  // --- IMPRESIÓN DIAGNÓSTICO RÁPIDO ---
+  // --- IMPRESIÓN DIAGNÓSTICO RÁPIDO (SOLUCIÓN DEFINITIVA) ---
   const handlePrintQuickDiagnosis = async () => {
     if (!quickResult) {
         toast({ variant: "destructive", title: "Sin datos", description: "Primero calcula el punto de equilibrio." });
         return;
     }
+    
     setIsGeneratingQuickPDF(true);
+
     try {
         const html2pdf = (await import('html2pdf.js')).default;
-        const element = document.getElementById('quick-diagnosis-pdf');
+        
+        // Seleccionamos el elemento que YA está renderizado en el DOM (abajo del todo)
+        const element = document.getElementById('quick-diagnosis-pdf-hidden'); 
+        
+        if (!element) {
+            console.error("No se encontró el elemento hidden para el PDF.");
+            toast({ variant: "destructive", title: "Error", description: "No se pudo encontrar el contenido para generar el PDF." });
+            return;
+        }
+
         const opt = {
             margin: 0,
             filename: `Diagnostico_Rapido_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, logging: true },
+            html2canvas: { 
+                scale: 2, 
+                useCORS: true, 
+                logging: true,
+                scrollY: 0,
+                // Truco: decirle al canvas que el ancho de la ventana es el que necesitamos
+                windowWidth: 1000 
+            },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
+        
         await html2pdf().set(opt).from(element).save();
+        
     } catch (error) {
         console.error("Error PDF:", error);
         toast({ variant: "destructive", title: "Error", description: "No se pudo generar el PDF." });
@@ -189,7 +212,6 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
       const caseId = isExistingCase ? initialData.id : doc(collection(firestore, "cuttingToolAnalyses")).id;
       const caseDocRef = doc(firestore, "cuttingToolAnalyses", caseId);
 
-      // Lógica de imágenes combinadas
       let finalImageUrls = [...keptImageUrls];
 
       if (imagesToUpload.length > 0) {
@@ -234,8 +256,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
       setIsUploading(false);
     }
   };
-  
-  // Helpers
+
   const handleNewCase = () => { router.push('/dashboard'); }
   const syncDiagToDetail = useCallback((fieldName: any, value: any) => { /* ... */ }, [detailedForm]);
   const syncDetailToDiag = useCallback((fieldName: any, value: any) => { /* ... */ }, [diagnosisForm]);
@@ -243,11 +264,8 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   const watchedModoVidaB = useWatch({ control: detailedForm.control, name: 'modoVidaB' });
   const watchedSimTimeMode = useWatch({ control: diagnosisForm.control, name: 'modoSimulacionTiempo' });
 
-  // Helpers visuales
-  const formatCurrencyDisplay = (value?: number) => {
-    if (typeof value !== 'number' || !isFinite(value)) return 'N/A';
-    return new Intl.NumberFormat('es-US', { style: 'currency', currency: 'USD' }).format(value);
-  }
+  // Valores observados para el reporte (reactividad asegurada)
+  const watchedFormValues = useWatch({ control: diagnosisForm.control });
 
   return (
     <>
@@ -268,7 +286,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
               {/* BOTÓN DE DESCARGA RÁPIDA */}
               {quickResult && (
                   <Button onClick={handlePrintQuickDiagnosis} disabled={isGeneratingQuickPDF} variant="outline" className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100">
-                      <Download className="mr-2 h-4 w-4" />
+                      {isGeneratingQuickPDF ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                       {isGeneratingQuickPDF ? 'Generando...' : 'Descargar PDF'}
                   </Button>
               )}
@@ -284,9 +302,9 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                           <FormField control={diagnosisForm.control} name="piezasAlMes" render={({ field }) => (<FormItem><FormLabel>🏭 Piezas al Mes (aprox.)</FormLabel><FormControl><Input type="number" {...field} onChange={e => { const val = parseFloat(e.target.value) || 0; field.onChange(val); syncDiagToDetail('piezasAlMes', val); }} /></FormControl><FormMessage /></FormItem>)} />
                       </div>
                       <Separator />
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                           <div className="space-y-3">
-                            <h4 className="font-medium text-destructive mb-2">Inserto A (Actual)</h4>
+                            <h4 className="font-medium text-primary mb-4">Datos Inserto A (Actual)</h4>
                               <FormField control={diagnosisForm.control} name="precioA" render={({ field }) => (<FormItem><FormLabel>Precio Inserto (USD)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('precioA', val); }} /></FormControl><FormMessage /></FormItem>)} />
                               <div className="flex space-x-2">
                                   <FormField control={diagnosisForm.control} name="filosA" render={({ field }) => (<FormItem><FormLabel>Filos</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('filosA', val); }} /></FormControl><FormMessage /></FormItem>)} />
@@ -299,7 +317,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                               <FormField control={diagnosisForm.control} name="vcA" render={({ field }) => (<FormItem><FormLabel>Vc Actual (m/min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('vcA', val); }} /></FormControl><FormMessage /></FormItem>)} />
                           </div>
                           <div className="space-y-3">
-                            <h4 className="font-medium text-primary mb-2">Inserto B (Propuesta)</h4>
+                            <h4 className="font-medium text-accent mb-4">Datos Inserto B (Propuesta)</h4>
                               <FormField control={diagnosisForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio Inserto (USD)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => { const val = e.target.value === '' ? '' : parseFloat(e.target.value); field.onChange(val); syncDiagToDetail('precioB', val); }} /></FormControl><FormMessage /></FormItem>)} />
                           </div>
                       </div>
@@ -448,7 +466,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                                 <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><Button onClick={saveCaseForm.handleSubmit((data) => handleSaveCase(data.caseName))} disabled={isUploading}>{isUploading ? 'Guardando...' : 'Guardar'}</Button></AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
-                      {/* BOTÓN IMPRIMIR */}
+                      {/* BOTÓN IMPRIMIR DETALLADO */}
                       <Button type="button" onClick={handlePrintReport} disabled={!detailedResult}><Printer className="mr-2 h-4 w-4" />Imprimir PDF</Button>
                     </div>
                   }
@@ -458,82 +476,89 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
           </Card>
         </TabsContent>
       </Tabs>
-      {/* Contenedor Oculto para el PDF del Diagnóstico Rápido */}
-      {quickResult && (
-          <div id="quick-diagnosis-pdf" className="opacity-0 absolute -z-10 -top-full left-0 w-[210mm] h-[297mm] p-10 bg-white text-slate-900 font-sans">
-              <div className="flex flex-col h-full">
-                  {/* Encabezado PDF */}
-                  <div className="flex justify-between items-center mb-8 h-16">
-                      <div className="w-1/3 flex justify-start">
-                          {companyLogo && <img src={companyLogo} alt="Logo Empresa" className="h-14 object-contain" />}
-                      </div>
-                      <div className="w-1/3 flex justify-end">
-                          {secoLogo && <img src={secoLogo} alt="Logo Seco" className="h-12 object-contain" />}
-                      </div>
-                  </div>
-                  
-                  {/* Titulo PDF */}
-                  <div className="text-center mb-10 border-y-2 border-slate-800 py-4">
-                      <h1 className="text-3xl font-black text-slate-800 uppercase tracking-tight">Diagnóstico Rápido de Costos</h1>
-                  </div>
 
-                  {/* Datos de Entrada */}
-                  <div className="mb-8">
-                      <h2 className="text-xl font-bold text-blue-700 mb-4 border-b-2 border-blue-200 pb-2">Parámetros de Entrada</h2>
-                      <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm p-4 bg-slate-50 rounded-lg">
-                          <div><span className="font-semibold">Costo Hora Máquina:</span> {formatCurrency(diagnosisForm.getValues('costoHoraMaquina'))}</div>
-                          <div><span className="font-semibold">Piezas por Mes:</span> {diagnosisForm.getValues('piezasAlMes')?.toLocaleString() || 'N/A'}</div>
-                          
-                          <div className="col-span-2 my-2"><Separator/></div>
+      {/* --- CONTENEDOR OCULTO PARA IMPRESIÓN DEL DIAGNÓSTICO RÁPIDO (SOLUCIÓN DEFINITIVA) --- */}
+      {/* Usamos 'opacity-0' y 'z-index: -50' para que sea visible para el navegador (painting) 
+          pero invisible para el usuario. Esto evita el PDF en blanco.
+          Usamos 'useWatch' (watchedFormValues) para asegurar que los datos estén vivos.
+      */}
+      <div id="quick-diagnosis-pdf-hidden" style={{ 
+          position: 'fixed', // Fixed lo mantiene en el viewport
+          top: 0, 
+          left: 0, 
+          width: '210mm', 
+          minHeight: '297mm', 
+          background: 'white', 
+          padding: '40px', 
+          fontFamily: 'sans-serif',
+          zIndex: -50, // Detrás de todo
+          opacity: 0,  // Invisible
+          pointerEvents: 'none' // No bloquea clicks
+      }}>
+        
+        {/* Cabecera */}
+        <div className="flex justify-between items-center mb-8 h-20 border-b-2 border-slate-800 pb-4">
+            <div className="w-1/3 flex justify-start">{companyLogo ? (/* eslint-disable-next-line @next/next/no-img-element */<img src={companyLogo} alt="Logo" className="h-16 object-contain" />) : null}</div>
+            <div className="w-1/3 text-center"><h1 className="text-2xl font-black text-slate-800 uppercase leading-none">DIAGNÓSTICO<br/>RÁPIDO</h1></div>
+            <div className="w-1/3 flex justify-end">{secoLogo ? (/* eslint-disable-next-line @next/next/no-img-element */<img src={secoLogo} alt="Seco" className="h-14 object-contain" />) : null}</div>
+        </div>
 
-                          <div><span className="font-semibold">Precio Inserto A:</span> {formatCurrency(diagnosisForm.getValues('precioA'))}</div>
-                          <div><span className="font-semibold">Precio Inserto B:</span> {formatCurrency(diagnosisForm.getValues('precioB'))}</div>
-                          <div><span className="font-semibold">Filos Inserto A:</span> {diagnosisForm.getValues('filosA')}</div>
-                          <div><span className="font-semibold">Piezas/Filo A:</span> {diagnosisForm.getValues('pzsPorFiloA')}</div>
-                          <div><span className="font-semibold">Ciclo A:</span> {diagnosisForm.getValues('cicloMinA')}m {diagnosisForm.getValues('cicloSegA')}s</div>
-                          <div><span className="font-semibold">Vc Actual A:</span> {diagnosisForm.getValues('vcA')} m/min</div>
-                      </div>
-                  </div>
+        {/* Datos de Partida (USANDO watchedFormValues para reactividad) */}
+        <div className="mb-8">
+            <h3 className="text-sm font-bold text-blue-800 uppercase border-b border-blue-200 mb-4 pb-1">Datos Generales</h3>
+            <div className="grid grid-cols-2 gap-8 text-sm">
+                <div className="bg-slate-50 p-4 rounded border border-slate-200"><span className="block text-xs font-bold text-slate-500 uppercase">Costo Hora-Máquina</span><span className="text-xl font-bold">{formatCurrency(watchedFormValues.costoHoraMaquina)}</span></div>
+                <div className="bg-slate-50 p-4 rounded border border-slate-200"><span className="block text-xs font-bold text-slate-500 uppercase">Piezas / Mes</span><span className="text-xl font-bold">{watchedFormValues.piezasAlMes?.toLocaleString()}</span></div>
+            </div>
+        </div>
 
-                  {/* Resultados Punto de Equilibrio */}
-                  <div className="mb-8">
-                       <h2 className="text-xl font-bold text-blue-700 mb-4 border-b-2 border-blue-200 pb-2">Punto de Equilibrio</h2>
-                       <p className="text-sm text-slate-600 mb-4">Para justificar un sobrecosto de <span className="font-bold text-slate-800">{formatCurrency(quickResult.deltaP)}</span> por inserto, se necesita una de las siguientes mejoras:</p>
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="p-4 border rounded-lg text-center shadow-sm bg-blue-50/50">
-                                <TrendingUp className="mx-auto h-8 w-8 text-blue-600 mb-2"/>
-                                <h3 className="font-bold text-slate-800">Mejorar Rendimiento</h3>
-                                <p className="text-2xl font-black text-blue-800 mt-1">+{quickResult.breakEvenPieces.toFixed(1)}</p>
-                                <p className="text-sm text-slate-600">piezas por filo</p>
-                            </div>
-                            <div className="p-4 border rounded-lg text-center shadow-sm bg-blue-50/50">
-                               <TrendingUp className="mx-auto h-8 w-8 text-blue-600 mb-2"/>
-                                <h3 className="font-bold text-slate-800">Mejorar Velocidad</h3>
-                                <p className="text-2xl font-black text-blue-800 mt-1">-{quickResult.breakEvenSeconds.toFixed(2)}</p>
-                                <p className="text-sm text-slate-600">segundos por pieza</p>
-                            </div>
-                        </div>
-                  </div>
+        {/* Comparativa */}
+        <div className="mb-8">
+            <h3 className="text-sm font-bold text-blue-800 uppercase border-b border-blue-200 mb-4 pb-1">Comparativa Técnica</h3>
+            <div className="border border-slate-300 rounded overflow-hidden text-sm">
+                <div className="grid grid-cols-3 bg-slate-100 font-bold border-b border-slate-300 py-2 px-4 text-center"><div>Parámetro</div><div className="text-red-600">Actual (A)</div><div className="text-blue-600">Propuesta (B)</div></div>
+                <div className="grid grid-cols-3 border-b border-slate-200 py-2 px-4 text-center"><div>Precio Inserto</div><div>{formatCurrency(watchedFormValues.precioA)}</div><div>{formatCurrency(watchedFormValues.precioB)}</div></div>
+                <div className="grid grid-cols-3 border-b border-slate-200 py-2 px-4 text-center"><div>Filos</div><div>{watchedFormValues.filosA}</div><div>{watchedFormValues.filosA}</div></div>
+                <div className="grid grid-cols-3 border-b border-slate-200 py-2 px-4 text-center"><div>Piezas/Filo</div><div>{watchedFormValues.pzsPorFiloA}</div><div className="font-bold text-blue-600">{netSavingsResult?.newToolLife || '-'}</div></div>
+                <div className="grid grid-cols-3 py-2 px-4 text-center bg-slate-50 font-bold"><div>Ciclo (min)</div><div>{watchedFormValues.cicloMinA}m {watchedFormValues.cicloSegA}s</div><div className="text-blue-600">{netSavingsResult?.newCycleTime?.toFixed(2) || '-'} min</div></div>
+            </div>
+        </div>
 
-                  {/* Resultados Simulación Real */}
-                  {netSavingsResult && (
-                       <div className="mb-8">
-                           <h2 className="text-xl font-bold text-green-700 mb-4 border-b-2 border-green-200 pb-2">Simulación de Ahorro Real</h2>
-                           <div className="p-6 text-center bg-green-50/80 rounded-lg border border-green-200">
-                               <p className="text-lg font-semibold text-slate-800">Con los datos simulados, el ahorro neto anual estimado es de:</p>
-                               <p className={`text-5xl font-black mt-2 ${netSavingsResult.netAnnualSavings > 0 ? 'text-green-600' : 'text-red-500'}`}>{formatCurrency(netSavingsResult.netAnnualSavings)}</p>
-                           </div>
-                       </div>
-                  )}
+        {/* Punto de Equilibrio */}
+        {quickResult && (
+            <div className="mb-8">
+                <h3 className="text-sm font-bold text-blue-800 uppercase border-b border-blue-200 mb-4 pb-1">Análisis de Punto de Equilibrio</h3>
+                <div className="grid grid-cols-2 gap-6">
+                    <div className="border border-yellow-200 bg-yellow-50/50 p-4 rounded text-center">
+                        <p className="text-xs font-bold text-yellow-700 uppercase mb-2">Para igualar costo por Rendimiento</p>
+                        <p className="text-3xl font-black text-slate-800">+{quickResult.breakEvenPieces.toFixed(1)} <span className="text-sm font-normal text-slate-500">pzs/filo</span></p>
+                    </div>
+                    <div className="border border-blue-200 bg-blue-50/50 p-4 rounded text-center">
+                        <p className="text-xs font-bold text-blue-700 uppercase mb-2">Para igualar costo por Tiempo</p>
+                        <p className="text-3xl font-black text-slate-800">-{quickResult.breakEvenSeconds.toFixed(1)} <span className="text-sm font-normal text-slate-500">seg/ciclo</span></p>
+                    </div>
+                </div>
+            </div>
+        )}
 
-                  {/* Footer PDF */}
-                  <div className="mt-auto text-center border-t pt-4">
-                      <p className="text-xs text-slate-500">Este es un diagnóstico preliminar. Los resultados pueden variar.</p>
-                      <p className="text-[10px] text-slate-400 mt-1">https://secocut-app.web.app</p>
-                  </div>
-              </div>
-          </div>
-      )}
+        {/* Proyección de Ahorro */}
+        {netSavingsResult && (
+            <div className="mb-10">
+                <h3 className="text-sm font-bold text-green-700 uppercase border-b border-green-200 mb-4 pb-1">Proyección de Ahorro Real</h3>
+                <div className="bg-green-50 border border-green-200 p-6 rounded-lg text-center">
+                    <p className="text-sm font-bold text-green-800 uppercase mb-2">Ahorro Neto Anual Estimado</p>
+                    <p className="text-5xl font-black text-green-600">{formatCurrencyDisplay(netSavingsResult.netAnnualSavings)}</p>
+                    <p className="text-xs text-green-700 mt-2 font-medium">Considerando {watchedFormValues.piezasAlMes?.toLocaleString()} piezas/mes</p>
+                </div>
+            </div>
+        )}
+
+        {/* Footer */}
+        <div className="text-center mt-auto pt-8 border-t border-slate-200">
+            <p className="text-sm font-bold text-slate-400 italic font-serif">"Se pueden conseguir Resultados o Excusas, no las dos cosas."</p>
+            <p className="text-[10px] text-slate-300 mt-2 uppercase">Generado el {new Date().toLocaleDateString()}</p>
+        </div>
+      </div>
     </>
   );
 }
