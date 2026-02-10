@@ -61,5 +61,15 @@ service cloud.firestore {
         allow create: if isRequestingUserAdmin(); // O puedes permitir a usuarios si es necesario
         allow update, delete: if isRequestingUserAdmin();
     }
+
+    /**
+     * CONFIGURACIÓN GENERAL (LOGOS)
+     */
+    match /settings/{settingId} {
+        // Cualquiera puede leer los logos para mostrarlos en los informes
+        allow read: if request.auth != null;
+        // Solo los admins pueden cambiar los logos
+        allow write: if isRequestingUserAdmin();
+    }
   }
 }

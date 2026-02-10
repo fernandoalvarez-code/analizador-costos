@@ -117,6 +117,23 @@
             "readBy": { "type": "array", "items": { "type": "string" } }
         },
         "required": ["title", "message", "createdAt"]
+    },
+    "AppSettings": {
+        "title": "Application Settings",
+        "type": "object",
+        "description": "Stores general application settings, like logos for reports.",
+        "properties": {
+            "companyLogoUrl": {
+                "type": "string",
+                "format": "uri",
+                "description": "URL for the company's logo, to be used in PDF reports."
+            },
+            "secoLogoUrl": {
+                "type": "string",
+                "format": "uri",
+                "description": "URL for the Seco Tools logo, to be used in PDF reports."
+            }
+        }
     }
   },
   "auth": {
@@ -175,8 +192,24 @@
             }
           ]
         }
+      },
+      {
+          "path": "/settings/{settingId}",
+          "definition": {
+              "entityName": "AppSettings",
+              "schema": {
+                  "$ref": "#/backend/entities/AppSettings"
+              },
+              "description": "Stores global application settings. For example, the document with ID 'general' stores logo URLs for reports.",
+              "params": [
+                  {
+                      "name": "settingId",
+                      "description": "The unique identifier for the setting document (e.g., 'general')."
+                  }
+              ]
+          }
       }
     ],
-    "reasoning": "The Firestore data structure has been updated to support a global repository of cutting tool analysis cases, making them visible to all authenticated users. This promotes knowledge sharing within the organization. The user-specific subcollection has been migrated to a root-level collection `/cuttingToolAnalyses`. The security rules will be updated to allow read access for all authenticated users while restricting write/delete operations to the document owner or an administrator, ensuring data integrity."
+    "reasoning": "The Firestore data structure has been updated to support a global repository of cutting tool analysis cases, making them visible to all authenticated users. This promotes knowledge sharing within the organization. The user-specific subcollection has been migrated to a root-level collection `/cuttingToolAnalyses`. The security rules will be updated to allow read access for all authenticated users while restricting write/delete operations to the document owner or an administrator, ensuring data integrity. A new 'settings' collection has been added to store global application configurations like logos, accessible by admins."
   }
 }
