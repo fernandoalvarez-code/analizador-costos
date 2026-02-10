@@ -4,6 +4,7 @@ import './globals.css';
 import "./print.css";
 import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from '@/components/theme-provider';
+import { ToastStateProvider } from '@/components/toast-state-provider';
 
 export const metadata: Metadata = {
   title: 'Analizador de Costos de Corte',
@@ -29,8 +30,10 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
         >
+          <ToastStateProvider>
             {children}
             <Toaster />
+          </ToastStateProvider>
         </ThemeProvider>
       </body>
     </html>
