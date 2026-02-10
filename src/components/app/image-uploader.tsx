@@ -17,36 +17,36 @@ export function ImageUploader({
   initialDescriptions = [] 
 }: ImageUploaderProps) {
   
-  // ✅ CORRECCIÓN DE SEGURIDAD:
-  // Aseguramos que siempre sean arrays, incluso si vienen como 'null' de la BD
+  // Seguridad: Asegurar que siempre sean arrays
   const safeInitialImages = initialImages || [];
   const safeInitialDescriptions = initialDescriptions || [];
 
-  // Estado para imágenes YA GUARDADAS (URLs)
   const [keptImages, setKeptImages] = useState<{url: string, desc: string}[]>([]);
-  
-  // Estado para imágenes NUEVAS (Archivos)
   const [newImages, setNewImages] = useState<{file: File, preview: string, desc: string}[]>([]);
 
-  // Carga inicial (Solo ocurre una vez cuando llegan los datos)
+  // Carga inicial (Solo ocurre una vez)
   useEffect(() => {
+    // Verificamos si tenemos imágenes iniciales y si el estado local aún está vacío
     if (safeInitialImages.length > 0 && keptImages.length === 0 && newImages.length === 0) {
-      const formatted = safeInitialImages.map((url, i) => ({
-        url,
-        // Usamos el array sanitizado para evitar el error "properties of null"
-        desc: safeInitialDescriptions[i] || "" 
-      }));
+      
+      const formatted = safeInitialImages
+        .map((url, i) => ({
+          url,
+          desc: safeInitialDescriptions[i] || "" 
+        }))
+        // ✅ FILTRO CRÍTICO: Eliminamos cualquier imagen que tenga URL vacía
+        // Esto evita el error "empty string passed to src"
+        .filter(img => img.url && img.url.trim() !== "");
+
       setKeptImages(formatted);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [safeInitialImages, safeInitialDescriptions]);
 
-  // Función central para notificar cambios al padre (Dashboard)
   const notifyParent = (currentKept: typeof keptImages, currentNew: typeof newImages) => {
     const filesToUpload = currentNew.map(img => img.file);
     const urlsToKeep = currentKept.map(img => img.url);
     
-    // El orden de las descripciones debe coincidir: Primero las viejas, luego las nuevas
     const allDescs = [
       ...currentKept.map(img => img.desc),
       ...currentNew.map(img => img.desc)
@@ -55,7 +55,7 @@ export function ImageUploader({
     onImagesChange(filesToUpload, urlsToKeep, allDescs);
   };
 
-  // --- MANEJO DE IMÁGENES NUEVAS ---
+  // --- IMÁGENES NUEVAS ---
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
@@ -91,7 +91,7 @@ export function ImageUploader({
     notifyParent(keptImages, updated);
   };
 
-  // --- MANEJO DE IMÁGENES VIEJAS ---
+  // --- IMÁGENES VIEJAS ---
   const removeOldImage = (index: number) => {
     const updated = keptImages.filter((_, i) => i !== index);
     setKeptImages(updated);
@@ -108,7 +108,6 @@ export function ImageUploader({
   return (
     <div className="border rounded-lg p-4 bg-blue-50/50 shadow-sm break-inside-avoid">
       
-      {/* Botón de carga */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
         <Button
           type="button"
@@ -131,10 +130,9 @@ export function ImageUploader({
         />
       </div>
 
-      {/* Grid de Imágenes */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         
-        {/* 1. Imágenes YA GUARDADAS (Borde Azul) */}
+        {/* Imágenes YA GUARDADAS */}
         {keptImages.map((img, index) => (
           <div key={`old-${index}`} className="relative bg-white p-2 rounded-md border border-blue-200 shadow-sm">
             <div className="absolute -top-2 -left-2 bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-full font-bold z-10 border border-blue-200">
@@ -147,7 +145,7 @@ export function ImageUploader({
                 type="button"
                 onClick={() => removeOldImage(index)}
                 className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full shadow hover:bg-red-600 transition-opacity"
-                title="Borrar imagen guardada"
+                title="Borrar"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -161,7 +159,7 @@ export function ImageUploader({
           </div>
         ))}
 
-        {/* 2. Imágenes NUEVAS (Borde Verde) */}
+        {/* Imágenes NUEVAS */}
         {newImages.map((img, index) => (
           <div key={`new-${index}`} className="relative bg-white p-2 rounded-md border border-green-300 shadow-sm">
              <div className="absolute -top-2 -left-2 bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-bold z-10 border border-green-200">
