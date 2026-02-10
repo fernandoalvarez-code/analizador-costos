@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, use } from "react";
@@ -194,7 +195,11 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
             
             {/* GRID SIMPLE DE 2 COLUMNAS */}
             <div className="grid grid-cols-2 gap-6">
-              {data.imageUrls.map((url: string, index: number) => (
+              {data.imageUrls.map((url: string, index: number) => {
+                // ✅ VALIDACIÓN: Si la URL es vacía, no mostramos nada
+                if (!url || url.trim() === "") return null;
+
+                return (
                 <div key={index} className="border border-slate-300 bg-white p-1 shadow-sm break-inside-avoid">
                    {/* Título */}
                    <div className="bg-slate-100 py-1 text-center border-b border-slate-200 mb-2">
@@ -221,7 +226,7 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
                      </div>
                    )}
                 </div>
-              ))}
+              )})}
             </div>
           </div>
         )}
