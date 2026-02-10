@@ -559,7 +559,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                                 <img 
                                     src={URL.createObjectURL(file)} 
                                     alt={`Nueva Evidencia ${index}`} 
-                                    className="w-full h-48 object-contain rounded-md bg-white" 
+                                    className="w-full h-full object-contain rounded-md bg-white" 
                                     loading="eager"
                                 />
                                 {imageDescriptions[index] && (
