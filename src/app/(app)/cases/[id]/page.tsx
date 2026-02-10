@@ -101,22 +101,22 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
             </div>
         </div>
 
-        {/* Título Principal */}
+        {/* TÍTULO PRINCIPAL (MODIFICADO: Más chico y centrado) */}
         <div className="mb-10 border-b-2 border-slate-800 pb-6">
-            <h1 className="text-5xl font-black text-slate-800 uppercase leading-none tracking-tight">
-                ANALIZADOR<br/>DE COSTOS
+            <h1 className="text-3xl font-black text-slate-800 uppercase leading-none tracking-tight text-center">
+                ANALIZADOR DE COSTOS
             </h1>
             <div className="flex justify-between items-end mt-4">
-                <p className="text-2xl font-bold text-blue-600">{data.name}</p>
+                <p className="text-xl font-bold text-blue-600">{data.name}</p>
                 <div className="text-right">
-                    <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">INFORME TÉCNICO</p>
-                    <p className="font-bold text-slate-800">{new Date().toLocaleDateString()}</p>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">INFORME TÉCNICO</p>
+                    <p className="font-bold text-slate-800 text-sm">{new Date().toLocaleDateString()}</p>
                 </div>
             </div>
         </div>
 
         {/* Datos Principales */}
-        <div className="bg-slate-50 rounded-xl p-8 mb-10 border border-slate-200 shadow-sm">
+        <div className="bg-slate-50 rounded-xl p-8 mb-8 border border-slate-200 shadow-sm">
             <div className="grid grid-cols-2 gap-y-8 gap-x-12">
                 <div className="border-b border-slate-200 pb-2">
                     <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cliente</span>
@@ -141,12 +141,12 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
         {validImages.length > 0 ? (
             <div className="flex-grow flex flex-col justify-center mb-4">
                 
-                {/* FRASE DE IMPACTO COMO TÍTULO */}
+                {/* FRASE DE IMPACTO (MODIFICADO: Más chica y centrada) */}
                 <div className="text-center mb-6 px-4">
-                    <h3 className="text-xl md:text-2xl font-bold text-blue-900 italic font-serif leading-relaxed">
+                    <h3 className="text-sm font-bold text-blue-900 italic font-serif leading-relaxed">
                         &ldquo;Se pueden conseguir Resultados o Excusas, no las dos cosas.&rdquo;
                     </h3>
-                    <div className="h-1 w-24 bg-blue-500 mx-auto mt-3 rounded-full opacity-50"></div>
+                    <div className="h-0.5 w-16 bg-blue-500 mx-auto mt-2 rounded-full opacity-50"></div>
                 </div>
 
                 {/* IMÁGENES */}
@@ -156,7 +156,7 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={validImages[0]} alt="Evidencia" className="object-contain max-h-[350px] w-auto mx-auto" />
                         </div>
-                        {data.imageDescriptions?.[0] && <p className="mt-3 text-sm font-bold text-slate-700 bg-slate-100 px-4 py-1 rounded-full uppercase">{data.imageDescriptions[0]}</p>}
+                        {data.imageDescriptions?.[0] && <p className="mt-3 text-xs font-bold text-slate-700 bg-slate-100 px-4 py-1 rounded-full uppercase">{data.imageDescriptions[0]}</p>}
                     </div>
                 )}
                 {validImages.length > 1 && (
@@ -176,7 +176,7 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
         ) : (
             <div className="flex-grow flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-xl m-4 h-40">
                 <p className="text-slate-300 italic mb-2">Sin evidencia visual</p>
-                <p className="text-sm font-bold text-slate-400 italic font-serif">"Se pueden conseguir Resultados o Excusas, no las dos cosas."</p>
+                <p className="text-xs font-bold text-slate-400 italic font-serif">"Se pueden conseguir Resultados o Excusas, no las dos cosas."</p>
             </div>
         )}
 
