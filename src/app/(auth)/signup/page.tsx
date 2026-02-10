@@ -19,7 +19,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { SignupSchema } from "@/lib/schemas";
+import { RegisterSchema } from "@/lib/schemas";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function SignupPage() {
@@ -33,18 +33,19 @@ export default function SignupPage() {
     }
   }, [user, loading, router]);
 
-  const form = useForm<z.infer<typeof SignupSchema>>({
-    resolver: zodResolver(SignupSchema),
+  const form = useForm<z.infer<typeof RegisterSchema>>({
+    resolver: zodResolver(RegisterSchema),
     defaultValues: {
       name: "",
       email: "",
       password: "",
+      confirmPassword: "",
     },
   });
 
-  function onSubmit(data: z.infer<typeof SignupSchema>) {
+  function onSubmit(data: z.infer<typeof RegisterSchema>) {
     if (!auth) return;
-    initiateEmailSignUp(auth, data.email, data.password);
+    initiateEmailSignUp(auth, data.email, data.password, data.name);
   }
 
   if (loading || user) {
@@ -94,6 +95,19 @@ export default function SignupPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Contraseña</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••••" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirmar Contraseña</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="••••••••" {...field} />
                   </FormControl>

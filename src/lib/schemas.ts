@@ -1,5 +1,24 @@
-
 import * as z from "zod";
+
+// --- AUTENTICACIÓN ---
+
+export const LoginSchema = z.object({
+  email: z.string().email("Email inválido"),
+  password: z.string().min(1, "La contraseña es requerida"),
+});
+
+export const RegisterSchema = z.object({
+  email: z.string().email("Email inválido"),
+  password: z.string().min(6, "Mínimo 6 caracteres"),
+  confirmPassword: z.string().min(6, "Mínimo 6 caracteres"),
+  name: z.string().min(2, "El nombre es requerido"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Las contraseñas no coinciden",
+  path: ["confirmPassword"],
+});
+
+
+// --- APLICACIÓN ---
 
 // Esquema para Guardar Casos (Nombre)
 export const SaveCaseSchema = z.object({
@@ -29,7 +48,7 @@ export const QuickDiagnosisSchema = z.object({
   vcBReal: z.coerce.number().optional(),
 });
 
-// Esquema para Informe Detallado (CORREGIDO)
+// Esquema para Informe Detallado
 export const DetailedReportSchema = z.object({
   // Encabezado
   cliente: z.string().optional(),

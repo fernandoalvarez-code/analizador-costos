@@ -19,7 +19,7 @@ import {
   DocumentSnapshot
 } from "firebase/firestore";
 import { getStorage } from "firebase/storage"; 
-import { getAuth, onAuthStateChanged, User, createUserWithEmailAndPassword, signInWithEmailAndPassword, Auth } from "firebase/auth";
+import { getAuth, onAuthStateChanged, User, createUserWithEmailAndPassword, signInWithEmailAndPassword, Auth, updateProfile } from "firebase/auth";
 import { useState, useEffect, useMemo, DependencyList } from "react";
 
 // --- 1. CONFIGURACIÓN ---
@@ -135,8 +135,14 @@ export const useMemoFirebase = <T>(factory: () => T, deps: DependencyList): T =>
 };
 
 // --- 4. FUNCIONES NON-BLOCKING ---
-export function initiateEmailSignUp(authInstance: Auth, email: string, password: string): void {
-  createUserWithEmailAndPassword(authInstance, email, password).catch(console.error);
+export function initiateEmailSignUp(authInstance: Auth, email: string, password: string, displayName: string): void {
+  createUserWithEmailAndPassword(authInstance, email, password)
+    .then(userCredential => {
+        if (userCredential.user) {
+            updateProfile(userCredential.user, { displayName: displayName });
+        }
+    })
+    .catch(console.error);
 }
 export function initiateEmailSignIn(authInstance: Auth, email: string, password: string): void {
   signInWithEmailAndPassword(authInstance, email, password).catch(console.error);
