@@ -6,10 +6,9 @@ import { Input } from "@/components/ui/input";
 import { X, Image as ImageIcon, UploadCloud, Trash2 } from "lucide-react";
 
 interface ImageUploaderProps {
-  // Callback modificado para devolver todo lo necesario
   onImagesChange: (files: File[], keptUrls: string[], allDescriptions: string[]) => void;
-  initialImages?: string[];
-  initialDescriptions?: string[];
+  initialImages?: string[] | null;
+  initialDescriptions?: string[] | null;
 }
 
 export function ImageUploader({ 
@@ -18,6 +17,11 @@ export function ImageUploader({
   initialDescriptions = [] 
 }: ImageUploaderProps) {
   
+  // ✅ CORRECCIÓN DE SEGURIDAD:
+  // Aseguramos que siempre sean arrays, incluso si vienen como 'null' de la BD
+  const safeInitialImages = initialImages || [];
+  const safeInitialDescriptions = initialDescriptions || [];
+
   // Estado para imágenes YA GUARDADAS (URLs)
   const [keptImages, setKeptImages] = useState<{url: string, desc: string}[]>([]);
   
@@ -26,15 +30,16 @@ export function ImageUploader({
 
   // Carga inicial (Solo ocurre una vez cuando llegan los datos)
   useEffect(() => {
-    if (initialImages.length > 0 && keptImages.length === 0 && newImages.length === 0) {
-      const formatted = initialImages.map((url, i) => ({
+    if (safeInitialImages.length > 0 && keptImages.length === 0 && newImages.length === 0) {
+      const formatted = safeInitialImages.map((url, i) => ({
         url,
-        desc: initialDescriptions[i] || ""
+        // Usamos el array sanitizado para evitar el error "properties of null"
+        desc: safeInitialDescriptions[i] || "" 
       }));
       setKeptImages(formatted);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialImages, initialDescriptions]);
+  }, [safeInitialImages, safeInitialDescriptions]);
 
   // Función central para notificar cambios al padre (Dashboard)
   const notifyParent = (currentKept: typeof keptImages, currentNew: typeof newImages) => {
@@ -56,7 +61,7 @@ export function ImageUploader({
       const files = Array.from(e.target.files);
       const total = keptImages.length + newImages.length + files.length;
       
-      if (total > 4) { // Límite arbitrario de 4 para que no se rompa el diseño
+      if (total > 4) {
         alert("Máximo 4 imágenes en total.");
         return;
       }
