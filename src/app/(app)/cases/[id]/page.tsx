@@ -53,16 +53,17 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
   // --- CÁLCULOS ADICIONALES PARA MOSTRAR ---
   const costoMinuto = (data.machineHourlyRate || 0) / 60;
   
-  // Cálculo de Insertos
-  const totalPiezasPorInsertoA = (data.filosA || 1) * (data.piezasFiloA || 1);
-  const insertosMesA = totalPiezasPorInsertoA > 0 ? (data.piezasAlMes || 0) / totalPiezasPorInsertoA : 0;
+  // Tiempos de Ciclo y Corte (para mostrar en tabla)
+  const tcA = (data.cicloMinA || 0) + ((data.cicloSegA || 0) / 60);
+  const tcB = (data.cicloMinB || 0) + ((data.cicloSegB || 0) / 60);
+  const timeInCutA = (data.tiempoCorteA && data.tiempoCorteA > 0) ? data.tiempoCorteA : tcA;
+  const timeInCutB = (data.tiempoCorteB && data.tiempoCorteB > 0) ? data.tiempoCorteB : tcB;
+
+  const insertosMesA = r.insertosNecesariosA || 0;
+  const insertosMesB = r.insertosNecesariosB || 0;
   const costoInsertosMesA = insertosMesA * (data.precioA || 0);
-  
-  const totalPiezasPorInsertoB = (data.filosB || 1) * (data.piezasFiloB || 1);
-  const insertosMesB = totalPiezasPorInsertoB > 0 ? (data.piezasAlMes || 0) / totalPiezasPorInsertoB : 0;
   const costoInsertosMesB = insertosMesB * (data.precioB || 0);
 
-  // Cálculo de Turnos
   const turnosA = (r.turnosMensualesA || 0);
   const turnosB = (r.turnosMensualesB || 0);
   const turnosAhorrados = turnosA - turnosB;
@@ -240,7 +241,7 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
                 <div className="grid grid-cols-2 gap-6">
                     <div className="bg-white rounded border border-slate-200 p-2 shadow-sm text-center">
                         <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Inversión en Herramienta</p>
-                        <p className={cn("text-2xl font-black mb-0", r.toolCostIncreasePercent > 0 ? "text-red-500" : "text-green-600")}>{formatPercent(r.toolCostIncreasePercent)}</p>
+                        <p className={cn("text-2xl font-black mb-0", r.toolCostIncreasePercent < 0 ? "text-green-600" : "text-red-500")}>{formatPercent(r.toolCostIncreasePercent)}</p>
                         <p className="text-[8px] text-slate-400">Variación costo herramienta/pieza</p>
                     </div>
                     <div className="bg-white rounded border border-slate-200 p-2 shadow-sm text-center">
@@ -280,8 +281,9 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
                 <Row label="Descripción" valA={data.descA} valB={data.descB} />
                 <Row label="Precio Inserto" valA={formatCurrency(data.precioA)} valB={formatCurrency(data.precioB)} />
                 <Row label="Filos/Inserto" valA={data.filosA} valB={data.filosB} />
-                <Row label="Vida/Filo" valA={`${r.minutosFiloA?.toFixed(1)} min`} valB={`${r.minutosFiloB?.toFixed(1)} min`} />
-                <Row label="Piezas/Filo" valA={data.piezasFiloA} valB={data.piezasFiloB} bold />
+                <Row label="Vida/Filo (min)" valA={`${r.minutosFiloA?.toFixed(1)}`} valB={`${r.minutosFiloB?.toFixed(1)}`} />
+                <Row label="Tiempo Corte/Pieza (min)" valA={`${timeInCutA.toFixed(3)}`} valB={`${timeInCutB.toFixed(3)}`} bold />
+                <Row label="Piezas/Filo" valA={data.piezasFiloA} valB={data.piezasFiloB} />
                 <div className="grid grid-cols-10 border-b border-slate-200 py-1 px-3 bg-white text-[10px]">
                     <div className="col-span-4 font-medium text-slate-700">Insertos/Mes</div>
                     <div className="col-span-3 text-center text-slate-600">{insertosMesA.toFixed(1)} <span className="text-[9px] text-slate-400">({formatCurrency(costoInsertosMesA)})</span></div>
@@ -290,7 +292,7 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
                 <Row label="Costo Herr./Pieza" valA={formatCurrency(r.costoHerramientaA)} valB={formatCurrency(r.costoHerramientaB)} isRed />
 
                 <SectionTitle title="DATOS DEL PROCESO" />
-                <Row label="Ciclo (min)" valA={r.tiempoCicloA?.toFixed(3)} valB={r.tiempoCicloB?.toFixed(3)} />
+                <Row label="Ciclo (min)" valA={tcA.toFixed(3)} valB={tcB.toFixed(3)} />
                 <Row label="Costo Hora-Máq." valA={formatCurrency(data.machineHourlyRate)} valB={`(${formatCurrency(costoMinuto)}/min)`} />
                 <Row label="Costo Parada/Pieza" valA={formatCurrency(r.costoParadaA)} valB={formatCurrency(r.costoParadaB)} />
                 <Row label="Costo Máq./Pieza" valA={formatCurrency(r.costoMaquinaA)} valB={formatCurrency(r.costoMaquinaB)} isRed />
