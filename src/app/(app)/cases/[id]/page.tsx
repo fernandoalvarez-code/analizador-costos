@@ -15,7 +15,10 @@ const formatCurrency = (val?: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 }
 const formatPercent = (val?: number) => {
-    if (typeof val !== 'number' || !isFinite(val)) return '0.0%';
+    if (typeof val !== 'number') return '0.0%';
+    if (!isFinite(val)) {
+        return val > 0 ? '∞%' : '-∞%';
+    }
     return `${val.toFixed(1)}%`;
 }
 const formatNumber = (val?: number) => {
@@ -237,12 +240,12 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
                 <div className="grid grid-cols-2 gap-6">
                     <div className="bg-white rounded border border-slate-200 p-2 shadow-sm text-center">
                         <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Inversión en Herramienta</p>
-                        <p className={cn("text-2xl font-black mb-0", r.toolCostIncreasePercent > 0 ? "text-green-600" : "text-slate-700")}>{formatPercent(r.toolCostIncreasePercent)}</p>
+                        <p className={cn("text-2xl font-black mb-0", r.toolCostIncreasePercent > 0 ? "text-red-500" : "text-green-600")}>{formatPercent(r.toolCostIncreasePercent)}</p>
                         <p className="text-[8px] text-slate-400">Variación costo herramienta/pieza</p>
                     </div>
                     <div className="bg-white rounded border border-slate-200 p-2 shadow-sm text-center">
                         <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Mejora Costo Total</p>
-                        <p className={cn("text-2xl font-black mb-0", r.totalCostReductionPercent > 0 ? "text-red-500" : "text-slate-700")}>{formatPercent(r.totalCostReductionPercent)}</p>
+                        <p className={cn("text-2xl font-black mb-0", r.totalCostReductionPercent > 0 ? "text-green-600" : "text-red-500")}>{formatPercent(r.totalCostReductionPercent)}</p>
                         <p className="text-[8px] text-slate-400">Reducción costo total/pieza</p>
                     </div>
                 </div>
