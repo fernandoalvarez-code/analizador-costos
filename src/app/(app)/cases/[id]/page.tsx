@@ -122,13 +122,9 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
   useEffect(() => {
     const shouldDownload = searchParams.get("download") === "true";
     if (shouldDownload && !isLoading && rawData && !isDownloading) {
-      // Limpiamos la URL para evitar bucles
       const newUrl = window.location.pathname; 
       window.history.replaceState(null, '', newUrl);
-
-      const timer = setTimeout(() => { 
-        handleDownloadPDF(); 
-      }, 1000); // 1 seg para asegurar carga de imágenes
+      const timer = setTimeout(() => { handleDownloadPDF(); }, 1000); 
       return () => clearTimeout(timer);
     }
   }, [searchParams, isLoading, rawData, isDownloading, handleDownloadPDF]);
@@ -235,19 +231,25 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <h3 className="text-center text-[10px] font-bold text-slate-800 mb-2 uppercase tracking-widest">Inversión vs. Ahorro</h3>
                 <div className="grid grid-cols-2 gap-4">
                     
-                    <div className="bg-white rounded border border-slate-200 p-2 shadow-sm text-center">
+                    <div className="bg-white rounded border border-slate-200 p-2 shadow-sm text-center flex flex-col justify-center min-h-[60px]">
                         <p className={cn("text-[8px] font-bold uppercase mb-0", r.toolCostIncreasePercent < 0 ? "text-green-700" : "text-slate-500")}>
                             {r.toolCostIncreasePercent < 0 ? "Ahorro en Herramientas" : "Inversión Herramienta"}
                         </p>
-                        <p className={cn("text-lg font-black mb-0", r.toolCostIncreasePercent < 0 ? "text-green-600" : "text-slate-700")}>
+                        <p className={cn("text-lg font-black mb-0 leading-none mt-1", r.toolCostIncreasePercent < 0 ? "text-green-600" : "text-slate-700")}>
                             {formatPercent(Math.abs(r.toolCostIncreasePercent || 0))}
+                        </p>
+                        <p className="text-[6px] text-slate-400 uppercase tracking-wide mt-1 font-semibold">
+                            {r.toolCostIncreasePercent < 0 ? "(Menor consumo de insumos)" : "(Mayor costo de compra)"}
                         </p>
                     </div>
 
-                    <div className="bg-white rounded border border-slate-200 p-2 shadow-sm text-center">
+                    <div className="bg-white rounded border border-slate-200 p-2 shadow-sm text-center flex flex-col justify-center min-h-[60px]">
                         <p className="text-[8px] font-bold text-slate-500 uppercase mb-0">Mejora Costo Total</p>
-                        <p className={cn("text-lg font-black mb-0", r.totalCostReductionPercent > 0 ? "text-blue-600" : "text-slate-700")}>
+                        <p className={cn("text-lg font-black mb-0 leading-none mt-1", r.totalCostReductionPercent > 0 ? "text-blue-600" : "text-slate-700")}>
                             {formatPercent(r.totalCostReductionPercent)}
+                        </p>
+                        <p className="text-[6px] text-slate-400 uppercase tracking-wide mt-1 font-semibold">
+                            (Impacto final en la pieza)
                         </p>
                     </div>
                 </div>
