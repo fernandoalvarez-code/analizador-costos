@@ -339,10 +339,17 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   }, [firestore]);
 
   const handlePrintReport = async () => {
-    if (initialData?.id) { window.open(`/cases/${initialData.id}?print=true`, '_blank'); } 
-    else { 
-       if (detailedResult) { window.print(); } 
-       else { toast({ variant: "destructive", title: "Informe no generado", description: "Faltan datos para generar el informe." }); }
+    // Verificamos si el caso ya está guardado (tiene ID)
+    if (initialData?.id) { 
+        // Abrimos el generador en una pestaña nueva
+        window.open(`/cases/${initialData.id}?download=true`, '_blank'); 
+    } else { 
+       // Si es un caso nuevo que no se ha guardado, obligamos a guardar
+       toast({ 
+         variant: "default", 
+         title: "Guardar primero", 
+         description: "Debes guardar el caso antes de generar el PDF oficial." 
+       }); 
     }
   };
 
@@ -580,7 +587,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                               </CardContent>
                           </Card>
                       </div>
-                      <div className="mt-8 space-y-3 page-break-inside-avoid">
+                      <div className="mt-8 space-y-3">
                         <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Evidencia Fotográfica</h3>
                         <ImageUploader initialImages={initialData?.imageUrls} initialDescriptions={initialData?.imageDescriptions} onImagesChange={(files, keptUrls, allDescs) => { setImagesToUpload(files); setKeptImageUrls(keptUrls); setImageDescriptions(allDescs); }} />
                       </div>
