@@ -22,25 +22,38 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useRouter } from "next/navigation";
 import { ImageUploader } from "./image-uploader";
 
-// --- FUNCIÓN DE LIMPIEZA SEGURA PARA FIRESTORE ---
+// --- FUNCIÓN DE LIMPIEZA SEGURA PARA FIRESTORE (VERSIÓN BLINDADA) ---
 const cleanForFirestore = (obj: any): any => {
+  // 1. Manejo de valores "vacíos" o inválidos
   if (obj === undefined) return null;
   if (obj === null) return null;
+  
+  // 2. IMPORTANTE: Firebase odia NaN e Infinity. Los convertimos a null o 0.
+  if (typeof obj === 'number') {
+    if (Number.isNaN(obj)) return 0;
+    if (!isFinite(obj)) return 0; // Atrapa Infinity y -Infinity
+    return obj;
+  }
+
+  // 3. Tipos básicos (string, boolean, etc.) pasan directo
   if (typeof obj !== 'object') return obj;
 
-  // 🟢 CORRECCIÓN: Mantener intactos los Timestamps de Firestore y las Fechas de JS
+  // 4. Fechas y Timestamps se mantienen
   if (obj instanceof Date || obj instanceof Timestamp) {
     return obj;
   }
   
+  // 5. Arrays: limpiamos cada elemento recursivamente
   if (Array.isArray(obj)) {
     return obj.map(v => cleanForFirestore(v));
   }
   
+  // 6. Objetos: limpiamos cada propiedad recursivamente
   const res: any = {};
   for (const k in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, k)) {
       const val = cleanForFirestore(obj[k]);
+      // Solo guardamos si no es undefined (aunque el paso 1 ya lo atrapa, es doble seguridad)
       if (val !== undefined) {
         res[k] = val;
       } else {
@@ -50,6 +63,7 @@ const cleanForFirestore = (obj: any): any => {
   }
   return res;
 };
+
 
 // Formato Moneda
 const formatCurrency = (val?: number) => {
@@ -71,7 +85,7 @@ const safeNumber = (val: any) => {
 // Tipos
 type QuickDiagnosisResult = { breakEvenSeconds: number; breakEvenPieces: number; deltaP: number; tcA: number; vcBTarget: number; newCycleTimeTarget: number; };
 type NetSavingsResult = { netAnnualSavings: number; cppA: number; cppB: number; savingsPerPiece: number; improvementPercentage: number; newCycleTime: number; newToolLife: number; };
-type DetailedReportResult = { cppA: number; cppB: number; costoHerramientaA: number; costoHerramientaB: number; costoMaquinaA: number; costoMaquinaB: number; ahorroAnual: number; ahorroMensual: number; ahorroPorPieza: number; roi: number; toolCostIncreasePercent: number; totalCostReductionPercent: number; timeReductionPercent: number; machineHoursFreedAnnual: number; machineHoursFreedValueAnnual: number; piezasAdicionalesAnual: number; diasLaboralesAhorradosAnual: number; semanasLaboralesAhorradasAnual: number; piezasTotalA: number; piezasTotalB: number; tiempoCicloA: number; tiempoCicloB: number; minutosFiloA: number; minutosFiloB: number; costoParadaA: number; costoParadaB: number; insertosNecesariosA: number; insertosNecesariosB: number; costoTotalInsertosA: number; costoTotalInsertosB: number; costoTotalMensualA: number; costoTotalMensualB: number; tiempoMaquinaMensualHorasA: number; tiempoMaquinaMensualHorasB: number; tiempoMaquinaMensualValorA: number; tiempoMaquinaMensualValorB: number; turnosMensualesA: number; turnosMensualesB: number; machineHoursFreedMonthly: number; };
+type DetailedReportResult = { cppA: number; cppB: number; costoHerramientaA: number; costoHerramientaB: number; costoMaquinaA: number; costoMaquinaB: number; ahorroAnual: number; ahorroMensual: number; ahorroPorPieza: number; roi: number; toolCostIncreasePercent: number; totalCostReductionPercent: number; timeReductionPercent: number; machineHoursFreedAnnual: number; machineHoursFreedValueAnnual: number; piezasAdicionalesAnual: number; diasLaboralesAhorradosAnual: number; semanasLaboralesAhorradasAnual: number; piezasTotalA: number; piezasTotalB: number; tiempoCicloA: number; tiempoCicloB: number; minutosFiloA: number; minutosFiloB: number; costoParadaA: number; costoParadaB: number; insertosNecesariosA: number; insertosNecesariosB: number; costoTotalInsertosA: number; costoTotalInsertosB: number; costoTotalMensualA: number; costoTotalMensualB: number; tiempoMaquinaMensualHorasA: number; tiempoMaquinaMensualHorasB: number; tiempoMaquinaMensualValorA: number; tiempoMaquinaMensualValorB: number; turnosMensualesA: number; turnosMensualesB: number; machineHoursFreedMonthly: number; inversionInicial?: number; paybackMonths?: number; };
 
 type DashboardTabsProps = { initialData?: any; isReadOnly?: boolean; };
 
@@ -321,8 +335,15 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     const turnosMensualesA = tiempoMaquinaMensualHorasA / 8; 
     const turnosMensualesB = tiempoMaquinaMensualHorasB / 8; 
     const timeReductionPercent = tcA > 0 ? ((tcA - tcB) / tcA) * 100 : 0;
+    
+    const inversionInicial = safeNumber(data.costoImplementacion);
+    let paybackMonths = 0;
 
-    setDetailedResult({ cppA, cppB, costoHerramientaA, costoHerramientaB, costoMaquinaA, costoMaquinaB, ahorroAnual, ahorroMensual, ahorroPorPieza, roi, toolCostIncreasePercent, totalCostReductionPercent, machineHoursFreedAnnual, machineHoursFreedValueAnnual, piezasAdicionalesAnual, diasLaboralesAhorradosAnual, semanasLaboralesAhorradasAnual, piezasTotalA: piezasTotalVidaA, piezasTotalB: piezasTotalVidaB, tiempoCicloA: tcA, tiempoCicloB: tcB, minutosFiloA: minA, minutosFiloB: minB, costoParadaA, costoParadaB, insertosNecesariosA, insertosNecesariosB, costoTotalInsertosA, costoTotalInsertosB, costoTotalMensualA, costoTotalMensualB, tiempoMaquinaMensualHorasA, tiempoMaquinaMensualHorasB, tiempoMaquinaMensualValorA, tiempoMaquinaMensualValorB, turnosMensualesA, turnosMensualesB, machineHoursFreedMonthly, timeReductionPercent });
+    if (inversionInicial > 0 && ahorroMensual > 0) {
+        paybackMonths = inversionInicial / ahorroMensual;
+    }
+
+    setDetailedResult({ cppA, cppB, costoHerramientaA, costoHerramientaB, costoMaquinaA, costoMaquinaB, ahorroAnual, ahorroMensual, ahorroPorPieza, roi, toolCostIncreasePercent, totalCostReductionPercent, machineHoursFreedAnnual, machineHoursFreedValueAnnual, piezasAdicionalesAnual, diasLaboralesAhorradosAnual, semanasLaboralesAhorradasAnual, piezasTotalA: piezasTotalVidaA, piezasTotalB: piezasTotalVidaB, tiempoCicloA: tcA, tiempoCicloB: tcB, minutosFiloA: minA, minutosFiloB: minB, costoParadaA, costoParadaB, insertosNecesariosA, insertosNecesariosB, costoTotalInsertosA, costoTotalInsertosB, costoTotalMensualA, costoTotalMensualB, tiempoMaquinaMensualHorasA, tiempoMaquinaMensualHorasB, tiempoMaquinaMensualValorA, tiempoMaquinaMensualValorB, turnosMensualesA, turnosMensualesB, machineHoursFreedMonthly, timeReductionPercent, inversionInicial, paybackMonths });
   }, [detailValues]);
 
   // Carga inicial
@@ -401,7 +422,6 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     }
   };
 
-  // Función para redirigir al informe
   const handleViewReport = () => {
     if (initialData?.id) { 
         router.push(`/cases/${initialData.id}`);
