@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, use, useState } from "react";
+import { useEffect, useState } from "react";
 import { doc } from "firebase/firestore";
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { Button } from "@/components/ui/button";
@@ -53,11 +53,11 @@ const FinancialRow = ({ label, valA, valB, save, pct }: FinancialRowProps) => (
 
 // --- COMPONENTE PRINCIPAL ---
 
-export default function CaseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+export default function CaseDetailsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const firestore = useFirestore();
-  const { id } = use(params);
+  const { id } = params;
   const [isDownloading, setIsDownloading] = useState(false);
 
   // 1. Obtener datos

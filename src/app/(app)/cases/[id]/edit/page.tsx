@@ -1,6 +1,5 @@
 "use client";
 
-import { use } from "react";
 import { doc } from "firebase/firestore";
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-export default function EditCasePage({ params }: { params: Promise<{ id: string }> }) {
+export default function EditCasePage({ params }: { params: { id: string } }) {
   // 1. Obtener el ID de la URL
-  const { id } = use(params);
+  const { id } = params;
   const router = useRouter();
   const firestore = useFirestore();
 
