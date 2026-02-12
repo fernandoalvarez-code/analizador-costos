@@ -255,7 +255,38 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            <div className="mb-4 border border-slate-300 rounded overflow-hidden text-sm shadow-sm">
+            {(r.inversionInicial > 0) && (
+                <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3 shadow-sm flex items-center justify-between break-inside-avoid">
+                    <div>
+                        <p className="text-[9px] font-bold text-yellow-800 uppercase tracking-widest mb-1">
+                            Retorno de Inversión (Implementación)
+                        </p>
+                        <p className="text-[9px] text-slate-600">
+                            Costo de Cuerpos/Fresas: <span className="font-bold text-slate-900">{formatCurrency(r.inversionInicial)}</span>
+                        </p>
+                    </div>
+                    
+                    <div className="text-right">
+                        <p className="text-[8px] text-slate-500 uppercase mb-0 font-semibold">La inversión se paga en:</p>
+                        <div className="flex items-baseline justify-end gap-1">
+                            <p className="text-2xl font-black text-slate-800 leading-none">
+                                {r.paybackMonths < 0.1 
+                                    ? "Inmediato" 
+                                    : r.paybackMonths.toFixed(1)
+                                }
+                            </p>
+                            <span className="text-xs font-bold text-slate-600">Meses</span>
+                        </div>
+                        {r.paybackMonths > 0 && (
+                            <p className="text-[7px] text-green-600 font-bold mt-1 uppercase tracking-wide">
+                                A partir del mes {Math.ceil(r.paybackMonths)}, ganancia pura.
+                            </p>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            <div className="mb-4 border border-slate-300 rounded overflow-hidden text-sm shadow-sm break-inside-avoid">
                 <div className="grid grid-cols-10 bg-slate-100 font-bold border-b border-slate-300 py-1 px-3 text-[9px]"><div className="col-span-4">PARÁMETRO</div><div className="col-span-3 text-center text-red-600">ACTUAL (A)</div><div className="col-span-3 text-center text-blue-600">PROPUESTA (B)</div></div>
                 <SectionTitle title="DATOS DEL INSERTO" />
                 <Row label="Descripción" valA={data.descA} valB={data.descB} />
