@@ -23,7 +23,7 @@ const formatNumber = (val?: number) => {
     return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(val);
 }
 
-// --- SUB-COMPONENTES (Definidos fuera para evitar re-renderizados innecesarios) ---
+// --- SUB-COMPONENTES ---
 
 interface RowProps { label: string; valA: any; valB: any; bold?: boolean; isRed?: boolean; }
 
@@ -57,127 +57,99 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
   const router = useRouter();
   const searchParams = useSearchParams();
   const firestore = useFirestore();
-  
-  // Desempaquetar params (Next.js 15)
   const { id } = use(params);
-  
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // 1. Obtener datos del Caso
+  // 1. Obtener datos
   const docRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
     return doc(firestore, "cuttingToolAnalyses", id);
   }, [firestore, id]);
   const { data: rawData, isLoading } = useDoc<any>(docRef);
 
-  // 2. Obtener Configuración (Logos)
+  // 2. Configuración
   const settingsRef = useMemoFirebase(() => {
     if (!firestore) return null;
     return doc(firestore, "settings", "general");
   }, [firestore]);
   const { data: settings } = useDoc<any>(settingsRef);
 
-  // 3. Preparación de Datos Segura (Evita crash si es undefined)
   const data = rawData || {};
   const r = data.results || {}; 
 
   // --- CÁLCULOS ---
   const costoMinuto = (data.machineHourlyRate || 0) / 60;
-  
-  // Tiempos (Manejo de nulls)
   const tcA = (data.cicloMinA || 0) + ((data.cicloSegA || 0) / 60);
   const tcB = (data.cicloMinB || 0) + ((data.cicloSegB || 0) / 60);
   const timeInCutA = (data.tiempoCorteA && data.tiempoCorteA > 0) ? data.tiempoCorteA : tcA;
   const timeInCutB = (data.tiempoCorteB && data.tiempoCorteB > 0) ? data.tiempoCorteB : tcB;
-
   const insertosMesA = r.insertosNecesariosA || 0;
   const insertosMesB = r.insertosNecesariosB || 0;
   const costoInsertosMesA = insertosMesA * (data.precioA || 0);
   const costoInsertosMesB = insertosMesB * (data.precioB || 0);
-
   const turnosA = (r.turnosMensualesA || 0);
   const turnosB = (r.turnosMensualesB || 0);
   const turnosAhorrados = turnosA - turnosB;
-
   const piezasExtraMes = (r.piezasAdicionalesAnual || 0) / 12;
   const validImages = data.imageUrls?.filter((url: string) => url && url.trim() !== "") || [];
 
-  // Efecto: Auto-imprimir (cuando viene de redirección con ?print=true)
+  // Auto-imprimir
   useEffect(() => {
     const shouldPrint = searchParams.get("print") === "true";
-    // Solo imprimir si ya cargó la data
     if (shouldPrint && !isLoading && rawData) {
-      // Pequeño delay para asegurar que el DOM y las imágenes estén listos
       const timer = setTimeout(() => { window.print(); }, 1500);
       return () => clearTimeout(timer);
     }
   }, [searchParams, isLoading, rawData]);
 
-  // Acción: Descargar PDF
+  // Descarga PDF CORREGIDA
   const handleDownloadPDF = async () => {
     if (!rawData) return;
     setIsDownloading(true);
     try {
         const html2pdf = (await import('html2pdf.js')).default;
         const element = document.getElementById('report-container');
+        
         const opt = {
-            margin:       0, // Margen 0 para controlar todo con CSS
+            margin:       0, 
             filename:     `Informe_${data.name || 'Caso'}_${new Date().toISOString().split('T')[0]}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2, useCORS: true, logging: false, scrollY: 0, x: 0 }, 
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            // Configuración clave para evitar cortes raros:
+            pagebreak:    { mode: ['css', 'legacy'] } 
         };
         await html2pdf().set(opt).from(element).save();
     } catch (error) {
         console.error("Error generando PDF:", error);
-        alert("Hubo un error al generar el PDF. Por favor intenta imprimir como PDF.");
+        alert("Hubo un error al generar el PDF.");
     } finally {
         setIsDownloading(false);
     }
   };
 
-  if (isLoading) return (
-    <div className="p-8 space-y-4 container mx-auto">
-        <Skeleton className="h-12 w-1/3" />
-        <Skeleton className="h-96 w-full" />
-    </div>
-  );
-  
-  if (!rawData && !isLoading) return (
-    <div className="p-8 text-center text-red-500 font-bold">
-        Error: Caso no encontrado o no tienes permisos.
-    </div>
-  );
+  if (isLoading) return <div className="p-8 space-y-4 container mx-auto"><Skeleton className="h-12 w-1/3" /><Skeleton className="h-96 w-full" /></div>;
+  if (!rawData && !isLoading) return <div className="p-8 text-center text-red-500">Error: Caso no encontrado.</div>;
 
   return (
     <div className="bg-white text-slate-900 font-sans printable-area">
       
-      {/* HEADER: Botones de Acción (Se oculta al imprimir) */}
+      {/* HEADER NO IMPRIMIBLE */}
       <div className="flex justify-between items-center p-6 max-w-5xl mx-auto no-print">
-        <Button variant="outline" onClick={() => router.back()}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Volver
-        </Button>
+        <Button variant="outline" onClick={() => router.back()}><ArrowLeft className="mr-2 h-4 w-4" /> Volver</Button>
         <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => router.push(`/cases/${id}/edit`)}>
-                <Edit className="mr-2 h-4 w-4" /> Editar
-            </Button>
-            <Button 
-                onClick={handleDownloadPDF} 
-                disabled={isDownloading} 
-                className="bg-green-600 hover:bg-green-700 text-white border-none"
-            >
-                <Download className="mr-2 h-4 w-4" /> {isDownloading ? 'Generando...' : 'Descargar PDF'}
-            </Button>
-            <Button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white">
-                <Printer className="mr-2 h-4 w-4" /> Imprimir
-            </Button>
+            <Button variant="secondary" onClick={() => router.push(`/cases/${id}/edit`)}><Edit className="mr-2 h-4 w-4" /> Editar</Button>
+            <Button onClick={handleDownloadPDF} disabled={isDownloading} className="bg-green-600 hover:bg-green-700 text-white border-none"><Download className="mr-2 h-4 w-4" /> {isDownloading ? 'Generando...' : 'Descargar PDF'}</Button>
+            <Button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white"><Printer className="mr-2 h-4 w-4" /> Imprimir</Button>
         </div>
       </div>
 
-      <div id="report-container" className="bg-white">
+      {/* CONTENEDOR DEL REPORTE */}
+      <div id="report-container" className="bg-white w-full max-w-[210mm] mx-auto">
         
-        {/* ================= HOJA 1 ================= */}
-        <div className="w-full max-w-[210mm] min-h-[297mm] mx-auto p-10 flex flex-col justify-between relative bg-white break-after-page page-break-after-always">
+        {/* ================= HOJA 1: RESUMEN Y FOTOS ================= */}
+        {/* Eliminamos min-h-[297mm] para que html2pdf no calcule mal la altura si hay márgenes */}
+        <div className="p-10 flex flex-col relative bg-white h-auto page-break-after-always">
             
             {/* 1. Encabezado y Datos del Cliente */}
             <div>
@@ -204,8 +176,8 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
                 </div>
             </div>
 
-            {/* 2. Sección de Fotos (Ocupa el resto de la Hoja 1) */}
-            <div className="flex-grow flex flex-col justify-start">
+            {/* 2. Sección de Fotos */}
+            <div className="flex-grow flex flex-col justify-start mb-8">
                  {validImages.length > 0 ? (
                     <div className="flex flex-col h-full">
                         <div className="text-center mb-4 px-4"><h3 className="text-sm font-bold text-blue-900 italic font-serif leading-relaxed">&ldquo;Se pueden conseguir Resultados o Excusas, no las dos cosas.&rdquo;</h3><div className="h-0.5 w-16 bg-blue-500 mx-auto mt-2 rounded-full opacity-50"></div></div>
@@ -217,7 +189,7 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
                         </div>
                     </div>
                 ) : (
-                    <div className="flex-grow flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-xl m-4 h-64"><p className="text-slate-300 italic mb-2">Sin evidencia visual</p><p className="text-xs font-bold text-slate-400 italic font-serif">"Se pueden conseguir Resultados o Excusas, no las dos cosas."</p></div>
+                    <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-xl m-4 h-64"><p className="text-slate-300 italic mb-2">Sin evidencia visual</p><p className="text-xs font-bold text-slate-400 italic font-serif">"Se pueden conseguir Resultados o Excusas, no las dos cosas."</p></div>
                 )}
             </div>
 
@@ -225,8 +197,12 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
             <div className="text-center pt-4 border-t border-slate-100 mt-auto"><p className="text-[10px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos - Página 1/2</p></div>
         </div>
 
+        {/* CLASE ESPECIAL PARA SALTO DE PÁGINA EN HTML2PDF */}
+        <div className="html2pdf__page-break"></div>
+
         {/* ================= HOJA 2: ANÁLISIS DETALLADO ================= */}
-        <div className="w-full max-w-[210mm] min-h-[297mm] mx-auto p-10 pt-8 bg-white break-before-page page-break-before-always flex flex-col">
+        {/* Usamos padding top para simular el margen de la nueva hoja */}
+        <div className="p-10 pt-8 bg-white h-auto page-break-before-always flex flex-col">
             
             <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-3">
                 <div className="flex items-center gap-4">
