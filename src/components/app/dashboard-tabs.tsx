@@ -22,46 +22,41 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useRouter } from "next/navigation";
 import { ImageUploader } from "./image-uploader";
 
-// --- FUNCIÓN DE LIMPIEZA SEGURA PARA FIRESTORE (VERSIÓN BLINDADA) ---
+// --- FUNCIÓN DE LIMPIEZA AGRESIVA PARA FIRESTORE ---
 const cleanForFirestore = (obj: any): any => {
-  // 1. Manejo de valores "vacíos" o inválidos
-  if (obj === undefined) return null;
-  if (obj === null) return null;
-  
-  // 2. IMPORTANTE: Firebase odia NaN e Infinity. Los convertimos a null o 0.
+  // 1. Si es indefinido o nulo, devolver null (Firebase acepta null, odia undefined)
+  if (obj === undefined || obj === null) return null;
+
+  // 2. Si es número, eliminar NaN e Infinity
   if (typeof obj === 'number') {
     if (Number.isNaN(obj)) return 0;
-    if (!isFinite(obj)) return 0; // Atrapa Infinity y -Infinity
+    if (!isFinite(obj)) return 0; // Convierte Infinity en 0
     return obj;
   }
 
-  // 3. Tipos básicos (string, boolean, etc.) pasan directo
-  if (typeof obj !== 'object') return obj;
-
-  // 4. Fechas y Timestamps se mantienen
+  // 3. Fechas y Timestamps pasan directo
   if (obj instanceof Date || obj instanceof Timestamp) {
     return obj;
   }
-  
-  // 5. Arrays: limpiamos cada elemento recursivamente
+
+  // 4. Arrays: Limpiar cada elemento recursivamente
   if (Array.isArray(obj)) {
-    return obj.map(v => cleanForFirestore(v));
+    return obj.map((v) => cleanForFirestore(v));
   }
-  
-  // 6. Objetos: limpiamos cada propiedad recursivamente
-  const res: any = {};
-  for (const k in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, k)) {
-      const val = cleanForFirestore(obj[k]);
-      // Solo guardamos si no es undefined (aunque el paso 1 ya lo atrapa, es doble seguridad)
-      if (val !== undefined) {
-        res[k] = val;
-      } else {
-        res[k] = null;
-      }
-    }
+
+  // 5. Objetos: Recorrer cada llave y limpiar
+  if (typeof obj === 'object') {
+    const newObj: any = {};
+    Object.keys(obj).forEach((key) => {
+      const val = cleanForFirestore(obj[key]);
+      // Guardamos null si no hay valor, para mantener la estructura
+      newObj[key] = val === undefined ? null : val;
+    });
+    return newObj;
   }
-  return res;
+
+  // 6. Strings, booleanos, etc. pasan directo
+  return obj;
 };
 
 
