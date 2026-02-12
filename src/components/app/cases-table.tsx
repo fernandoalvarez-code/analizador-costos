@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -111,13 +110,14 @@ const ActionCell = ({ caseData, user, isAdmin, onDeleteClick }: { caseData: Case
                     </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                    <Link href={`/cases/${caseData.id}?print=true`} target="_blank">
+                    {/* Apuntamos a la misma página pero con ?download=true */}
+                    <Link href={`/cases/${caseData.id}?download=true`} target="_blank">
                         <Printer className="mr-2 h-4 w-4"/>
                         Descargar PDF
                     </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild disabled={!isAdmin && !isOwner}>
-                    <Link href={`/cases/${caseData.id}?edit=true`}>
+                    <Link href={`/cases/${caseData.id}/edit`}>
                         <Edit className="mr-2 h-4 w-4"/>
                         Editar
                     </Link>
