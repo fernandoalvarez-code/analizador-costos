@@ -122,7 +122,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     }, 
   });
 
-  const detailedForm = useForm<z.infer<typeof DetailedReportSchema>>({ resolver: zodResolver(DetailedReportSchema), defaultValues: initialData || { cliente: "", fecha: new Date().toISOString().split('T')[0], contacto: "", operacion: "", pieza: "", material: "", status: "Pendiente", machineHourlyRate: 35, piezasAlMes: 2000, tiempoParada: 2, descA: "Herramienta Actual", precioA: '' as any, insertosPorHerramientaA: 1, filosA: '' as any, cicloMinA: '' as any, cicloSegA: '' as any, vcA: '' as any, modoVidaA: 'piezas', piezasFiloA: '' as any, minutosFiloA: 0, tiempoCorteA: 0, notasA: "", descB: "Herramienta Propuesta", precioB: '' as any, insertosPorHerramientaB: 1, filosB: '' as any, cicloMinB: '' as any, cicloSegB: '' as any, vcB: '' as any, modoVidaB: 'piezas', piezasFiloB: '' as any, minutosFiloB: 0, tiempoCorteB: 0, notasB: "", }, });
+  const detailedForm = useForm<z.infer<typeof DetailedReportSchema>>({ resolver: zodResolver(DetailedReportSchema), defaultValues: initialData || { cliente: "", fecha: new Date().toISOString().split('T')[0], contacto: "", operacion: "", pieza: "", material: "", status: "Pendiente", machineHourlyRate: 35, piezasAlMes: 2000, tiempoParada: 2, costoImplementacion: 0, descA: "Herramienta Actual", precioA: '' as any, insertosPorHerramientaA: 1, filosA: '' as any, cicloMinA: '' as any, cicloSegA: '' as any, vcA: '' as any, modoVidaA: 'piezas', piezasFiloA: '' as any, minutosFiloA: 0, tiempoCorteA: 0, notasA: "", descB: "Herramienta Propuesta", precioB: '' as any, insertosPorHerramientaB: 1, filosB: '' as any, cicloMinB: '' as any, cicloSegB: '' as any, vcB: '' as any, modoVidaB: 'piezas', piezasFiloB: '' as any, minutosFiloB: 0, tiempoCorteB: 0, notasB: "", }, });
   const saveCaseForm = useForm<z.infer<typeof SaveCaseSchema>>({ resolver: zodResolver(SaveCaseSchema), defaultValues: { caseName: initialData?.name || "", }, });
 
   const parseTimeToMinutes = (min: number | undefined, sec: number | undefined) => { const minVal = safeNumber(min); const secVal = safeNumber(sec); return minVal + (secVal / 60); }
@@ -293,7 +293,8 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
 
     const toolCostIncreasePercent = costoHerramientaA > 0 ? ((costoHerramientaB - costoHerramientaA) / costoHerramientaA) * 100 : 0; 
     const totalCostReductionPercent = cppA > 0 ? (ahorroPorPieza / cppA) * 100 : 0; 
-    const investment = safeNumber(data.precioB) - safeNumber(data.precioA); 
+    
+    const investment = safeNumber(data.costoImplementacion);
     const roi = investment > 0 && ahorroAnual > 0 ? (ahorroAnual / investment) * 100 : (ahorroAnual > 0 ? Infinity : 0);
 
     const annualParts = piezasAlMes * 12; 
@@ -400,6 +401,19 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     }
   };
 
+  // Función para redirigir al informe
+  const handleViewReport = () => {
+    if (initialData?.id) { 
+        router.push(`/cases/${initialData.id}`);
+    } else { 
+       toast({ 
+         variant: "default", 
+         title: "Guardar primero", 
+         description: "Debes guardar el caso para ver el informe generado." 
+       }); 
+    }
+  };
+
   const handlePrintQuickDiagnosis = async () => {
     if (!quickResult) { toast({ variant: "destructive", title: "Sin datos", description: "Faltan datos para el diagnóstico." }); return; }
     setIsGeneratingQuickPDF(true);
@@ -416,19 +430,6 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   };
 
   const handleNewCase = () => { router.push('/dashboard'); }
-  
-  // Función para redirigir al informe
-  const handleViewReport = () => {
-    if (initialData?.id) { 
-        router.push(`/cases/${initialData.id}`);
-    } else { 
-       toast({ 
-         variant: "default", 
-         title: "Guardar primero", 
-         description: "Debes guardar el caso para ver el informe generado." 
-       }); 
-    }
-  };
 
   return (
     <>
@@ -599,6 +600,29 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                               <CardContent className="p-6 space-y-4 pt-6">
                                   <FormField control={detailedForm.control} name="descB" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Ej: Inserto de alta vel..." {...field} /></FormControl></FormItem>)}/>
                                   <FormField control={detailedForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio de Compra (USD)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} /></FormControl></FormItem>)}/>
+                                  <FormField 
+                                    control={detailedForm.control} 
+                                    name="costoImplementacion" 
+                                    render={({ field }) => (
+                                      <FormItem className="bg-yellow-50 p-3 rounded-md border border-yellow-200 mt-2">
+                                        <FormLabel className="text-yellow-900 font-bold flex items-center gap-2">
+                                          💰 Inversión Inicial (Cuerpos/Fresas)
+                                        </FormLabel>
+                                        <FormControl>
+                                          <Input 
+                                              type="number" 
+                                              placeholder="0.00" 
+                                              {...field} 
+                                              onChange={e => field.onChange(parseFloat(e.target.value) || 0)} 
+                                              className="bg-white border-yellow-300 focus-visible:ring-yellow-500 text-black"
+                                          />
+                                        </FormControl>
+                                        <p className="text-[10px] text-yellow-700 font-medium">
+                                          Si se requiere comprar cuerpos, ingresa el costo total aquí.
+                                        </p>
+                                      </FormItem>
+                                    )} 
+                                  />
                                   <div className="flex space-x-2">
                                       <FormField control={detailedForm.control} name="insertosPorHerramientaB" render={({ field }) => (<FormItem><FormLabel>Insertos/Herr.</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 1)}/></FormControl></FormItem>)}/>
                                       <FormField control={detailedForm.control} name="filosB" render={({ field }) => (<FormItem><FormLabel>Filos/Inserto</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>

@@ -147,5 +147,5 @@ export const SavingsInsightsSchema = z.object({
   shiftsPerDay: z.coerce.number().min(1, "Requerido"),
   daysPerWeek: z.coerce.number().min(1, "Requerido"),
   weeksPerYear: z.coerce.number().min(1, "Requerido"),
-  machineHourlyRate: z.coerce.number().min(0.01, "Requerido"),
+  machineHourlyRate: z.coerce.number().min(1, "Requerido"),
 });
