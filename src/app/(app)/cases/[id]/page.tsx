@@ -23,7 +23,7 @@ const formatNumber = (val?: number) => {
     return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(val);
 }
 
-// --- SUB-COMPONENTES ---
+// --- SUB-COMPONENTES (Definidos fuera para evitar re-renderizados innecesarios) ---
 
 interface RowProps { label: string; valA: any; valB: any; bold?: boolean; isRed?: boolean; }
 
@@ -57,52 +57,63 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
   const router = useRouter();
   const searchParams = useSearchParams();
   const firestore = useFirestore();
+  
+  // Desempaquetar params (Next.js 15)
   const { id } = use(params);
+  
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // 1. Obtener datos
+  // 1. Obtener datos del Caso
   const docRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
     return doc(firestore, "cuttingToolAnalyses", id);
   }, [firestore, id]);
   const { data: rawData, isLoading } = useDoc<any>(docRef);
 
-  // 2. Configuración
+  // 2. Obtener Configuración (Logos)
   const settingsRef = useMemoFirebase(() => {
     if (!firestore) return null;
     return doc(firestore, "settings", "general");
   }, [firestore]);
   const { data: settings } = useDoc<any>(settingsRef);
 
+  // 3. Preparación de Datos Segura (Evita crash si es undefined)
   const data = rawData || {};
   const r = data.results || {}; 
 
   // --- CÁLCULOS ---
   const costoMinuto = (data.machineHourlyRate || 0) / 60;
+  
+  // Tiempos (Manejo de nulls)
   const tcA = (data.cicloMinA || 0) + ((data.cicloSegA || 0) / 60);
   const tcB = (data.cicloMinB || 0) + ((data.cicloSegB || 0) / 60);
   const timeInCutA = (data.tiempoCorteA && data.tiempoCorteA > 0) ? data.tiempoCorteA : tcA;
   const timeInCutB = (data.tiempoCorteB && data.tiempoCorteB > 0) ? data.tiempoCorteB : tcB;
+
   const insertosMesA = r.insertosNecesariosA || 0;
   const insertosMesB = r.insertosNecesariosB || 0;
   const costoInsertosMesA = insertosMesA * (data.precioA || 0);
   const costoInsertosMesB = insertosMesB * (data.precioB || 0);
+
   const turnosA = (r.turnosMensualesA || 0);
   const turnosB = (r.turnosMensualesB || 0);
   const turnosAhorrados = turnosA - turnosB;
+
   const piezasExtraMes = (r.piezasAdicionalesAnual || 0) / 12;
   const validImages = data.imageUrls?.filter((url: string) => url && url.trim() !== "") || [];
 
-  // Auto-imprimir
+  // Efecto: Auto-imprimir (cuando viene de redirección con ?print=true)
   useEffect(() => {
     const shouldPrint = searchParams.get("print") === "true";
+    // Solo imprimir si ya cargó la data
     if (shouldPrint && !isLoading && rawData) {
+      // Pequeño delay para asegurar que el DOM y las imágenes estén listos
       const timer = setTimeout(() => { window.print(); }, 1500);
       return () => clearTimeout(timer);
     }
   }, [searchParams, isLoading, rawData]);
 
-  // Descarga PDF
+  // Acción: Descargar PDF
   const handleDownloadPDF = async () => {
     if (!rawData) return;
     setIsDownloading(true);
@@ -110,7 +121,7 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
         const html2pdf = (await import('html2pdf.js')).default;
         const element = document.getElementById('report-container');
         const opt = {
-            margin:       0,
+            margin:       0, // Margen 0 para controlar todo con CSS
             filename:     `Informe_${data.name || 'Caso'}_${new Date().toISOString().split('T')[0]}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2, useCORS: true, logging: false, scrollY: 0, x: 0 }, 
@@ -125,26 +136,47 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  if (isLoading) return <div className="p-8 space-y-4 container mx-auto"><Skeleton className="h-12 w-1/3" /><Skeleton className="h-96 w-full" /></div>;
-  if (!rawData && !isLoading) return <div className="p-8 text-center text-red-500">Error: Caso no encontrado.</div>;
+  if (isLoading) return (
+    <div className="p-8 space-y-4 container mx-auto">
+        <Skeleton className="h-12 w-1/3" />
+        <Skeleton className="h-96 w-full" />
+    </div>
+  );
+  
+  if (!rawData && !isLoading) return (
+    <div className="p-8 text-center text-red-500 font-bold">
+        Error: Caso no encontrado o no tienes permisos.
+    </div>
+  );
 
   return (
     <div className="bg-white text-slate-900 font-sans printable-area">
       
-      {/* HEADER NO IMPRIMIBLE */}
+      {/* HEADER: Botones de Acción (Se oculta al imprimir) */}
       <div className="flex justify-between items-center p-6 max-w-5xl mx-auto no-print">
-        <Button variant="outline" onClick={() => router.back()}><ArrowLeft className="mr-2 h-4 w-4" /> Volver</Button>
+        <Button variant="outline" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Volver
+        </Button>
         <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => router.push(`/cases/${id}/edit`)}><Edit className="mr-2 h-4 w-4" /> Editar</Button>
-            <Button onClick={handleDownloadPDF} disabled={isDownloading} className="bg-green-600 hover:bg-green-700 text-white border-none"><Download className="mr-2 h-4 w-4" /> {isDownloading ? 'Generando...' : 'Descargar PDF'}</Button>
-            <Button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white"><Printer className="mr-2 h-4 w-4" /> Imprimir</Button>
+            <Button variant="secondary" onClick={() => router.push(`/cases/${id}/edit`)}>
+                <Edit className="mr-2 h-4 w-4" /> Editar
+            </Button>
+            <Button 
+                onClick={handleDownloadPDF} 
+                disabled={isDownloading} 
+                className="bg-green-600 hover:bg-green-700 text-white border-none"
+            >
+                <Download className="mr-2 h-4 w-4" /> {isDownloading ? 'Generando...' : 'Descargar PDF'}
+            </Button>
+            <Button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Printer className="mr-2 h-4 w-4" /> Imprimir
+            </Button>
         </div>
       </div>
 
-      {/* CONTENEDOR DEL REPORTE */}
       <div id="report-container" className="bg-white">
         
-        {/* ================= HOJA 1: RESUMEN Y FOTOS ================= */}
+        {/* ================= HOJA 1 ================= */}
         <div className="w-full max-w-[210mm] min-h-[297mm] mx-auto p-10 flex flex-col justify-between relative bg-white break-after-page page-break-after-always">
             
             {/* 1. Encabezado y Datos del Cliente */}
@@ -247,17 +279,17 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
                 <div className="grid grid-cols-12 bg-green-100 py-1 px-3 font-black border-t border-green-300 text-center text-[9px]"><div className="col-span-3 text-left uppercase">ANUAL</div><div className="col-span-2 text-slate-800">{formatCurrency((r.costoTotalMensualA || 0) * 12)}</div><div className="col-span-2 text-blue-700">{formatCurrency((r.costoTotalMensualB || 0) * 12)}</div><div className="col-span-3 text-green-700 text-sm">{formatCurrency(r.ahorroAnual)}</div><div className="col-span-2 text-green-700">{formatPercent(r.totalCostReductionPercent)}</div></div>
             </div>
 
-            {/* CONCLUSIÓN EJECUTIVA */}
-            <div className="border-t-2 border-slate-100 pt-4 break-inside-avoid mt-auto">
-                <h4 className="text-[10px] font-bold text-slate-700 uppercase mb-2">Conclusión Ejecutiva</h4>
-                <div className="bg-slate-50 p-4 rounded border border-slate-200 text-[10px] text-slate-700 leading-relaxed text-justify">
-                    <p className="mb-2">
-                        Con la mejora de proceso su empresa se ahorra <strong>{formatCurrency(r.ahorroAnual)} anuales</strong>.
+            {/* CONCLUSIÓN EJECUTIVA (MÁS VISIBLE) */}
+            <div className="border-t-2 border-slate-200 pt-6 break-inside-avoid mt-auto">
+                <h4 className="text-sm font-black text-slate-800 uppercase mb-3 tracking-wide">Conclusión Ejecutiva</h4>
+                <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 text-xs text-slate-800 leading-relaxed text-justify shadow-sm">
+                    <p className="mb-3 text-sm">
+                        Con la mejora de proceso su empresa se ahorra <strong className="text-green-700 text-base">{formatCurrency(r.ahorroAnual)} anuales</strong>.
                         Además, esta mejora le da un potencial adicional, ya que la máquina queda libre para generar 
-                        <strong> {formatCurrency(r.machineHoursFreedValueAnnual)} extras</strong> o producir 
-                        <strong> {formatNumber(piezasExtraMes)} piezas más por mes</strong>.
+                        <strong className="text-blue-700"> {formatCurrency(r.machineHoursFreedValueAnnual)} extras</strong> o producir 
+                        <strong className="text-slate-900"> {formatNumber(piezasExtraMes)} piezas más por mes</strong>.
                     </p>
-                    <p className="text-slate-500 italic border-t border-slate-200 pt-2 mt-2">
+                    <p className="text-slate-500 italic border-t border-slate-200 pt-3 mt-3 text-xs">
                         * Cálculos basados en una demanda de <strong>{data.piezasAlMes?.toLocaleString()} piezas/mes</strong>. 
                         Actualmente esto ocupa <strong>{r.tiempoMaquinaMensualHorasA?.toFixed(1)} horas/mes</strong> de máquina, 
                         equivalente a <strong>{turnosA.toFixed(1)} turnos</strong> de trabajo (base 8hs).
@@ -265,7 +297,11 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
                 </div>
             </div>
 
-            <div className="mt-4 text-center border-t border-slate-100 pt-2"><p className="text-[9px] text-slate-400">https://secocut-app.web.app</p></div>
+            {/* PIE DE PÁGINA (MÁS VISIBLE) */}
+            <div className="mt-6 text-center border-t border-slate-200 pt-3">
+                <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Generado con Analizador de Costos</p>
+                <p className="text-xs font-bold text-blue-600 mt-1">https://secocut-app.web.app</p>
+            </div>
         </div>
       </div>
     </div>
