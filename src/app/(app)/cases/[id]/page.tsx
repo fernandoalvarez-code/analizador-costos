@@ -5,9 +5,9 @@ import { doc } from "firebase/firestore";
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Printer, ArrowLeft, Edit, Download } from "lucide-react";
+import { ArrowLeft, Edit, Download } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {cn} from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 // --- FORMATOS (Helpers) ---
 const formatCurrency = (val?: number) => {
@@ -106,7 +106,8 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
             filename:     `Informe_${data.name || 'Caso'}_${new Date().toISOString().split('T')[0]}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2, useCORS: true, logging: false }, 
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak:    { mode: ['css', 'legacy'] }
         };
         await html2pdf().set(opt).from(element).save();
     } catch (error) {
@@ -117,7 +118,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
     }
   }, [rawData, data.name]);
 
-  // Auto-imprimir
+  // Auto-imprimir (Legacy)
   useEffect(() => {
     const shouldPrint = searchParams.get("print") === "true";
     if (shouldPrint && !isLoading && rawData) {
@@ -130,13 +131,15 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
   useEffect(() => {
     const shouldDownload = searchParams.get("download") === "true";
     if (shouldDownload && !isLoading && rawData && !isDownloading) {
+      const newUrl = window.location.pathname; 
+      window.history.replaceState(null, '', newUrl);
+
       const timer = setTimeout(() => { 
         handleDownloadPDF(); 
-      }, 1500);
+      }, 1000);
       return () => clearTimeout(timer);
     }
   }, [searchParams, isLoading, rawData, isDownloading, handleDownloadPDF]);
-
 
   if (isLoading) return <div className="p-8 space-y-4 container mx-auto"><Skeleton className="h-12 w-1/3" /><Skeleton className="h-96 w-full" /></div>;
   if (!rawData && !isLoading) return <div className="p-8 text-center text-red-500">Error: Caso no encontrado.</div>;
@@ -144,21 +147,19 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
   return (
     <div className="bg-gray-100 text-slate-900 font-sans printable-area min-h-screen">
       <style jsx global>{`
-        /* Estilos específicos para el PDF */
         .pdf-page {
             width: 210mm;
-            min-height: 297mm;
-            padding: 30px 40px; /* Márgenes internos cómodos */
+            min-height: 290mm;
+            padding: 25px 40px; 
             background: white;
             position: relative;
             display: flex;
             flex-direction: column;
-            box-sizing: border-box; /* Clave para que el padding no sume al ancho */
+            box-sizing: border-box;
         }
-        /* Forzar salto de página después de cada bloque .pdf-page excepto el último */
         .pdf-page:not(:last-child) {
             page-break-after: always;
-            border-bottom: 1px solid #eee; /* Separador visual en pantalla */
+            border-bottom: 1px solid #eee; 
         }
       `}</style>
       
