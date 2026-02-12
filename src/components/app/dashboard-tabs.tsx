@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
 import React, { useEffect, useState } from "react";
-import { Download, Save, Printer, Loader2 } from "lucide-react";
+import { Download, Save, Printer, Loader2, Eye } from "lucide-react";
 import { serverTimestamp, setDoc, onSnapshot, Timestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
@@ -338,21 +338,6 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     }
   }, [firestore]);
 
-  const handlePrintReport = async () => {
-    // Verificamos si el caso ya está guardado (tiene ID)
-    if (initialData?.id) { 
-        // Abrimos el generador en una pestaña nueva
-        window.open(`/cases/${initialData.id}?download=true`, '_blank'); 
-    } else { 
-       // Si es un caso nuevo que no se ha guardado, obligamos a guardar
-       toast({ 
-         variant: "default", 
-         title: "Guardar primero", 
-         description: "Debes guardar el caso antes de generar el PDF oficial." 
-       }); 
-    }
-  };
-
   const handleSaveCase = async (caseName: string) => {
     if (!detailedResult) { toast({ variant: "destructive", title: "Sin datos", description: "El informe está incompleto." }); return; }
     if (!user || !firestore) { toast({ variant: "destructive", title: "Error de sesión", description: "Debes iniciar sesión." }); return; }
@@ -405,7 +390,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
       toast({ title: "Éxito", description: `Caso "${caseName}" guardado.` });
       setSaveAlertOpen(false);
 
-      if (!isExistingCase) { router.push(`/cases/${caseId}`); } else { window.location.reload(); }
+      if (!isExistingCase) { router.push(`/cases/${caseId}/edit`); } else { window.location.reload(); }
 
     } catch (error: any) {
       console.error("❌ Error al guardar:", error);
@@ -431,6 +416,19 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   };
 
   const handleNewCase = () => { router.push('/dashboard'); }
+  
+  // Función para redirigir al informe
+  const handleViewReport = () => {
+    if (initialData?.id) { 
+        router.push(`/cases/${initialData.id}`);
+    } else { 
+       toast({ 
+         variant: "default", 
+         title: "Guardar primero", 
+         description: "Debes guardar el caso para ver el informe generado." 
+       }); 
+    }
+  };
 
   return (
     <>
@@ -517,8 +515,8 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
             <CardHeader className="no-print flex-row justify-between items-center">
               <div><CardTitle>Informe Detallado</CardTitle><CardDescription>Genera una comparación exhaustiva.</CardDescription></div>
               <div className="flex items-center gap-2">
-                <Button onClick={handlePrintReport} disabled={!detailedResult} variant="outline" size="sm" className="hidden sm:flex text-blue-700 border-blue-200 hover:bg-blue-50">
-                  <Download className="mr-2 h-4 w-4" />Descargar PDF
+                <Button onClick={handleViewReport} disabled={!initialData?.id} variant="outline" size="sm" className="hidden sm:flex text-blue-700 border-blue-200 hover:bg-blue-50">
+                  <Eye className="mr-2 h-4 w-4" />Ver Informe
                 </Button>
                 {!isReadOnly && <Button onClick={handleNewCase} variant="outline" size="sm">Nuevo Informe</Button>}
               </div>
@@ -528,7 +526,37 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                 <form className="space-y-8 no-print">
                   <fieldset disabled={isReadOnly}>
                       <div className="p-6 bg-white rounded-lg shadow-md border mb-6">
-                          <h3 className="text-lg font-semibold text-gray-800 mb-4">Datos del Informe</h3>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-semibold text-gray-800">Datos del Informe</h3>
+                            
+                            <div className="w-48">
+                                <FormField 
+                                    control={detailedForm.control} 
+                                    name="status" 
+                                    render={({ field }) => (
+                                        <FormItem className="space-y-0">
+                                            <Select onValueChange={field.onChange} defaultValue={field.value || "Pendiente"}>
+                                                <FormControl>
+                                                    <SelectTrigger className={
+                                                        field.value === "Exitoso" ? "border-green-500 bg-green-50 text-green-700 font-bold" :
+                                                        field.value === "No Exitoso" ? "border-red-500 bg-red-50 text-red-700 font-bold" :
+                                                        "border-gray-300"
+                                                    }>
+                                                        <SelectValue placeholder="Estado" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="Pendiente">🟡 Pendiente</SelectItem>
+                                                    <SelectItem value="Exitoso">🟢 Exitoso</SelectItem>
+                                                    <SelectItem value="No Exitoso">🔴 No Exitoso</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    )} 
+                                />
+                            </div>
+                        </div>
+
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                               <FormField control={detailedForm.control} name="cliente" render={({ field }) => (<FormItem><FormLabel>Cliente</FormLabel><FormControl><Input placeholder="Nombre del Cliente" {...field} /></FormControl></FormItem>)}/>
                               <FormField control={detailedForm.control} name="fecha" render={({ field }) => (<FormItem><FormLabel>Fecha</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>)}/>
@@ -602,7 +630,9 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                                 <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><Button onClick={saveCaseForm.handleSubmit((data) => handleSaveCase(data.caseName))} disabled={isUploading}>{isUploading ? 'Guardando...' : 'Guardar'}</Button></AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
-                      <Button type="button" onClick={handlePrintReport} disabled={!detailedResult}><Printer className="mr-2 h-4 w-4" />Imprimir PDF</Button>
+                      <Button type="button" onClick={handleViewReport} disabled={!initialData?.id} variant="secondary">
+                        <Eye className="mr-2 h-4 w-4" />Ver Informe
+                      </Button>
                     </div>
                   }
                 </form>
