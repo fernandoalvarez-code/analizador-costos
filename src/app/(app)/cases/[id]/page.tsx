@@ -93,7 +93,7 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
   const piezasExtraMes = (r.piezasAdicionalesAnual || 0) / 12;
   const validImages = data.imageUrls?.filter((url: string) => url && url.trim() !== "") || [];
 
-  // Auto-imprimir
+  // Auto-imprimir (opcional, si se mantiene la redirección)
   useEffect(() => {
     const shouldPrint = searchParams.get("print") === "true";
     if (shouldPrint && !isLoading && rawData) {
@@ -102,7 +102,7 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
     }
   }, [searchParams, isLoading, rawData]);
 
-  // Descarga PDF CORREGIDA
+  // Descarga PDF Unificada
   const handleDownloadPDF = async () => {
     if (!rawData) return;
     setIsDownloading(true);
@@ -116,7 +116,7 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2, useCORS: true, logging: false, scrollY: 0, x: 0 }, 
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            // Configuración clave para evitar cortes raros:
+            // Configuración clave: evita cortes automáticos dentro de elementos
             pagebreak:    { mode: ['css', 'legacy'] } 
         };
         await html2pdf().set(opt).from(element).save();
@@ -139,8 +139,8 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
         <Button variant="outline" onClick={() => router.back()}><ArrowLeft className="mr-2 h-4 w-4" /> Volver</Button>
         <div className="flex gap-2">
             <Button variant="secondary" onClick={() => router.push(`/cases/${id}/edit`)}><Edit className="mr-2 h-4 w-4" /> Editar</Button>
+            {/* Unificamos la acción principal en este botón destacado */}
             <Button onClick={handleDownloadPDF} disabled={isDownloading} className="bg-green-600 hover:bg-green-700 text-white border-none"><Download className="mr-2 h-4 w-4" /> {isDownloading ? 'Generando...' : 'Descargar PDF'}</Button>
-            <Button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white"><Printer className="mr-2 h-4 w-4" /> Imprimir</Button>
         </div>
       </div>
 
@@ -148,8 +148,8 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
       <div id="report-container" className="bg-white w-full max-w-[210mm] mx-auto">
         
         {/* ================= HOJA 1: RESUMEN Y FOTOS ================= */}
-        {/* Eliminamos min-h-[297mm] para que html2pdf no calcule mal la altura si hay márgenes */}
-        <div className="p-10 flex flex-col relative bg-white h-auto page-break-after-always">
+        {/* Usamos una clase para forzar el salto de página después de este bloque */}
+        <div className="p-10 flex flex-col relative bg-white h-auto html2pdf__page-break">
             
             {/* 1. Encabezado y Datos del Cliente */}
             <div>
@@ -197,12 +197,9 @@ export default function CaseDetailsPage({ params }: { params: Promise<{ id: stri
             <div className="text-center pt-4 border-t border-slate-100 mt-auto"><p className="text-[10px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos - Página 1/2</p></div>
         </div>
 
-        {/* CLASE ESPECIAL PARA SALTO DE PÁGINA EN HTML2PDF */}
-        <div className="html2pdf__page-break"></div>
-
         {/* ================= HOJA 2: ANÁLISIS DETALLADO ================= */}
-        {/* Usamos padding top para simular el margen de la nueva hoja */}
-        <div className="p-10 pt-8 bg-white h-auto page-break-before-always flex flex-col">
+        {/* El padding-top simula el inicio de la nueva página */}
+        <div className="p-10 pt-8 bg-white h-auto flex flex-col">
             
             <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-3">
                 <div className="flex items-center gap-4">
