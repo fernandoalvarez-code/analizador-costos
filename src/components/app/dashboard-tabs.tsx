@@ -22,40 +22,46 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useRouter } from "next/navigation";
 import { ImageUploader } from "./image-uploader";
 
-// --- FUNCIÓN DE LIMPIEZA AGRESIVA PARA FIRESTORE ---
+// --- FUNCIÓN DE LIMPIEZA BLINDADA (FINAL) ---
 const cleanForFirestore = (obj: any): any => {
-  // 1. Si es indefinido o nulo, devolver null (Firebase acepta null, odia undefined)
+  // 1. Manejo de valores vacíos
   if (obj === undefined || obj === null) return null;
 
-  // 2. Si es número, eliminar NaN e Infinity
+  // 2. Números: Eliminar NaN e Infinity (Causa principal de errores matemáticos)
   if (typeof obj === 'number') {
     if (Number.isNaN(obj)) return 0;
-    if (!isFinite(obj)) return 0; // Convierte Infinity en 0
+    if (!isFinite(obj)) return 0;
     return obj;
   }
 
-  // 3. Fechas y Timestamps pasan directo
+  // 3. Fechas: Se mantienen intactas
   if (obj instanceof Date || obj instanceof Timestamp) {
     return obj;
   }
 
-  // 4. Arrays: Limpiar cada elemento recursivamente
+  // 4. Arrays: Limpiar recursivamente Y FILTRAR nulos/indefinidos
+  // Esto elimina huecos como [dato, null, dato] que rompen Firestore
   if (Array.isArray(obj)) {
-    return obj.map((v) => cleanForFirestore(v));
+    return obj
+      .map((v) => cleanForFirestore(v))
+      .filter((v) => v !== null && v !== undefined); 
   }
 
-  // 5. Objetos: Recorrer cada llave y limpiar
+  // 5. Objetos: Recorrer y limpiar
   if (typeof obj === 'object') {
     const newObj: any = {};
     Object.keys(obj).forEach((key) => {
       const val = cleanForFirestore(obj[key]);
-      // Guardamos null si no hay valor, para mantener la estructura
-      newObj[key] = val === undefined ? null : val;
+      // Solo guardamos la llave si el valor es válido (no undefined)
+      // Guardar null es válido para "borrar" o dejar vacío un campo
+      if (val !== undefined) {
+        newObj[key] = val;
+      }
     });
     return newObj;
   }
 
-  // 6. Strings, booleanos, etc. pasan directo
+  // 6. Resto (Strings, Booleans) pasan igual
   return obj;
 };
 
