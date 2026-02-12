@@ -118,25 +118,17 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
     }
   }, [rawData, data.name]);
 
-  // Auto-imprimir (Legacy)
-  useEffect(() => {
-    const shouldPrint = searchParams.get("print") === "true";
-    if (shouldPrint && !isLoading && rawData) {
-      const timer = setTimeout(() => { window.print(); }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [searchParams, isLoading, rawData]);
-
   // Auto-descarga
   useEffect(() => {
     const shouldDownload = searchParams.get("download") === "true";
     if (shouldDownload && !isLoading && rawData && !isDownloading) {
+      // Limpiamos la URL para evitar bucles
       const newUrl = window.location.pathname; 
       window.history.replaceState(null, '', newUrl);
 
       const timer = setTimeout(() => { 
         handleDownloadPDF(); 
-      }, 1000);
+      }, 1000); // 1 seg para asegurar carga de imágenes
       return () => clearTimeout(timer);
     }
   }, [searchParams, isLoading, rawData, isDownloading, handleDownloadPDF]);
@@ -147,20 +139,8 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
   return (
     <div className="bg-gray-100 text-slate-900 font-sans printable-area min-h-screen">
       <style jsx global>{`
-        .pdf-page {
-            width: 210mm;
-            min-height: 290mm;
-            padding: 25px 40px; 
-            background: white;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            box-sizing: border-box;
-        }
-        .pdf-page:not(:last-child) {
-            page-break-after: always;
-            border-bottom: 1px solid #eee; 
-        }
+        .pdf-page { width: 210mm; min-height: 290mm; padding: 25px 40px; background: white; position: relative; display: flex; flex-direction: column; box-sizing: border-box; }
+        .pdf-page:not(:last-child) { page-break-after: always; border-bottom: 1px solid #eee; }
       `}</style>
       
       {/* HEADER NO IMPRIMIBLE */}
@@ -177,8 +157,6 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
         
         {/* ================= PÁGINA 1 ================= */}
         <div className="pdf-page">
-            
-            {/* Encabezado */}
             <div className="flex justify-between items-center mb-6 h-14">
                 <div className="w-1/3 flex justify-start">{settings?.companyLogoUrl ? (/* eslint-disable-next-line @next/next/no-img-element */<img src={settings.companyLogoUrl} alt="Logo" className="h-12 object-contain" />) : <div className="h-10 w-32"></div>}</div>
                 <div className="w-1/3 flex justify-end">{settings?.secoLogoUrl ? (/* eslint-disable-next-line @next/next/no-img-element */<img src={settings.secoLogoUrl} alt="Seco" className="h-10 object-contain" />) : <div className="h-10 w-32"></div>}</div>
@@ -192,7 +170,6 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            {/* Resumen */}
             <div className="bg-slate-50 rounded-xl p-4 mb-4 border border-slate-200 shadow-sm">
                 <div className="grid grid-cols-2 gap-y-3 gap-x-6">
                     <div className="border-b border-slate-200 pb-1"><span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Cliente</span><span className="block text-lg font-bold text-slate-700 truncate">{data.cliente || '-'}</span></div>
@@ -202,7 +179,6 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            {/* Fotos */}
             <div className="flex-1 flex flex-col justify-center mb-4 min-h-[220px]">
                  {validImages.length > 0 ? (
                     <div className="flex flex-col h-full justify-center">
@@ -217,7 +193,6 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 )}
             </div>
 
-            {/* Conclusión */}
             <div className="border-t border-slate-200 pt-3 mb-2">
                 <h4 className="text-xs font-black text-slate-800 uppercase mb-2 tracking-wide">Conclusión Ejecutiva</h4>
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-[10px] text-slate-800 leading-relaxed text-justify shadow-sm">
@@ -235,7 +210,6 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
             
-            {/* Footer */}
             <div className="text-center pt-2 mt-auto border-t border-slate-100"><p className="text-[9px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos - Página 1/2</p></div>
         </div>
 
@@ -257,11 +231,25 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            <div className="mb-4 bg-blue-50/50 border border-blue-100 rounded-lg p-2 shadow-sm break-inside-avoid">
+            <div className="mb-4 bg-blue-50/50 border border-blue-100 rounded-lg p-2 shadow-sm">
                 <h3 className="text-center text-[10px] font-bold text-slate-800 mb-2 uppercase tracking-widest">Inversión vs. Ahorro</h3>
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white rounded border border-slate-200 p-2 shadow-sm text-center"><p className="text-[8px] font-bold text-slate-500 uppercase mb-0">Inversión Herramienta</p><p className={cn("text-lg font-black mb-0", r.toolCostIncreasePercent > 0 ? "text-green-600" : "text-slate-700")}>{formatPercent(r.toolCostIncreasePercent)}</p></div>
-                    <div className="bg-white rounded border border-slate-200 p-2 shadow-sm text-center"><p className="text-[8px] font-bold text-slate-500 uppercase mb-0">Mejora Costo Total</p><p className={cn("text-lg font-black mb-0", r.totalCostReductionPercent > 0 ? "text-red-500" : "text-slate-700")}>{formatPercent(r.totalCostReductionPercent)}</p></div>
+                    
+                    <div className="bg-white rounded border border-slate-200 p-2 shadow-sm text-center">
+                        <p className={cn("text-[8px] font-bold uppercase mb-0", r.toolCostIncreasePercent < 0 ? "text-green-700" : "text-slate-500")}>
+                            {r.toolCostIncreasePercent < 0 ? "Ahorro en Herramientas" : "Inversión Herramienta"}
+                        </p>
+                        <p className={cn("text-lg font-black mb-0", r.toolCostIncreasePercent < 0 ? "text-green-600" : "text-slate-700")}>
+                            {formatPercent(Math.abs(r.toolCostIncreasePercent || 0))}
+                        </p>
+                    </div>
+
+                    <div className="bg-white rounded border border-slate-200 p-2 shadow-sm text-center">
+                        <p className="text-[8px] font-bold text-slate-500 uppercase mb-0">Mejora Costo Total</p>
+                        <p className={cn("text-lg font-black mb-0", r.totalCostReductionPercent > 0 ? "text-blue-600" : "text-slate-700")}>
+                            {formatPercent(r.totalCostReductionPercent)}
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -293,7 +281,6 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <div className="grid grid-cols-12 bg-green-100 py-1 px-3 font-black border-t border-green-300 text-center text-[9px]"><div className="col-span-3 text-left uppercase">ANUAL</div><div className="col-span-2 text-slate-800">{formatCurrency((r.costoTotalMensualA || 0) * 12)}</div><div className="col-span-2 text-blue-700">{formatCurrency((r.costoTotalMensualB || 0) * 12)}</div><div className="col-span-3 text-green-700 text-sm">{formatCurrency(r.ahorroAnual)}</div><div className="col-span-2 text-green-700">{formatPercent(r.totalCostReductionPercent)}</div></div>
             </div>
 
-            {/* Footer Hoja 2 */}
             <div className="mt-auto text-center border-t border-slate-200 pt-3">
                 <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Generado con Analizador de Costos</p>
                 <p className="text-xs font-bold text-blue-600 mt-1">https://secocut-app.web.app</p>
