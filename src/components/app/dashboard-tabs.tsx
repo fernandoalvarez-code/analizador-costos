@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react"; // Quitamos useCallback que no se usaba
 import { Download, Save, Printer, Loader2 } from "lucide-react";
 import { serverTimestamp, setDoc, onSnapshot } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -23,12 +23,11 @@ import { useRouter } from "next/navigation";
 import { ImageUploader } from "./image-uploader";
 
 // --- FUNCIÓN DE LIMPIEZA SEGURA PARA FIRESTORE ---
-// Elimina undefined y respeta objetos Date, evitando el error de arrays anidados
 const cleanForFirestore = (obj: any): any => {
   if (obj === undefined) return null;
   if (obj === null) return null;
   if (typeof obj !== 'object') return obj;
-  if (obj instanceof Date) return obj; // Firestore acepta Date nativo
+  if (obj instanceof Date) return obj;
   
   if (Array.isArray(obj)) {
     return obj.map(v => cleanForFirestore(v));
@@ -38,7 +37,6 @@ const cleanForFirestore = (obj: any): any => {
   for (const k in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, k)) {
       const val = cleanForFirestore(obj[k]);
-      // Solo agregamos la clave si el valor no es undefined (aunque la funcion arriba ya retorna null, esto es doble seguridad)
       if (val !== undefined) {
         res[k] = val;
       } else {
@@ -302,7 +300,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     setDetailedResult({ cppA, cppB, costoHerramientaA, costoHerramientaB, costoMaquinaA, costoMaquinaB, ahorroAnual, ahorroMensual, ahorroPorPieza, roi, toolCostIncreasePercent, totalCostReductionPercent, machineHoursFreedAnnual, machineHoursFreedValueAnnual, piezasAdicionalesAnual, diasLaboralesAhorradosAnual, semanasLaboralesAhorradasAnual, piezasTotalA: piezasTotalVidaA, piezasTotalB: piezasTotalVidaB, tiempoCicloA: tcA, tiempoCicloB: tcB, minutosFiloA: minA, minutosFiloB: minB, costoParadaA, costoParadaB, insertosNecesariosA, insertosNecesariosB, costoTotalInsertosA, costoTotalInsertosB, costoTotalMensualA, costoTotalMensualB, tiempoMaquinaMensualHorasA, tiempoMaquinaMensualHorasB, tiempoMaquinaMensualValorA, tiempoMaquinaMensualValorB, turnosMensualesA, turnosMensualesB, machineHoursFreedMonthly, timeReductionPercent });
   }, [detailValues]);
 
-  // Carga inicial
+  // Carga inicial y listeners
   useEffect(() => {
     if (firestore) {
         const unsub = onSnapshot(doc(firestore, "settings", "general"), (doc) => {
@@ -486,8 +484,21 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
         <TabsContent value="detailed">
           <Card>
             <CardHeader className="no-print flex-row justify-between items-center">
-              <div><CardTitle>Informe Detallado</CardTitle><CardDescription>Genera una comparación exhaustiva.</CardDescription></div>
-              {!isReadOnly && <Button onClick={handleNewCase} variant="outline" size="sm">Nuevo Informe</Button>}
+              <div>
+                <CardTitle>Informe Detallado</CardTitle>
+                <CardDescription>Genera una comparación exhaustiva.</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button onClick={handlePrintReport} disabled={!detailedResult} variant="outline" size="sm" className="hidden sm:flex text-blue-700 border-blue-200 hover:bg-blue-50">
+                  <Download className="mr-2 h-4 w-4" />
+                  Descargar PDF
+                </Button>
+                {!isReadOnly && (
+                  <Button onClick={handleNewCase} variant="outline" size="sm">
+                    Nuevo Informe
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-6">
               <Form {...detailedForm}>
