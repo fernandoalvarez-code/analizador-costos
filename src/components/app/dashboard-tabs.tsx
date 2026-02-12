@@ -23,11 +23,12 @@ import { useRouter } from "next/navigation";
 import { ImageUploader } from "./image-uploader";
 
 // --- FUNCIÓN DE LIMPIEZA SEGURA PARA FIRESTORE ---
+// Elimina undefined y respeta objetos Date, evitando el error de arrays anidados
 const cleanForFirestore = (obj: any): any => {
   if (obj === undefined) return null;
   if (obj === null) return null;
   if (typeof obj !== 'object') return obj;
-  if (obj instanceof Date) return obj;
+  if (obj instanceof Date) return obj; // Firestore acepta Date nativo
   
   if (Array.isArray(obj)) {
     return obj.map(v => cleanForFirestore(v));
@@ -37,6 +38,7 @@ const cleanForFirestore = (obj: any): any => {
   for (const k in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, k)) {
       const val = cleanForFirestore(obj[k]);
+      // Solo agregamos la clave si el valor no es undefined (aunque la funcion arriba ya retorna null, esto es doble seguridad)
       if (val !== undefined) {
         res[k] = val;
       } else {
@@ -57,6 +59,12 @@ const formatCurrencyDisplay = (value?: number) => {
     if (typeof value !== 'number' || !isFinite(value)) return 'N/A';
     return new Intl.NumberFormat('es-US', { style: 'currency', currency: 'USD' }).format(value);
 }
+
+// Helpers matemáticos seguros
+const safeNumber = (val: any) => {
+    const num = parseFloat(val);
+    return isFinite(num) ? num : 0;
+};
 
 // Tipos
 type QuickDiagnosisResult = { breakEvenSeconds: number; breakEvenPieces: number; deltaP: number; tcA: number; vcBTarget: number; newCycleTimeTarget: number; };
@@ -94,7 +102,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   const detailedForm = useForm<z.infer<typeof DetailedReportSchema>>({ resolver: zodResolver(DetailedReportSchema), defaultValues: initialData || { cliente: "", fecha: new Date().toISOString().split('T')[0], contacto: "", operacion: "", pieza: "", material: "", status: "Pendiente", machineHourlyRate: 35, piezasAlMes: 2000, tiempoParada: 2, descA: "Herramienta Actual", precioA: '' as any, insertosPorHerramientaA: 1, filosA: '' as any, cicloMinA: '' as any, cicloSegA: '' as any, vcA: '' as any, modoVidaA: 'piezas', piezasFiloA: '' as any, minutosFiloA: 0, tiempoCorteA: 0, notasA: "", descB: "Herramienta Propuesta", precioB: '' as any, insertosPorHerramientaB: 1, filosB: '' as any, cicloMinB: '' as any, cicloSegB: '' as any, vcB: '' as any, modoVidaB: 'piezas', piezasFiloB: '' as any, minutosFiloB: 0, tiempoCorteB: 0, notasB: "", }, });
   const saveCaseForm = useForm<z.infer<typeof SaveCaseSchema>>({ resolver: zodResolver(SaveCaseSchema), defaultValues: { caseName: initialData?.name || "", }, });
 
-  const parseTimeToMinutes = (min: number | undefined, sec: number | undefined) => { const minVal = min || 0; const secVal = sec || 0; return minVal + (secVal / 60); }
+  const parseTimeToMinutes = (min: number | undefined, sec: number | undefined) => { const minVal = safeNumber(min); const secVal = safeNumber(sec); return minVal + (secVal / 60); }
 
   // Observadores
   const diagValues = useWatch({ control: diagnosisForm.control });
@@ -103,102 +111,170 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   const watchedModoVidaA = useWatch({ control: detailedForm.control, name: 'modoVidaA' });
   const watchedModoVidaB = useWatch({ control: detailedForm.control, name: 'modoVidaB' });
 
-  // --- EFECTOS (Cálculos y Sincronización) ---
+  // --- EFECTO 1: Sincronización Pestaña 1 -> Pestaña 2 ---
   useEffect(() => {
     const d = diagValues;
+    // Solo sincronizar si existen valores y son números válidos para evitar sobrescribir con NaN
     if (d.costoHoraMaquina) detailedForm.setValue('machineHourlyRate', d.costoHoraMaquina);
     if (d.piezasAlMes) detailedForm.setValue('piezasAlMes', d.piezasAlMes);
     if (d.precioA) detailedForm.setValue('precioA', d.precioA);
     if (d.filosA) detailedForm.setValue('filosA', d.filosA);
-    if (d.pzsPorFiloA) { detailedForm.setValue('piezasFiloA', d.pzsPorFiloA); detailedForm.setValue('modoVidaA', 'piezas'); }
-    if (d.cicloMinA !== undefined) detailedForm.setValue('cicloMinA', d.cicloMinA);
-    if (d.cicloSegA !== undefined) detailedForm.setValue('cicloSegA', d.cicloSegA);
+    
+    // Lógica especial para piezas por filo para evitar conflictos
+    if (d.pzsPorFiloA && safeNumber(d.pzsPorFiloA) > 0) { 
+        detailedForm.setValue('piezasFiloA', d.pzsPorFiloA); 
+        detailedForm.setValue('modoVidaA', 'piezas'); 
+    }
+    
+    if (d.cicloMinA !== undefined && d.cicloMinA !== null) detailedForm.setValue('cicloMinA', d.cicloMinA);
+    if (d.cicloSegA !== undefined && d.cicloSegA !== null) detailedForm.setValue('cicloSegA', d.cicloSegA);
     if (d.vcA) detailedForm.setValue('vcA', d.vcA);
     if (d.precioB) detailedForm.setValue('precioB', d.precioB);
   }, [diagValues, detailedForm]);
 
+  // --- EFECTO 2: Diagnóstico Rápido ---
   useEffect(() => {
     const { precioA, precioB, filosA, pzsPorFiloA, costoHoraMaquina, cicloMinA, cicloSegA, vcA } = diagValues;
-    if (!precioA || !precioB || !filosA || !pzsPorFiloA || !costoHoraMaquina || cicloMinA === undefined) { setQuickResult(null); return; }
-    const nA = (filosA || 1) * (pzsPorFiloA || 1); const tcA = parseTimeToMinutes(cicloMinA, cicloSegA); const cm = (costoHoraMaquina || 0) / 60; const deltaP = (precioB || 0) - (precioA || 0);
-    if (costoHoraMaquina <= 0 || precioA < 0 || precioB < 0 || nA <= 0 || tcA <= 0) { setQuickResult(null); return; }
-    if (deltaP <= 0) { setQuickResult({ breakEvenSeconds: 0, breakEvenPieces: 0, deltaP: deltaP, tcA: tcA, vcBTarget: vcA || 0, newCycleTimeTarget: tcA }); return; }
-    const nB_target = precioB * nA / precioA; const delta_N_filo = (nB_target / (filosA || 1)) - (pzsPorFiloA || 1); const delta_t_min = deltaP / (nA * cm); const breakEvenSeconds = delta_t_min * 60; const tcB_target = tcA - delta_t_min;
-    let vcBTarget = 0; if (vcA && vcA > 0 && tcB_target > 0) { vcBTarget = vcA * (tcA / tcB_target); }
+    
+    // Guardas de seguridad: Si faltan datos clave, no calcular (evita NaN)
+    if (!precioA || !precioB || !filosA || !pzsPorFiloA || !costoHoraMaquina) { setQuickResult(null); return; }
+    
+    const nA = (safeNumber(filosA) || 1) * (safeNumber(pzsPorFiloA) || 1); 
+    const tcA = parseTimeToMinutes(cicloMinA, cicloSegA); 
+    const cm = (safeNumber(costoHoraMaquina) || 0) / 60; 
+    const deltaP = (safeNumber(precioB) || 0) - (safeNumber(precioA) || 0);
+
+    if (costoHoraMaquina <= 0 || safeNumber(precioA) < 0 || safeNumber(precioB) < 0 || nA <= 0 || tcA <= 0) { setQuickResult(null); return; }
+    
+    if (deltaP <= 0) { setQuickResult({ breakEvenSeconds: 0, breakEvenPieces: 0, deltaP: deltaP, tcA: tcA, vcBTarget: safeNumber(vcA) || 0, newCycleTimeTarget: tcA }); return; }
+    
+    const nB_target = safeNumber(precioB) * nA / safeNumber(precioA); 
+    const delta_N_filo = (nB_target / (safeNumber(filosA) || 1)) - (safeNumber(pzsPorFiloA) || 1); 
+    const delta_t_min = deltaP / (nA * cm); 
+    const breakEvenSeconds = delta_t_min * 60; 
+    const tcB_target = tcA - delta_t_min;
+    
+    let vcBTarget = 0; if (safeNumber(vcA) > 0 && tcB_target > 0) { vcBTarget = safeNumber(vcA) * (tcA / tcB_target); }
+    
     setQuickResult({ breakEvenSeconds, breakEvenPieces: delta_N_filo, deltaP, tcA, vcBTarget, newCycleTimeTarget: tcB_target });
   }, [diagValues]);
 
+  // --- EFECTO 3: Ahorro Neto y Simulación ---
   useEffect(() => {
     const { costoHoraMaquina, piezasAlMes, precioA, filosA, pzsPorFiloA, cicloMinA, cicloSegA, precioB, piezasMasReales, modoSimulacionTiempo, segundosMenosReales, vcA, vcBReal } = diagValues;
-    if (!costoHoraMaquina || !piezasAlMes || !precioA || !filosA || !pzsPorFiloA || (cicloMinA === undefined && cicloSegA === undefined) || !precioB) { setNetSavingsResult(null); return; }
-    const hasImprovements = (piezasMasReales && piezasMasReales !== 0) || (segundosMenosReales && segundosMenosReales !== 0) || (modoSimulacionTiempo === 'vc' && vcBReal && vcBReal !== 0);
+    
+    // Validación estricta antes de calcular
+    if (!costoHoraMaquina || !piezasAlMes || !precioA || !filosA || !pzsPorFiloA || !precioB) { setNetSavingsResult(null); return; }
+    
+    const hasImprovements = (safeNumber(piezasMasReales) !== 0) || (safeNumber(segundosMenosReales) !== 0) || (modoSimulacionTiempo === 'vc' && safeNumber(vcBReal) !== 0);
     if (!hasImprovements) { setNetSavingsResult(null); return; }
-    const tcA = parseTimeToMinutes(cicloMinA, cicloSegA); const nA = filosA * pzsPorFiloA; const cm = costoHoraMaquina / 60; const costoHerrA = precioA / nA; const costoMaqA = tcA * cm; const cppA = costoHerrA + costoMaqA;
-    let tcB_real_min = 0; let actualVcB = vcBReal || 0;
-    if (modoSimulacionTiempo === 'segundos') { tcB_real_min = tcA - ((segundosMenosReales || 0) / 60); if ((vcA || 0) > 0 && tcB_real_min > 0) { actualVcB = (vcA || 0) * (tcA / tcB_real_min); } } 
-    else { if ((vcA || 0) > 0 && (vcBReal || 0) > 0) { tcB_real_min = tcA * ((vcA || 0) / (vcBReal || 1)); } else { return; } }
+
+    const tcA = parseTimeToMinutes(cicloMinA, cicloSegA); 
+    const nA = safeNumber(filosA) * safeNumber(pzsPorFiloA); 
+    const cm = safeNumber(costoHoraMaquina) / 60; 
+    
+    if (nA === 0) return; // Evitar división por cero
+
+    const costoHerrA = safeNumber(precioA) / nA; 
+    const costoMaqA = tcA * cm; 
+    const cppA = costoHerrA + costoMaqA;
+
+    let tcB_real_min = 0; 
+    let actualVcB = safeNumber(vcBReal) || 0;
+
+    if (modoSimulacionTiempo === 'segundos') { 
+        tcB_real_min = tcA - (safeNumber(segundosMenosReales) / 60); 
+        if (safeNumber(vcA) > 0 && tcB_real_min > 0) { actualVcB = safeNumber(vcA) * (tcA / tcB_real_min); } 
+    } else { 
+        if (safeNumber(vcA) > 0 && safeNumber(vcBReal) > 0) { 
+            tcB_real_min = tcA * (safeNumber(vcA) / safeNumber(vcBReal)); 
+        } else { return; } 
+    }
+
     if (tcB_real_min <= 0) return;
-    const nB_real = (filosA || 1) * ((pzsPorFiloA || 0) + (piezasMasReales || 0)); if (nB_real <= 0) return;
-    const costoHerrB = (precioB || 0) / nB_real; const costoMaqB = tcB_real_min * cm; const cppB = costoHerrB + costoMaqB; const savingsPerPiece = cppA - cppB; const netAnnualSavings = savingsPerPiece * (piezasAlMes || 0) * 12; const improvementPercentage = cppA > 0 ? (savingsPerPiece / cppA) * 100 : 0;
-    setNetSavingsResult({ netAnnualSavings, cppA, cppB, savingsPerPiece, improvementPercentage, newCycleTime: tcB_real_min, newToolLife: (pzsPorFiloA || 0) + (piezasMasReales || 0) });
-    const newCicloMin = Math.floor(tcB_real_min); const newCicloSeg = Math.round((tcB_real_min - newCicloMin) * 60);
-    detailedForm.setValue("cicloMinB", newCicloMin); detailedForm.setValue("cicloSegB", newCicloSeg); detailedForm.setValue("piezasFiloB", (pzsPorFiloA || 0) + (piezasMasReales || 0)); detailedForm.setValue("vcB", parseFloat(actualVcB.toFixed(2))); detailedForm.setValue("filosB", filosA || 0); detailedForm.setValue("modoVidaB", "piezas");
+
+    const nB_real = (safeNumber(filosA) || 1) * ((safeNumber(pzsPorFiloA) || 0) + (safeNumber(piezasMasReales) || 0)); 
+    if (nB_real <= 0) return;
+
+    const costoHerrB = safeNumber(precioB) / nB_real; 
+    const costoMaqB = tcB_real_min * cm; 
+    const cppB = costoHerrB + costoMaqB; 
+    const savingsPerPiece = cppA - cppB; 
+    const netAnnualSavings = savingsPerPiece * safeNumber(piezasAlMes) * 12; 
+    const improvementPercentage = cppA > 0 ? (savingsPerPiece / cppA) * 100 : 0;
+
+    setNetSavingsResult({ netAnnualSavings, cppA, cppB, savingsPerPiece, improvementPercentage, newCycleTime: tcB_real_min, newToolLife: safeNumber(pzsPorFiloA) + safeNumber(piezasMasReales) });
+
+    // Actualizar formulario detallado SOLO si los resultados son válidos
+    const newCicloMin = Math.floor(tcB_real_min); 
+    const newCicloSeg = Math.round((tcB_real_min - newCicloMin) * 60);
+    
+    detailedForm.setValue("cicloMinB", newCicloMin); 
+    detailedForm.setValue("cicloSegB", newCicloSeg); 
+    detailedForm.setValue("piezasFiloB", safeNumber(pzsPorFiloA) + safeNumber(piezasMasReales)); 
+    detailedForm.setValue("vcB", parseFloat(actualVcB.toFixed(2))); 
+    detailedForm.setValue("filosB", safeNumber(filosA)); 
+    detailedForm.setValue("modoVidaB", "piezas");
   }, [diagValues, detailedForm]);
 
+  // --- EFECTO 4: Informe Detallado (Detailed Result) ---
   useEffect(() => {
     const data = detailValues;
+    // Si no hay datos críticos, no intentar calcular para evitar crashes o borrados
     if (!data.machineHourlyRate || !data.piezasAlMes) return;
 
-    const { machineHourlyRate, piezasAlMes, tiempoParada } = data;
+    const machineHourlyRate = safeNumber(data.machineHourlyRate);
+    const piezasAlMes = safeNumber(data.piezasAlMes);
+    const tiempoParada = safeNumber(data.tiempoParada);
     const costoMin = machineHourlyRate / 60;
     
     const tcA = parseTimeToMinutes(data.cicloMinA, data.cicloSegA);
     const tcB = parseTimeToMinutes(data.cicloMinB, data.cicloSegB);
-    const timeInCutA = (data.tiempoCorteA && data.tiempoCorteA > 0) ? data.tiempoCorteA : tcA;
-    const timeInCutB = (data.tiempoCorteB && data.tiempoCorteB > 0) ? data.tiempoCorteB : tcB;
+    const timeInCutA = (safeNumber(data.tiempoCorteA) > 0) ? safeNumber(data.tiempoCorteA) : tcA;
+    const timeInCutB = (safeNumber(data.tiempoCorteB) > 0) ? safeNumber(data.tiempoCorteB) : tcB;
 
-    let pzA = data.piezasFiloA || 0;
+    let pzA = safeNumber(data.piezasFiloA);
     let minA = 0;
     if (data.modoVidaA === 'minutos') {
-        minA = data.minutosFiloA || 0;
+        minA = safeNumber(data.minutosFiloA);
         if (timeInCutA > 0) pzA = minA / timeInCutA;
     } else {
-        minA = (data.piezasFiloA || 0) * timeInCutA;
+        minA = safeNumber(data.piezasFiloA) * timeInCutA;
     }
 
-    let pzB = data.piezasFiloB || 0;
+    let pzB = safeNumber(data.piezasFiloB);
     let minB = 0;
     if (data.modoVidaB === 'minutos') {
-        minB = data.minutosFiloB || 0;
+        minB = safeNumber(data.minutosFiloB);
         if (timeInCutB > 0) pzB = minB / timeInCutB;
     } else {
-        minB = (data.piezasFiloB || 0) * timeInCutB;
+        minB = safeNumber(data.piezasFiloB) * timeInCutB;
     }
 
-    const piezasTotalVidaA = (data.filosA || 1) * pzA;
-    const costoHerramientaA = piezasTotalVidaA > 0 ? ((data.precioA || 0) * (data.insertosPorHerramientaA || 1)) / piezasTotalVidaA : 0; 
+    const piezasTotalVidaA = (safeNumber(data.filosA) || 1) * pzA;
+    const costoHerramientaA = piezasTotalVidaA > 0 ? (safeNumber(data.precioA) * (safeNumber(data.insertosPorHerramientaA) || 1)) / piezasTotalVidaA : 0; 
     
-    const costoParadaA = pzA > 0 ? ((tiempoParada || 0) * costoMin) / pzA : 0; 
+    const costoParadaA = pzA > 0 ? (tiempoParada * costoMin) / pzA : 0; 
     const costoMaquinaA = (tcA * costoMin) + costoParadaA; 
     const cppA = costoHerramientaA + costoMaquinaA;
 
-    const piezasTotalVidaB = (data.filosB || 1) * pzB; 
-    const costoHerramientaB = piezasTotalVidaB > 0 ? ((data.precioB || 0) * (data.insertosPorHerramientaB || 1)) / piezasTotalVidaB : 0; 
+    const piezasTotalVidaB = (safeNumber(data.filosB) || 1) * pzB; 
+    const costoHerramientaB = piezasTotalVidaB > 0 ? (safeNumber(data.precioB) * (safeNumber(data.insertosPorHerramientaB) || 1)) / piezasTotalVidaB : 0; 
     
-    const costoParadaB = pzB > 0 ? ((tiempoParada || 0) * costoMin) / pzB : 0; 
+    const costoParadaB = pzB > 0 ? (tiempoParada * costoMin) / pzB : 0; 
     const costoMaquinaB = (tcB * costoMin) + costoParadaB; 
     const cppB = costoHerramientaB + costoMaquinaB;
 
     const ahorroPorPieza = cppA - cppB; 
-    const ahorroMensual = ahorroPorPieza * (piezasAlMes || 0); 
+    const ahorroMensual = ahorroPorPieza * piezasAlMes; 
     const ahorroAnual = ahorroMensual * 12;
 
     const toolCostIncreasePercent = costoHerramientaA > 0 ? ((costoHerramientaB - costoHerramientaA) / costoHerramientaA) * 100 : 0; 
     const totalCostReductionPercent = cppA > 0 ? (ahorroPorPieza / cppA) * 100 : 0; 
-    const investment = (data.precioB || 0) - (data.precioA || 0); 
+    const investment = safeNumber(data.precioB) - safeNumber(data.precioA); 
     const roi = investment > 0 && ahorroAnual > 0 ? (ahorroAnual / investment) * 100 : (ahorroAnual > 0 ? Infinity : 0);
 
-    const annualParts = (piezasAlMes || 0) * 12; 
+    const annualParts = piezasAlMes * 12; 
     const tiempoAhorradoPorPiezaMin = tcA - tcB; 
     const machineHoursFreedAnnual = (annualParts * tiempoAhorradoPorPiezaMin) / 60; 
     const machineHoursFreedValueAnnual = machineHoursFreedAnnual * machineHourlyRate; 
@@ -206,16 +282,16 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     const diasLaboralesAhorradosAnual = machineHoursFreedAnnual / 8; 
     const semanasLaboralesAhorradasAnual = diasLaboralesAhorradosAnual / 5;
 
-    const insertosNecesariosA = piezasTotalVidaA > 0 ? ((piezasAlMes || 0) / piezasTotalVidaA) * (data.insertosPorHerramientaA || 1) : 0; 
-    const insertosNecesariosB = piezasTotalVidaB > 0 ? ((piezasAlMes || 0) / piezasTotalVidaB) * (data.insertosPorHerramientaB || 1) : 0; 
+    const insertosNecesariosA = piezasTotalVidaA > 0 ? (piezasAlMes / piezasTotalVidaA) * (safeNumber(data.insertosPorHerramientaA) || 1) : 0; 
+    const insertosNecesariosB = piezasTotalVidaB > 0 ? (piezasAlMes / piezasTotalVidaB) * (safeNumber(data.insertosPorHerramientaB) || 1) : 0; 
     
-    const costoTotalInsertosA = insertosNecesariosA * (data.precioA || 0); 
-    const costoTotalInsertosB = insertosNecesariosB * (data.precioB || 0);
+    const costoTotalInsertosA = insertosNecesariosA * safeNumber(data.precioA); 
+    const costoTotalInsertosB = insertosNecesariosB * safeNumber(data.precioB);
 
-    const costoTotalMensualA = cppA * (piezasAlMes || 0); 
-    const costoTotalMensualB = cppB * (piezasAlMes || 0); 
-    const tiempoMaquinaMensualHorasA = (tcA * (piezasAlMes || 0)) / 60; 
-    const tiempoMaquinaMensualHorasB = (tcB * (piezasAlMes || 0)) / 60; 
+    const costoTotalMensualA = cppA * piezasAlMes; 
+    const costoTotalMensualB = cppB * piezasAlMes; 
+    const tiempoMaquinaMensualHorasA = (tcA * piezasAlMes) / 60; 
+    const tiempoMaquinaMensualHorasB = (tcB * piezasAlMes) / 60; 
     const machineHoursFreedMonthly = tiempoMaquinaMensualHorasA - tiempoMaquinaMensualHorasB; 
     const tiempoMaquinaMensualValorA = tiempoMaquinaMensualHorasA * machineHourlyRate; 
     const tiempoMaquinaMensualValorB = tiempoMaquinaMensualHorasB * machineHourlyRate; 
