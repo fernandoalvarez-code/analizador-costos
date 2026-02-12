@@ -63,6 +63,7 @@ export const DetailedReportSchema = z.object({
   machineHourlyRate: z.coerce.number().min(0.01, "Requerido"),
   piezasAlMes: z.coerce.number().min(1, "Requerido"),
   tiempoParada: z.coerce.number().optional(),
+  costoImplementacion: z.coerce.number().optional().default(0),
 
   // Herramienta A
   descA: z.string().optional(),
@@ -133,4 +134,18 @@ export const DetailedReportSchema = z.object({
       });
     }
   }
+});
+
+// Esquema para AI Savings Insights
+export const SavingsInsightsSchema = z.object({
+  currentTool: z.string().min(1, "Requerido"),
+  currentToolCost: z.coerce.number().min(0.01, "Requerido"),
+  proposedTool: z.string().min(1, "Requerido"),
+  proposedToolCost: z.coerce.number().min(0.01, "Requerido"),
+  cycleTimeReduction: z.coerce.number().min(0, "Requerido"),
+  partsProducedPerShift: z.coerce.number().min(1, "Requerido"),
+  shiftsPerDay: z.coerce.number().min(1, "Requerido"),
+  daysPerWeek: z.coerce.number().min(1, "Requerido"),
+  weeksPerYear: z.coerce.number().min(1, "Requerido"),
+  machineHourlyRate: z.coerce.number().min(0.01, "Requerido"),
 });
