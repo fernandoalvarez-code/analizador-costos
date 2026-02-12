@@ -3,9 +3,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
-import React, { useEffect, useState } from "react"; // Quitamos useCallback que no se usaba
+import React, { useEffect, useState } from "react";
 import { Download, Save, Printer, Loader2 } from "lucide-react";
-import { serverTimestamp, setDoc, onSnapshot } from "firebase/firestore";
+import { serverTimestamp, setDoc, onSnapshot, Timestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -27,7 +27,11 @@ const cleanForFirestore = (obj: any): any => {
   if (obj === undefined) return null;
   if (obj === null) return null;
   if (typeof obj !== 'object') return obj;
-  if (obj instanceof Date) return obj;
+
+  // 🟢 CORRECCIÓN: Mantener intactos los Timestamps de Firestore y las Fechas de JS
+  if (obj instanceof Date || obj instanceof Timestamp) {
+    return obj;
+  }
   
   if (Array.isArray(obj)) {
     return obj.map(v => cleanForFirestore(v));
@@ -95,8 +99,29 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   const [imageDescriptions, setImageDescriptions] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
+  // --- FLAGS DE CONTROL ---
+  const isInitialMount = React.useRef(true);
+
   // Formularios
-  const diagnosisForm = useForm<z.infer<typeof QuickDiagnosisSchema>>({ resolver: zodResolver(QuickDiagnosisSchema), defaultValues: { costoHoraMaquina: 35, piezasAlMes: 2000, precioA: '' as any, filosA: '' as any, pzsPorFiloA: '' as any, cicloMinA: '' as any, cicloSegA: '' as any, vcA: '' as any, precioB: '' as any, piezasMasReales: 0, modoSimulacionTiempo: 'segundos', segundosMenosReales: 0, vcBReal: 0, }, });
+  const diagnosisForm = useForm<z.infer<typeof QuickDiagnosisSchema>>({ 
+    resolver: zodResolver(QuickDiagnosisSchema), 
+    defaultValues: { 
+      costoHoraMaquina: initialData?.machineHourlyRate ?? 35, 
+      piezasAlMes: initialData?.piezasAlMes ?? 2000, 
+      precioA: initialData?.precioA ?? ('' as any), 
+      filosA: initialData?.filosA ?? ('' as any), 
+      pzsPorFiloA: initialData?.piezasFiloA ?? ('' as any),
+      cicloMinA: initialData?.cicloMinA ?? ('' as any), 
+      cicloSegA: initialData?.cicloSegA ?? ('' as any), 
+      vcA: initialData?.vcA ?? ('' as any), 
+      precioB: initialData?.precioB ?? ('' as any), 
+      piezasMasReales: 0, 
+      modoSimulacionTiempo: 'segundos', 
+      segundosMenosReales: 0, 
+      vcBReal: 0, 
+    }, 
+  });
+
   const detailedForm = useForm<z.infer<typeof DetailedReportSchema>>({ resolver: zodResolver(DetailedReportSchema), defaultValues: initialData || { cliente: "", fecha: new Date().toISOString().split('T')[0], contacto: "", operacion: "", pieza: "", material: "", status: "Pendiente", machineHourlyRate: 35, piezasAlMes: 2000, tiempoParada: 2, descA: "Herramienta Actual", precioA: '' as any, insertosPorHerramientaA: 1, filosA: '' as any, cicloMinA: '' as any, cicloSegA: '' as any, vcA: '' as any, modoVidaA: 'piezas', piezasFiloA: '' as any, minutosFiloA: 0, tiempoCorteA: 0, notasA: "", descB: "Herramienta Propuesta", precioB: '' as any, insertosPorHerramientaB: 1, filosB: '' as any, cicloMinB: '' as any, cicloSegB: '' as any, vcB: '' as any, modoVidaB: 'piezas', piezasFiloB: '' as any, minutosFiloB: 0, tiempoCorteB: 0, notasB: "", }, });
   const saveCaseForm = useForm<z.infer<typeof SaveCaseSchema>>({ resolver: zodResolver(SaveCaseSchema), defaultValues: { caseName: initialData?.name || "", }, });
 
@@ -111,14 +136,17 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
 
   // --- EFECTO 1: Sincronización Pestaña 1 -> Pestaña 2 ---
   useEffect(() => {
+    if (isInitialMount.current && initialData) {
+      isInitialMount.current = false;
+      return;
+    }
+
     const d = diagValues;
-    // Solo sincronizar si existen valores y son números válidos para evitar sobrescribir con NaN
     if (d.costoHoraMaquina) detailedForm.setValue('machineHourlyRate', d.costoHoraMaquina);
     if (d.piezasAlMes) detailedForm.setValue('piezasAlMes', d.piezasAlMes);
     if (d.precioA) detailedForm.setValue('precioA', d.precioA);
     if (d.filosA) detailedForm.setValue('filosA', d.filosA);
     
-    // Lógica especial para piezas por filo para evitar conflictos
     if (d.pzsPorFiloA && safeNumber(d.pzsPorFiloA) > 0) { 
         detailedForm.setValue('piezasFiloA', d.pzsPorFiloA); 
         detailedForm.setValue('modoVidaA', 'piezas'); 
@@ -128,13 +156,12 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     if (d.cicloSegA !== undefined && d.cicloSegA !== null) detailedForm.setValue('cicloSegA', d.cicloSegA);
     if (d.vcA) detailedForm.setValue('vcA', d.vcA);
     if (d.precioB) detailedForm.setValue('precioB', d.precioB);
-  }, [diagValues, detailedForm]);
+  }, [diagValues, detailedForm, initialData]);
 
   // --- EFECTO 2: Diagnóstico Rápido ---
   useEffect(() => {
     const { precioA, precioB, filosA, pzsPorFiloA, costoHoraMaquina, cicloMinA, cicloSegA, vcA } = diagValues;
     
-    // Guardas de seguridad: Si faltan datos clave, no calcular (evita NaN)
     if (!precioA || !precioB || !filosA || !pzsPorFiloA || !costoHoraMaquina) { setQuickResult(null); return; }
     
     const nA = (safeNumber(filosA) || 1) * (safeNumber(pzsPorFiloA) || 1); 
@@ -161,7 +188,6 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   useEffect(() => {
     const { costoHoraMaquina, piezasAlMes, precioA, filosA, pzsPorFiloA, cicloMinA, cicloSegA, precioB, piezasMasReales, modoSimulacionTiempo, segundosMenosReales, vcA, vcBReal } = diagValues;
     
-    // Validación estricta antes de calcular
     if (!costoHoraMaquina || !piezasAlMes || !precioA || !filosA || !pzsPorFiloA || !precioB) { setNetSavingsResult(null); return; }
     
     const hasImprovements = (safeNumber(piezasMasReales) !== 0) || (safeNumber(segundosMenosReales) !== 0) || (modoSimulacionTiempo === 'vc' && safeNumber(vcBReal) !== 0);
@@ -171,7 +197,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     const nA = safeNumber(filosA) * safeNumber(pzsPorFiloA); 
     const cm = safeNumber(costoHoraMaquina) / 60; 
     
-    if (nA === 0) return; // Evitar división por cero
+    if (nA === 0) return;
 
     const costoHerrA = safeNumber(precioA) / nA; 
     const costoMaqA = tcA * cm; 
@@ -203,7 +229,6 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
 
     setNetSavingsResult({ netAnnualSavings, cppA, cppB, savingsPerPiece, improvementPercentage, newCycleTime: tcB_real_min, newToolLife: safeNumber(pzsPorFiloA) + safeNumber(piezasMasReales) });
 
-    // Actualizar formulario detallado SOLO si los resultados son válidos
     const newCicloMin = Math.floor(tcB_real_min); 
     const newCicloSeg = Math.round((tcB_real_min - newCicloMin) * 60);
     
@@ -215,10 +240,9 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     detailedForm.setValue("modoVidaB", "piezas");
   }, [diagValues, detailedForm]);
 
-  // --- EFECTO 4: Informe Detallado (Detailed Result) ---
+  // --- EFECTO 4: Informe Detallado ---
   useEffect(() => {
     const data = detailValues;
-    // Si no hay datos críticos, no intentar calcular para evitar crashes o borrados
     if (!data.machineHourlyRate || !data.piezasAlMes) return;
 
     const machineHourlyRate = safeNumber(data.machineHourlyRate);
@@ -300,7 +324,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     setDetailedResult({ cppA, cppB, costoHerramientaA, costoHerramientaB, costoMaquinaA, costoMaquinaB, ahorroAnual, ahorroMensual, ahorroPorPieza, roi, toolCostIncreasePercent, totalCostReductionPercent, machineHoursFreedAnnual, machineHoursFreedValueAnnual, piezasAdicionalesAnual, diasLaboralesAhorradosAnual, semanasLaboralesAhorradasAnual, piezasTotalA: piezasTotalVidaA, piezasTotalB: piezasTotalVidaB, tiempoCicloA: tcA, tiempoCicloB: tcB, minutosFiloA: minA, minutosFiloB: minB, costoParadaA, costoParadaB, insertosNecesariosA, insertosNecesariosB, costoTotalInsertosA, costoTotalInsertosB, costoTotalMensualA, costoTotalMensualB, tiempoMaquinaMensualHorasA, tiempoMaquinaMensualHorasB, tiempoMaquinaMensualValorA, tiempoMaquinaMensualValorB, turnosMensualesA, turnosMensualesB, machineHoursFreedMonthly, timeReductionPercent });
   }, [detailValues]);
 
-  // Carga inicial y listeners
+  // Carga inicial
   useEffect(() => {
     if (firestore) {
         const unsub = onSnapshot(doc(firestore, "settings", "general"), (doc) => {
@@ -484,20 +508,12 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
         <TabsContent value="detailed">
           <Card>
             <CardHeader className="no-print flex-row justify-between items-center">
-              <div>
-                <CardTitle>Informe Detallado</CardTitle>
-                <CardDescription>Genera una comparación exhaustiva.</CardDescription>
-              </div>
+              <div><CardTitle>Informe Detallado</CardTitle><CardDescription>Genera una comparación exhaustiva.</CardDescription></div>
               <div className="flex items-center gap-2">
                 <Button onClick={handlePrintReport} disabled={!detailedResult} variant="outline" size="sm" className="hidden sm:flex text-blue-700 border-blue-200 hover:bg-blue-50">
-                  <Download className="mr-2 h-4 w-4" />
-                  Descargar PDF
+                  <Download className="mr-2 h-4 w-4" />Descargar PDF
                 </Button>
-                {!isReadOnly && (
-                  <Button onClick={handleNewCase} variant="outline" size="sm">
-                    Nuevo Informe
-                  </Button>
-                )}
+                {!isReadOnly && <Button onClick={handleNewCase} variant="outline" size="sm">Nuevo Informe</Button>}
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
