@@ -152,13 +152,11 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     const { machineHourlyRate, piezasAlMes, tiempoParada } = data;
     const costoMin = machineHourlyRate / 60;
     
-    // Tiempos
     const tcA = parseTimeToMinutes(data.cicloMinA, data.cicloSegA);
     const tcB = parseTimeToMinutes(data.cicloMinB, data.cicloSegB);
     const timeInCutA = (data.tiempoCorteA && data.tiempoCorteA > 0) ? data.tiempoCorteA : tcA;
     const timeInCutB = (data.tiempoCorteB && data.tiempoCorteB > 0) ? data.tiempoCorteB : tcB;
 
-    // VIDA A
     let pzA = data.piezasFiloA || 0;
     let minA = 0;
     if (data.modoVidaA === 'minutos') {
@@ -168,7 +166,6 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
         minA = (data.piezasFiloA || 0) * timeInCutA;
     }
 
-    // VIDA B
     let pzB = data.piezasFiloB || 0;
     let minB = 0;
     if (data.modoVidaB === 'minutos') {
@@ -178,15 +175,16 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
         minB = (data.piezasFiloB || 0) * timeInCutB;
     }
 
-    // Costos
     const piezasTotalVidaA = (data.filosA || 1) * pzA;
     const costoHerramientaA = piezasTotalVidaA > 0 ? ((data.precioA || 0) * (data.insertosPorHerramientaA || 1)) / piezasTotalVidaA : 0; 
+    
     const costoParadaA = pzA > 0 ? ((tiempoParada || 0) * costoMin) / pzA : 0; 
     const costoMaquinaA = (tcA * costoMin) + costoParadaA; 
     const cppA = costoHerramientaA + costoMaquinaA;
 
     const piezasTotalVidaB = (data.filosB || 1) * pzB; 
     const costoHerramientaB = piezasTotalVidaB > 0 ? ((data.precioB || 0) * (data.insertosPorHerramientaB || 1)) / piezasTotalVidaB : 0; 
+    
     const costoParadaB = pzB > 0 ? ((tiempoParada || 0) * costoMin) / pzB : 0; 
     const costoMaquinaB = (tcB * costoMin) + costoParadaB; 
     const cppB = costoHerramientaB + costoMaquinaB;
@@ -471,10 +469,10 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                                   {watchedModoVidaB === 'piezas' ? ( <FormField control={detailedForm.control} name="piezasFiloB" render={({ field }) => (<FormItem><FormLabel>Piezas por Filo</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/> ) : ( <FormField control={detailedForm.control} name="minutosFiloB" render={({ field }) => (<FormItem><FormLabel>Minutos por Filo</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>)}/> )}
                                   <FormField control={detailedForm.control} name="tiempoCorteB" render={({ field }) => (<FormItem><FormLabel>Tiempo en Corte (min) <span className="text-xs text-muted-foreground">(Opcional)</span></FormLabel><FormControl><Input type="number" {...field} placeholder="Igual al ciclo si vacío" onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}/>
                                   <div className="flex space-x-2">
-                                      <FormField control={detailedForm.control} name="cicloMinB" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl><FormMessage /></FormItem>)}/>
-                                      <FormField control={detailedForm.control} name="cicloSegB" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl><FormMessage /></FormItem>)}/>
+                                      <FormField control={detailedForm.control} name="cicloMinB" render={({ field }) => (<FormItem><FormLabel>Ciclo (Min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
+                                      <FormField control={detailedForm.control} name="cicloSegB" render={({ field }) => (<FormItem><FormLabel>(Seg)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                                   </div>
-                                  <FormField control={detailedForm.control} name="vcB" render={({ field }) => (<FormItem><FormLabel>Vc Propuesta (m/min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl><FormMessage /></FormItem>)}/>
+                                  <FormField control={detailedForm.control} name="vcB" render={({ field }) => (<FormItem><FormLabel>Vc Propuesta (m/min)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))}/></FormControl></FormItem>)}/>
                                   <FormField control={detailedForm.control} name="notasB" render={({ field }) => (<FormItem><FormLabel>Notas Internas</FormLabel><FormControl><Textarea placeholder="No se imprime..." {...field} /></FormControl></FormItem>)}/>
                               </CardContent>
                           </Card>
