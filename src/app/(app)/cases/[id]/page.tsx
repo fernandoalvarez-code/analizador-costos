@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { doc } from "firebase/firestore";
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { Button } from "@/components/ui/button";
@@ -93,17 +93,8 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
   const piezasExtraMes = (r.piezasAdicionalesAnual || 0) / 12;
   const validImages = data.imageUrls?.filter((url: string) => url && url.trim() !== "") || [];
 
-  // Auto-imprimir
-  useEffect(() => {
-    const shouldPrint = searchParams.get("print") === "true";
-    if (shouldPrint && !isLoading && rawData) {
-      const timer = setTimeout(() => { window.print(); }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [searchParams, isLoading, rawData]);
-
-  // Descarga PDF: ESTRATEGIA CSS NATIVO
-  const handleDownloadPDF = async () => {
+  // Descarga PDF
+  const handleDownloadPDF = useCallback(async () => {
     if (!rawData) return;
     setIsDownloading(true);
     try {
@@ -124,7 +115,28 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
     } finally {
         setIsDownloading(false);
     }
-  };
+  }, [rawData, data.name]);
+
+  // Auto-imprimir
+  useEffect(() => {
+    const shouldPrint = searchParams.get("print") === "true";
+    if (shouldPrint && !isLoading && rawData) {
+      const timer = setTimeout(() => { window.print(); }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, isLoading, rawData]);
+
+  // Auto-descarga
+  useEffect(() => {
+    const shouldDownload = searchParams.get("download") === "true";
+    if (shouldDownload && !isLoading && rawData && !isDownloading) {
+      const timer = setTimeout(() => { 
+        handleDownloadPDF(); 
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, isLoading, rawData, isDownloading, handleDownloadPDF]);
+
 
   if (isLoading) return <div className="p-8 space-y-4 container mx-auto"><Skeleton className="h-12 w-1/3" /><Skeleton className="h-96 w-full" /></div>;
   if (!rawData && !isLoading) return <div className="p-8 text-center text-red-500">Error: Caso no encontrado.</div>;
@@ -244,7 +256,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            <div className="mb-4 bg-blue-50/50 border border-blue-100 rounded-lg p-2 shadow-sm">
+            <div className="mb-4 bg-blue-50/50 border border-blue-100 rounded-lg p-2 shadow-sm break-inside-avoid">
                 <h3 className="text-center text-[10px] font-bold text-slate-800 mb-2 uppercase tracking-widest">Inversión vs. Ahorro</h3>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white rounded border border-slate-200 p-2 shadow-sm text-center"><p className="text-[8px] font-bold text-slate-500 uppercase mb-0">Inversión Herramienta</p><p className={cn("text-lg font-black mb-0", r.toolCostIncreasePercent > 0 ? "text-green-600" : "text-slate-700")}>{formatPercent(r.toolCostIncreasePercent)}</p></div>
