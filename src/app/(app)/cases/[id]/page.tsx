@@ -27,7 +27,6 @@ const formatNumber = (val?: number) => {
 
 interface RowProps { label: string; valA: any; valB: any; bold?: boolean; isRed?: boolean; }
 
-// CAMBIO: text-[10px] para mejor lectura, py-0.5 para no ocupar tanto alto
 const Row = ({ label, valA, valB, bold = false, isRed = false }: RowProps) => (
     <div className={cn("grid grid-cols-10 border-b border-slate-200 py-0.5 px-2 bg-white text-center items-center text-[10px]", bold && "font-bold bg-slate-50")}>
         <div className="col-span-4 font-medium text-slate-700 text-left leading-tight">{label}</div>
@@ -93,6 +92,12 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
   const turnosAhorrados = turnosA - turnosB;
   const piezasExtraMes = (r.piezasAdicionalesAnual || 0) / 12;
   const validImages = data.imageUrls?.filter((url: string) => url && url.trim() !== "") || [];
+
+  // NUEVO CÁLCULO: Porcentaje de incremento de producción
+  const piezasBaseMes = data.piezasAlMes || 1; // Evitar división por cero
+  const pctIncrementoProduccion = piezasExtraMes > 0 
+    ? (piezasExtraMes / piezasBaseMes) * 100 
+    : 0;
 
   const handleDownloadPDF = useCallback(async () => {
     if (!rawData) return;
@@ -193,7 +198,13 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                         Con la mejora de proceso su empresa se ahorra <strong className="text-green-700 text-sm">{formatCurrency(r.ahorroAnual)} anuales</strong>.
                         Además, esta mejora le da un potencial adicional, ya que la máquina queda libre para generar 
                         <strong className="text-blue-700"> {formatCurrency(r.machineHoursFreedValueAnnual)} extras</strong> o producir 
-                        <strong className="text-slate-900"> {formatNumber(piezasExtraMes)} piezas más por mes</strong>.
+                        <strong className="text-slate-900"> {formatNumber(piezasExtraMes)} piezas más por mes</strong>
+                        {pctIncrementoProduccion > 0.1 && (
+                             <span className="text-green-600 font-bold ml-1">
+                                (+{pctIncrementoProduccion.toFixed(1)}% Capacidad)
+                             </span>
+                        )}
+                        .
                     </p>
                     <p className="text-slate-500 italic border-t border-slate-200 pt-2 mt-1 text-[10px]">
                         * Cálculos basados en una demanda de <strong>{data.piezasAlMes?.toLocaleString()} piezas/mes</strong>. 
