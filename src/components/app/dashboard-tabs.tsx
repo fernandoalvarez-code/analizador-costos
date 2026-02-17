@@ -137,7 +137,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     }, 
   });
 
-  const detailedForm = useForm<z.infer<typeof DetailedReportSchema>>({ resolver: zodResolver(DetailedReportSchema), defaultValues: initialData || { cliente: "", fecha: new Date().toISOString().split('T')[0], contacto: "", operacion: "", pieza: "", material: "", status: "Pendiente", machineHourlyRate: 35, piezasAlMes: 2000, tiempoParada: 2, costoImplementacion: 0, descA: "Herramienta Actual", precioA: '' as any, insertosPorHerramientaA: 1, filosA: '' as any, cicloMinA: '' as any, cicloSegA: '' as any, vcA: '' as any, modoVidaA: 'piezas', piezasFiloA: '' as any, minutosFiloA: 0, tiempoCorteA: 0, notasA: "", descB: "Herramienta Propuesta", precioB: '' as any, insertosPorHerramientaB: 1, filosB: '' as any, cicloMinB: '' as any, cicloSegB: '' as any, vcB: '' as any, modoVidaB: 'piezas', piezasFiloB: '' as any, minutosFiloB: 0, tiempoCorteB: 0, notasB: "", }, });
+  const detailedForm = useForm<z.infer<typeof DetailedReportSchema>>({ resolver: zodResolver(DetailedReportSchema), defaultValues: initialData || { cliente: "", fecha: new Date().toISOString().split('T')[0], contacto: "", operacion: "", pieza: "", material: "", status: "Pendiente", machineHourlyRate: 35, piezasAlMes: 2000, tiempoParada: 2, costoImplementacion: 0, descA: "Herramienta Actual", precioA: '' as any, insertosPorHerramientaA: 1, filosA: '' as any, cicloMinA: '' as any, cicloSegA: '' as any, vcA: '' as any, modoVidaA: 'piezas', piezasFiloA: '' as any, minutosFiloA: 0, tiempoCorteA: 0, notasA: "", descB: "Herramienta Propuesta", precioB: '' as any, insertosPorHerramientaB: 1, filosB: '' as any, cicloMinB: '' as any, cicloSegB: '' as any, vcB: '' as any, modoVidaB: 'piezas', piezasFiloB: '' as any, minutosFiloB: 0, tiempoCorteB: 0, notasB: "", technicalConclusion: "" }, });
   const saveCaseForm = useForm<z.infer<typeof SaveCaseSchema>>({ resolver: zodResolver(SaveCaseSchema), defaultValues: { caseName: initialData?.name || "", }, });
 
   const parseTimeToMinutes = (min: number | undefined, sec: number | undefined) => { const minVal = safeNumber(min); const secVal = safeNumber(sec); return minVal + (secVal / 60); }
@@ -663,6 +663,29 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                       <div className="mt-8 space-y-3">
                         <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Evidencia Fotográfica</h3>
                         <ImageUploader initialImages={initialData?.imageUrls} initialDescriptions={initialData?.imageDescriptions} onImagesChange={(files, keptUrls, allDescs) => { setImagesToUpload(files); setKeptImageUrls(keptUrls); setImageDescriptions(allDescs); }} />
+                      </div>
+                      <div className="mt-8 space-y-3">
+                        <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Conclusión Técnica (3ra Página)</h3>
+                        <p className="text-sm text-muted-foreground">
+                            Este texto aparecerá en una página dedicada al final del informe. Puedes usarlo para un análisis técnico detallado, notas adicionales o recomendaciones.
+                        </p>
+                        <FormField
+                            control={detailedForm.control}
+                            name="technicalConclusion"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Contenido del Informe Técnico</FormLabel>
+                                <FormControl>
+                                    <Textarea
+                                    placeholder="Escribe aquí el análisis técnico detallado..."
+                                    className="min-h-[250px]"
+                                    {...field}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                       </div>
                   </fieldset>
                   {!isReadOnly && 

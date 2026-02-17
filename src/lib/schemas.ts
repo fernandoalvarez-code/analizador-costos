@@ -58,6 +58,7 @@ export const DetailedReportSchema = z.object({
   pieza: z.string().optional(),
   material: z.string().optional(),
   status: z.string().optional(),
+  technicalConclusion: z.string().optional(),
 
   // Generales
   machineHourlyRate: z.coerce.number().min(0.01, "Requerido"),

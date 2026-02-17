@@ -95,6 +95,10 @@
         "performanceImprovement": {
           "type": "number",
           "description": "Improvement in performance."
+        },
+        "technicalConclusion": {
+            "type": "string",
+            "description": "A detailed technical conclusion or notes for the third page of the report."
         }
       },
       "required": [

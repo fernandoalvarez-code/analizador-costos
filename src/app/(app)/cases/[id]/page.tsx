@@ -98,6 +98,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
 
   const piecesBase = data.piezasAlMes || 1;
   const pctIncrementoProduccion = piezasExtraMes > 0 ? (piezasExtraMes / piecesBase) * 100 : 0;
+  const hasThirdPage = data.technicalConclusion && data.technicalConclusion.trim() !== '';
 
   const handleDownloadPDF = useCallback(async () => {
     if (!rawData) return;
@@ -153,7 +154,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
 
       <div id="report-container" className="mx-auto w-fit bg-gray-100">
         
-        {/* ================= PÁGINA 1 (Sin Cambios) ================= */}
+        {/* ================= PÁGINA 1 ================= */}
         <div className="pdf-page">
             <div className="flex justify-between items-center mb-6 h-14">
                 <div className="w-1/3 flex justify-start">{settings?.companyLogoUrl ? (/* eslint-disable-next-line @next/next/no-img-element */<img src={settings.companyLogoUrl} alt="Logo" className="h-12 object-contain" />) : <div className="h-10 w-32"></div>}</div>
@@ -226,7 +227,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
             
-            <div className="text-center pt-2 mt-auto border-t border-slate-100"><p className="text-[10px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos - Página 1/2</p></div>
+            <div className="text-center pt-2 mt-auto border-t border-slate-100"><p className="text-[10px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos - Página {hasThirdPage ? '1/3' : '1/2'}</p></div>
         </div>
 
         {/* ================= PÁGINA 2 (CLON EXACTO DE LA CAPTURA) ================= */}
@@ -241,7 +242,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                         <span className="block text-[10px] text-slate-400 mt-1 uppercase tracking-wider">Basado en {data.piezasAlMes?.toLocaleString()} pzs/mes @ {formatCurrency(data.machineHourlyRate)}/hr</span>
                     </div>
                 </div>
-                <div className="text-right"><span className="text-[10px] text-slate-400 font-medium">Página 2/2</span></div>
+                <div className="text-right"><span className="text-[10px] text-slate-400 font-medium">Página {hasThirdPage ? '2/3' : '2/2'}</span></div>
             </div>
 
             {/* Comparativa Visual (Barras) */}
@@ -344,7 +345,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <Row label="VIDA ÚTIL (Pzs/Filo)" valA={data.piezasFiloA} valB={data.piezasFiloB} bold />
                 <Row label="Tiempo Proc. por Filo (min)" valA={`${r.minutosFiloA?.toFixed(1)}`} valB={`${r.minutosFiloB?.toFixed(1)}`} />
                 <Row label="Tiempo Corte/Pieza" valA={`${timeInCutA.toFixed(3)} min`} valB={`${timeInCutB.toFixed(3)} min`} />
-                <div className="grid grid-cols-10 border-b border-slate-200 px-3 bg-white items-center text-[10px] min-h-[30px]">
+                <div className="grid grid-cols-10 border-b border-slate-200 px-3 bg-white items-center text-[10px] min-h-[28px]">
                     <div className="col-span-4 font-medium text-slate-600 flex items-center h-full">Insertos/Mes</div>
                     <div className="col-span-3 flex items-center justify-center h-full text-slate-700">{insertosMesA.toFixed(1)} <span className="text-slate-400 ml-1">({formatCurrency(costoInsertosMesA)})</span></div>
                     <div className="col-span-3 flex items-center justify-center h-full text-slate-700">{insertosMesB.toFixed(1)} <span className="text-slate-400 ml-1">({formatCurrency(costoInsertosMesB)})</span></div>
@@ -373,21 +374,21 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
                 <FinancialRow label="Costo Total por Pieza" valA={formatCurrency(r.cppA)} valB={formatCurrency(r.cppB)} save={formatCurrency(r.ahorroPorPieza)} pct={formatPercent(r.totalCostReductionPercent)} />
                 <FinancialRow label="Costo Total (Mes)" valA={formatCurrency(r.costoTotalMensualA)} valB={formatCurrency(r.costoTotalMensualB)} save={formatCurrency(r.ahorroMensual)} pct={formatPercent(r.totalCostReductionPercent)} />
-                <div className="grid grid-cols-12 border-b border-green-100 px-3 bg-white items-center text-center text-[10px] min-h-[32px]">
+                <div className="grid grid-cols-12 border-b border-green-100 px-3 bg-white items-center text-center text-[10px] min-h-[30px]">
                     <div className="col-span-3 font-medium text-slate-600 text-left flex items-center h-full">Tiempo Máquina (Mes)</div>
                     <div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{r.tiempoMaquinaMensualHorasA?.toFixed(0)} hs</div>
                     <div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{r.tiempoMaquinaMensualHorasB?.toFixed(0)} hs</div>
                     <div className="col-span-3 font-bold text-[#188038] flex items-center justify-center h-full">{r.machineHoursFreedMonthly?.toFixed(1)} hs lib.</div>
                     <div className="col-span-2 text-[#188038] font-bold flex items-center justify-center h-full">{formatPercent(r.timeReductionPercent)}</div>
                 </div>
-                <div className="grid grid-cols-12 border-b border-green-100 px-3 bg-white items-center text-center text-[10px] min-h-[32px]">
+                <div className="grid grid-cols-12 border-b border-green-100 px-3 bg-white items-center text-center text-[10px] min-h-[30px]">
                     <div className="col-span-3 font-medium text-slate-600 text-left flex items-center h-full">Turnos 8hs (Mes)</div>
                     <div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{turnosA.toFixed(1)}</div>
                     <div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{turnosB.toFixed(1)}</div>
                     <div className="col-span-3 font-bold text-[#188038] flex items-center justify-center h-full">{turnosAhorrados.toFixed(1)} lib.</div>
                     <div className="col-span-2 text-[#188038] font-bold flex items-center justify-center h-full">{formatPercent(r.timeReductionPercent)}</div>
                 </div>
-                <div className="grid grid-cols-12 bg-[#CEEAD6] px-3 font-black border-t border-green-300 text-center text-[10px] tracking-wide min-h-[32px] items-center">
+                <div className="grid grid-cols-12 bg-[#CEEAD6] py-2.5 px-3 font-black border-t border-green-300 text-center text-[10px] tracking-wide">
                     <div className="col-span-3 text-left uppercase text-slate-800 flex items-center h-full">ANUAL</div>
                     <div className="col-span-2 text-slate-800 flex items-center justify-center h-full">{formatCurrency((r.costoTotalMensualA || 0) * 12)}</div>
                     <div className="col-span-2 text-[#1A73E8] flex items-center justify-center h-full">{formatCurrency((r.costoTotalMensualB || 0) * 12)}</div>
@@ -401,6 +402,37 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <p className="text-xs font-bold text-blue-600 mt-1">https://secocut-app.web.app</p>
             </div>
         </div>
+        
+        {/* ================= PÁGINA 3 (CONDICIONAL - INFORME TÉCNICO) ================= */}
+        {hasThirdPage && (
+            <div className="pdf-page">
+                {/* Header */}
+                <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-3 h-14">
+                    <div className="flex items-center gap-4">
+                        {settings?.companyLogoUrl && /* eslint-disable-next-line @next/next/no-img-element */<img src={settings.companyLogoUrl} alt="Logo" className="h-6 object-contain opacity-50 grayscale" />}
+                        <div className="border-l border-slate-300 pl-4">
+                            <span className="block text-lg font-bold text-slate-700 uppercase leading-none">Informe Técnico</span>
+                            <span className="block text-[10px] text-slate-400 mt-1 uppercase tracking-wider">{data.name}</span>
+                        </div>
+                    </div>
+                    <div className="text-right"><span className="text-[10px] text-slate-400 font-medium">Página 3/3</span></div>
+                </div>
+
+                {/* Contenido del informe */}
+                <div className="prose prose-sm max-w-none text-justify flex-1">
+                    <h2 className="text-xl font-bold text-slate-800 mb-4">Análisis y Conclusiones Adicionales</h2>
+                    <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                        {data.technicalConclusion}
+                    </div>
+                </div>
+                
+                {/* Footer de la página */}
+                <div className="mt-auto text-center border-t border-slate-200 pt-4">
+                    <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Generado con Analizador de Costos</p>
+                    <p className="text-xs font-bold text-blue-600 mt-1">https://secocut-app.web.app</p>
+                </div>
+            </div>
+        )}
 
       </div>
     </div>
