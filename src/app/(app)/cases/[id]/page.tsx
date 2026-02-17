@@ -247,7 +247,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
             <div className="text-center pt-2 mt-auto border-t border-slate-100"><p className="text-[10px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos - Página {hasThirdPage ? '1/3' : '1/2'}</p></div>
         </div>
 
-        {/* ================= PÁGINA 2 (DATOS TÉCNICOS Y FINANCIEROS - COMPACTADA) ================= */}
+        {/* ================= PÁGINA 2 ================= */}
         <div className="pdf-page">
             
             {/* Header */}
@@ -320,7 +320,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
 
             {/* Tabla Técnica */}
             <div className="mb-2 border border-slate-300 rounded-t-lg rounded-b-lg overflow-hidden text-[9px] shadow-sm break-inside-avoid">
-                <div className="grid grid-cols-10 bg-[#F1F3F4] font-bold border-b border-slate-300 py-1 px-3 text-[9px] tracking-wide items-center"><div className="col-span-4 text-slate-700">PARÁMETRO</div><div className="col-span-3 text-center text-[#D93025]">ACTUAL (A)</div><div className="col-span-3 text-center text-[#1A73E8]">PROPUESTA (B)</div></div>
+                <div className="grid grid-cols-10 bg-[#F1F3F4] font-bold border-b border-slate-300 py-1 px-2 text-[9px] tracking-wide items-center"><div className="col-span-4 text-slate-700">PARÁMETRO</div><div className="col-span-3 text-center text-[#D93025]">ACTUAL (A)</div><div className="col-span-3 text-center text-[#1A73E8]">PROPUESTA (B)</div></div>
                 <SectionTitle title="DATOS DEL INSERTO" />
                 <Row label="Descripción" valA={data.descA} valB={data.descB} />
                 <Row label="Precio Inserto" valA={formatCurrency(data.precioA)} valB={formatCurrency(data.precioB)} />
@@ -357,7 +357,6 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
         {/* ================= PÁGINA 3 (INFORME EJECUTIVO DETALLADO) ================= */}
         {hasThirdPage && (
             <div className="pdf-page">
-                {/* Header */}
                 <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-3 h-14">
                     <div className="flex items-center gap-4">
                         {settings?.companyLogoUrl && /* eslint-disable-next-line @next/next/no-img-element */<img src={settings.companyLogoUrl} alt="Logo" className="h-6 object-contain opacity-50 grayscale" />}
@@ -369,7 +368,6 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                     <div className="text-right"><span className="text-[10px] text-slate-400 font-medium">Página 3/3</span></div>
                 </div>
 
-                {/* Contenido del informe */}
                 <div className="prose prose-sm max-w-none text-justify flex-1">
                     <h2 className="text-lg font-bold text-slate-800 mb-3 border-b border-slate-200 pb-2">Análisis y Conclusiones Adicionales</h2>
                     <div className="text-[10px] text-slate-700 leading-relaxed whitespace-pre-wrap font-medium">
@@ -377,7 +375,6 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                     </div>
                 </div>
                 
-                {/* Footer de la página */}
                 <div className="mt-auto text-center border-t border-slate-200 pt-4">
                     <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Generado con Analizador de Costos - Página 3/3</p>
                     <p className="text-xs font-bold text-blue-600 mt-1">https://secocut-app.web.app</p>
