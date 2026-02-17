@@ -140,8 +140,8 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
   return (
     <div className="bg-gray-100 text-slate-900 font-sans printable-area min-h-screen">
       <style jsx global>{`
-        .pdf-page { width: 210mm; min-height: 290mm; padding: 30px 40px; background: white; position: relative; display: flex; flex-direction: column; box-sizing: border-box; }
-        .pdf-page:not(:last-child) { page-break-after: always; border-bottom: 1px solid #eee; }
+        .pdf-page { width: 210mm; padding: 25px; background: white; position: relative; display: flex; flex-direction: column; box-sizing: border-box; }
+        .pdf-page:not(:last-child) { page-break-after: always; }
       `}</style>
       
       <div className="flex justify-between items-center p-6 max-w-5xl mx-auto no-print">
@@ -345,7 +345,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <Row label="VIDA ÚTIL (Pzs/Filo)" valA={data.piezasFiloA} valB={data.piezasFiloB} bold />
                 <Row label="Tiempo Proc. por Filo (min)" valA={`${r.minutosFiloA?.toFixed(1)}`} valB={`${r.minutosFiloB?.toFixed(1)}`} />
                 <Row label="Tiempo Corte/Pieza" valA={`${timeInCutA.toFixed(3)} min`} valB={`${timeInCutB.toFixed(3)} min`} />
-                <div className="grid grid-cols-10 border-b border-slate-200 px-3 bg-white items-center text-[10px] min-h-[28px]">
+                <div className="grid grid-cols-10 border-b border-slate-200 px-3 bg-white items-center text-[10px] min-h-[30px]">
                     <div className="col-span-4 font-medium text-slate-600 flex items-center h-full">Insertos/Mes</div>
                     <div className="col-span-3 flex items-center justify-center h-full text-slate-700">{insertosMesA.toFixed(1)} <span className="text-slate-400 ml-1">({formatCurrency(costoInsertosMesA)})</span></div>
                     <div className="col-span-3 flex items-center justify-center h-full text-slate-700">{insertosMesB.toFixed(1)} <span className="text-slate-400 ml-1">({formatCurrency(costoInsertosMesB)})</span></div>
@@ -374,21 +374,21 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
                 <FinancialRow label="Costo Total por Pieza" valA={formatCurrency(r.cppA)} valB={formatCurrency(r.cppB)} save={formatCurrency(r.ahorroPorPieza)} pct={formatPercent(r.totalCostReductionPercent)} />
                 <FinancialRow label="Costo Total (Mes)" valA={formatCurrency(r.costoTotalMensualA)} valB={formatCurrency(r.costoTotalMensualB)} save={formatCurrency(r.ahorroMensual)} pct={formatPercent(r.totalCostReductionPercent)} />
-                <div className="grid grid-cols-12 border-b border-green-100 px-3 bg-white items-center text-center text-[10px] min-h-[30px]">
+                <div className="grid grid-cols-12 border-b border-green-100 px-3 bg-white items-center text-center text-[10px] min-h-[32px]">
                     <div className="col-span-3 font-medium text-slate-600 text-left flex items-center h-full">Tiempo Máquina (Mes)</div>
                     <div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{r.tiempoMaquinaMensualHorasA?.toFixed(0)} hs</div>
                     <div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{r.tiempoMaquinaMensualHorasB?.toFixed(0)} hs</div>
                     <div className="col-span-3 font-bold text-[#188038] flex items-center justify-center h-full">{r.machineHoursFreedMonthly?.toFixed(1)} hs lib.</div>
                     <div className="col-span-2 text-[#188038] font-bold flex items-center justify-center h-full">{formatPercent(r.timeReductionPercent)}</div>
                 </div>
-                <div className="grid grid-cols-12 border-b border-green-100 px-3 bg-white items-center text-center text-[10px] min-h-[30px]">
+                <div className="grid grid-cols-12 border-b border-green-100 px-3 bg-white items-center text-center text-[10px] min-h-[32px]">
                     <div className="col-span-3 font-medium text-slate-600 text-left flex items-center h-full">Turnos 8hs (Mes)</div>
                     <div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{turnosA.toFixed(1)}</div>
                     <div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{turnosB.toFixed(1)}</div>
                     <div className="col-span-3 font-bold text-[#188038] flex items-center justify-center h-full">{turnosAhorrados.toFixed(1)} lib.</div>
                     <div className="col-span-2 text-[#188038] font-bold flex items-center justify-center h-full">{formatPercent(r.timeReductionPercent)}</div>
                 </div>
-                <div className="grid grid-cols-12 bg-[#CEEAD6] py-2.5 px-3 font-black border-t border-green-300 text-center text-[10px] tracking-wide">
+                <div className="grid grid-cols-12 bg-[#CEEAD6] px-3 font-black border-t border-green-300 text-center text-[10px] tracking-wide min-h-[32px] items-center">
                     <div className="col-span-3 text-left uppercase text-slate-800 flex items-center h-full">ANUAL</div>
                     <div className="col-span-2 text-slate-800 flex items-center justify-center h-full">{formatCurrency((r.costoTotalMensualA || 0) * 12)}</div>
                     <div className="col-span-2 text-[#1A73E8] flex items-center justify-center h-full">{formatCurrency((r.costoTotalMensualB || 0) * 12)}</div>
@@ -402,8 +402,8 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <p className="text-xs font-bold text-blue-600 mt-1">https://secocut-app.web.app</p>
             </div>
         </div>
-        
-        {/* ================= PÁGINA 3 (CONDICIONAL - INFORME TÉCNICO) ================= */}
+
+        {/* ================= PÁGINA 3 (CONDICIONAL) ================= */}
         {hasThirdPage && (
             <div className="pdf-page">
                 {/* Header */}
