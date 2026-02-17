@@ -140,8 +140,8 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
   return (
     <div className="bg-gray-100 text-slate-900 font-sans printable-area min-h-screen">
       <style jsx global>{`
-        .pdf-page { width: 210mm; min-height: 290mm; padding: 25px 40px; background: white; position: relative; display: flex; flex-direction: column; box-sizing: border-box; }
-        .pdf-page:not(:last-child) { page-break-after: always; border-bottom: 1px solid #eee; }
+        .pdf-page { width: 210mm; height: 297mm; padding: 25px 40px; background: white; position: relative; display: flex; flex-direction: column; box-sizing: border-box; }
+        .pdf-page:not(:last-child) { page-break-after: always; }
       `}</style>
       
       <div className="flex justify-between items-center p-6 max-w-5xl mx-auto no-print">
@@ -169,23 +169,22 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            {/* Datos Cliente - Ajustado para evitar cortes */}
             <div className="bg-slate-50 rounded-xl p-4 mb-4 border border-slate-200 shadow-sm">
                 <div className="grid grid-cols-2 gap-y-4 gap-x-8">
                     <div className="border-b border-slate-300 pb-2 flex flex-col justify-end">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Cliente</span>
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Cliente</span>
                         <span className="block text-lg font-bold text-slate-700 truncate leading-normal pb-0.5">{data.cliente || '-'}</span>
                     </div>
                     <div className="border-b border-slate-300 pb-2 flex flex-col justify-end">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Operación</span>
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Operación</span>
                         <span className="block text-lg font-bold text-slate-700 truncate leading-normal pb-0.5">{data.operacion || '-'}</span>
                     </div>
                     <div className="border-b border-slate-300 pb-2 flex flex-col justify-end">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Material</span>
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Material</span>
                         <span className="block text-lg font-bold text-slate-700 truncate leading-normal pb-0.5">{data.material || '-'}</span>
                     </div>
                     <div className="border-b border-slate-300 pb-2 flex flex-col justify-end">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ahorro Anual</span>
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ahorro Anual</span>
                         <span className="block text-2xl font-black text-green-600 leading-normal pb-0.5">{formatCurrency(r.ahorroAnual)}</span>
                     </div>
                 </div>
@@ -235,7 +234,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
         <div className="pdf-page">
             
             {/* Header */}
-            <div className="flex justify-between items-center mb-5 border-b border-slate-200 pb-3 h-14">
+            <div className="flex justify-between items-center mb-4 border-b border-slate-200 pb-3 h-14">
                 <div className="flex items-center gap-4">
                     {settings?.companyLogoUrl && /* eslint-disable-next-line @next/next/no-img-element */<img src={settings.companyLogoUrl} alt="Logo" className="h-6 object-contain opacity-50 grayscale" />}
                     <div className="border-l border-slate-300 pl-4">
@@ -247,7 +246,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
             </div>
 
             {/* Comparativa Visual (Barras) */}
-            <div className="mb-5">
+            <div className="mb-4">
                 <div className="grid grid-cols-2 gap-8 max-w-3xl mx-auto">
                     {/* Columna Actual */}
                     <div className="text-center">
@@ -279,7 +278,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
             </div>
 
             {/* Tarjetas KPI */}
-            <div className="mb-5">
+            <div className="mb-4">
                 <div className="grid grid-cols-2 gap-6">
                     <div className="border border-slate-200 rounded-lg p-3 shadow-sm text-center bg-white">
                         <p className={cn("text-[10px] font-bold uppercase mb-2 tracking-wide", r.toolCostIncreasePercent < 0 ? "text-[#137333]" : "text-slate-500")}>
@@ -306,7 +305,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
 
             {/* Payback */}
             {(r.inversionInicial > 0) && (
-                <div className="mb-5 bg-yellow-50 border border-yellow-200 rounded-lg p-3 shadow-sm flex items-center justify-between break-inside-avoid">
+                <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3 shadow-sm flex items-center justify-between break-inside-avoid">
                     <div>
                         <p className="text-[10px] font-bold text-yellow-800 uppercase tracking-widest mb-1">
                             Retorno de Inversión (ROI)
@@ -333,7 +332,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
             )}
 
             {/* Tabla Técnica */}
-            <div className="mb-5 border border-slate-300 rounded-t-lg rounded-b-lg overflow-hidden text-[10px] shadow-sm break-inside-avoid">
+            <div className="mb-4 border border-slate-300 rounded-t-lg rounded-b-lg overflow-hidden text-[10px] shadow-sm break-inside-avoid">
                 <div className="grid grid-cols-10 bg-[#F8F9FA] font-bold border-b border-slate-300 py-1.5 px-3 text-[10px] tracking-wide items-center">
                     <div className="col-span-4 text-slate-700">PARÁMETRO</div>
                     <div className="col-span-3 text-center text-[#D93025]">ACTUAL (A)</div>
@@ -398,7 +397,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            <div className="mt-auto text-center border-t border-slate-200 pt-4">
+            <div className="mt-4 text-center border-t border-slate-200 pt-3">
                 <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Generado con Analizador de Costos</p>
                 <p className="text-xs font-bold text-blue-600 mt-1">https://secocut-app.web.app</p>
             </div>
