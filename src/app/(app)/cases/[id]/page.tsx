@@ -113,7 +113,8 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2, useCORS: true, logging: false }, 
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak:    { mode: 'css', before: '.pdf-page' }
+            // IMPORTANTE: 'css' respeta nuestros cortes CSS y evita que html2pdf sea demasiado "inteligente"
+            pagebreak:    { mode: 'css' }
         };
         await html2pdf().set(opt).from(element).save();
     } catch (error) {
@@ -146,14 +147,14 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
         }
         .pdf-page { 
             width: 210mm; 
-            height: 296mm; 
+            height: 295mm; 
             padding: 25px 40px; 
             background: white; 
             position: relative; 
             display: flex; 
             flex-direction: column; 
             box-sizing: border-box; 
-            overflow: hidden; 
+            overflow: hidden;
             page-break-after: always;
         }
         .pdf-page:last-child { 
@@ -247,10 +248,9 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
             <div className="text-center pt-2 mt-auto border-t border-slate-100"><p className="text-[10px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos - Página {hasThirdPage ? '1/3' : '1/2'}</p></div>
         </div>
 
-        {/* ================= PÁGINA 2 ================= */}
+        {/* ================= PÁGINA 2 (COMPACTA Y CORREGIDA) ================= */}
         <div className="pdf-page">
             
-            {/* Header */}
             <div className="flex justify-between items-center mb-3 border-b border-slate-200 pb-2 h-12">
                 <div className="flex items-center gap-4">
                     {settings?.companyLogoUrl && /* eslint-disable-next-line @next/next/no-img-element */<img src={settings.companyLogoUrl} alt="Logo" className="h-6 object-contain opacity-50 grayscale" />}
@@ -262,7 +262,6 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <div className="text-right"><span className="text-[10px] text-slate-400 font-medium">Página {hasThirdPage ? '2/3' : '2/2'}</span></div>
             </div>
 
-            {/* Comparativa Visual (Barras) */}
             <div className="mb-3">
                 <div className="grid grid-cols-2 gap-8 max-w-3xl mx-auto">
                     <div className="text-center">
@@ -284,7 +283,6 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            {/* Tarjetas KPI */}
             <div className="mb-3">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="border border-slate-200 rounded-lg p-2 shadow-sm text-center bg-white">
@@ -300,7 +298,6 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            {/* Payback */}
             {(r.inversionInicial > 0) && (
                 <div className="mb-3 bg-yellow-50 border border-yellow-200 rounded-lg p-2 shadow-sm flex items-center justify-between break-inside-avoid">
                     <div>
@@ -318,7 +315,6 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             )}
 
-            {/* Tabla Técnica */}
             <div className="mb-2 border border-slate-300 rounded-t-lg rounded-b-lg overflow-hidden text-[9px] shadow-sm break-inside-avoid">
                 <div className="grid grid-cols-10 bg-[#F1F3F4] font-bold border-b border-slate-300 py-1 px-2 text-[9px] tracking-wide items-center"><div className="col-span-4 text-slate-700">PARÁMETRO</div><div className="col-span-3 text-center text-[#D93025]">ACTUAL (A)</div><div className="col-span-3 text-center text-[#1A73E8]">PROPUESTA (B)</div></div>
                 <SectionTitle title="DATOS DEL INSERTO" />
@@ -338,14 +334,13 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <div className="grid grid-cols-10 bg-[#E8EAED] px-2 font-black border-t border-slate-300 text-[9px] tracking-wide min-h-[22px] items-center"><div className="col-span-4 uppercase text-slate-800 flex items-center h-full">COSTO TOTAL / PIEZA</div><div className="col-span-3 flex items-center justify-center h-full text-[#D93025]">{formatCurrency(r.cppA)}</div><div className="col-span-3 flex items-center justify-center h-full text-[#1A73E8]">{formatCurrency(r.cppB)}</div></div>
             </div>
 
-            {/* Tabla Financiera */}
             <div className="border border-green-200 rounded-t-lg rounded-b-lg overflow-hidden text-[9px] shadow-sm break-inside-avoid">
                 <div className="grid grid-cols-12 bg-[#E6F4EA] py-1 px-2 font-bold text-[#137333] border-b border-green-200 text-[9px] text-center tracking-wide items-center"><div className="col-span-3 text-left">MÉTRICA</div><div className="col-span-2 text-slate-700">ACTUAL</div><div className="col-span-2 text-slate-700">PROPUESTA</div><div className="col-span-3">AHORRO</div><div className="col-span-2">%</div></div>
                 <FinancialRow label="Costo Total por Pieza" valA={formatCurrency(r.cppA)} valB={formatCurrency(r.cppB)} save={formatCurrency(r.ahorroPorPieza)} pct={formatPercent(r.totalCostReductionPercent)} />
                 <FinancialRow label="Costo Total (Mes)" valA={formatCurrency(r.costoTotalMensualA)} valB={formatCurrency(r.costoTotalMensualB)} save={formatCurrency(r.ahorroMensual)} pct={formatPercent(r.totalCostReductionPercent)} />
                 <div className="grid grid-cols-12 border-b border-green-100 px-2 bg-white items-center text-center text-[9px] min-h-[22px]"><div className="col-span-3 font-medium text-slate-600 text-left flex items-center h-full">Tiempo Máquina (Mes)</div><div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{r.tiempoMaquinaMensualHorasA?.toFixed(0)} hs</div><div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{r.tiempoMaquinaMensualHorasB?.toFixed(0)} hs</div><div className="col-span-3 font-bold text-[#188038] flex items-center justify-center h-full">{r.machineHoursFreedMonthly?.toFixed(1)} hs lib.</div><div className="col-span-2 text-[#188038] font-bold flex items-center justify-center h-full">{formatPercent(r.timeReductionPercent)}</div></div>
                 <div className="grid grid-cols-12 border-b border-green-100 px-2 bg-white items-center text-center text-[9px] min-h-[22px]"><div className="col-span-3 font-medium text-slate-600 text-left flex items-center h-full">Turnos 8hs (Mes)</div><div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{turnosA.toFixed(1)}</div><div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{turnosB.toFixed(1)}</div><div className="col-span-3 font-bold text-[#188038] flex items-center justify-center h-full">{turnosAhorrados.toFixed(1)} lib.</div><div className="col-span-2 text-[#188038] font-bold flex items-center justify-center h-full">{formatPercent(r.timeReductionPercent)}</div></div>
-                <div className="grid grid-cols-12 bg-[#CEEAD6] px-2 font-black border-t border-green-300 text-center text-[10px] tracking-wide min-h-[24px] items-center"><div className="col-span-3 text-left uppercase text-slate-800 flex items-center h-full">ANUAL</div><div className="col-span-2 text-slate-800 flex items-center justify-center h-full">{formatCurrency((r.costoTotalMensualA || 0) * 12)}</div><div className="col-span-2 text-[#1A73E8] flex items-center justify-center h-full">{formatCurrency((r.costoTotalMensualB || 0) * 12)}</div><div className="col-span-3 text-[#137333] text-sm flex items-center justify-center h-full">{formatCurrency(r.ahorroAnual)}</div><div className="col-span-2 text-[#137333] flex items-center justify-center h-full">{formatPercent(r.totalCostReductionPercent)}</div></div>
+                <div className="grid grid-cols-12 bg-[#CEEAD6] px-2 font-black border-t border-green-300 text-center text-[9px] tracking-wide min-h-[24px] items-center"><div className="col-span-3 text-left uppercase text-slate-800 flex items-center h-full">ANUAL</div><div className="col-span-2 text-slate-800 flex items-center justify-center h-full">{formatCurrency((r.costoTotalMensualA || 0) * 12)}</div><div className="col-span-2 text-[#1A73E8] flex items-center justify-center h-full">{formatCurrency((r.costoTotalMensualB || 0) * 12)}</div><div className="col-span-3 text-[#137333] text-sm flex items-center justify-center h-full">{formatCurrency(r.ahorroAnual)}</div><div className="col-span-2 text-[#137333] flex items-center justify-center h-full">{formatPercent(r.totalCostReductionPercent)}</div></div>
             </div>
 
             <div className="mt-auto text-center border-t border-slate-200 pt-3">
