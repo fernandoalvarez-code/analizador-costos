@@ -23,27 +23,25 @@ const formatNumber = (val?: number) => {
     return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(val);
 }
 
-// --- SUB-COMPONENTES (Compactación Táctica para Página 2) ---
+// --- SUB-COMPONENTES (Compactos para que entren en Pág 2) ---
 
 interface RowProps { label: string; valA: any; valB: any; bold?: boolean; isRed?: boolean; }
 
-// AJUSTE: Altura mínima reducida a 20px y padding mínimo. Prioridad: Que quepa todo.
+// Altura de fila optimizada (22px) y texto 9px para que entren ambas tablas
 const Row = ({ label, valA, valB, bold = false, isRed = false }: RowProps) => (
-    <div className={cn("grid grid-cols-10 border-b border-slate-200 px-2 bg-white items-center text-[9px] min-h-[20px]", bold && "font-bold bg-slate-50")}>
+    <div className={cn("grid grid-cols-10 border-b border-slate-200 px-2 bg-white items-center text-[9px] min-h-[22px]", bold && "font-bold bg-slate-50")}>
         <div className="col-span-4 font-medium text-slate-600 text-left flex items-center h-full leading-none">{label}</div>
         <div className={cn("col-span-3 flex items-center justify-center h-full leading-none", isRed ? "text-[#D93025] font-bold" : "text-slate-700")}>{valA}</div>
         <div className={cn("col-span-3 flex items-center justify-center h-full leading-none", isRed ? "text-[#1A73E8] font-bold" : "text-slate-700")}>{valB}</div>
     </div>
 );
 
-// Título de Sección: Muy compacto
 const SectionTitle = ({ title }: { title: string }) => (
     <div className="bg-[#F1F3F4] px-2 py-0.5 text-[8px] font-bold text-slate-600 uppercase border-y border-slate-300 text-left tracking-wider flex items-center h-5">{title}</div>
 );
 
 interface FinancialRowProps { label: string; valA: any; valB: any; save: any; pct: any; }
 
-// Fila Financiera: Altura reducida a 22px
 const FinancialRow = ({ label, valA, valB, save, pct }: FinancialRowProps) => (
     <div className="grid grid-cols-12 border-b border-green-100 px-2 bg-white text-[9px] min-h-[22px]">
         <div className="col-span-3 font-medium text-slate-600 text-left flex items-center h-full leading-none">{label}</div>
@@ -108,12 +106,12 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
         const element = document.getElementById('report-container');
         
         const opt = {
-            margin:       0, 
+            margin:       0, // Margen 0 para evitar hojas extra
             filename:     `Informe_${data.name || 'Caso'}_${new Date().toISOString().split('T')[0]}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2, useCORS: true, logging: false }, 
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            // IMPORTANTE: 'css' respeta nuestros cortes CSS y evita que html2pdf sea demasiado "inteligente"
+            // "css" mode respeta los saltos de página del CSS y evita cortes automáticos erróneos
             pagebreak:    { mode: 'css' }
         };
         await html2pdf().set(opt).from(element).save();
@@ -140,6 +138,11 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
 
   return (
     <div className="bg-gray-100 text-slate-900 font-sans printable-area min-h-screen">
+      {/* SOLUCIÓN DE HOJAS EN BLANCO: 
+          1. margin:0 en @page y body.
+          2. Altura de .pdf-page en 290mm (seguridad) en vez de 297mm.
+          3. page-break-after: always para forzar el salto limpio.
+      */}
       <style jsx global>{`
         @media print {
             @page { margin: 0; size: A4; }
@@ -147,14 +150,14 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
         }
         .pdf-page { 
             width: 210mm; 
-            height: 295mm; 
+            height: 290mm; /* Seguridad: menor que A4 (297mm) para evitar desborde */
             padding: 25px 40px; 
             background: white; 
             position: relative; 
             display: flex; 
             flex-direction: column; 
             box-sizing: border-box; 
-            overflow: hidden;
+            overflow: hidden; 
             page-break-after: always;
         }
         .pdf-page:last-child { 
@@ -248,9 +251,10 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
             <div className="text-center pt-2 mt-auto border-t border-slate-100"><p className="text-[10px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos - Página {hasThirdPage ? '1/3' : '1/2'}</p></div>
         </div>
 
-        {/* ================= PÁGINA 2 (COMPACTA Y CORREGIDA) ================= */}
+        {/* ================= PÁGINA 2 (DATOS TÉCNICOS Y FINANCIEROS - COMPACTADA) ================= */}
         <div className="pdf-page">
             
+            {/* Header */}
             <div className="flex justify-between items-center mb-3 border-b border-slate-200 pb-2 h-12">
                 <div className="flex items-center gap-4">
                     {settings?.companyLogoUrl && /* eslint-disable-next-line @next/next/no-img-element */<img src={settings.companyLogoUrl} alt="Logo" className="h-6 object-contain opacity-50 grayscale" />}
@@ -262,59 +266,74 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <div className="text-right"><span className="text-[10px] text-slate-400 font-medium">Página {hasThirdPage ? '2/3' : '2/2'}</span></div>
             </div>
 
-            <div className="mb-3">
+            {/* Comparativa Visual (Barras) - Margen reducido mb-2 */}
+            <div className="mb-2">
                 <div className="grid grid-cols-2 gap-8 max-w-3xl mx-auto">
                     <div className="text-center">
                         <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Actual</p>
-                        <div className="text-3xl font-black text-[#D93025] mb-2 leading-none">{formatCurrency(r.cppA)}</div>
-                        <div className="flex w-full h-7 rounded overflow-hidden shadow-sm">
-                            <div className="bg-[#D93025] flex items-center justify-center text-white text-[9px] font-bold h-full" style={{ width: '70%' }}>MAQ {formatCurrency(r.costoMaquinaA)}</div>
-                            <div className="bg-[#FAD2CF] flex items-center justify-center text-[#8C1B15] text-[9px] font-bold h-full" style={{ width: '30%' }}>HER {formatCurrency(r.costoHerramientaA)}</div>
+                        <div className="text-3xl font-black text-[#D93025] mb-1 leading-none">{formatCurrency(r.cppA)}</div>
+                        <div className="flex w-full h-6 rounded overflow-hidden shadow-sm">
+                            <div className="bg-[#D93025] flex items-center justify-center text-white text-[8px] font-bold h-full" style={{ width: '70%' }}>MAQ {formatCurrency(r.costoMaquinaA)}</div>
+                            <div className="bg-[#FAD2CF] flex items-center justify-center text-[#8C1B15] text-[8px] font-bold h-full" style={{ width: '30%' }}>HER {formatCurrency(r.costoHerramientaA)}</div>
                         </div>
                     </div>
                     <div className="text-center">
                         <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Propuesta</p>
-                        <div className="text-3xl font-black text-[#1A73E8] mb-2 leading-none">{formatCurrency(r.cppB)}</div>
-                        <div className="flex w-full h-7 rounded overflow-hidden shadow-sm">
-                            <div className="bg-[#1A73E8] flex items-center justify-center text-white text-[9px] font-bold h-full" style={{ width: '70%' }}>MAQ {formatCurrency(r.costoMaquinaB)}</div>
-                            <div className="bg-[#D2E3FC] flex items-center justify-center text-[#174EA6] text-[9px] font-bold h-full" style={{ width: '30%' }}>HER {formatCurrency(r.costoHerramientaB)}</div>
+                        <div className="text-3xl font-black text-[#1A73E8] mb-1 leading-none">{formatCurrency(r.cppB)}</div>
+                        <div className="flex w-full h-6 rounded overflow-hidden shadow-sm">
+                            <div className="bg-[#1A73E8] flex items-center justify-center text-white text-[8px] font-bold h-full" style={{ width: '70%' }}>MAQ {formatCurrency(r.costoMaquinaB)}</div>
+                            <div className="bg-[#D2E3FC] flex items-center justify-center text-[#174EA6] text-[8px] font-bold h-full" style={{ width: '30%' }}>HER {formatCurrency(r.costoHerramientaB)}</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="mb-3">
+            {/* Inversión vs Ahorro - Margen reducido mb-2 */}
+            <div className="mb-2 bg-[#F8F9FA] border border-slate-200 rounded-lg p-2 shadow-sm">
+                <h3 className="text-center text-[9px] font-bold text-slate-700 uppercase mb-2 tracking-widest">Inversión vs. Ahorro</h3>
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="border border-slate-200 rounded-lg p-2 shadow-sm text-center bg-white">
-                        <p className={cn("text-[9px] font-bold uppercase mb-1 tracking-wide", r.toolCostIncreasePercent < 0 ? "text-[#137333]" : "text-slate-500")}>{r.toolCostIncreasePercent < 0 ? "Ahorro en Herramientas" : "Inversión Herramienta"}</p>
-                        <p className={cn("text-2xl font-black mb-1 leading-none", r.toolCostIncreasePercent < 0 ? "text-green-600" : "text-slate-700")}>{formatPercent(Math.abs(r.toolCostIncreasePercent || 0))}</p>
-                        <p className="text-[8px] text-slate-400 uppercase tracking-widest font-semibold">{r.toolCostIncreasePercent < 0 ? "(Menor consumo de insumos)" : "(Mayor costo de compra)"}</p>
+                    <div className="bg-white border border-slate-200 rounded p-1.5 text-center shadow-sm">
+                        <p className={cn("text-[8px] font-bold uppercase mb-0.5 tracking-wide", r.toolCostIncreasePercent < 0 ? "text-[#137333]" : "text-slate-500")}>
+                            {r.toolCostIncreasePercent < 0 ? "Ahorro en Herramientas" : "Inversión Herramienta"}
+                        </p>
+                        <p className={cn("text-2xl font-black mb-0.5 leading-none", r.toolCostIncreasePercent < 0 ? "text-[#137333]" : "text-slate-700")}>
+                            {formatPercent(Math.abs(r.toolCostIncreasePercent || 0))}
+                        </p>
+                        <p className="text-[7px] text-slate-400 uppercase tracking-widest font-semibold">
+                            {r.toolCostIncreasePercent < 0 ? "(Menor consumo)" : "(Mayor costo compra)"}
+                        </p>
                     </div>
-                    <div className="border border-slate-200 rounded-lg p-2 shadow-sm text-center bg-white">
-                        <p className="text-[9px] font-bold text-slate-500 uppercase mb-1 tracking-wide">Mejora Costo Total</p>
-                        <p className={cn("text-2xl font-black mb-1 leading-none", r.totalCostReductionPercent > 0 ? "text-[#1A73E8]" : "text-slate-700")}>{formatPercent(r.totalCostReductionPercent)}</p>
-                        <p className="text-[8px] text-slate-400 uppercase tracking-widest font-semibold">(Impacto final en la pieza)</p>
+                    <div className="bg-white border border-slate-200 rounded p-1.5 text-center shadow-sm">
+                        <p className="text-[8px] font-bold text-slate-500 uppercase mb-0.5 tracking-wide">Mejora Costo Total</p>
+                        <p className={cn("text-2xl font-black mb-0.5 leading-none", r.totalCostReductionPercent > 0 ? "text-[#1A73E8]" : "text-slate-700")}>
+                            {formatPercent(r.totalCostReductionPercent)}
+                        </p>
+                        <p className="text-[7px] text-slate-400 uppercase tracking-widest font-semibold">
+                            (Impacto final en pieza)
+                        </p>
                     </div>
                 </div>
             </div>
 
+            {/* Payback - Margen reducido mb-2 */}
             {(r.inversionInicial > 0) && (
-                <div className="mb-3 bg-yellow-50 border border-yellow-200 rounded-lg p-2 shadow-sm flex items-center justify-between break-inside-avoid">
+                <div className="mb-2 bg-[#FEF7E0] border border-[#FEEFC3] rounded-lg p-2 flex items-center justify-between shadow-sm">
                     <div>
-                        <p className="text-[9px] font-bold text-yellow-800 uppercase tracking-widest mb-0.5">Retorno de Inversión (ROI)</p>
-                        <p className="text-[10px] text-slate-600">Costo Implementación: <span className="font-bold text-slate-900">{formatCurrency(r.inversionInicial)}</span></p>
+                        <p className="text-[9px] font-bold text-[#B06000] uppercase tracking-widest mb-0.5">Retorno de Inversión (ROI)</p>
+                        <p className="text-[9px] text-slate-700 font-medium">Costo Implementación: <span className="font-bold text-black">{formatCurrency(r.inversionInicial)}</span></p>
                     </div>
                     <div className="text-right">
-                        <div className="flex items-baseline justify-end gap-1">
+                        <div className="flex items-baseline justify-end gap-2">
                             <span className="text-[9px] text-slate-500 uppercase font-semibold">Se paga en:</span>
                             <p className="text-2xl font-black text-slate-800 leading-none">{r.paybackMonths < 0.1 ? "Inmediato" : r.paybackMonths.toFixed(1)}</p>
-                            <span className="text-[10px] font-bold text-slate-600">Meses</span>
+                            <span className="text-[9px] font-bold text-slate-600">Meses</span>
                         </div>
-                        {r.paybackMonths > 0 && (<p className="text-[8px] text-green-600 font-bold mt-0.5 uppercase tracking-wide">A partir del mes {Math.ceil(r.paybackMonths)}, ganancia pura.</p>)}
+                        {r.paybackMonths > 0 && (<p className="text-[8px] text-[#137333] font-bold mt-0.5 uppercase tracking-wide">A partir del mes {Math.ceil(r.paybackMonths)}, ganancia pura.</p>)}
                     </div>
                 </div>
             )}
 
+            {/* Tabla Técnica - Margen reducido mb-2 */}
             <div className="mb-2 border border-slate-300 rounded-t-lg rounded-b-lg overflow-hidden text-[9px] shadow-sm break-inside-avoid">
                 <div className="grid grid-cols-10 bg-[#F1F3F4] font-bold border-b border-slate-300 py-1 px-2 text-[9px] tracking-wide items-center"><div className="col-span-4 text-slate-700">PARÁMETRO</div><div className="col-span-3 text-center text-[#D93025]">ACTUAL (A)</div><div className="col-span-3 text-center text-[#1A73E8]">PROPUESTA (B)</div></div>
                 <SectionTitle title="DATOS DEL INSERTO" />
@@ -334,6 +353,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <div className="grid grid-cols-10 bg-[#E8EAED] px-2 font-black border-t border-slate-300 text-[9px] tracking-wide min-h-[22px] items-center"><div className="col-span-4 uppercase text-slate-800 flex items-center h-full">COSTO TOTAL / PIEZA</div><div className="col-span-3 flex items-center justify-center h-full text-[#D93025]">{formatCurrency(r.cppA)}</div><div className="col-span-3 flex items-center justify-center h-full text-[#1A73E8]">{formatCurrency(r.cppB)}</div></div>
             </div>
 
+            {/* Tabla Financiera */}
             <div className="border border-green-200 rounded-t-lg rounded-b-lg overflow-hidden text-[9px] shadow-sm break-inside-avoid">
                 <div className="grid grid-cols-12 bg-[#E6F4EA] py-1 px-2 font-bold text-[#137333] border-b border-green-200 text-[9px] text-center tracking-wide items-center"><div className="col-span-3 text-left">MÉTRICA</div><div className="col-span-2 text-slate-700">ACTUAL</div><div className="col-span-2 text-slate-700">PROPUESTA</div><div className="col-span-3">AHORRO</div><div className="col-span-2">%</div></div>
                 <FinancialRow label="Costo Total por Pieza" valA={formatCurrency(r.cppA)} valB={formatCurrency(r.cppB)} save={formatCurrency(r.ahorroPorPieza)} pct={formatPercent(r.totalCostReductionPercent)} />
@@ -352,6 +372,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
         {/* ================= PÁGINA 3 (INFORME EJECUTIVO DETALLADO) ================= */}
         {hasThirdPage && (
             <div className="pdf-page">
+                {/* Header */}
                 <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-3 h-14">
                     <div className="flex items-center gap-4">
                         {settings?.companyLogoUrl && /* eslint-disable-next-line @next/next/no-img-element */<img src={settings.companyLogoUrl} alt="Logo" className="h-6 object-contain opacity-50 grayscale" />}
@@ -363,6 +384,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                     <div className="text-right"><span className="text-[10px] text-slate-400 font-medium">Página 3/3</span></div>
                 </div>
 
+                {/* Contenido del informe */}
                 <div className="prose prose-sm max-w-none text-justify flex-1">
                     <h2 className="text-lg font-bold text-slate-800 mb-3 border-b border-slate-200 pb-2">Análisis y Conclusiones Adicionales</h2>
                     <div className="text-[10px] text-slate-700 leading-relaxed whitespace-pre-wrap font-medium">
@@ -370,6 +392,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                     </div>
                 </div>
                 
+                {/* Footer de la página */}
                 <div className="mt-auto text-center border-t border-slate-200 pt-4">
                     <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Generado con Analizador de Costos - Página 3/3</p>
                     <p className="text-xs font-bold text-blue-600 mt-1">https://secocut-app.web.app</p>
