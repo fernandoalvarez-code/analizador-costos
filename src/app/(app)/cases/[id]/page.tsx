@@ -145,7 +145,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
         }
         .pdf-page { 
             width: 210mm; 
-            height: 290mm; 
+            height: 295mm; 
             padding: 25px 40px; 
             background: white; 
             position: relative; 
@@ -206,7 +206,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col justify-center mb-6 min-h-[220px]">
+            <div className="flex flex-col justify-center mb-6 min-h-[220px]">
                  {validImages.length > 0 ? (
                     <div className="flex flex-col h-full justify-center">
                         <div className="text-center mb-4 px-4"><h3 className="text-sm font-bold text-blue-900 italic font-serif leading-relaxed">&ldquo;Se pueden conseguir Resultados o Excusas, no las dos cosas.&rdquo;</h3><div className="h-0.5 w-16 bg-blue-500 mx-auto mt-2 rounded-full opacity-50"></div></div>
@@ -243,14 +243,14 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
             
-            <div className="text-center pt-2 mt-auto border-t border-slate-100"><p className="text-[10px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos - Página {hasThirdPage ? '1/3' : '1/2'}</p></div>
+            <div className="text-center pt-2 mt-6 border-t border-slate-100"><p className="text-[10px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos - Página {hasThirdPage ? '1/3' : '1/2'}</p></div>
         </div>
 
-        {/* ================= PÁGINA 2 (DATOS TÉCNICOS Y FINANCIEROS - COMPACTADA) ================= */}
+        {/* ================= PÁGINA 2 (FUENTE AUMENTADA) ================= */}
         <div className="pdf-page">
             
             {/* Header */}
-            <div className="flex justify-between items-center mb-3 border-b border-slate-200 pb-2 h-12">
+            <div className="flex justify-between items-center mb-2 border-b border-slate-200 pb-2 h-12">
                 <div className="flex items-center gap-4">
                     {settings?.companyLogoUrl && /* eslint-disable-next-line @next/next/no-img-element */<img src={settings.companyLogoUrl} alt="Logo" className="h-6 object-contain opacity-50 grayscale" />}
                     <div className="border-l border-slate-300 pl-4">
@@ -261,7 +261,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <div className="text-right"><span className="text-[10px] text-slate-400 font-medium">Página {hasThirdPage ? '2/3' : '2/2'}</span></div>
             </div>
 
-            {/* Comparativa Visual (Barras) - Margen reducido mb-2 */}
+            {/* Comparativa Visual (Reducido margen mb-2) */}
             <div className="mb-2">
                 <div className="grid grid-cols-2 gap-8 max-w-3xl mx-auto">
                     <div className="text-center">
@@ -283,7 +283,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            {/* Inversión vs Ahorro - Margen reducido mb-2 */}
+            {/* Inversión vs Ahorro (Reducido margen mb-2) */}
             <div className="mb-2 bg-[#F8F9FA] border border-slate-200 rounded-lg p-2 shadow-sm">
                 <h3 className="text-center text-[9px] font-bold text-slate-700 uppercase mb-2 tracking-widest">Inversión vs. Ahorro</h3>
                 <div className="grid grid-cols-2 gap-4">
@@ -310,12 +310,12 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            {/* Payback - Margen reducido mb-2 */}
+            {/* Payback (Reducido margen mb-2) */}
             {(r.inversionInicial > 0) && (
                 <div className="mb-2 bg-[#FEF7E0] border border-[#FEEFC3] rounded-lg p-2 flex items-center justify-between shadow-sm">
                     <div>
                         <p className="text-[9px] font-bold text-[#B06000] uppercase tracking-widest mb-0.5">Retorno de Inversión (ROI)</p>
-                        <p className="text-[10px] text-slate-600">Costo Implementación: <span className="font-bold text-black">{formatCurrency(r.inversionInicial)}</span></p>
+                        <p className="text-[10px] text-slate-600">Costo Implementación: <span className="font-bold text-slate-900">{formatCurrency(r.inversionInicial)}</span></p>
                     </div>
                     <div className="text-right">
                         <div className="flex items-baseline justify-end gap-1">
@@ -358,7 +358,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <div className="grid grid-cols-12 bg-[#CEEAD6] px-2 font-black border-t border-green-300 text-center text-[10px] tracking-wide min-h-[26px] items-center"><div className="col-span-3 text-left uppercase text-slate-800 flex items-center h-full">ANUAL</div><div className="col-span-2 text-slate-800 flex items-center justify-center h-full">{formatCurrency((r.costoTotalMensualA || 0) * 12)}</div><div className="col-span-2 text-[#1A73E8] flex items-center justify-center h-full">{formatCurrency((r.costoTotalMensualB || 0) * 12)}</div><div className="col-span-3 text-[#137333] text-sm flex items-center justify-center h-full">{formatCurrency(r.ahorroAnual)}</div><div className="col-span-2 text-[#137333] flex items-center justify-center h-full">{formatPercent(r.totalCostReductionPercent)}</div></div>
             </div>
 
-            <div className="mt-auto text-center border-t border-slate-200 pt-3">
+            <div className="mt-6 text-center border-t border-slate-200 pt-3">
                 <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Generado con Analizador de Costos - Página {hasThirdPage ? '2/3' : '2/2'}</p>
                 <p className="text-xs font-bold text-blue-600 mt-1">https://secocut-app.web.app</p>
             </div>
@@ -386,7 +386,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                     </div>
                 </div>
                 
-                <div className="mt-auto text-center border-t border-slate-200 pt-4">
+                <div className="mt-6 text-center border-t border-slate-200 pt-4">
                     <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Generado con Analizador de Costos - Página 3/3</p>
                     <p className="text-xs font-bold text-blue-600 mt-1">https://secocut-app.web.app</p>
                 </div>
