@@ -23,6 +23,14 @@ const formatNumber = (val?: number) => {
     return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(val);
 }
 
+// Función para convertir minutos decimales a formato legible (ej: 1m 50s)
+const formatoMinutosYSegundos = (minutosDecimales: number): string => {
+  if (!minutosDecimales || minutosDecimales <= 0) return "0m 0s";
+  const min = Math.floor(minutosDecimales);
+  const seg = Math.round((minutosDecimales - min) * 60);
+  return seg === 60 ? `${min + 1}m 0s` : `${min}m ${seg}s`;
+};
+
 // --- SUB-COMPONENTES (Texto Grande 10px, pero Fila Compacta 22px) ---
 
 interface RowProps { label: string; valA: any; valB: any; bold?: boolean; isRed?: boolean; }
@@ -109,7 +117,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
             html2canvas:  { scale: 2, useCORS: true, logging: false }, 
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
             // Evitamos cortes automáticos
-            pagebreak:    { mode: 'css' }
+            pagebreak:    { mode: 'css', before: '.pdf-page' }
         };
         await html2pdf().set(opt).from(element).save();
     } catch (error) {
@@ -204,7 +212,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            <div className="mb-6 min-h-[220px]">
+            <div className="flex-1 flex flex-col justify-center mb-6 min-h-[220px]">
                  {validImages.length > 0 ? (
                     <div className="flex flex-col h-full justify-center">
                         <div className="text-center mb-4 px-4"><h3 className="text-sm font-bold text-blue-900 italic font-serif leading-relaxed">&ldquo;Se pueden conseguir Resultados o Excusas, no las dos cosas.&rdquo;</h3><div className="h-0.5 w-16 bg-blue-500 mx-auto mt-2 rounded-full opacity-50"></div></div>
@@ -241,7 +249,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
             
-            <div className="text-center pt-2 mt-6 border-t border-slate-100"><p className="text-[10px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos - Página {hasThirdPage ? '1/3' : '1/2'}</p></div>
+            <div className="text-center pt-2 mt-auto border-t border-slate-100"><p className="text-[10px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos - Página {hasThirdPage ? '1/3' : '1/2'}</p></div>
         </div>
 
         {/* ================= PÁGINA 2 (AJUSTADA AL MILÍMETRO) ================= */}
@@ -258,8 +266,8 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <div className="text-right"><span className="text-[10px] text-slate-400 font-medium">Página {hasThirdPage ? '2/3' : '2/2'}</span></div>
             </div>
 
-            {/* Visuals - MB reducido a 1 */}
-            <div className="mb-1">
+            {/* Visuals - MB reducido a 2 */}
+            <div className="mb-2">
                 <div className="grid grid-cols-2 gap-8 max-w-3xl mx-auto">
                     <div className="text-center">
                         <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Actual</p>
@@ -280,8 +288,8 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            {/* KPI - MB reducido a 1 */}
-            <div className="mb-1 bg-[#F8F9FA] border border-slate-200 rounded-lg p-2 shadow-sm">
+            {/* KPI - MB reducido a 2 */}
+            <div className="mb-2 bg-[#F8F9FA] border border-slate-200 rounded-lg p-2 shadow-sm">
                 <h3 className="text-center text-[9px] font-bold text-slate-700 uppercase mb-2 tracking-widest">Inversión vs. Ahorro</h3>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white border border-slate-200 rounded p-1.5 text-center shadow-sm">
@@ -307,9 +315,9 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            {/* Payback - MB reducido a 1 */}
+            {/* Payback - MB reducido a 2 */}
             {(r.inversionInicial > 0) && (
-                <div className="mb-1 bg-[#FEF7E0] border border-[#FEEFC3] rounded-lg p-2 flex items-center justify-between shadow-sm">
+                <div className="mb-2 bg-[#FEF7E0] border border-[#FEEFC3] rounded-lg p-2 flex items-center justify-between shadow-sm">
                     <div>
                         <p className="text-[9px] font-bold text-[#B06000] uppercase tracking-widest mb-0.5">Retorno de Inversión (ROI)</p>
                         <p className="text-[10px] text-slate-600">Costo Implementación: <span className="font-bold text-slate-900">{formatCurrency(r.inversionInicial)}</span></p>
@@ -325,8 +333,8 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             )}
 
-            {/* Tabla Técnica (TEXTO 10PX) - MB reducido a 1 */}
-            <div className="mb-1 border border-slate-300 rounded-t-lg rounded-b-lg overflow-hidden text-[10px] shadow-sm break-inside-avoid">
+            {/* Tabla Técnica */}
+            <div className="mb-2 border border-slate-300 rounded-t-lg rounded-b-lg overflow-hidden text-[10px] shadow-sm break-inside-avoid">
                 <div className="grid grid-cols-10 bg-[#F1F3F4] font-bold border-b border-slate-300 py-1 px-2 text-[10px] tracking-wide items-center"><div className="col-span-4 text-slate-700">PARÁMETRO</div><div className="col-span-3 text-center text-[#D93025]">ACTUAL (A)</div><div className="col-span-3 text-center text-[#1A73E8]">PROPUESTA (B)</div></div>
                 <SectionTitle title="DATOS DEL INSERTO" />
                 <Row label="Descripción" valA={data.descA} valB={data.descB} />
@@ -338,24 +346,28 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <div className="grid grid-cols-10 border-b border-slate-200 px-2 bg-white items-center text-[10px] min-h-[22px]"><div className="col-span-4 font-medium text-slate-600 flex items-center h-full">Insertos/Mes</div><div className="col-span-3 flex items-center justify-center h-full text-slate-700">{insertosMesA.toFixed(1)} <span className="text-slate-400 ml-1">({formatCurrency(costoInsertosMesA)})</span></div><div className="col-span-3 flex items-center justify-center h-full text-slate-700">{insertosMesB.toFixed(1)} <span className="text-slate-400 ml-1">({formatCurrency(costoInsertosMesB)})</span></div></div>
                 <Row label="Costo Herr./Pieza" valA={formatCurrency(r.costoHerramientaA)} valB={formatCurrency(r.costoHerramientaB)} isRed />
                 <SectionTitle title="DATOS DEL PROCESO" />
-                <Row label="Ciclo (min)" valA={tcA.toFixed(3)} valB={tcB.toFixed(3)} />
+                <Row 
+                  label="Ciclo (min)" 
+                  valA={`${tcA.toFixed(3)} (${formatoMinutosYSegundos(tcA)})`} 
+                  valB={`${tcB.toFixed(3)} (${formatoMinutosYSegundos(tcB)})`} 
+                />
                 <Row label="Costo Hora-Máq." valA={formatCurrency(data.machineHourlyRate)} valB={`(${formatCurrency(costoMinuto)}/min)`} />
                 <Row label="Costo Parada/Pieza" valA={formatCurrency(r.costoParadaA)} valB={formatCurrency(r.costoParadaB)} />
                 <Row label="Costo Máq./Pieza" valA={formatCurrency(r.costoMaquinaA)} valB={formatCurrency(r.costoMaquinaB)} isRed />
                 <div className="grid grid-cols-10 bg-[#E8EAED] px-2 font-black border-t border-slate-300 text-[10px] tracking-wide min-h-[22px] items-center"><div className="col-span-4 uppercase text-slate-800 flex items-center h-full">COSTO TOTAL / PIEZA</div><div className="col-span-3 flex items-center justify-center h-full text-[#D93025]">{formatCurrency(r.cppA)}</div><div className="col-span-3 flex items-center justify-center h-full text-[#1A73E8]">{formatCurrency(r.cppB)}</div></div>
             </div>
 
-            {/* Tabla Financiera (TEXTO 10PX) */}
+            {/* Tabla Financiera */}
             <div className="border border-green-200 rounded-t-lg rounded-b-lg overflow-hidden text-[10px] shadow-sm break-inside-avoid">
                 <div className="grid grid-cols-12 bg-[#E6F4EA] py-1 px-2 font-bold text-[#137333] border-b border-green-200 text-[10px] text-center tracking-wide items-center"><div className="col-span-3 text-left">MÉTRICA</div><div className="col-span-2 text-slate-700">ACTUAL</div><div className="col-span-2 text-slate-700">PROPUESTA</div><div className="col-span-3">AHORRO</div><div className="col-span-2">%</div></div>
                 <FinancialRow label="Costo Total por Pieza" valA={formatCurrency(r.cppA)} valB={formatCurrency(r.cppB)} save={formatCurrency(r.ahorroPorPieza)} pct={formatPercent(r.totalCostReductionPercent)} />
                 <FinancialRow label="Costo Total (Mes)" valA={formatCurrency(r.costoTotalMensualA)} valB={formatCurrency(r.costoTotalMensualB)} save={formatCurrency(r.ahorroMensual)} pct={formatPercent(r.totalCostReductionPercent)} />
-                <div className="grid grid-cols-12 border-b border-green-100 px-2 bg-white items-center text-center text-[10px] min-h-[24px]"><div className="col-span-3 font-medium text-slate-600 text-left flex items-center h-full">Tiempo Máquina (Mes)</div><div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{r.tiempoMaquinaMensualHorasA?.toFixed(0)} hs</div><div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{r.tiempoMaquinaMensualHorasB?.toFixed(0)} hs</div><div className="col-span-3 font-bold text-[#188038] flex items-center justify-center h-full">{r.machineHoursFreedMonthly?.toFixed(1)} hs lib.</div><div className="col-span-2 text-[#188038] font-bold flex items-center justify-center h-full">{formatPercent(r.timeReductionPercent)}</div></div>
-                <div className="grid grid-cols-12 border-b border-green-100 px-2 bg-white items-center text-center text-[10px] min-h-[24px]"><div className="col-span-3 font-medium text-slate-600 text-left flex items-center h-full">Turnos 8hs (Mes)</div><div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{turnosA.toFixed(1)}</div><div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{turnosB.toFixed(1)}</div><div className="col-span-3 font-bold text-[#188038] flex items-center justify-center h-full">{turnosAhorrados.toFixed(1)} lib.</div><div className="col-span-2 text-[#188038] font-bold flex items-center justify-center h-full">{formatPercent(r.timeReductionPercent)}</div></div>
+                <div className="grid grid-cols-12 border-b border-green-100 px-2 bg-white items-center text-center text-[10px] min-h-[26px]"><div className="col-span-3 font-medium text-slate-600 text-left flex items-center h-full">Tiempo Máquina (Mes)</div><div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{r.tiempoMaquinaMensualHorasA?.toFixed(0)} hs</div><div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{r.tiempoMaquinaMensualHorasB?.toFixed(0)} hs</div><div className="col-span-3 font-bold text-[#188038] flex items-center justify-center h-full">{r.machineHoursFreedMonthly?.toFixed(1)} hs lib.</div><div className="col-span-2 text-[#188038] font-bold flex items-center justify-center h-full">{formatPercent(r.timeReductionPercent)}</div></div>
+                <div className="grid grid-cols-12 border-b border-green-100 px-2 bg-white items-center text-center text-[10px] min-h-[26px]"><div className="col-span-3 font-medium text-slate-600 text-left flex items-center h-full">Turnos 8hs (Mes)</div><div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{turnosA.toFixed(1)}</div><div className="col-span-2 text-slate-600 flex items-center justify-center h-full">{turnosB.toFixed(1)}</div><div className="col-span-3 font-bold text-[#188038] flex items-center justify-center h-full">{turnosAhorrados.toFixed(1)} lib.</div><div className="col-span-2 text-[#188038] font-bold flex items-center justify-center h-full">{formatPercent(r.timeReductionPercent)}</div></div>
                 <div className="grid grid-cols-12 bg-[#CEEAD6] px-2 font-black border-t border-green-300 text-center text-[10px] tracking-wide min-h-[26px] items-center"><div className="col-span-3 text-left uppercase text-slate-800 flex items-center h-full">ANUAL</div><div className="col-span-2 text-slate-800 flex items-center justify-center h-full">{formatCurrency((r.costoTotalMensualA || 0) * 12)}</div><div className="col-span-2 text-[#1A73E8] flex items-center justify-center h-full">{formatCurrency((r.costoTotalMensualB || 0) * 12)}</div><div className="col-span-3 text-[#137333] text-sm flex items-center justify-center h-full">{formatCurrency(r.ahorroAnual)}</div><div className="col-span-2 text-[#137333] flex items-center justify-center h-full">{formatPercent(r.totalCostReductionPercent)}</div></div>
             </div>
 
-            <div className="mt-4 text-center border-t border-slate-200 pt-3">
+            <div className="mt-auto text-center border-t border-slate-200 pt-3">
                 <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Generado con Analizador de Costos - Página {hasThirdPage ? '2/3' : '2/2'}</p>
                 <p className="text-xs font-bold text-blue-600 mt-1">https://secocut-app.web.app</p>
             </div>
@@ -383,7 +395,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                     </div>
                 </div>
                 
-                <div className="mt-6 text-center border-t border-slate-200 pt-4">
+                <div className="mt-auto text-center border-t border-slate-200 pt-4">
                     <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Generado con Analizador de Costos - Página 3/3</p>
                     <p className="text-xs font-bold text-blue-600 mt-1">https://secocut-app.web.app</p>
                 </div>
