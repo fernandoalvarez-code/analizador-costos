@@ -1,0 +1,183 @@
+"use client";
+
+import React, { useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { SimulatorSchema } from "@/lib/schemas";
+import { useSimulatorCalc } from "@/hooks/use-simulator-calc";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Save, TrendingUp, AlertCircle } from "lucide-react";
+import { formatCurrency } from "@/lib/formatters";
+
+export default function NewSimulatorPage() {
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Inicializamos el formulario con valores por defecto para que no explote
+  const form = useForm({
+    resolver: zodResolver(SimulatorSchema),
+    defaultValues: {
+      clientName: "",
+      machineUsdPerHour: 35,
+      toolChangeMin: 2,
+      scrapCostUsdPerPiece: 10,
+      china: { priceUsd: 4, pcsPerEdge: 15, cycleMinPerPiece: 1.5, pcsBetweenChanges: 15, scrapRate: 0.05 },
+      premium: { priceUsd: 11, pcsPerEdge: 45, cycleMinPerPiece: 1.2, pcsBetweenChanges: 45, scrapRate: 0.01 },
+    },
+  });
+
+  // Observamos los valores en tiempo real para pasárselos al hook matemático
+  const chinaVals = useWatch({ control: form.control, name: "china" }) as any;
+  const premiumVals = useWatch({ control: form.control, name: "premium" }) as any;
+  const machineUsdPerHour = useWatch({ control: form.control, name: "machineUsdPerHour" }) || 0;
+  const toolChangeMin = useWatch({ control: form.control, name: "toolChangeMin" }) || 0;
+  const scrapCostUsdPerPiece = useWatch({ control: form.control, name: "scrapCostUsdPerPiece" }) || 0;
+
+  // El motor matemático trabajando en vivo
+  const results = useSimulatorCalc(
+    chinaVals || { priceUsd: 0, pcsPerEdge: 1, cycleMinPerPiece: 0, pcsBetweenChanges: 1, scrapRate: 0 },
+    premiumVals || { priceUsd: 0, pcsPerEdge: 1, cycleMinPerPiece: 0, pcsBetweenChanges: 1, scrapRate: 0 },
+    { machineUsdPerHour, toolChangeMin, scrapCostUsdPerPiece }
+  );
+
+  const onSubmit = async (data: any) => {
+    setIsSaving(true);
+    try {
+      // AQUÍ IRÁ LA CONEXIÓN A FIREBASE EN EL PRÓXIMO PASO
+      console.log("Data lista para Firebase:", data);
+      console.log("Resultados a guardar:", results);
+      alert("¡Simulación lista! Abre la consola para ver los datos.");
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Colores dinámicos para el semáforo
+  const trafficColors = {
+    green: "bg-green-100 border-green-500 text-green-900",
+    yellow: "bg-yellow-100 border-yellow-500 text-yellow-900",
+    red: "bg-red-100 border-red-500 text-red-900",
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 pb-48"> {/* pb-48 deja espacio para la barra flotante */}
+      <div className="max-w-2xl mx-auto p-4">
+        
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight">SIMULADOR</h1>
+          <Button onClick={form.handleSubmit(onSubmit)} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">
+            <Save className="mr-2 h-4 w-4" /> {isSaving ? "Guardando..." : "Guardar"}
+          </Button>
+        </div>
+
+        <Form {...form}>
+          <form className="space-y-6">
+            
+            {/* SECCIÓN 1: DATOS GENERALES */}
+            <Card className="border-slate-200 shadow-sm">
+              <CardHeader className="pb-3 bg-slate-100 border-b border-slate-200">
+                <CardTitle className="text-sm font-bold uppercase text-slate-600">Datos del Proceso</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField control={form.control} name="clientName" render={({ field }) => (
+                  <FormItem><FormLabel>Cliente</FormLabel><FormControl><Input placeholder="Ej: Metalúrgica Roma" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="machineUsdPerHour" render={({ field }) => (
+                  <FormItem><FormLabel>Costo Hora-Máquina (USD)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="toolChangeMin" render={({ field }) => (
+                  <FormItem><FormLabel>Tiempo Cambio Herramienta (min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="scrapCostUsdPerPiece" render={({ field }) => (
+                  <FormItem><FormLabel>Costo por Pieza Scrap (USD)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                )} />
+              </CardContent>
+            </Card>
+
+            {/* SECCIÓN 2: COMPARADOR SIDE-BY-SIDE */}
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
+              
+              {/* COLUMNA COMPETIDOR */}
+              <Card className="border-slate-300 shadow-sm overflow-hidden">
+                <div className="bg-slate-200 p-2 text-center border-b border-slate-300">
+                  <span className="text-xs font-black uppercase text-slate-600 tracking-wider">Competidor</span>
+                </div>
+                <CardContent className="p-3 space-y-3 bg-slate-50">
+                  <FormField control={form.control} name="china.priceUsd" render={({ field }) => (
+                    <FormItem><FormLabel className="text-[10px] uppercase">Precio Inserto</FormLabel><FormControl><Input type="number" className="h-8 text-sm" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="china.pcsPerEdge" render={({ field }) => (
+                    <FormItem><FormLabel className="text-[10px] uppercase">Piezas / Filo</FormLabel><FormControl><Input type="number" className="h-8 text-sm" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="china.cycleMinPerPiece" render={({ field }) => (
+                    <FormItem><FormLabel className="text-[10px] uppercase">Ciclo (min/pza)</FormLabel><FormControl><Input type="number" className="h-8 text-sm" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="china.pcsBetweenChanges" render={({ field }) => (
+                    <FormItem><FormLabel className="text-[10px] uppercase">Pzs entre Cambios</FormLabel><FormControl><Input type="number" className="h-8 text-sm" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="china.scrapRate" render={({ field }) => (
+                    <FormItem><FormLabel className="text-[10px] uppercase">Tasa Scrap (0 a 1)</FormLabel><FormControl><Input type="number" className="h-8 text-sm" step="0.01" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><p className="text-[9px] text-slate-400">Ej: 0.05 = 5%</p></FormItem>
+                  )} />
+                </CardContent>
+              </Card>
+
+              {/* COLUMNA NUESTRO INSERTO */}
+              <Card className="border-blue-300 shadow-sm overflow-hidden">
+                <div className="bg-blue-600 p-2 text-center border-b border-blue-700">
+                  <span className="text-xs font-black uppercase text-white tracking-wider">Nuestro Inserto</span>
+                </div>
+                <CardContent className="p-3 space-y-3 bg-blue-50/30">
+                  <FormField control={form.control} name="premium.priceUsd" render={({ field }) => (
+                    <FormItem><FormLabel className="text-[10px] uppercase text-blue-900">Precio Inserto</FormLabel><FormControl><Input type="number" className="h-8 text-sm border-blue-300 focus-visible:ring-blue-500" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="premium.pcsPerEdge" render={({ field }) => (
+                    <FormItem><FormLabel className="text-[10px] uppercase text-blue-900">Piezas / Filo</FormLabel><FormControl><Input type="number" className="h-8 text-sm border-blue-300 focus-visible:ring-blue-500" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="premium.cycleMinPerPiece" render={({ field }) => (
+                    <FormItem><FormLabel className="text-[10px] uppercase text-blue-900">Ciclo (min/pza)</FormLabel><FormControl><Input type="number" className="h-8 text-sm border-blue-300 focus-visible:ring-blue-500" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="premium.pcsBetweenChanges" render={({ field }) => (
+                    <FormItem><FormLabel className="text-[10px] uppercase text-blue-900">Pzs entre Cambios</FormLabel><FormControl><Input type="number" className="h-8 text-sm border-blue-300 focus-visible:ring-blue-500" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="premium.scrapRate" render={({ field }) => (
+                    <FormItem><FormLabel className="text-[10px] uppercase text-blue-900">Tasa Scrap (0 a 1)</FormLabel><FormControl><Input type="number" className="h-8 text-sm border-blue-300 focus-visible:ring-blue-500" step="0.01" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><p className="text-[9px] text-blue-400">Ej: 0.01 = 1%</p></FormItem>
+                  )} />
+                </CardContent>
+              </Card>
+
+            </div>
+          </form>
+        </Form>
+      </div>
+
+      {/* FLOATING BOTTOM BAR (RESULTADOS EN VIVO) */}
+      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-50 p-4">
+        <div className="max-w-2xl mx-auto">
+          
+          <div className="grid grid-cols-2 gap-4 mb-3">
+            <div className="text-center">
+              <span className="block text-[10px] uppercase font-bold text-slate-500">Costo Pza (Competidor)</span>
+              <span className="block text-xl font-black text-slate-700">{formatCurrency(results.chinaCalc.totalCostPerPiece)}</span>
+            </div>
+            <div className="text-center border-l border-slate-200">
+              <span className="block text-[10px] uppercase font-bold text-blue-600">Costo Pza (Nuestro)</span>
+              <span className="block text-xl font-black text-blue-700">{formatCurrency(results.premiumCalc.totalCostPerPiece)}</span>
+            </div>
+          </div>
+
+          <div className={`p-3 rounded-lg border flex items-start gap-3 ${trafficColors[results.trafficLight]}`}>
+            {results.trafficLight === 'green' ? <TrendingUp className="w-5 h-5 mt-0.5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />}
+            <p className="text-xs font-medium leading-relaxed">
+              {results.argument || "Cargando datos..."}
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
