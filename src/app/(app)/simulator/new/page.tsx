@@ -261,20 +261,21 @@ Quedo a su entera disposición para cualquier consulta.`;
       <div className="absolute top-0 left-0 opacity-0 pointer-events-none -z-50 overflow-hidden h-0 w-0">
         <div id="pdf-report-template" className="w-[210mm] h-[290mm] bg-white text-black p-10 font-sans box-border flex flex-col justify-between overflow-hidden">
           
-          {/* HEADER */}
-          <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4">
-              <div className="flex items-center gap-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logo.png" alt="Secocut" className="h-12 w-auto object-contain" />
-                  <div>
-                      <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Informe de Competitividad</h1>
-                      <p className="text-sm font-bold text-blue-600 uppercase tracking-widest">Secocut SRL</p>
-                  </div>
+          {/* HEADER CON LOGO */}
+          <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
+            <div className="flex items-center gap-4">
+              {/* Asumiendo que el logo se llama logo.png y está en la carpeta public */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="Secocut Logo" className="h-12 w-auto object-contain" />
+              <div>
+                <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Informe de Competitividad</h1>
+                <p className="text-sm font-bold text-blue-600 uppercase tracking-widest">Secocut SRL</p>
               </div>
-              <div className="text-right">
-                  <p className="text-xs font-bold text-slate-500 uppercase">FECHA</p>
-                  <p className="text-base font-semibold text-slate-800">{new Date().toLocaleDateString('es-ES')}</p>
-              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-bold text-slate-500 uppercase">FECHA</p>
+              <p className="text-base font-semibold text-slate-800">{new Date().toLocaleDateString('es-ES')}</p>
+            </div>
           </div>
 
           {/* DATOS DEL PROCESO */}
