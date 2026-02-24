@@ -253,84 +253,96 @@ Quedo a su entera disposición para cualquier consulta.`;
         </div>
       </div>
 
-      {/* PDF REPORT TEMPLATE (HIDDEN CORRECTAMENTE) */}
+      {/* PDF REPORT TEMPLATE (HIDDEN CORRECTAMENTE - UNA SOLA HOJA A4) */}
       <div className="absolute top-0 left-0 opacity-0 pointer-events-none -z-50 overflow-hidden h-0 w-0">
-        <div id="pdf-report-template" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border">
+        <div id="pdf-report-template" className="w-[210mm] h-[297mm] bg-white text-black p-12 font-sans box-border flex flex-col justify-between">
+          
+          {/* HEADER */}
           <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4">
-            <h1 className="text-3xl font-black text-slate-800 uppercase">Informe de Competitividad</h1>
-            <div className="text-right">
-                <p className="text-sm font-bold text-slate-600">FECHA</p>
-                <p className="text-lg font-semibold text-slate-800">{new Date().toLocaleDateString('es-ES')}</p>
-            </div>
-        </div>
+              <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Informe de Competitividad</h1>
+              <div className="text-right">
+                  <p className="text-xs font-bold text-slate-500 uppercase">FECHA</p>
+                  <p className="text-base font-semibold text-slate-800">{new Date().toLocaleDateString('es-ES')}</p>
+              </div>
+          </div>
 
-        <div className="my-8">
-            <h2 className="text-xl font-bold text-blue-700 mb-4 uppercase tracking-wide">Datos del Proceso</h2>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-base p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <p><span className="font-semibold text-slate-600">Cliente:</span> {formValuesForPdf.clientName || 'N/A'}</p>
-                <p><span className="font-semibold text-slate-600">Costo Hora-Máquina:</span> {formatCurrency(formValuesForPdf.machineUsdPerHour)}</p>
-                <p><span className="font-semibold text-slate-600">Tiempo Cambio Herr.:</span> {formValuesForPdf.toolChangeMin} min</p>
-                <p><span className="font-semibold text-slate-600">Costo Pieza Scrap:</span> {formatCurrency(formValuesForPdf.scrapCostUsdPerPiece)}</p>
-            </div>
-        </div>
+          {/* DATOS DEL PROCESO */}
+          <div>
+              <h2 className="text-lg font-bold text-blue-700 mb-3 uppercase tracking-wide">Datos del Proceso</h2>
+              <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <p><span className="font-semibold text-slate-600">Cliente:</span> {formValuesForPdf.clientName || 'N/A'}</p>
+                  <p><span className="font-semibold text-slate-600">Costo Hora-Máquina:</span> {formatCurrency(formValuesForPdf.machineUsdPerHour)}</p>
+                  <p><span className="font-semibold text-slate-600">Tiempo Cambio Herr.:</span> {formValuesForPdf.toolChangeMin} min</p>
+                  <p><span className="font-semibold text-slate-600">Costo Pieza Scrap:</span> {formatCurrency(formValuesForPdf.scrapCostUsdPerPiece)}</p>
+              </div>
+          </div>
 
-        <div className="my-8">
-            <h2 className="text-xl font-bold text-blue-700 mb-4 uppercase tracking-wide">Tabla Comparativa</h2>
-            <table className="w-full text-left border-collapse">
-                <thead>
-                    <tr className="bg-slate-800 text-white">
-                        <th className="p-3 font-semibold border-b border-slate-300">Parámetro</th>
-                        <th className="p-3 font-semibold text-center border-b border-slate-300">Competidor</th>
-                        <th className="p-3 font-semibold text-center border-b border-slate-300">Nuestro Inserto</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr className="bg-slate-100">
-                        <td className="p-3 border-b border-slate-200 font-medium">Precio Inserto</td>
-                        <td className="p-3 border-b border-slate-200 text-center">{formatCurrency(formValuesForPdf.china.priceUsd)}</td>
-                        <td className="p-3 border-b border-slate-200 text-center">{formatCurrency(formValuesForPdf.premium.priceUsd)}</td>
-                    </tr>
-                    <tr>
-                        <td className="p-3 border-b border-slate-200 font-medium">Piezas / Filo</td>
-                        <td className="p-3 border-b border-slate-200 text-center">{formValuesForPdf.china.pcsPerEdge}</td>
-                        <td className="p-3 border-b border-slate-200 text-center">{formValuesForPdf.premium.pcsPerEdge}</td>
-                    </tr>
-                    <tr className="bg-slate-100">
-                        <td className="p-3 border-b border-slate-200 font-medium">Ciclo (min/pza)</td>
-                        <td className="p-3 border-b border-slate-200 text-center">{formValuesForPdf.china.cycleMinPerPiece}</td>
-                        <td className="p-3 border-b border-slate-200 text-center">{formValuesForPdf.premium.cycleMinPerPiece}</td>
-                    </tr>
-                    <tr>
-                        <td className="p-3 border-b border-slate-200 font-medium">Tasa de Scrap</td>
-                        <td className="p-3 border-b border-slate-200 text-center">{formatPercent(formValuesForPdf.china.scrapRate * 100)}</td>
-                        <td className="p-3 border-b border-slate-200 text-center">{formatPercent(formValuesForPdf.premium.scrapRate * 100)}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <div className="my-8 grid grid-cols-2 gap-8">
-            <div className="p-6 bg-red-50 rounded-lg border-2 border-red-200 text-center">
-                <h3 className="text-sm font-bold text-red-700 uppercase mb-2">Costo Total / Pieza (Competidor)</h3>
-                <p className="text-4xl font-black text-red-800">{formatCurrency(results.chinaCalc.totalCostPerPiece)}</p>
-            </div>
-            <div className="p-6 bg-green-50 rounded-lg border-2 border-green-200 text-center">
-                <h3 className="text-sm font-bold text-green-700 uppercase mb-2">Costo Total / Pieza (Nuestro)</h3>
-                <p className="text-4xl font-black text-green-800">{formatCurrency(results.premiumCalc.totalCostPerPiece)}</p>
-            </div>
-        </div>
+          {/* TABLA COMPARATIVA */}
+          <div>
+              <h2 className="text-lg font-bold text-blue-700 mb-3 uppercase tracking-wide">Tabla Comparativa</h2>
+              <table className="w-full text-left border-collapse text-sm">
+                  <thead>
+                      <tr className="bg-slate-800 text-white">
+                          <th className="p-2 font-semibold border-b border-slate-300">Parámetro</th>
+                          <th className="p-2 font-semibold text-center border-b border-slate-300">Competidor</th>
+                          <th className="p-2 font-semibold text-center border-b border-slate-300">Nuestro Inserto</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      <tr className="bg-slate-100">
+                          <td className="p-2 border-b border-slate-200 font-medium">Precio Inserto</td>
+                          <td className="p-2 border-b border-slate-200 text-center">{formatCurrency(formValuesForPdf.china.priceUsd)}</td>
+                          <td className="p-2 border-b border-slate-200 text-center">{formatCurrency(formValuesForPdf.premium.priceUsd)}</td>
+                      </tr>
+                      <tr>
+                          <td className="p-2 border-b border-slate-200 font-medium">Piezas / Filo</td>
+                          <td className="p-2 border-b border-slate-200 text-center">{formValuesForPdf.china.pcsPerEdge}</td>
+                          <td className="p-2 border-b border-slate-200 text-center">{formValuesForPdf.premium.pcsPerEdge}</td>
+                      </tr>
+                      <tr className="bg-slate-100">
+                          <td className="p-2 border-b border-slate-200 font-medium">Ciclo (min/pza)</td>
+                          <td className="p-2 border-b border-slate-200 text-center">{formValuesForPdf.china.cycleMinPerPiece}</td>
+                          <td className="p-2 border-b border-slate-200 text-center">{formValuesForPdf.premium.cycleMinPerPiece}</td>
+                      </tr>
+                      <tr>
+                          <td className="p-2 border-b border-slate-200 font-medium">Tasa de Scrap</td>
+                          <td className="p-2 border-b border-slate-200 text-center">{formatPercent(formValuesForPdf.china.scrapRate * 100)}</td>
+                          <td className="p-2 border-b border-slate-200 text-center">{formatPercent(formValuesForPdf.premium.scrapRate * 100)}</td>
+                      </tr>
+                  </tbody>
+              </table>
+          </div>
+          
+          {/* COSTOS TOTALES (EL GOLPE VISUAL) */}
+          <div className="grid grid-cols-2 gap-6">
+              <div className="p-4 bg-red-50 rounded-lg border-2 border-red-200 text-center shadow-sm">
+                  <h3 className="text-xs font-bold text-red-700 uppercase mb-1">Costo Total / Pieza (Competidor)</h3>
+                  <p className="text-3xl font-black text-red-800">{formatCurrency(results.chinaCalc.totalCostPerPiece)}</p>
+              </div>
+              <div className="p-4 bg-green-50 rounded-lg border-2 border-green-200 text-center shadow-sm">
+                  <h3 className="text-xs font-bold text-green-700 uppercase mb-1">Costo Total / Pieza (Nuestro)</h3>
+                  <p className="text-3xl font-black text-green-800">{formatCurrency(results.premiumCalc.totalCostPerPiece)}</p>
+              </div>
+          </div>
 
-        <div className="mt-12 pt-6 border-t border-slate-300">
-             <h2 className="text-xl font-bold text-blue-700 mb-4 uppercase tracking-wide">Conclusión Técnica</h2>
-             <div className={`p-6 rounded-lg border-2 ${trafficColors[results.trafficLight].replace('bg-', 'border-').replace('text-', 'border-')} ${trafficColors[results.trafficLight]}`}>
-                <p className="text-base leading-relaxed">{results.argument}</p>
-             </div>
-        </div>
+          {/* CONCLUSIÓN TÉCNICA */}
+          <div className="pt-4 border-t border-slate-300">
+               <h2 className="text-lg font-bold text-blue-700 mb-3 uppercase tracking-wide">Conclusión Técnica</h2>
+               <div className={`p-4 rounded-lg border-2 bg-slate-50 border-slate-300`}>
+                  <p className="text-sm font-medium leading-relaxed text-slate-800 italic">
+                    {results.argument}
+                  </p>
+               </div>
+          </div>
+
+          {/* FOOTER PEQUEÑO */}
+          <div className="text-center pt-2 mt-auto">
+            <p className="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Generado con Simulador de Competitividad • Secocut SRL</p>
+          </div>
+
         </div>
       </div>
 
     </div>
   );
 }
-
-    
