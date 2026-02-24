@@ -8,28 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Edit, Download } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-
-// --- FORMATOS (Helpers) ---
-const formatCurrency = (val?: number) => {
-    if (typeof val !== 'number' || !isFinite(val)) return '$0.00';
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
-}
-const formatPercent = (val?: number) => {
-    if (typeof val !== 'number' || !isFinite(val)) return '0.0%';
-    return `${val.toFixed(1)}%`;
-}
-const formatNumber = (val?: number) => {
-    if (typeof val !== 'number' || !isFinite(val)) return '0';
-    return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(val);
-}
-
-// Función para convertir minutos decimales a formato legible (ej: 1m 50s)
-const formatoMinutosYSegundos = (minutosDecimales: number): string => {
-  if (!minutosDecimales || minutosDecimales <= 0) return "0m 0s";
-  const min = Math.floor(minutosDecimales);
-  const seg = Math.round((minutosDecimales - min) * 60);
-  return seg === 60 ? `${min + 1}m 0s` : `${min}m ${seg}s`;
-};
+import { formatCurrency, formatNumber, formatPercent, formatoMinutosYSegundos } from "@/lib/formatters";
 
 // --- SUB-COMPONENTES (Texto Grande 10px, pero Fila Compacta 22px) ---
 
@@ -108,7 +87,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
   const piezasExtraMes = tcB > 0 ? Math.floor((horasLiberadas * 60) / tcB) : 0;
   const impactoEconomicoTotal = (r.ahorroAnual || 0) + (dineroExtraAnual || 0);
   
-  const validImages = data.imageUrls?.filter((url: string) => url && url.trim() !== "") || [];
+  const validImages = data.imageUrls?.filter((string) => url && url.trim() !== "") || [];
   const hasThirdPage = data.technicalConclusion && data.technicalConclusion.trim() !== '';
   const piecesBase = data.piezasAlMes || 1;
   const pctIncrementoProduccion = piezasExtraMes > 0 ? (piezasExtraMes / piecesBase) * 100 : 0;
@@ -161,7 +140,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
         }
         .pdf-page { 
             width: 210mm; 
-            height: 296mm; 
+            height: 295mm; 
             padding: 25px 40px; 
             background: white; 
             position: relative; 
@@ -223,7 +202,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col justify-center mb-6 min-h-[220px]">
+            <div className="mb-6 min-h-[220px]">
                  {validImages.length > 0 ? (
                     <div className="flex flex-col h-full justify-center">
                         <div className="text-center mb-4 px-4"><h3 className="text-sm font-bold text-blue-900 italic font-serif leading-relaxed">&ldquo;Se pueden conseguir Resultados o Excusas, no las dos cosas.&rdquo;</h3><div className="h-0.5 w-16 bg-blue-500 mx-auto mt-2 rounded-full opacity-50"></div></div>
@@ -272,7 +251,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
               </div>
             </div>
             
-            <div className="text-center pt-2 mt-auto border-t border-slate-100"><p className="text-[10px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos - Página {hasThirdPage ? '1/3' : '1/2'}</p></div>
+            <div className="text-center pt-2 mt-6 border-t border-slate-100"><p className="text-[10px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos - Página {hasThirdPage ? '1/3' : '1/2'}</p></div>
         </div>
 
         {/* ================= PÁGINA 2 (AJUSTADA AL MILÍMETRO) ================= */}
@@ -386,7 +365,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <div className="grid grid-cols-12 bg-[#CEEAD6] px-2 font-black border-t border-green-300 text-center text-[10px] tracking-wide min-h-[26px] items-center"><div className="col-span-3 text-left uppercase text-slate-800 flex items-center h-full">ANUAL</div><div className="col-span-2 text-slate-800 flex items-center justify-center h-full">{formatCurrency((r.costoTotalMensualA || 0) * 12)}</div><div className="col-span-2 text-[#1A73E8] flex items-center justify-center h-full">{formatCurrency((r.costoTotalMensualB || 0) * 12)}</div><div className="col-span-3 text-[#137333] text-sm flex items-center justify-center h-full">{formatCurrency(r.ahorroAnual)}</div><div className="col-span-2 text-[#137333] flex items-center justify-center h-full">{formatPercent(r.totalCostReductionPercent)}</div></div>
             </div>
 
-            <div className="mt-auto text-center border-t border-slate-200 pt-3">
+            <div className="mt-6 text-center border-t border-slate-200 pt-3">
                 <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Generado con Analizador de Costos - Página {hasThirdPage ? '2/3' : '2/2'}</p>
                 <p className="text-xs font-bold text-blue-600 mt-1">https://secocut-app.web.app</p>
             </div>
@@ -406,7 +385,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                     <div className="text-right"><span className="text-[10px] text-slate-400 font-medium">Página 3/3</span></div>
                 </div>
 
-                <div className="prose prose-sm max-w-none text-justify flex-1">
+                <div className="prose prose-sm max-w-none text-justify">
                     <h2 className="text-lg font-bold text-slate-800 mb-3 border-b border-slate-200 pb-2">Análisis y Conclusiones Adicionales</h2>
                     {/* TEXTO AUMENTADO A 11PX */}
                     <div className="text-[11px] text-slate-700 leading-relaxed whitespace-pre-wrap font-medium">
@@ -414,7 +393,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                     </div>
                 </div>
                 
-                <div className="mt-auto text-center border-t border-slate-200 pt-4">
+                <div className="mt-6 text-center border-t border-slate-200 pt-4">
                     <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Generado con Analizador de Costos - Página 3/3</p>
                     <p className="text-xs font-bold text-blue-600 mt-1">https://secocut-app.web.app</p>
                 </div>
