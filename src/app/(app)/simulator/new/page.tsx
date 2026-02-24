@@ -254,9 +254,10 @@ Quedo a su entera disposición para cualquier consulta.`;
         </div>
       </div>
 
-      {/* PDF REPORT TEMPLATE (HIDDEN) */}
-      <div id="pdf-report-template" className="absolute left-[-9999px] top-[-9999px] w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans">
-        <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4">
+      {/* PDF REPORT TEMPLATE (HIDDEN CORRECTAMENTE) */}
+      <div className="absolute top-0 left-0 opacity-0 pointer-events-none -z-50 overflow-hidden h-0 w-0">
+        <div id="pdf-report-template" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border">
+          <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4">
             <h1 className="text-3xl font-black text-slate-800 uppercase">Informe de Competitividad</h1>
             <div className="text-right">
                 <p className="text-sm font-bold text-slate-600">FECHA</p>
@@ -326,7 +327,8 @@ Quedo a su entera disposición para cualquier consulta.`;
                 <p className="text-base leading-relaxed">{results.argument}</p>
              </div>
         </div>
-    </div>
+        </div>
+      </div>
 
     </div>
   );
