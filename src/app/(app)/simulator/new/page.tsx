@@ -9,11 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Save, TrendingUp, AlertCircle } from "lucide-react";
+import { Save, TrendingUp, AlertCircle, Download, Share2, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 
 export default function NewSimulatorPage() {
   const [isSaving, setIsSaving] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   // Inicializamos el formulario con valores por defecto para que no explote
   const form = useForm({
@@ -41,6 +42,51 @@ export default function NewSimulatorPage() {
     premiumVals || { priceUsd: 0, pcsPerEdge: 1, cycleMinPerPiece: 0, pcsBetweenChanges: 1, scrapRate: 0 },
     { machineUsdPerHour, toolChangeMin, scrapCostUsdPerPiece }
   );
+  
+  const handleDownloadPDF = async () => {
+    setIsPrinting(true);
+    const element = document.getElementById('simulator-content');
+    if (!element) {
+        setIsPrinting(false);
+        return;
+    }
+
+    try {
+        const html2pdf = (await import('html2pdf.js')).default;
+        const clientName = form.getValues('clientName');
+        const fileName = `Simulacion_${clientName ? clientName.replace(/ /g, '_') : 'Competitividad'}.pdf`;
+        
+        const opt = {
+            margin:       [10, 5],
+            filename:     fileName,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, logging: false, onclone: (doc: Document) => {
+                // Ocultamos los botones en el clon del documento
+                const headerActions = doc.getElementById('header-actions');
+                if (headerActions) headerActions.style.display = 'none';
+            }},
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        await html2pdf().set(opt).from(element).save();
+    } catch (error) {
+        console.error("Error generando PDF:", error);
+        alert("Hubo un error al generar el PDF.");
+    } finally {
+        setIsPrinting(false);
+    }
+  };
+
+  const handleWhatsAppShare = () => {
+    const clientName = form.getValues('clientName');
+    const chinaCost = formatCurrency(results.chinaCalc.totalCostPerPiece);
+    const premiumCost = formatCurrency(results.premiumCalc.totalCostPerPiece);
+    const argument = results.argument;
+
+    const message = `Hola ${clientName || ''}, realizamos una simulación de costos de mecanizado.\n\n- Costo con su inserto actual: *${chinaCost}* por pieza.\n- Costo con nuestro inserto premium: *${premiumCost}* por pieza.\n\n*Conclusión:* ${argument}`;
+    
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+  };
 
   const onSubmit = async (data: any) => {
     setIsSaving(true);
@@ -65,13 +111,23 @@ export default function NewSimulatorPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-48"> {/* pb-48 deja espacio para la barra flotante */}
-      <div className="max-w-2xl mx-auto p-4">
+      <div id="simulator-content" className="max-w-2xl mx-auto p-4">
         
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6" id="header-actions">
           <h1 className="text-2xl font-black text-slate-800 tracking-tight">SIMULADOR</h1>
-          <Button onClick={form.handleSubmit(onSubmit)} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">
-            <Save className="mr-2 h-4 w-4" /> {isSaving ? "Guardando..." : "Guardar"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={handleDownloadPDF} disabled={isPrinting} variant="outline">
+                {isPrinting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                PDF
+            </Button>
+             <Button onClick={handleWhatsAppShare} variant="outline">
+                <Share2 className="mr-2 h-4 w-4" />
+                WhatsApp
+            </Button>
+            <Button onClick={form.handleSubmit(onSubmit)} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">
+                <Save className="mr-2 h-4 w-4" /> {isSaving ? "Guardando..." : "Guardar"}
+            </Button>
+          </div>
         </div>
 
         <Form {...form}>
