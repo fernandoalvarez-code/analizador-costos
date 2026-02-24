@@ -1,8 +1,15 @@
 "use client";
 
-export const formatCurrency = (val?: number) => {
-    if (typeof val !== 'number' || !isFinite(val)) return '$0.00';
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+export const formatCurrency = (value: number | undefined | null): string => {
+  if (value === undefined || value === null || isNaN(value)) {
+    return "USD 0.00";
+  }
+  
+  // Formatea el número con comas y 2 decimales, y le pone "USD" adelante
+  return `USD ${value.toLocaleString('en-US', { 
+    minimumFractionDigits: 2, 
+    maximumFractionDigits: 2 
+  })}`;
 };
 
 export const formatPercent = (val?: number) => {

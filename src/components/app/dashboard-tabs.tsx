@@ -21,6 +21,7 @@ import { useFirestore, useUser, collection, doc, storage } from "@/firebase";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../ui/alert-dialog";
 import { useRouter } from "next/navigation";
 import { ImageUploader } from "./image-uploader";
+import { formatCurrency } from "@/lib/formatters";
 
 // --- FUNCIÓN DE LIMPIEZA BLINDADA (FINAL) ---
 const cleanForFirestore = (obj: any): any => {
@@ -64,18 +65,6 @@ const cleanForFirestore = (obj: any): any => {
   // 6. Resto (Strings, Booleans) pasan igual
   return obj;
 };
-
-
-// Formato Moneda
-const formatCurrency = (val?: number) => {
-    if (typeof val !== 'number' || !isFinite(val)) return '$0.00';
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
-}
-
-const formatCurrencyDisplay = (value?: number) => {
-    if (typeof value !== 'number' || !isFinite(value)) return 'N/A';
-    return new Intl.NumberFormat('es-US', { style: 'currency', currency: 'USD' }).format(value);
-}
 
 // Helpers matemáticos seguros
 const safeNumber = (val: any) => {
@@ -522,7 +511,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                           </fieldset>
                            {netSavingsResult && (
                               <div className="mt-6 pt-6 border-t animate-in fade-in">
-                                  <div className="text-center mb-6"><span className="text-lg font-medium text-gray-700">AHORRO NETO ANUAL:</span><div className={`text-5xl font-bold ${netSavingsResult.netAnnualSavings > 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrencyDisplay(netSavingsResult.netAnnualSavings)}</div></div>
+                                  <div className="text-center mb-6"><span className="text-lg font-medium text-gray-700">AHORRO NETO ANUAL:</span><div className={`text-5xl font-bold ${netSavingsResult.netAnnualSavings > 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(netSavingsResult.netAnnualSavings)}</div></div>
                               </div>
                           )}
                       </div>
@@ -746,7 +735,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                 {netSavingsResult && (
                     <div className="mb-10">
                         <h3 className="text-sm font-bold text-green-700 uppercase border-b border-green-200 mb-4 pb-1">Proyección de Ahorro Real</h3>
-                        <div className="bg-green-50 border border-green-200 p-6 rounded-lg text-center"><p className="text-sm font-bold text-green-800 uppercase mb-2">Ahorro Neto Anual Estimado</p><p className="text-5xl font-black text-green-600">{formatCurrencyDisplay(netSavingsResult.netAnnualSavings)}</p><p className="text-xs text-green-700 mt-2 font-medium">Considerando {diagValues.piezasAlMes?.toLocaleString()} piezas/mes</p></div>
+                        <div className="bg-green-50 border border-green-200 p-6 rounded-lg text-center"><p className="text-sm font-bold text-green-800 uppercase mb-2">Ahorro Neto Anual Estimado</p><p className="text-5xl font-black text-green-600">{formatCurrency(netSavingsResult.netAnnualSavings)}</p><p className="text-xs text-green-700 mt-2 font-medium">Considerando {diagValues.piezasAlMes?.toLocaleString()} piezas/mes</p></div>
                     </div>
                 )}
                 <div className="text-center mt-auto pt-8 border-t border-slate-200"><p className="text-sm font-bold text-slate-400 italic font-serif">"Se pueden conseguir Resultados o Excusas, no las dos cosas."</p><p className="text-[10px] text-slate-300 mt-2 uppercase">Generado el {new Date().toLocaleDateString()}</p></div>

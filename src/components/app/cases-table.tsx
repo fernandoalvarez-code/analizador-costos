@@ -55,12 +55,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { formatCurrency } from "@/lib/formatters";
 
-
-const formatCurrency = (value: number | undefined) => {
-    if (typeof value !== 'number' || !isFinite(value)) return 'N/A';
-    return new Intl.NumberFormat('es-US', { style: 'currency', currency: 'USD' }).format(value);
-}
 
 export type CaseData = {
   id: string;
