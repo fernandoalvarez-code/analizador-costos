@@ -53,15 +53,18 @@ export default function NewSimulatorPage() {
     }
 
     try {
+        // Pausa de 300ms para asegurar que el DOM cargó los datos antes de la "foto"
+        await new Promise(resolve => setTimeout(resolve, 300));
+
         const html2pdf = (await import('html2pdf.js')).default;
         const clientName = form.getValues('clientName');
         const fileName = `Informe_Simulador_${clientName ? clientName.replace(/ /g, '_') : 'Competitividad'}.pdf`;
         
         const opt = {
-            margin:       0,
+            margin:       10, // Margen blanco elegante alrededor del PDF
             filename:     fileName,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, logging: false },
+            html2canvas:  { scale: 2, useCORS: true, logging: false, windowWidth: 1000 }, // windowWidth arregla el error en blanco
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
         await html2pdf().set(opt).from(element).save();
