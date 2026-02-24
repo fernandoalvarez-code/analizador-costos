@@ -255,7 +255,7 @@ Quedo a su entera disposición para cualquier consulta.`;
 
       {/* PDF REPORT TEMPLATE (HIDDEN CORRECTAMENTE - UNA SOLA HOJA A4) */}
       <div className="absolute top-0 left-0 opacity-0 pointer-events-none -z-50 overflow-hidden h-0 w-0">
-        <div id="pdf-report-template" className="w-[210mm] h-[297mm] bg-white text-black p-12 font-sans box-border flex flex-col justify-between">
+        <div id="pdf-report-template" className="w-[210mm] h-[290mm] bg-white text-black p-10 font-sans box-border flex flex-col justify-between overflow-hidden">
           
           {/* HEADER */}
           <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4">
@@ -346,3 +346,5 @@ Quedo a su entera disposición para cualquier consulta.`;
     </div>
   );
 }
+
+    
