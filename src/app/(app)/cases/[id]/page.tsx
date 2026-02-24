@@ -97,7 +97,16 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
   const turnosA = (r.turnosMensualesA || 0);
   const turnosB = (r.turnosMensualesB || 0);
   const turnosAhorrados = turnosA - turnosB;
-  const piezasExtraMes = (r.piezasAdicionalesAnual || 0) / 12;
+  
+  // Variables para el desglose (y para actualizar la conclusión)
+  const piezasAlMes = data.piezasAlMes || 0;
+  const costoHora = data.machineHourlyRate || 0;
+  const horasA = (tcA * piezasAlMes) / 60;
+  const horasB = (tcB * piezasAlMes) / 60;
+  const horasLiberadas = horasA - horasB;
+  const dineroExtraAnual = horasLiberadas * costoHora * 12;
+  const piezasExtraMes = tcB > 0 ? Math.floor((horasLiberadas * 60) / tcB) : 0;
+  
   const validImages = data.imageUrls?.filter((url: string) => url && url.trim() !== "") || [];
   const hasThirdPage = data.technicalConclusion && data.technicalConclusion.trim() !== '';
   const piecesBase = data.piezasAlMes || 1;
@@ -212,7 +221,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col justify-center mb-6 min-h-[220px]">
+            <div className="mb-6 min-h-[220px]">
                  {validImages.length > 0 ? (
                     <div className="flex flex-col h-full justify-center">
                         <div className="text-center mb-4 px-4"><h3 className="text-sm font-bold text-blue-900 italic font-serif leading-relaxed">&ldquo;Se pueden conseguir Resultados o Excusas, no las dos cosas.&rdquo;</h3><div className="h-0.5 w-16 bg-blue-500 mx-auto mt-2 rounded-full opacity-50"></div></div>
@@ -232,7 +241,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                     <p className="mb-2 text-[11px]">
                         Con la mejora de proceso su empresa se ahorra <strong className="text-green-700 text-sm">{formatCurrency(r.ahorroAnual)} anuales</strong>.
                         Además, esta mejora le da un potencial adicional, ya que la máquina queda libre para generar 
-                        <strong className="text-blue-700"> {formatCurrency(r.machineHoursFreedValueAnnual)} extras</strong> o producir 
+                        <strong className="text-blue-700"> {formatCurrency(dineroExtraAnual)} extras</strong> o producir 
                         <strong className="text-slate-900"> {formatNumber(piezasExtraMes)} piezas más por mes</strong>
                         {pctIncrementoProduccion > 0.1 && (
                              <span className="text-green-600 font-bold ml-1">
@@ -242,14 +251,36 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                         .
                     </p>
                     <p className="text-slate-500 italic border-t border-slate-200 pt-2 mt-1 text-[10px]">
-                        * Cálculos basados en una demanda de <strong>{data.piezasAlMes?.toLocaleString()} piezas/mes</strong>. 
-                        Actualmente esto ocupa <strong>{r.tiempoMaquinaMensualHorasA?.toFixed(1)} horas/mes</strong> de máquina, 
+                        * Cálculos basados en una demanda de <strong>{piezasAlMes.toLocaleString()} piezas/mes</strong>. 
+                        Actualmente esto ocupa <strong>{horasA.toFixed(1)} horas/mes</strong> de máquina, 
                         equivalente a <strong>{turnosA.toFixed(1)} turnos</strong> de trabajo (base 8hs).
                     </p>
                 </div>
             </div>
+
+            {/* DESGLOSE DE CAPACIDAD LIBERADA */}
+            <div className="mt-4 bg-slate-50 p-5 border border-slate-200 rounded-lg">
+              <h4 className="font-bold text-slate-800 mb-3 uppercase text-sm tracking-wide">
+                Desglose de Capacidad Liberada
+              </h4>
+              <ul className="text-sm text-slate-700 space-y-2 mb-4 list-disc pl-5">
+                <li>
+                  <strong>Tiempo Actual:</strong> Hacer {piezasAlMes.toLocaleString()} piezas a {formatoMinutosYSegundos(tcA)} cada una, toma {horasA.toFixed(1)} horas al mes.
+                </li>
+                <li>
+                  <strong>Tiempo Propuesto:</strong> Hacer {piezasAlMes.toLocaleString()} piezas a {formatoMinutosYSegundos(tcB)} cada una, toma {horasB.toFixed(1)} horas al mes.
+                </li>
+                <li>
+                  <strong>Ahorro:</strong> La máquina ahora termina el mismo trabajo en menos tiempo, liberando <span className="font-bold text-green-600">{horasLiberadas.toFixed(1)} horas al mes</span>.
+                </li>
+              </ul>
+              
+              <div className="bg-white p-3 border-l-4 border-blue-500 rounded text-sm text-slate-800 italic shadow-sm">
+                "Ya que la máquina queda libre, usted puede generar <strong>${dineroExtraAnual.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} extras al año</strong>, o lo que es lo mismo, producir <strong>{piezasExtraMes.toLocaleString()} piezas más cada mes</strong>."
+              </div>
+            </div>
             
-            <div className="text-center pt-2 mt-auto border-t border-slate-100"><p className="text-[10px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos - Página {hasThirdPage ? '1/3' : '1/2'}</p></div>
+            <div className="mt-6 text-center pt-2 border-t border-slate-100"><p className="text-[10px] text-slate-400 uppercase tracking-widest">Generado con Analizador de Costos - Página {hasThirdPage ? '1/3' : '1/2'}</p></div>
         </div>
 
         {/* ================= PÁGINA 2 (AJUSTADA AL MILÍMETRO) ================= */}
@@ -344,16 +375,16 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <Row label="Tiempo Proc. por Filo (min)" valA={`${r.minutosFiloA?.toFixed(1)}`} valB={`${r.minutosFiloB?.toFixed(1)}`} />
                 <Row 
                   label="Tiempo Corte/Pieza" 
-                  valA={`${timeInCutA.toFixed(3)} (${formatoMinutosYSegundos(timeInCutA)})`} 
-                  valB={`${timeInCutB.toFixed(3)} (${formatoMinutosYSegundos(timeInCutB)})`} 
+                  valA={formatoMinutosYSegundos(timeInCutA)} 
+                  valB={formatoMinutosYSegundos(timeInCutB)} 
                 />
                 <div className="grid grid-cols-10 border-b border-slate-200 px-2 bg-white items-center text-[10px] min-h-[22px]"><div className="col-span-4 font-medium text-slate-600 flex items-center h-full">Insertos/Mes</div><div className="col-span-3 flex items-center justify-center h-full text-slate-700">{insertosMesA.toFixed(1)} <span className="text-slate-400 ml-1">({formatCurrency(costoInsertosMesA)})</span></div><div className="col-span-3 flex items-center justify-center h-full text-slate-700">{insertosMesB.toFixed(1)} <span className="text-slate-400 ml-1">({formatCurrency(costoInsertosMesB)})</span></div></div>
                 <Row label="Costo Herr./Pieza" valA={formatCurrency(r.costoHerramientaA)} valB={formatCurrency(r.costoHerramientaB)} isRed />
                 <SectionTitle title="DATOS DEL PROCESO" />
                 <Row 
-                  label="Ciclo (min)" 
-                  valA={`${tcA.toFixed(3)} (${formatoMinutosYSegundos(tcA)})`} 
-                  valB={`${tcB.toFixed(3)} (${formatoMinutosYSegundos(tcB)})`} 
+                  label="Tiempo de Ciclo" 
+                  valA={formatoMinutosYSegundos(tcA)} 
+                  valB={formatoMinutosYSegundos(tcB)} 
                 />
                 <Row label="Costo Hora-Máq." valA={formatCurrency(data.machineHourlyRate)} valB={`(${formatCurrency(costoMinuto)}/min)`} />
                 <Row label="Costo Parada/Pieza" valA={formatCurrency(r.costoParadaA)} valB={formatCurrency(r.costoParadaB)} />
@@ -371,7 +402,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <div className="grid grid-cols-12 bg-[#CEEAD6] px-2 font-black border-t border-green-300 text-center text-[10px] tracking-wide min-h-[26px] items-center"><div className="col-span-3 text-left uppercase text-slate-800 flex items-center h-full">ANUAL</div><div className="col-span-2 text-slate-800 flex items-center justify-center h-full">{formatCurrency((r.costoTotalMensualA || 0) * 12)}</div><div className="col-span-2 text-[#1A73E8] flex items-center justify-center h-full">{formatCurrency((r.costoTotalMensualB || 0) * 12)}</div><div className="col-span-3 text-[#137333] text-sm flex items-center justify-center h-full">{formatCurrency(r.ahorroAnual)}</div><div className="col-span-2 text-[#137333] flex items-center justify-center h-full">{formatPercent(r.totalCostReductionPercent)}</div></div>
             </div>
 
-            <div className="mt-auto text-center border-t border-slate-200 pt-3">
+            <div className="mt-6 text-center pt-3 border-t border-slate-200">
                 <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Generado con Analizador de Costos - Página {hasThirdPage ? '2/3' : '2/2'}</p>
                 <p className="text-xs font-bold text-blue-600 mt-1">https://secocut-app.web.app</p>
             </div>
@@ -399,7 +430,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                     </div>
                 </div>
                 
-                <div className="mt-auto text-center border-t border-slate-200 pt-4">
+                <div className="mt-6 text-center pt-4 border-t border-slate-200">
                     <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Generado con Analizador de Costos - Página 3/3</p>
                     <p className="text-xs font-bold text-blue-600 mt-1">https://secocut-app.web.app</p>
                 </div>
