@@ -53,7 +53,6 @@ export default function NewSimulatorPage() {
     }
 
     try {
-        // Pausa de 300ms para asegurar que el DOM cargó los datos antes de la "foto"
         await new Promise(resolve => setTimeout(resolve, 300));
 
         const html2pdf = (await import('html2pdf.js')).default;
@@ -61,10 +60,10 @@ export default function NewSimulatorPage() {
         const fileName = `Informe_Simulador_${clientName ? clientName.replace(/ /g, '_') : 'Competitividad'}.pdf`;
         
         const opt = {
-            margin:       10, // Margen blanco elegante alrededor del PDF
+            margin:       0, // LO PONEMOS EN 0 PARA CONTROLAR TODO DESDE EL HTML
             filename:     fileName,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, logging: false, windowWidth: 1000 }, // windowWidth arregla el error en blanco
+            html2canvas:  { scale: 2, useCORS: true, logging: false, windowWidth: 1000 },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
         await html2pdf().set(opt).from(element).save();
@@ -333,3 +332,5 @@ Quedo a su entera disposición para cualquier consulta.`;
     </div>
   );
 }
+
+    
