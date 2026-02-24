@@ -87,7 +87,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
   const piezasExtraMes = tcB > 0 ? Math.floor((horasLiberadas * 60) / tcB) : 0;
   const impactoEconomicoTotal = (r.ahorroAnual || 0) + (dineroExtraAnual || 0);
   
-  const validImages = data.imageUrls?.filter((string) => url && url.trim() !== "") || [];
+  const validImages = data.imageUrls?.filter((url: string) => url && url.trim() !== "") || [];
   const hasThirdPage = data.technicalConclusion && data.technicalConclusion.trim() !== '';
   const piecesBase = data.piezasAlMes || 1;
   const pctIncrementoProduccion = piezasExtraMes > 0 ? (piezasExtraMes / piecesBase) * 100 : 0;
@@ -222,7 +222,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 Impacto Económico Total Estimado (Anual)
               </span>
               <span className="block text-2xl text-green-700 font-extrabold">
-                ${impactoEconomicoTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {formatCurrency(impactoEconomicoTotal)}
               </span>
               <span className="block text-xs text-green-600 mt-2 font-medium">
                 (Ahorro directo en costos + Potencial de facturación por horas de máquina liberadas)
@@ -236,10 +236,10 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
               </h4>
               <ul className="text-sm text-slate-700 space-y-2 mb-4 list-disc pl-5">
                 <li>
-                  <strong>Tiempo Actual:</strong> Hacer {piezasAlMes.toLocaleString()} piezas a {formatoMinutosYSegundos(tcA)} cada una, toma {horasA.toFixed(1)} horas al mes.
+                  <strong>Tiempo Actual:</strong> Hacer {formatNumber(piezasAlMes)} piezas a {formatoMinutosYSegundos(tcA)} cada una, toma {horasA.toFixed(1)} horas al mes.
                 </li>
                 <li>
-                  <strong>Tiempo Propuesto:</strong> Hacer {piezasAlMes.toLocaleString()} piezas a {formatoMinutosYSegundos(tcB)} cada una, toma {horasB.toFixed(1)} horas al mes.
+                  <strong>Tiempo Propuesto:</strong> Hacer {formatNumber(piezasAlMes)} piezas a {formatoMinutosYSegundos(tcB)} cada una, toma {horasB.toFixed(1)} horas al mes.
                 </li>
                 <li>
                   <strong>Ahorro:</strong> La máquina ahora termina el mismo trabajo en menos tiempo, liberando <span className="font-bold text-green-600">{horasLiberadas.toFixed(1)} horas al mes</span>.
@@ -247,7 +247,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
               </ul>
               
               <div className="bg-white p-3 border-l-4 border-blue-500 rounded text-sm text-slate-800 italic shadow-sm">
-                "Ya que la máquina queda libre, usted puede generar <strong>${dineroExtraAnual.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} extras al año</strong>, o lo que es lo mismo, producir <strong>{piezasExtraMes.toLocaleString()} piezas más cada mes</strong>."
+                "Ya que la máquina queda libre, usted puede generar <strong>{formatCurrency(dineroExtraAnual)} extras al año</strong>, o lo que es lo mismo, producir <strong>{formatNumber(piezasExtraMes)} piezas más cada mes</strong>."
               </div>
             </div>
             
@@ -262,7 +262,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                     {settings?.companyLogoUrl && /* eslint-disable-next-line @next/next/no-img-element */<img src={settings.companyLogoUrl} alt="Logo" className="h-6 object-contain opacity-50 grayscale" />}
                     <div className="border-l border-slate-300 pl-4">
                         <span className="block text-lg font-bold text-slate-700 uppercase leading-none">Análisis Detallado</span>
-                        <span className="block text-[9px] text-slate-400 mt-1 uppercase tracking-wider">Basado en {data.piezasAlMes?.toLocaleString()} pzs/mes @ {formatCurrency(data.machineHourlyRate)}/hr</span>
+                        <span className="block text-[9px] text-slate-400 mt-1 uppercase tracking-wider">Basado en {formatNumber(data.piezasAlMes)} pzs/mes @ {formatCurrency(data.machineHourlyRate)}/hr</span>
                     </div>
                 </div>
                 <div className="text-right"><span className="text-[10px] text-slate-400 font-medium">Página {hasThirdPage ? '2/3' : '2/2'}</span></div>
@@ -385,7 +385,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                     <div className="text-right"><span className="text-[10px] text-slate-400 font-medium">Página 3/3</span></div>
                 </div>
 
-                <div className="prose prose-sm max-w-none text-justify">
+                <div className="prose prose-sm max-w-none text-justify flex-1">
                     <h2 className="text-lg font-bold text-slate-800 mb-3 border-b border-slate-200 pb-2">Análisis y Conclusiones Adicionales</h2>
                     {/* TEXTO AUMENTADO A 11PX */}
                     <div className="text-[11px] text-slate-700 leading-relaxed whitespace-pre-wrap font-medium">
