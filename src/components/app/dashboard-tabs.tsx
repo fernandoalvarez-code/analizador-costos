@@ -21,7 +21,7 @@ import { useFirestore, useUser, collection, doc, storage } from "@/firebase";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../ui/alert-dialog";
 import { useRouter } from "next/navigation";
 import { ImageUploader } from "./image-uploader";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatoMinutosYSegundos } from "@/lib/formatters";
 
 // --- FUNCIÓN DE LIMPIEZA BLINDADA (FINAL) ---
 const cleanForFirestore = (obj: any): any => {
@@ -720,7 +720,11 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                         <div className="grid grid-cols-3 border-b border-slate-200 py-2 px-4 text-center"><div>Precio Inserto</div><div>{formatCurrency(diagValues.precioA)}</div><div>{formatCurrency(diagValues.precioB)}</div></div>
                         <div className="grid grid-cols-3 border-b border-slate-200 py-2 px-4 text-center"><div>Filos</div><div>{diagValues.filosA}</div><div>{diagValues.filosA}</div></div>
                         <div className="grid grid-cols-3 border-b border-slate-200 py-2 px-4 text-center"><div>Piezas/Filo</div><div>{diagValues.pzsPorFiloA}</div><div className="font-bold text-blue-600">{netSavingsResult?.newToolLife || '-'}</div></div>
-                        <div className="grid grid-cols-3 py-2 px-4 text-center bg-slate-50 font-bold"><div>Ciclo (min)</div><div>{diagValues.cicloMinA}m {diagValues.cicloSegA}s</div><div className="text-blue-600">{netSavingsResult?.newCycleTime?.toFixed(2) || '-'} min</div></div>
+                        <div className="grid grid-cols-3 py-2 px-4 text-center bg-slate-50 font-bold">
+                            <div>Ciclo</div>
+                            <div>{formatoMinutosYSegundos(parseTimeToMinutes(diagValues.cicloMinA, diagValues.cicloSegA))}</div>
+                            <div className="text-blue-600">{netSavingsResult ? formatoMinutosYSegundos(netSavingsResult.newCycleTime) : '-'}</div>
+                        </div>
                     </div>
                 </div>
                 {quickResult && (
