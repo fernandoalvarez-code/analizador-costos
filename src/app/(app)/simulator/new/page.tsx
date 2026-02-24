@@ -132,7 +132,11 @@ Quedo a su entera disposición para cualquier consulta.`;
       <div id="simulator-content" className="max-w-2xl mx-auto p-4">
         
         <div className="flex justify-between items-center mb-6" id="header-actions">
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight">SIMULADOR</h1>
+          <div className="flex items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Secocut Logo" className="h-8 w-auto mr-3" />
+            <h1 className="text-2xl font-black text-slate-800 tracking-tight">SIMULADOR</h1>
+          </div>
           <div className="flex items-center gap-2">
             <Button onClick={handleDownloadPDF} disabled={isPrinting} variant="outline">
                 {isPrinting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
@@ -259,7 +263,14 @@ Quedo a su entera disposición para cualquier consulta.`;
           
           {/* HEADER */}
           <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4">
-              <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Informe de Competitividad</h1>
+              <div className="flex items-center gap-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/logo.png" alt="Secocut" className="h-12 w-auto object-contain" />
+                  <div>
+                      <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Informe de Competitividad</h1>
+                      <p className="text-sm font-bold text-blue-600 uppercase tracking-widest">Secocut SRL</p>
+                  </div>
+              </div>
               <div className="text-right">
                   <p className="text-xs font-bold text-slate-500 uppercase">FECHA</p>
                   <p className="text-base font-semibold text-slate-800">{new Date().toLocaleDateString('es-ES')}</p>
