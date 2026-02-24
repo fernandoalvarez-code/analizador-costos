@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Settings,
   Briefcase,
+  Calculator,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -33,6 +34,11 @@ export default function AppNav() {
       href: '/cases',
       label: 'Gestión de Casos',
       icon: FolderKanban,
+    },
+    {
+      href: '/simulator/new',
+      label: 'Simulador de Competitividad',
+      icon: Calculator,
     },
     // {
     //   href: '/insights',
