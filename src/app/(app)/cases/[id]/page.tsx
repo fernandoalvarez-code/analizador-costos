@@ -246,8 +246,16 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </li>
               </ul>
               
-              <div className="bg-white p-3 border-l-4 border-blue-500 rounded text-sm text-slate-800 italic shadow-sm">
-                "Ya que la máquina queda libre, usted puede generar <strong>{formatCurrency(dineroExtraAnual)} extras al año</strong>, o lo que es lo mismo, producir <strong>{formatNumber(piezasExtraMes)} piezas más cada mes</strong>."
+              <div className="bg-white p-4 border-l-4 border-blue-500 rounded text-sm text-slate-800 shadow-sm space-y-3">
+                <p className="italic">
+                  "Ya que la máquina queda libre, usted puede generar <strong>{formatCurrency(dineroExtraAnual)} extras al año</strong>, o lo que es lo mismo, producir <strong>{formatNumber(piezasExtraMes)} piezas más cada mes</strong>."
+                </p>
+                
+                {pctIncrementoProduccion > 0 && (
+                  <div className="bg-blue-50 p-3 rounded border border-blue-100 text-blue-900 font-medium">
+                    💡 Con esta nueva herramienta, su máquina gana un <strong>{formatPercent(pctIncrementoProduccion)} extra de capacidad productiva</strong>. En términos prácticos, esto significa que por cada 100 piezas que usted fabricaba antes, ahora puede fabricar <strong>{Math.round(100 + pctIncrementoProduccion)}</strong> invirtiendo exactamente la misma cantidad de horas al mes.
+                  </div>
+                )}
               </div>
             </div>
             
