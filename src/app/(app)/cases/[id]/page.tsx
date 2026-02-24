@@ -342,7 +342,11 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 <Row label="Filos/Inserto" valA={data.filosA} valB={data.filosB} />
                 <Row label="VIDA ÚTIL (Pzs/Filo)" valA={data.piezasFiloA} valB={data.piezasFiloB} bold />
                 <Row label="Tiempo Proc. por Filo (min)" valA={`${r.minutosFiloA?.toFixed(1)}`} valB={`${r.minutosFiloB?.toFixed(1)}`} />
-                <Row label="Tiempo Corte/Pieza" valA={`${timeInCutA.toFixed(3)} min`} valB={`${timeInCutB.toFixed(3)} min`} />
+                <Row 
+                  label="Tiempo Corte/Pieza" 
+                  valA={`${timeInCutA.toFixed(3)} (${formatoMinutosYSegundos(timeInCutA)})`} 
+                  valB={`${timeInCutB.toFixed(3)} (${formatoMinutosYSegundos(timeInCutB)})`} 
+                />
                 <div className="grid grid-cols-10 border-b border-slate-200 px-2 bg-white items-center text-[10px] min-h-[22px]"><div className="col-span-4 font-medium text-slate-600 flex items-center h-full">Insertos/Mes</div><div className="col-span-3 flex items-center justify-center h-full text-slate-700">{insertosMesA.toFixed(1)} <span className="text-slate-400 ml-1">({formatCurrency(costoInsertosMesA)})</span></div><div className="col-span-3 flex items-center justify-center h-full text-slate-700">{insertosMesB.toFixed(1)} <span className="text-slate-400 ml-1">({formatCurrency(costoInsertosMesB)})</span></div></div>
                 <Row label="Costo Herr./Pieza" valA={formatCurrency(r.costoHerramientaA)} valB={formatCurrency(r.costoHerramientaB)} isRed />
                 <SectionTitle title="DATOS DEL PROCESO" />
