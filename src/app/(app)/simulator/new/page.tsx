@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Save, TrendingUp, AlertCircle, Download, Share2, Loader2 } from "lucide-react";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatPercent } from "@/lib/formatters";
 
 export default function NewSimulatorPage() {
   const [isSaving, setIsSaving] = useState(false);
@@ -45,26 +45,23 @@ export default function NewSimulatorPage() {
   
   const handleDownloadPDF = async () => {
     setIsPrinting(true);
-    const element = document.getElementById('simulator-content');
+    const element = document.getElementById('pdf-report-template');
     if (!element) {
         setIsPrinting(false);
+        alert("No se pudo encontrar la plantilla del informe.");
         return;
     }
 
     try {
         const html2pdf = (await import('html2pdf.js')).default;
         const clientName = form.getValues('clientName');
-        const fileName = `Simulacion_${clientName ? clientName.replace(/ /g, '_') : 'Competitividad'}.pdf`;
+        const fileName = `Informe_Simulador_${clientName ? clientName.replace(/ /g, '_') : 'Competitividad'}.pdf`;
         
         const opt = {
-            margin:       [10, 5],
+            margin:       0,
             filename:     fileName,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, logging: false, onclone: (doc: Document) => {
-                // Ocultamos los botones en el clon del documento
-                const headerActions = doc.getElementById('header-actions');
-                if (headerActions) headerActions.style.display = 'none';
-            }},
+            html2canvas:  { scale: 2, useCORS: true, logging: false },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
         await html2pdf().set(opt).from(element).save();
@@ -77,12 +74,29 @@ export default function NewSimulatorPage() {
   };
 
   const handleWhatsAppShare = () => {
-    const clientName = form.getValues('clientName');
-    const chinaCost = formatCurrency(results.chinaCalc.totalCostPerPiece);
-    const premiumCost = formatCurrency(results.premiumCalc.totalCostPerPiece);
-    const argument = results.argument;
+    const values = form.getValues();
+    const { clientName, china, premium } = values;
+    const { chinaCalc, premiumCalc, competitivenessIndex, argument } = results;
 
-    const message = `Hola ${clientName || ''}, realizamos una simulación de costos de mecanizado.\n\n- Costo con su inserto actual: *${chinaCost}* por pieza.\n- Costo con nuestro inserto premium: *${premiumCost}* por pieza.\n\n*Conclusión:* ${argument}`;
+    const savingsPct = competitivenessIndex > 0 ? (1 - competitivenessIndex) * 100 : 0;
+    
+    const message = `Estimado/a *${clientName || "Cliente"}*,
+Le comparto el resumen de nuestra simulación técnica de mecanizado:
+
+📊 *COMPARATIVA DE COSTO TOTAL POR PIEZA*
+• Inserto Actual: *${formatCurrency(chinaCalc.totalCostPerPiece)}*
+• Inserto Premium: *${formatCurrency(premiumCalc.totalCostPerPiece)}*
+📉 *Ahorro Directo:* *${savingsPct.toFixed(1)}%*
+
+⚙️ *PARÁMETROS CLAVE (Actual vs Premium)*
+• Vida útil (Pzs/Filo): ${china.pcsPerEdge} vs ${premium.pcsPerEdge}
+• Tiempo de ciclo: ${china.cycleMinPerPiece} min vs ${premium.cycleMinPerPiece} min
+• Tasa de rechazo (Scrap): ${formatPercent(china.scrapRate * 100)} vs ${formatPercent(premium.scrapRate * 100)}
+
+💡 *CONCLUSIÓN TÉCNICA:*
+${argument}
+
+Quedo a su entera disposición para cualquier consulta.`;
     
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
@@ -108,6 +122,8 @@ export default function NewSimulatorPage() {
     yellow: "bg-yellow-100 border-yellow-500 text-yellow-900",
     red: "bg-red-100 border-red-500 text-red-900",
   };
+  
+  const formValuesForPdf = form.getValues();
 
   return (
     <div className="min-h-screen bg-slate-50 pb-48"> {/* pb-48 deja espacio para la barra flotante */}
@@ -234,6 +250,81 @@ export default function NewSimulatorPage() {
 
         </div>
       </div>
+
+      {/* PDF REPORT TEMPLATE (HIDDEN) */}
+      <div id="pdf-report-template" className="absolute left-[-9999px] top-[-9999px] w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans">
+        <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4">
+            <h1 className="text-3xl font-black text-slate-800 uppercase">Informe de Competitividad</h1>
+            <div className="text-right">
+                <p className="text-sm font-bold text-slate-600">FECHA</p>
+                <p className="text-lg font-semibold text-slate-800">{new Date().toLocaleDateString('es-ES')}</p>
+            </div>
+        </div>
+
+        <div className="my-8">
+            <h2 className="text-xl font-bold text-blue-700 mb-4 uppercase tracking-wide">Datos del Proceso</h2>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-base p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <p><span className="font-semibold text-slate-600">Cliente:</span> {formValuesForPdf.clientName || 'N/A'}</p>
+                <p><span className="font-semibold text-slate-600">Costo Hora-Máquina:</span> {formatCurrency(formValuesForPdf.machineUsdPerHour)}</p>
+                <p><span className="font-semibold text-slate-600">Tiempo Cambio Herr.:</span> {formValuesForPdf.toolChangeMin} min</p>
+                <p><span className="font-semibold text-slate-600">Costo Pieza Scrap:</span> {formatCurrency(formValuesForPdf.scrapCostUsdPerPiece)}</p>
+            </div>
+        </div>
+
+        <div className="my-8">
+            <h2 className="text-xl font-bold text-blue-700 mb-4 uppercase tracking-wide">Tabla Comparativa</h2>
+            <table className="w-full text-left border-collapse">
+                <thead>
+                    <tr className="bg-slate-800 text-white">
+                        <th className="p-3 font-semibold border-b border-slate-300">Parámetro</th>
+                        <th className="p-3 font-semibold text-center border-b border-slate-300">Competidor</th>
+                        <th className="p-3 font-semibold text-center border-b border-slate-300">Nuestro Inserto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr className="bg-slate-100">
+                        <td className="p-3 border-b border-slate-200 font-medium">Precio Inserto</td>
+                        <td className="p-3 border-b border-slate-200 text-center">{formatCurrency(formValuesForPdf.china.priceUsd)}</td>
+                        <td className="p-3 border-b border-slate-200 text-center">{formatCurrency(formValuesForPdf.premium.priceUsd)}</td>
+                    </tr>
+                    <tr>
+                        <td className="p-3 border-b border-slate-200 font-medium">Piezas / Filo</td>
+                        <td className="p-3 border-b border-slate-200 text-center">{formValuesForPdf.china.pcsPerEdge}</td>
+                        <td className="p-3 border-b border-slate-200 text-center">{formValuesForPdf.premium.pcsPerEdge}</td>
+                    </tr>
+                    <tr className="bg-slate-100">
+                        <td className="p-3 border-b border-slate-200 font-medium">Ciclo (min/pza)</td>
+                        <td className="p-3 border-b border-slate-200 text-center">{formValuesForPdf.china.cycleMinPerPiece}</td>
+                        <td className="p-3 border-b border-slate-200 text-center">{formValuesForPdf.premium.cycleMinPerPiece}</td>
+                    </tr>
+                    <tr>
+                        <td className="p-3 border-b border-slate-200 font-medium">Tasa de Scrap</td>
+                        <td className="p-3 border-b border-slate-200 text-center">{formatPercent(formValuesForPdf.china.scrapRate * 100)}</td>
+                        <td className="p-3 border-b border-slate-200 text-center">{formatPercent(formValuesForPdf.premium.scrapRate * 100)}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div className="my-8 grid grid-cols-2 gap-8">
+            <div className="p-6 bg-red-50 rounded-lg border-2 border-red-200 text-center">
+                <h3 className="text-sm font-bold text-red-700 uppercase mb-2">Costo Total / Pieza (Competidor)</h3>
+                <p className="text-4xl font-black text-red-800">{formatCurrency(results.chinaCalc.totalCostPerPiece)}</p>
+            </div>
+            <div className="p-6 bg-green-50 rounded-lg border-2 border-green-200 text-center">
+                <h3 className="text-sm font-bold text-green-700 uppercase mb-2">Costo Total / Pieza (Nuestro)</h3>
+                <p className="text-4xl font-black text-green-800">{formatCurrency(results.premiumCalc.totalCostPerPiece)}</p>
+            </div>
+        </div>
+
+        <div className="mt-12 pt-6 border-t border-slate-300">
+             <h2 className="text-xl font-bold text-blue-700 mb-4 uppercase tracking-wide">Conclusión Técnica</h2>
+             <div className={`p-6 rounded-lg border-2 ${trafficColors[results.trafficLight].replace('bg-', 'border-').replace('text-', 'border-')} ${trafficColors[results.trafficLight]}`}>
+                <p className="text-base leading-relaxed">{results.argument}</p>
+             </div>
+        </div>
+    </div>
+
     </div>
   );
 }
