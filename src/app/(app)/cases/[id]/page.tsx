@@ -237,21 +237,17 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 )}
             </div>
 
-            <div className="border-t border-slate-200 pt-3 mb-2">
-                <h4 className="text-sm font-black text-slate-800 uppercase mb-2 tracking-wide">Conclusión Ejecutiva</h4>
-                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs text-slate-800 leading-relaxed text-justify shadow-sm">
-                    <p className="mb-2 text-sm font-bold">
-                        El impacto económico total de esta mejora asciende a <strong className="text-green-700 text-base">{formatCurrency(impactoEconomicoTotal)} anuales</strong>.
-                    </p>
-                    <p className="mb-2 text-[11px]">
-                        Este monto se compone de un ahorro directo de <strong className="text-green-700">{formatCurrency(r.ahorroAnual)}</strong> y un potencial de ganancia adicional de <strong className="text-blue-700">{formatCurrency(dineroExtraAnual)}</strong>, gracias a la capacidad de producir <strong className="text-slate-900">{formatNumber(piezasExtraMes)} piezas más al mes</strong> con el tiempo de máquina liberado.
-                    </p>
-                    <p className="text-slate-500 italic border-t border-slate-200 pt-2 mt-1 text-[10px]">
-                        * Cálculos basados en una demanda de <strong>{data.piezasAlMes?.toLocaleString()} piezas/mes</strong>. 
-                        Actualmente esto ocupa <strong>{horasA.toFixed(1)} horas/mes</strong> de máquina, 
-                        equivalente a <strong>{turnosA.toFixed(1)} turnos</strong> de trabajo (base 8hs).
-                    </p>
-                </div>
+            {/* IMPACTO ECONÓMICO TOTAL (NUEVO BLOQUE) */}
+            <div className="mt-4 bg-green-50 p-4 border border-green-200 rounded-lg text-center shadow-sm">
+              <span className="block text-xs text-green-700 font-bold uppercase tracking-wider mb-1">
+                Impacto Económico Total Estimado (Anual)
+              </span>
+              <span className="block text-2xl text-green-700 font-extrabold">
+                ${impactoEconomicoTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+              <span className="block text-xs text-green-600 mt-2 font-medium">
+                (Ahorro directo en costos + Potencial de facturación por horas de máquina liberadas)
+              </span>
             </div>
 
             {/* DESGLOSE DE CAPACIDAD LIBERADA */}
