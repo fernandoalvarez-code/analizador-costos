@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -11,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Save, TrendingUp, AlertCircle, Download, Share2, Loader2, Wifi, WifiOff } from "lucide-react";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
-import { useUser, useDoc, useFirestore, useMemoFirebase, doc, collection, addDoc, serverTimestamp } from "@/firebase";
+import { useUser, useDoc, useFirestore, useMemoFirebase, doc } from "@/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 export default function NewSimulatorPage() {
@@ -404,7 +406,7 @@ Adjunto el informe PDF completo con el fundamento técnico.`;
       <div className="absolute top-0 left-0 opacity-0 pointer-events-none -z-50 overflow-hidden h-0 w-0">
         <div id="pdf-report-template" className="w-[210mm] h-[290mm] bg-white text-black p-8 font-sans box-border flex flex-col justify-between overflow-hidden">
           
-          <div className="flex justify-between items-center border-b-2 border-slate-800 pb-3 mb-4">
+          <div className="flex justify-between items-center border-b-2 border-slate-800 pb-2 mb-3">
             <div className="flex items-center gap-4">
               {companyLogoSrc && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -525,7 +527,7 @@ Adjunto el informe PDF completo con el fundamento técnico.`;
                </div>
           </div>
 
-          <div className="mt-4 pt-2 border-t border-slate-300 text-slate-600 text-[10px] leading-normal">
+          <div className="mt-2 pt-2 border-t border-slate-300 text-slate-600 text-[10px] leading-tight">
             <h4 className="font-bold text-slate-800 uppercase mb-1">Fundamento Técnico del Cálculo de Costos</h4>
             <p className="mb-1">En la industria del mecanizado, el precio de compra del inserto representa típicamente menos del <strong>5% del costo total</strong> de producción. El verdadero gasto (95%) radica en el tiempo de máquina, las paradas y el descarte de piezas.</p>
             <ul className="list-disc pl-4 space-y-1 mb-1">
@@ -546,7 +548,5 @@ Adjunto el informe PDF completo con el fundamento técnico.`;
     </div>
   );
 }
-
-    
 
     
