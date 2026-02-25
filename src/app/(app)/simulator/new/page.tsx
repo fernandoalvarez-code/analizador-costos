@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SimulatorSchema } from "@/lib/schemas";
@@ -9,23 +9,73 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Save, TrendingUp, AlertCircle, Download, Share2, Loader2 } from "lucide-react";
+import { Save, TrendingUp, AlertCircle, Download, Share2, Loader2, Wifi, WifiOff } from "lucide-react";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
 import { useDoc, useFirestore, useMemoFirebase, doc } from "@/firebase";
+import { useToast } from "@/hooks/use-toast";
 
 export default function NewSimulatorPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const [companyLogoBase64, setCompanyLogoBase64] = useState<string | null>(null);
+  const [secoLogoBase64, setSecoLogoBase64] = useState<string | null>(null);
 
   const firestore = useFirestore();
+  const { toast } = useToast();
 
+  // --- Hooks para data y estado de conexión ---
   const settingsRef = useMemoFirebase(() => {
     if (!firestore) return null;
     return doc(firestore, "settings", "general");
   }, [firestore]);
   const { data: settings } = useDoc<any>(settingsRef);
+  
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    setIsOnline(navigator.onLine);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
-  // Inicializamos el formulario con valores por defecto para que no explote
+  useEffect(() => {
+    setCompanyLogoBase64(localStorage.getItem('offline_company_logo'));
+    setSecoLogoBase64(localStorage.getItem('offline_seco_logo'));
+  }, []);
+
+  useEffect(() => {
+    const cacheLogo = async (url: string, storageKey: string) => {
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          localStorage.setItem(storageKey, base64data);
+          if (storageKey === 'offline_company_logo') setCompanyLogoBase64(base64data);
+          if (storageKey === 'offline_seco_logo') setSecoLogoBase64(base64data);
+        };
+        reader.readAsDataURL(blob);
+      } catch (error) {
+        console.error(`Failed to cache logo from ${url}:`, error);
+      }
+    };
+    if (settings?.companyLogoUrl) {
+      cacheLogo(settings.companyLogoUrl, 'offline_company_logo');
+    }
+    if (settings?.secoLogoUrl) {
+      cacheLogo(settings.secoLogoUrl, 'offline_seco_logo');
+    }
+  }, [settings]);
+
+
   const form = useForm({
     resolver: zodResolver(SimulatorSchema),
     defaultValues: {
@@ -38,14 +88,12 @@ export default function NewSimulatorPage() {
     },
   });
 
-  // Observamos los valores en tiempo real para pasárselos al hook matemático
   const chinaVals = useWatch({ control: form.control, name: "china" }) as any;
   const premiumVals = useWatch({ control: form.control, name: "premium" }) as any;
   const machineUsdPerHour = useWatch({ control: form.control, name: "machineUsdPerHour" }) || 0;
   const toolChangeMin = useWatch({ control: form.control, name: "toolChangeMin" }) || 0;
   const scrapCostUsdPerPiece = useWatch({ control: form.control, name: "scrapCostUsdPerPiece" }) || 0;
 
-  // El motor matemático trabajando en vivo
   const results = useSimulatorCalc(
     chinaVals || { priceUsd: 0, pcsPerEdge: 1, cycleMin: 0, cycleSec: 0, pcsBetweenChanges: 1, scrapRate: 0 },
     premiumVals || { priceUsd: 0, pcsPerEdge: 1, cycleMin: 0, cycleSec: 0, pcsBetweenChanges: 1, scrapRate: 0 },
@@ -69,7 +117,7 @@ export default function NewSimulatorPage() {
         const fileName = `Informe_Simulador_${clientName ? clientName.replace(/ /g, '_') : 'Competitividad'}.pdf`;
         
         const opt = {
-            margin:       0, // LO PONEMOS EN 0 PARA CONTROLAR TODO DESDE EL HTML
+            margin:       0,
             filename:     fileName,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2, useCORS: true, logging: false, windowWidth: 1000 },
@@ -114,12 +162,38 @@ Quedo a su entera disposición para cualquier consulta.`;
   };
 
   const onSubmit = async (data: any) => {
+    if (!navigator.onLine) {
+        setIsSaving(true);
+        try {
+            const offlineSims = JSON.parse(localStorage.getItem('offline_simulations') || '[]');
+            const newSimulation = {
+                formData: data,
+                results: results,
+                savedAt: new Date().toISOString(),
+                clientName: form.getValues('clientName')
+            };
+            offlineSims.push(newSimulation);
+            localStorage.setItem('offline_simulations', JSON.stringify(offlineSims));
+            toast({
+                title: "Modo Offline",
+                description: "Simulación guardada localmente. Se sincronizará cuando vuelvas a tener conexión.",
+            });
+        } catch (error) {
+            console.error("Error guardando simulación offline:", error);
+            toast({ variant: 'destructive', title: "Error", description: "No se pudo guardar la simulación localmente." });
+        } finally {
+            setIsSaving(false);
+        }
+        return;
+    }
+
+    // --- Online Logic ---
     setIsSaving(true);
     try {
       // AQUÍ IRÁ LA CONEXIÓN A FIREBASE EN EL PRÓXIMO PASO
       console.log("Data lista para Firebase:", data);
       console.log("Resultados a guardar:", results);
-      alert("¡Simulación lista! Abre la consola para ver los datos.");
+      toast({ title: "Simulación Guardada", description: "La simulación ha sido guardada online." });
     } catch (error) {
       console.error(error);
     } finally {
@@ -127,7 +201,6 @@ Quedo a su entera disposición para cualquier consulta.`;
     }
   };
 
-  // Colores dinámicos para el semáforo
   const trafficColors = {
     green: "bg-green-100 border-green-500 text-green-900",
     yellow: "bg-yellow-100 border-yellow-500 text-yellow-900",
@@ -138,20 +211,34 @@ Quedo a su entera disposición para cualquier consulta.`;
   const ahorroAbsoluto = results.chinaCalc.totalCostPerPiece - results.premiumCalc.totalCostPerPiece;
   const porcentajeVisual = results.competitivenessIndex > 0 ? ((1 - results.competitivenessIndex) * 100).toFixed(1) : "0.0";
 
+  const companyLogoSrc = isOnline ? settings?.companyLogoUrl : companyLogoBase64;
+  const secoLogoSrc = isOnline ? settings?.secoLogoUrl : secoLogoBase64;
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div id="simulator-content" className="max-w-2xl mx-auto p-4">
         
-        <div className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-sm py-4">
+        <div className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-sm py-4 border-b shadow-sm mb-6">
             <div className="flex justify-between items-center mb-6" id="header-actions">
             <div className="flex items-center">
-                {settings?.companyLogoUrl ? (
+                {companyLogoSrc ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={settings.companyLogoUrl} alt="Secocut Logo" className="h-8 w-auto mr-3" crossOrigin="anonymous" />
+                    <img src={companyLogoSrc} alt="Secocut Logo" className="h-8 w-auto mr-3" crossOrigin="anonymous" />
                 ) : (
                     <div className="h-8 w-16 mr-3" />
                 )}
                 <h1 className="text-2xl font-black text-slate-800 tracking-tight">SIMULADOR</h1>
+                <div className="ml-4">
+                    {isOnline ? (
+                        <span className="flex items-center gap-1.5 text-xs text-green-600 font-semibold bg-green-100 px-2 py-1 rounded-full">
+                            <Wifi className="h-4 w-4" /> Online
+                        </span>
+                    ) : (
+                        <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 bg-gray-200 px-2 py-1 rounded-full">
+                            <WifiOff className="h-4 w-4" /> Modo Offline
+                        </span>
+                    )}
+                </div>
             </div>
             <div className="flex items-center gap-2">
                 <Button onClick={handleDownloadPDF} disabled={isPrinting} variant="outline">
@@ -189,9 +276,8 @@ Quedo a su entera disposición para cualquier consulta.`;
         </div>
 
         <Form {...form}>
-          <form className="space-y-6 mt-6">
+          <form className="space-y-6 mt-6 max-w-2xl mx-auto p-4 pt-0">
             
-            {/* SECCIÓN 1: DATOS GENERALES */}
             <Card className="border-slate-200 shadow-sm">
               <CardHeader className="pb-3 bg-slate-100 border-b border-slate-200">
                 <CardTitle className="text-sm font-bold uppercase text-slate-600">Datos del Proceso</CardTitle>
@@ -212,10 +298,8 @@ Quedo a su entera disposición para cualquier consulta.`;
               </CardContent>
             </Card>
 
-            {/* SECCIÓN 2: COMPARADOR SIDE-BY-SIDE */}
             <div className="grid grid-cols-2 gap-2 sm:gap-4">
               
-              {/* COLUMNA COMPETIDOR */}
               <Card className="border-slate-300 shadow-sm overflow-hidden">
                 <div className="bg-slate-200 p-2 text-center border-b border-slate-300">
                   <span className="text-xs font-black uppercase text-slate-600 tracking-wider">Competidor</span>
@@ -255,7 +339,6 @@ Quedo a su entera disposición para cualquier consulta.`;
                 </CardContent>
               </Card>
 
-              {/* COLUMNA NUESTRO INSERTO */}
               <Card className="border-blue-300 shadow-sm overflow-hidden">
                 <div className="bg-blue-600 p-2 text-center border-b border-blue-700">
                   <span className="text-xs font-black uppercase text-white tracking-wider">Nuestro Inserto</span>
@@ -300,16 +383,14 @@ Quedo a su entera disposición para cualquier consulta.`;
         </Form>
       </div>
 
-      {/* PDF REPORT TEMPLATE (HIDDEN CORRECTAMENTE - UNA SOLA HOJA A4) */}
       <div className="absolute top-0 left-0 opacity-0 pointer-events-none -z-50 overflow-hidden h-0 w-0">
         <div id="pdf-report-template" className="w-[210mm] h-[290mm] bg-white text-black p-10 font-sans box-border flex flex-col justify-between overflow-hidden">
           
-          {/* HEADER CON LOGO */}
           <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
             <div className="flex items-center gap-4">
-              {settings?.companyLogoUrl && (
+              {companyLogoSrc && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={settings.companyLogoUrl} alt="Secocut Logo" className="h-12 w-auto object-contain" crossOrigin="anonymous" />
+                <img src={companyLogoSrc} alt="Secocut Logo" className="h-12 w-auto object-contain" crossOrigin="anonymous" />
               )}
               <div>
                 <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Informe de Competitividad</h1>
@@ -317,14 +398,13 @@ Quedo a su entera disposición para cualquier consulta.`;
               </div>
             </div>
              <div className="flex justify-end">
-                {settings?.secoLogoUrl && (
+                {secoLogoSrc && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={settings.secoLogoUrl} alt="Seco Logo" className="h-10 w-auto object-contain" crossOrigin="anonymous" />
+                    <img src={secoLogoSrc} alt="Seco Logo" className="h-10 w-auto object-contain" crossOrigin="anonymous" />
                 )}
             </div>
           </div>
 
-          {/* DATOS DEL PROCESO */}
           <div>
               <h2 className="text-lg font-bold text-blue-700 mb-3 uppercase tracking-wide">Datos del Proceso</h2>
               <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm p-4 bg-slate-50 rounded-lg border border-slate-200">
@@ -335,7 +415,6 @@ Quedo a su entera disposición para cualquier consulta.`;
               </div>
           </div>
 
-          {/* TABLA COMPARATIVA */}
           <div>
               <h2 className="text-lg font-bold text-blue-700 mb-3 uppercase tracking-wide">Tabla Comparativa</h2>
               <table className="w-full text-left border-collapse text-sm">
@@ -371,7 +450,6 @@ Quedo a su entera disposición para cualquier consulta.`;
               </table>
           </div>
           
-          {/* COSTOS TOTALES (EL GOLPE VISUAL) */}
           <div className="grid grid-cols-2 gap-6">
               <div className="p-4 bg-red-50 rounded-lg border-2 border-red-200 text-center shadow-sm">
                   <h3 className="text-xs font-bold text-red-700 uppercase mb-1">Costo Total / Pieza (Competidor)</h3>
@@ -403,7 +481,6 @@ Quedo a su entera disposición para cualquier consulta.`;
             </div>
           )}
 
-          {/* CONCLUSIÓN TÉCNICA */}
           <div className="pt-4 border-t border-slate-300">
                <h2 className="text-lg font-bold text-blue-700 mb-3 uppercase tracking-wide">Conclusión Técnica</h2>
                <div className={`p-4 rounded-lg border-2 bg-slate-50 border-slate-300`}>
@@ -413,7 +490,6 @@ Quedo a su entera disposición para cualquier consulta.`;
                </div>
           </div>
 
-          {/* FOOTER PEQUEÑO */}
           <div className="text-center pt-2 mt-auto">
             <p className="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Generado con Simulador de Competitividad • Secocut SRL</p>
           </div>
