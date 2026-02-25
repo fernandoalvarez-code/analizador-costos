@@ -11,10 +11,19 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Save, TrendingUp, AlertCircle, Download, Share2, Loader2 } from "lucide-react";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
+import { useDoc, useFirestore, useMemoFirebase, doc } from "@/firebase";
 
 export default function NewSimulatorPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+
+  const firestore = useFirestore();
+
+  const settingsRef = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return doc(firestore, "settings", "general");
+  }, [firestore]);
+  const { data: settings } = useDoc<any>(settingsRef);
 
   // Inicializamos el formulario con valores por defecto para que no explote
   const form = useForm({
@@ -134,8 +143,12 @@ Quedo a su entera disposición para cualquier consulta.`;
         <div className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-sm py-4">
             <div className="flex justify-between items-center mb-6" id="header-actions">
             <div className="flex items-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="Secocut Logo" className="h-8 w-auto mr-3" />
+                {settings?.companyLogoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={settings.companyLogoUrl} alt="Secocut Logo" className="h-8 w-auto mr-3" crossOrigin="anonymous" />
+                ) : (
+                    <div className="h-8 w-16 mr-3" />
+                )}
                 <h1 className="text-2xl font-black text-slate-800 tracking-tight">SIMULADOR</h1>
             </div>
             <div className="flex items-center gap-2">
@@ -292,17 +305,20 @@ Quedo a su entera disposición para cualquier consulta.`;
           {/* HEADER CON LOGO */}
           <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
             <div className="flex items-center gap-4">
-              {/* Asumiendo que el logo se llama logo.png y está en la carpeta public */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="Secocut Logo" className="h-12 w-auto object-contain" />
+              {settings?.companyLogoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={settings.companyLogoUrl} alt="Secocut Logo" className="h-12 w-auto object-contain" crossOrigin="anonymous" />
+              )}
               <div>
                 <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Informe de Competitividad</h1>
                 <p className="text-sm font-bold text-blue-600 uppercase tracking-widest">Secocut SRL</p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-xs font-bold text-slate-500 uppercase">FECHA</p>
-              <p className="text-base font-semibold text-slate-800">{new Date().toLocaleDateString('es-ES')}</p>
+             <div className="flex justify-end">
+                {settings?.secoLogoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={settings.secoLogoUrl} alt="Seco Logo" className="h-10 w-auto object-contain" crossOrigin="anonymous" />
+                )}
             </div>
           </div>
 
