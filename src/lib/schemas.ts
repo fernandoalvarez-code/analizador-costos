@@ -165,21 +165,21 @@ export const SavingsInsightsSchema = z.object({
 // --- Esquemas para el nuevo Simulador de Competitividad ---
 
 export const SimulatorOptionSchema = z.object({
-  priceUsd: z.number().min(0, "El precio no puede ser negativo"),
-  pcsPerEdge: z.number().min(1, "Debe hacer al menos 1 pieza"),
-  cycleMin: z.number().min(0, "Mínimo 0"),
-  cycleSec: z.number().min(0, "No puede ser negativo").max(59, "Máximo 59"),
-  pcsBetweenChanges: z.number().min(1, "Debe ser al menos 1"),
-  scrapRate: z.number().min(0).max(1, "Debe ser entre 0 (0%) y 1 (100%)"),
+  priceUsd: z.coerce.number().min(0, "El precio no puede ser negativo"),
+  pcsPerEdge: z.coerce.number().min(1, "Debe hacer al menos 1 pieza"),
+  cycleMin: z.coerce.number().min(0, "Mínimo 0"),
+  cycleSec: z.coerce.number().min(0, "No puede ser negativo").max(59, "Máximo 59"),
+  pcsBetweenChanges: z.coerce.number().min(1, "Debe ser al menos 1"),
+  scrapRate: z.coerce.number().min(0, "Debe ser entre 0 y 1").max(1, "Debe ser entre 0 y 1"),
 });
 
 export const SimulatorSchema = z.object({
-  clientName: z.string().min(1, "El nombre del cliente es obligatorio"),
+  clientName: z.string().optional(),
   material: z.string().optional(),
   operationType: z.string().optional(),
-  machineUsdPerHour: z.number().min(1, "Costo de máquina obligatorio"),
-  toolChangeMin: z.number().min(0, "No puede ser negativo"),
-  scrapCostUsdPerPiece: z.number().min(0, "No puede ser negativo"),
+  machineUsdPerHour: z.coerce.number().min(1, "Costo de máquina obligatorio"),
+  toolChangeMin: z.coerce.number().min(0, "No puede ser negativo"),
+  scrapCostUsdPerPiece: z.coerce.number().min(0, "No puede ser negativo"),
   notes: z.string().optional(),
   china: SimulatorOptionSchema,
   premium: SimulatorOptionSchema,
