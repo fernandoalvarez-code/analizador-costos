@@ -135,6 +135,8 @@ Quedo a su entera disposición para cualquier consulta.`;
   };
   
   const formValuesForPdf = form.getValues();
+  const ahorroAbsoluto = results.chinaCalc.totalCostPerPiece - results.premiumCalc.totalCostPerPiece;
+  const porcentajeVisual = results.competitivenessIndex > 0 ? ((1 - results.competitivenessIndex) * 100).toFixed(1) : "0.0";
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -380,6 +382,26 @@ Quedo a su entera disposición para cualquier consulta.`;
                   <p className="text-3xl font-black text-green-800">{formatCurrency(results.premiumCalc.totalCostPerPiece)}</p>
               </div>
           </div>
+          
+          {results.trafficLight === 'green' && (
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-slate-800">
+                <h3 className="font-bold mb-2 uppercase tracking-wide text-blue-800 text-xs">Desglose del Ahorro</h3>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <p className="font-semibold text-blue-900 mb-1">1. Ahorro neto por pieza:</p>
+                        <p className="font-mono bg-white inline-block px-2 py-1 rounded border border-blue-100 text-xs">
+                            {formatCurrency(results.chinaCalc.totalCostPerPiece)} - {formatCurrency(results.premiumCalc.totalCostPerPiece)} = <span className="font-bold text-green-700">{formatCurrency(ahorroAbsoluto)}</span>
+                        </p>
+                    </div>
+                    <div>
+                        <p className="font-semibold text-blue-900 mb-1">2. Impacto porcentual:</p>
+                        <p className="font-mono bg-white inline-block px-2 py-1 rounded border border-blue-100 text-xs">
+                            {formatCurrency(ahorroAbsoluto)} / {formatCurrency(results.chinaCalc.totalCostPerPiece)} = <span className="font-bold text-green-700">{porcentajeVisual}%</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+          )}
 
           {/* CONCLUSIÓN TÉCNICA */}
           <div className="pt-4 border-t border-slate-300">
