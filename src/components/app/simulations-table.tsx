@@ -20,11 +20,10 @@ import {
   doc,
   collection,
   deleteDocumentNonBlocking,
-  query,
-  orderBy,
   User,
   useDoc
 } from "@/firebase";
+import { query, orderBy } from "firebase/firestore";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
