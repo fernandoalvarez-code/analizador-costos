@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -133,29 +134,32 @@ export default function NewSimulatorPage() {
   };
 
   const handleWhatsAppShare = () => {
-    const values = form.getValues();
-    const { clientName, china, premium } = values;
-    const { chinaCalc, premiumCalc, argument } = results;
+    const { chinaCalc, premiumCalc } = results;
 
-    const savingsPct = chinaCalc.totalCostPerPiece > 0 ? (1 - (premiumCalc.totalCostPerPiece / chinaCalc.totalCostPerPiece)) * 100 : 0;
+    const ahorroAbsoluto = chinaCalc.totalCostPerPiece - premiumCalc.totalCostPerPiece;
+    const porcentajeVisual = results.competitivenessIndex > 0 ? ((1 - results.competitivenessIndex) * 100).toFixed(1) : "0.0";
     
-    const message = `Estimado/a *${clientName || "Cliente"}*,
-Le comparto el resumen de nuestra simulación técnica de mecanizado:
+    const message = `Hola, te comparto el análisis de competitividad para el proceso de mecanizado:
 
-📊 *COMPARATIVA DE COSTO TOTAL POR PIEZA*
-• Inserto Actual: *${formatCurrency(chinaCalc.totalCostPerPiece)}*
-• Inserto Premium: *${formatCurrency(premiumCalc.totalCostPerPiece)}*
-📉 *Ahorro Directo:* *${savingsPct.toFixed(1)}%*
+📊 *RESUMEN DE COSTO POR PIEZA*
 
-⚙️ *PARÁMETROS CLAVE (Actual vs Premium)*
-• Vida útil (Pzs/Filo): ${china.pcsPerEdge} vs ${premium.pcsPerEdge}
-• Tiempo de ciclo: ${china.cycleMin}m ${china.cycleSec}s vs ${premium.cycleMin}m ${premium.cycleSec}s
-• Tasa de rechazo (Scrap): ${formatPercent(Number(china.scrapRate) * 100)} vs ${formatPercent(Number(premium.scrapRate) * 100)}
+🔴 *Competidor:* ${formatCurrency(results.chinaCalc.totalCostPerPiece)}
+├ Herramienta: ${formatCurrency(results.chinaCalc.insertCostPerPiece)}
+├ Máquina: ${formatCurrency(results.chinaCalc.machineCostPerPiece)}
+├ Paradas: ${formatCurrency(results.chinaCalc.changeCostPerPiece)}
+└ Scrap: ${formatCurrency(results.chinaCalc.scrapCostPerPiece)}
 
-💡 *CONCLUSIÓN TÉCNICA:*
-${argument}
+🟢 *Nuestro Inserto:* ${formatCurrency(results.premiumCalc.totalCostPerPiece)}
+├ Herramienta: ${formatCurrency(results.premiumCalc.insertCostPerPiece)}
+├ Máquina: ${formatCurrency(results.premiumCalc.machineCostPerPiece)}
+├ Paradas: ${formatCurrency(results.premiumCalc.changeCostPerPiece)}
+└ Scrap: ${formatCurrency(results.premiumCalc.scrapCostPerPiece)}
 
-Quedo a su entera disposición para cualquier consulta.`;
+💡 *AHORRO NETO:* ${formatCurrency(ahorroAbsoluto)} por pieza (${porcentajeVisual}%)
+
+${results.trafficLight === 'green' ? '✅ El inserto premium es indiscutiblemente superior y reduce el costo real del proceso.' : '⚠️ Revisemos juntos estos números.'}
+
+Adjunto el informe PDF completo con el fundamento técnico.`;
     
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
@@ -384,9 +388,9 @@ Quedo a su entera disposición para cualquier consulta.`;
       </div>
 
       <div className="absolute top-0 left-0 opacity-0 pointer-events-none -z-50 overflow-hidden h-0 w-0">
-        <div id="pdf-report-template" className="w-[210mm] h-[290mm] bg-white text-black p-10 font-sans box-border flex flex-col justify-between overflow-hidden">
+        <div id="pdf-report-template" className="w-[210mm] h-[290mm] bg-white text-black p-8 font-sans box-border flex flex-col justify-between overflow-hidden">
           
-          <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
+          <div className="flex justify-between items-center border-b-2 border-slate-800 pb-3 mb-4">
             <div className="flex items-center gap-4">
               {companyLogoSrc && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -405,9 +409,9 @@ Quedo a su entera disposición para cualquier consulta.`;
             </div>
           </div>
 
-          <div>
-              <h2 className="text-lg font-bold text-blue-700 mb-3 uppercase tracking-wide">Datos del Proceso</h2>
-              <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm p-4 bg-slate-50 rounded-lg border border-slate-200">
+          <div className="mb-2">
+              <h2 className="text-lg font-bold text-blue-700 mb-2 uppercase tracking-wide">Datos del Proceso</h2>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm p-3 bg-slate-50 rounded-lg border border-slate-200">
                   <p><span className="font-semibold text-slate-600">Cliente:</span> {formValuesForPdf.clientName || 'N/A'}</p>
                   <p><span className="font-semibold text-slate-600">Costo Hora-Máquina:</span> {formatCurrency(Number(formValuesForPdf.machineUsdPerHour))}</p>
                   <p><span className="font-semibold text-slate-600">Tiempo Cambio Herr.:</span> {formValuesForPdf.toolChangeMin} min</p>
@@ -415,8 +419,8 @@ Quedo a su entera disposición para cualquier consulta.`;
               </div>
           </div>
 
-          <div>
-              <h2 className="text-lg font-bold text-blue-700 mb-3 uppercase tracking-wide">Tabla Comparativa</h2>
+          <div className="mb-2">
+              <h2 className="text-lg font-bold text-blue-700 mb-2 uppercase tracking-wide">Tabla Comparativa</h2>
               <table className="w-full text-left border-collapse text-sm">
                   <thead>
                       <tr className="bg-slate-800 text-white">
@@ -450,15 +454,13 @@ Quedo a su entera disposición para cualquier consulta.`;
               </table>
           </div>
           
-          {/* COSTOS TOTALES Y DESGLOSE (EL GOLPE VISUAL) */}
-          <div className="grid grid-cols-2 gap-6">
-              {/* COMPETIDOR */}
-              <div className="p-4 bg-red-50 rounded-lg border-2 border-red-200 shadow-sm flex flex-col justify-between">
-                  <div className="text-center mb-3">
+          <div className="grid grid-cols-2 gap-4 mb-2">
+              <div className="p-3 bg-red-50 rounded-lg border-2 border-red-200 shadow-sm flex flex-col justify-between">
+                  <div className="text-center mb-2">
                       <h3 className="text-xs font-bold text-red-700 uppercase mb-1">Costo Total / Pieza (Competidor)</h3>
                       <p className="text-3xl font-black text-red-800">{formatCurrency(results.chinaCalc.totalCostPerPiece)}</p>
                   </div>
-                  <div className="border-t border-red-200 pt-3 text-[10px] text-red-900 space-y-1.5 font-medium">
+                  <div className="border-t border-red-200 pt-2 text-[10px] text-red-900 space-y-1 font-medium">
                       <div className="flex justify-between"><span>🛠️ Herramienta:</span> <span>{formatCurrency(results.chinaCalc.insertCostPerPiece)}</span></div>
                       <div className="flex justify-between"><span>⚙️ Máquina:</span> <span>{formatCurrency(results.chinaCalc.machineCostPerPiece)}</span></div>
                       <div className="flex justify-between"><span>⏱️ Parada (Cambio):</span> <span>{formatCurrency(results.chinaCalc.changeCostPerPiece)}</span></div>
@@ -466,13 +468,12 @@ Quedo a su entera disposición para cualquier consulta.`;
                   </div>
               </div>
 
-              {/* NUESTRO INSERTO */}
-              <div className="p-4 bg-green-50 rounded-lg border-2 border-green-200 shadow-sm flex flex-col justify-between">
-                  <div className="text-center mb-3">
+              <div className="p-3 bg-green-50 rounded-lg border-2 border-green-200 shadow-sm flex flex-col justify-between">
+                  <div className="text-center mb-2">
                       <h3 className="text-xs font-bold text-green-700 uppercase mb-1">Costo Total / Pieza (Nuestro)</h3>
                       <p className="text-3xl font-black text-green-800">{formatCurrency(results.premiumCalc.totalCostPerPiece)}</p>
                   </div>
-                  <div className="border-t border-green-200 pt-3 text-[10px] text-green-900 space-y-1.5 font-medium">
+                  <div className="border-t border-green-200 pt-2 text-[10px] text-green-900 space-y-1 font-medium">
                       <div className="flex justify-between"><span>🛠️ Herramienta:</span> <span>{formatCurrency(results.premiumCalc.insertCostPerPiece)}</span></div>
                       <div className="flex justify-between"><span>⚙️ Máquina:</span> <span>{formatCurrency(results.premiumCalc.machineCostPerPiece)}</span></div>
                       <div className="flex justify-between"><span>⏱️ Parada (Cambio):</span> <span>{formatCurrency(results.premiumCalc.changeCostPerPiece)}</span></div>
@@ -482,18 +483,18 @@ Quedo a su entera disposición para cualquier consulta.`;
           </div>
           
           {results.trafficLight === 'green' && (
-            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-slate-800">
+            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-slate-800">
                 <h3 className="font-bold mb-2 uppercase tracking-wide text-blue-800 text-xs">Desglose del Ahorro</h3>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <p className="font-semibold text-blue-900 mb-1">1. Ahorro neto por pieza:</p>
-                        <p className="font-mono bg-white inline-block px-2 py-1 rounded border border-blue-100 text-xs">
+                        <p className="font-semibold text-blue-900 mb-1 text-xs">1. Ahorro neto por pieza:</p>
+                        <p className="font-mono bg-white inline-block px-2 py-1 rounded border border-blue-100 text-[10px]">
                             {formatCurrency(results.chinaCalc.totalCostPerPiece)} - {formatCurrency(results.premiumCalc.totalCostPerPiece)} = <span className="font-bold text-green-700">{formatCurrency(ahorroAbsoluto)}</span>
                         </p>
                     </div>
                     <div>
-                        <p className="font-semibold text-blue-900 mb-1">2. Impacto porcentual:</p>
-                        <p className="font-mono bg-white inline-block px-2 py-1 rounded border border-blue-100 text-xs">
+                        <p className="font-semibold text-blue-900 mb-1 text-xs">2. Impacto porcentual:</p>
+                        <p className="font-mono bg-white inline-block px-2 py-1 rounded border border-blue-100 text-[10px]">
                             {formatCurrency(ahorroAbsoluto)} / {formatCurrency(results.chinaCalc.totalCostPerPiece)} = <span className="font-bold text-green-700">{porcentajeVisual}%</span>
                         </p>
                     </div>
@@ -501,20 +502,19 @@ Quedo a su entera disposición para cualquier consulta.`;
             </div>
           )}
 
-          <div className="pt-4 border-t border-slate-300">
-               <h2 className="text-lg font-bold text-blue-700 mb-3 uppercase tracking-wide">Conclusión Técnica</h2>
-               <div className={`p-4 rounded-lg border-2 bg-slate-50 border-slate-300`}>
-                  <p className="text-sm font-medium leading-relaxed text-slate-800 italic">
+          <div className="pt-2 border-t border-slate-300 mt-2">
+               <h2 className="text-lg font-bold text-blue-700 mb-2 uppercase tracking-wide">Conclusión Técnica</h2>
+               <div className={`p-3 rounded-lg border bg-slate-50 border-slate-300`}>
+                  <p className="text-sm font-medium leading-normal text-slate-800 italic">
                     {results.argument || "Complete los campos para generar una conclusión."}
                   </p>
                </div>
           </div>
 
-          {/* FUNDAMENTO TÉCNICO (ANEXO) */}
-          <div className="mt-6 pt-4 border-t border-slate-300 text-slate-600 text-xs leading-relaxed">
-            <h4 className="font-bold text-slate-800 uppercase mb-2">Fundamento Técnico del Cálculo de Costos</h4>
-            <p className="mb-2">En la industria del mecanizado, el precio de compra del inserto representa típicamente menos del <strong>5% del costo total</strong> de producción. El verdadero gasto (95%) radica en el tiempo de máquina, las paradas y el descarte de piezas.</p>
-            <ul className="list-disc pl-5 space-y-1.5 mb-2">
+          <div className="mt-4 pt-2 border-t border-slate-300 text-slate-600 text-[10px] leading-normal">
+            <h4 className="font-bold text-slate-800 uppercase mb-1">Fundamento Técnico del Cálculo de Costos</h4>
+            <p className="mb-1">En la industria del mecanizado, el precio de compra del inserto representa típicamente menos del <strong>5% del costo total</strong> de producción. El verdadero gasto (95%) radica en el tiempo de máquina, las paradas y el descarte de piezas.</p>
+            <ul className="list-disc pl-4 space-y-1 mb-1">
                 <li><strong>Optimización del Ciclo (Hora-Máquina):</strong> Herramientas de alto rendimiento permiten mayores parámetros de corte. Reducir segundos en el ciclo diluye el costo fijo de la máquina.</li>
                 <li><strong>Reducción de Tiempos Muertos:</strong> Una mayor vida útil (Piezas/Filo) disminuye drásticamente las paradas de máquina para rotar o cambiar herramientas.</li>
                 <li><strong>Seguridad del Proceso:</strong> La estabilidad del inserto premium minimiza la rotura imprevista (Scrap), salvando material costoso y tiempo de retrabajo.</li>
@@ -522,7 +522,7 @@ Quedo a su entera disposición para cualquier consulta.`;
             <p className="font-semibold italic text-slate-700">Invertir en tecnología de corte premium es la forma más rápida de aumentar la capacidad productiva de la planta y reducir el costo unitario sin comprar máquinas nuevas.</p>
           </div>
 
-          <div className="text-center pt-2 mt-auto">
+          <div className="text-center pt-3 mt-auto">
             <p className="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Generado con Simulador de Competitividad • Secocut SRL</p>
           </div>
 
@@ -532,5 +532,7 @@ Quedo a su entera disposición para cualquier consulta.`;
     </div>
   );
 }
+
+    
 
     
