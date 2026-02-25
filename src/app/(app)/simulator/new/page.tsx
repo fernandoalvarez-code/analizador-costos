@@ -24,8 +24,8 @@ export default function NewSimulatorPage() {
       machineUsdPerHour: 35,
       toolChangeMin: 2,
       scrapCostUsdPerPiece: 10,
-      china: { priceUsd: 4, pcsPerEdge: 15, cycleMinPerPiece: 1.5, pcsBetweenChanges: 15, scrapRate: 0.05 },
-      premium: { priceUsd: 11, pcsPerEdge: 45, cycleMinPerPiece: 1.2, pcsBetweenChanges: 45, scrapRate: 0.01 },
+      china: { priceUsd: 4, pcsPerEdge: 15, cycleMin: 1, cycleSec: 30, pcsBetweenChanges: 15, scrapRate: 0.05 },
+      premium: { priceUsd: 11, pcsPerEdge: 45, cycleMin: 1, cycleSec: 12, pcsBetweenChanges: 45, scrapRate: 0.01 },
     },
   });
 
@@ -38,8 +38,8 @@ export default function NewSimulatorPage() {
 
   // El motor matemático trabajando en vivo
   const results = useSimulatorCalc(
-    chinaVals || { priceUsd: 0, pcsPerEdge: 1, cycleMinPerPiece: 0, pcsBetweenChanges: 1, scrapRate: 0 },
-    premiumVals || { priceUsd: 0, pcsPerEdge: 1, cycleMinPerPiece: 0, pcsBetweenChanges: 1, scrapRate: 0 },
+    chinaVals || { priceUsd: 0, pcsPerEdge: 1, cycleMin: 0, cycleSec: 0, pcsBetweenChanges: 1, scrapRate: 0 },
+    premiumVals || { priceUsd: 0, pcsPerEdge: 1, cycleMin: 0, cycleSec: 0, pcsBetweenChanges: 1, scrapRate: 0 },
     { machineUsdPerHour, toolChangeMin, scrapCostUsdPerPiece }
   );
   
@@ -92,7 +92,7 @@ Le comparto el resumen de nuestra simulación técnica de mecanizado:
 
 ⚙️ *PARÁMETROS CLAVE (Actual vs Premium)*
 • Vida útil (Pzs/Filo): ${china.pcsPerEdge} vs ${premium.pcsPerEdge}
-• Tiempo de ciclo: ${china.cycleMinPerPiece} min vs ${premium.cycleMinPerPiece} min
+• Tiempo de ciclo: ${china.cycleMin}m ${china.cycleSec}s vs ${premium.cycleMin}m ${premium.cycleSec}s
 • Tasa de rechazo (Scrap): ${formatPercent(china.scrapRate * 100)} vs ${formatPercent(premium.scrapRate * 100)}
 
 💡 *CONCLUSIÓN TÉCNICA:*
@@ -212,9 +212,25 @@ Quedo a su entera disposición para cualquier consulta.`;
                   <FormField control={form.control} name="china.pcsPerEdge" render={({ field }) => (
                     <FormItem><FormLabel className="text-[10px] uppercase">Piezas / Filo</FormLabel><FormControl><Input type="number" className="h-8 text-sm" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
                   )} />
-                  <FormField control={form.control} name="china.cycleMinPerPiece" render={({ field }) => (
-                    <FormItem><FormLabel className="text-[10px] uppercase">Ciclo (min/pza)</FormLabel><FormControl><Input type="number" className="h-8 text-sm" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
-                  )} />
+                  
+                  <FormItem>
+                      <FormLabel className="text-[10px] uppercase">Ciclo (Min/Seg)</FormLabel>
+                      <div className="flex items-center gap-2">
+                          <FormField control={form.control} name="china.cycleMin" render={({ field }) => (
+                              <FormItem className="flex-1">
+                                  <FormControl><Input type="number" placeholder="Min" className="h-8 text-sm" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl>
+                                  <FormMessage />
+                              </FormItem>
+                          )} />
+                          <FormField control={form.control} name="china.cycleSec" render={({ field }) => (
+                              <FormItem className="flex-1">
+                                  <FormControl><Input type="number" placeholder="Seg" className="h-8 text-sm" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl>
+                                  <FormMessage />
+                              </FormItem>
+                          )} />
+                      </div>
+                  </FormItem>
+                  
                   <FormField control={form.control} name="china.pcsBetweenChanges" render={({ field }) => (
                     <FormItem><FormLabel className="text-[10px] uppercase">Pzs entre Cambios</FormLabel><FormControl><Input type="number" className="h-8 text-sm" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
                   )} />
@@ -236,9 +252,25 @@ Quedo a su entera disposición para cualquier consulta.`;
                   <FormField control={form.control} name="premium.pcsPerEdge" render={({ field }) => (
                     <FormItem><FormLabel className="text-[10px] uppercase text-blue-900">Piezas / Filo</FormLabel><FormControl><Input type="number" className="h-8 text-sm border-blue-300 focus-visible:ring-blue-500" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
                   )} />
-                  <FormField control={form.control} name="premium.cycleMinPerPiece" render={({ field }) => (
-                    <FormItem><FormLabel className="text-[10px] uppercase text-blue-900">Ciclo (min/pza)</FormLabel><FormControl><Input type="number" className="h-8 text-sm border-blue-300 focus-visible:ring-blue-500" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
-                  )} />
+                  
+                  <FormItem>
+                      <FormLabel className="text-[10px] uppercase text-blue-900">Ciclo (Min/Seg)</FormLabel>
+                      <div className="flex items-center gap-2">
+                          <FormField control={form.control} name="premium.cycleMin" render={({ field }) => (
+                              <FormItem className="flex-1">
+                                  <FormControl><Input type="number" placeholder="Min" className="h-8 text-sm border-blue-300 focus-visible:ring-blue-500" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl>
+                                  <FormMessage />
+                              </FormItem>
+                          )} />
+                          <FormField control={form.control} name="premium.cycleSec" render={({ field }) => (
+                              <FormItem className="flex-1">
+                                  <FormControl><Input type="number" placeholder="Seg" className="h-8 text-sm border-blue-300 focus-visible:ring-blue-500" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl>
+                                  <FormMessage />
+                              </FormItem>
+                          )} />
+                      </div>
+                  </FormItem>
+                  
                   <FormField control={form.control} name="premium.pcsBetweenChanges" render={({ field }) => (
                     <FormItem><FormLabel className="text-[10px] uppercase text-blue-900">Pzs entre Cambios</FormLabel><FormControl><Input type="number" className="h-8 text-sm border-blue-300 focus-visible:ring-blue-500" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
                   )} />
@@ -309,8 +341,8 @@ Quedo a su entera disposición para cualquier consulta.`;
                       </tr>
                       <tr className="bg-slate-100">
                           <td className="p-2 border-b border-slate-200 font-medium">Ciclo (min/pza)</td>
-                          <td className="p-2 border-b border-slate-200 text-center">{formValuesForPdf.china.cycleMinPerPiece}</td>
-                          <td className="p-2 border-b border-slate-200 text-center">{formValuesForPdf.premium.cycleMinPerPiece}</td>
+                          <td className="p-2 border-b border-slate-200 text-center">{`${formValuesForPdf.china.cycleMin}m ${formValuesForPdf.china.cycleSec}s`}</td>
+                          <td className="p-2 border-b border-slate-200 text-center">{`${formValuesForPdf.premium.cycleMin}m ${formValuesForPdf.premium.cycleSec}s`}</td>
                       </tr>
                       <tr>
                           <td className="p-2 border-b border-slate-200 font-medium">Tasa de Scrap</td>

@@ -4,7 +4,8 @@ import { useMemo } from 'react';
 export type OptionInputs = {
   priceUsd: number;
   pcsPerEdge: number;
-  cycleMinPerPiece: number;
+  cycleMin: number;
+  cycleSec: number;
   pcsBetweenChanges: number;
   scrapRate: number;
 };
@@ -23,8 +24,9 @@ export const useSimulatorCalc = (china: OptionInputs, premium: OptionInputs, com
     const usdPerMin = safeDiv(common.machineUsdPerHour, 60);
 
     const calcOption = (opt: OptionInputs) => {
+      const cycleDecimal = (opt.cycleMin || 0) + safeDiv(opt.cycleSec || 0, 60);
       const insertCostPerPiece = safeDiv(opt.priceUsd, opt.pcsPerEdge);
-      const machineCostPerPiece = usdPerMin * opt.cycleMinPerPiece;
+      const machineCostPerPiece = usdPerMin * cycleDecimal;
       const changeCostPerPiece = safeDiv(usdPerMin * common.toolChangeMin, opt.pcsBetweenChanges);
       const scrapCostPerPiece = opt.scrapRate * common.scrapCostUsdPerPiece;
 

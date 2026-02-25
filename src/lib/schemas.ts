@@ -167,7 +167,8 @@ export const SavingsInsightsSchema = z.object({
 export const SimulatorOptionSchema = z.object({
   priceUsd: z.number().min(0, "El precio no puede ser negativo"),
   pcsPerEdge: z.number().min(1, "Debe hacer al menos 1 pieza"),
-  cycleMinPerPiece: z.number().min(0.01, "El ciclo debe ser mayor a 0"),
+  cycleMin: z.number().min(0, "Mínimo 0"),
+  cycleSec: z.number().min(0, "No puede ser negativo").max(59, "Máximo 59"),
   pcsBetweenChanges: z.number().min(1, "Debe ser al menos 1"),
   scrapRate: z.number().min(0).max(1, "Debe ser entre 0 (0%) y 1 (100%)"),
 });
