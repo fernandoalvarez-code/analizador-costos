@@ -131,48 +131,50 @@ Quedo a su entera disposición para cualquier consulta.`;
     <div className="min-h-screen bg-slate-50">
       <div id="simulator-content" className="max-w-2xl mx-auto p-4">
         
-        <div className="flex justify-between items-center mb-6" id="header-actions">
-          <div className="flex items-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="Secocut Logo" className="h-8 w-auto mr-3" />
-            <h1 className="text-2xl font-black text-slate-800 tracking-tight">SIMULADOR</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button onClick={handleDownloadPDF} disabled={isPrinting} variant="outline">
-                {isPrinting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                PDF
-            </Button>
-             <Button onClick={handleWhatsAppShare} variant="outline">
-                <Share2 className="mr-2 h-4 w-4" />
-                WhatsApp
-            </Button>
-            <Button onClick={form.handleSubmit(onSubmit)} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">
-                <Save className="mr-2 h-4 w-4" /> {isSaving ? "Guardando..." : "Guardar"}
-            </Button>
-          </div>
-        </div>
-
-        <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-slate-200 rounded-lg shadow-md z-10 p-3 my-6">
-            <div className="grid grid-cols-2 gap-3 mb-2">
-              <div className="text-center">
-                <span className="block text-[9px] uppercase font-bold text-slate-500">Costo Pza (Competidor)</span>
-                <span className="block text-lg font-bold text-slate-700">{formatCurrency(results.chinaCalc.totalCostPerPiece)}</span>
-              </div>
-              <div className="text-center border-l border-slate-200">
-                <span className="block text-[9px] uppercase font-bold text-blue-600">Costo Pza (Nuestro)</span>
-                <span className="block text-lg font-bold text-blue-700">{formatCurrency(results.premiumCalc.totalCostPerPiece)}</span>
-              </div>
+        <div className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-sm py-4">
+            <div className="flex justify-between items-center mb-6" id="header-actions">
+            <div className="flex items-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.png" alt="Secocut Logo" className="h-8 w-auto mr-3" />
+                <h1 className="text-2xl font-black text-slate-800 tracking-tight">SIMULADOR</h1>
             </div>
-            <div className={`p-2 rounded-md border flex items-center gap-2 ${trafficColors[results.trafficLight]}`}>
-              {results.trafficLight === 'green' ? <TrendingUp className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
-              <p className="text-[11px] font-medium leading-snug">
-                {results.argument || "Cargando datos..."}
-              </p>
+            <div className="flex items-center gap-2">
+                <Button onClick={handleDownloadPDF} disabled={isPrinting} variant="outline">
+                    {isPrinting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    PDF
+                </Button>
+                <Button onClick={handleWhatsAppShare} variant="outline">
+                    <Share2 className="mr-2 h-4 w-4" />
+                    WhatsApp
+                </Button>
+                <Button onClick={form.handleSubmit(onSubmit)} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">
+                    <Save className="mr-2 h-4 w-4" /> {isSaving ? "Guardando..." : "Guardar"}
+                </Button>
+            </div>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-lg shadow-md p-3">
+                <div className="grid grid-cols-2 gap-3 mb-2">
+                <div className="text-center">
+                    <span className="block text-[9px] uppercase font-bold text-slate-500">Costo Pza (Competidor)</span>
+                    <span className="block text-lg font-bold text-slate-700">{formatCurrency(results.chinaCalc.totalCostPerPiece)}</span>
+                </div>
+                <div className="text-center border-l border-slate-200">
+                    <span className="block text-[9px] uppercase font-bold text-blue-600">Costo Pza (Nuestro)</span>
+                    <span className="block text-lg font-bold text-blue-700">{formatCurrency(results.premiumCalc.totalCostPerPiece)}</span>
+                </div>
+                </div>
+                <div className={`p-2 rounded-md border flex items-center gap-2 ${trafficColors[results.trafficLight]}`}>
+                {results.trafficLight === 'green' ? <TrendingUp className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+                <p className="text-[11px] font-medium leading-snug">
+                    {results.argument || "Cargando datos..."}
+                </p>
+                </div>
             </div>
         </div>
 
         <Form {...form}>
-          <form className="space-y-6">
+          <form className="space-y-6 mt-6">
             
             {/* SECCIÓN 1: DATOS GENERALES */}
             <Card className="border-slate-200 shadow-sm">
