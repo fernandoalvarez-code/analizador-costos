@@ -450,14 +450,34 @@ Quedo a su entera disposición para cualquier consulta.`;
               </table>
           </div>
           
+          {/* COSTOS TOTALES Y DESGLOSE (EL GOLPE VISUAL) */}
           <div className="grid grid-cols-2 gap-6">
-              <div className="p-4 bg-red-50 rounded-lg border-2 border-red-200 text-center shadow-sm">
-                  <h3 className="text-xs font-bold text-red-700 uppercase mb-1">Costo Total / Pieza (Competidor)</h3>
-                  <p className="text-3xl font-black text-red-800">{formatCurrency(results.chinaCalc.totalCostPerPiece)}</p>
+              {/* COMPETIDOR */}
+              <div className="p-4 bg-red-50 rounded-lg border-2 border-red-200 shadow-sm flex flex-col justify-between">
+                  <div className="text-center mb-3">
+                      <h3 className="text-xs font-bold text-red-700 uppercase mb-1">Costo Total / Pieza (Competidor)</h3>
+                      <p className="text-3xl font-black text-red-800">{formatCurrency(results.chinaCalc.totalCostPerPiece)}</p>
+                  </div>
+                  <div className="border-t border-red-200 pt-3 text-[10px] text-red-900 space-y-1.5 font-medium">
+                      <div className="flex justify-between"><span>🛠️ Herramienta:</span> <span>{formatCurrency(results.chinaCalc.insertCostPerPiece)}</span></div>
+                      <div className="flex justify-between"><span>⚙️ Máquina:</span> <span>{formatCurrency(results.chinaCalc.machineCostPerPiece)}</span></div>
+                      <div className="flex justify-between"><span>⏱️ Parada (Cambio):</span> <span>{formatCurrency(results.chinaCalc.changeCostPerPiece)}</span></div>
+                      <div className="flex justify-between"><span>🗑️ Scrap (Rechazo):</span> <span>{formatCurrency(results.chinaCalc.scrapCostPerPiece)}</span></div>
+                  </div>
               </div>
-              <div className="p-4 bg-green-50 rounded-lg border-2 border-green-200 text-center shadow-sm">
-                  <h3 className="text-xs font-bold text-green-700 uppercase mb-1">Costo Total / Pieza (Nuestro)</h3>
-                  <p className="text-3xl font-black text-green-800">{formatCurrency(results.premiumCalc.totalCostPerPiece)}</p>
+
+              {/* NUESTRO INSERTO */}
+              <div className="p-4 bg-green-50 rounded-lg border-2 border-green-200 shadow-sm flex flex-col justify-between">
+                  <div className="text-center mb-3">
+                      <h3 className="text-xs font-bold text-green-700 uppercase mb-1">Costo Total / Pieza (Nuestro)</h3>
+                      <p className="text-3xl font-black text-green-800">{formatCurrency(results.premiumCalc.totalCostPerPiece)}</p>
+                  </div>
+                  <div className="border-t border-green-200 pt-3 text-[10px] text-green-900 space-y-1.5 font-medium">
+                      <div className="flex justify-between"><span>🛠️ Herramienta:</span> <span>{formatCurrency(results.premiumCalc.insertCostPerPiece)}</span></div>
+                      <div className="flex justify-between"><span>⚙️ Máquina:</span> <span>{formatCurrency(results.premiumCalc.machineCostPerPiece)}</span></div>
+                      <div className="flex justify-between"><span>⏱️ Parada (Cambio):</span> <span>{formatCurrency(results.premiumCalc.changeCostPerPiece)}</span></div>
+                      <div className="flex justify-between"><span>🗑️ Scrap (Rechazo):</span> <span>{formatCurrency(results.premiumCalc.scrapCostPerPiece)}</span></div>
+                  </div>
               </div>
           </div>
           
@@ -512,3 +532,5 @@ Quedo a su entera disposición para cualquier consulta.`;
     </div>
   );
 }
+
+    
