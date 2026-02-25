@@ -128,7 +128,7 @@ Quedo a su entera disposición para cualquier consulta.`;
   const formValuesForPdf = form.getValues();
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-48"> {/* pb-48 deja espacio para la barra flotante */}
+    <div className="min-h-screen bg-slate-50">
       <div id="simulator-content" className="max-w-2xl mx-auto p-4">
         
         <div className="flex justify-between items-center mb-6" id="header-actions">
@@ -150,6 +150,25 @@ Quedo a su entera disposición para cualquier consulta.`;
                 <Save className="mr-2 h-4 w-4" /> {isSaving ? "Guardando..." : "Guardar"}
             </Button>
           </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm z-10 p-3 my-6">
+            <div className="grid grid-cols-2 gap-3 mb-2">
+              <div className="text-center">
+                <span className="block text-[9px] uppercase font-bold text-slate-500">Costo Pza (Competidor)</span>
+                <span className="block text-lg font-bold text-slate-700">{formatCurrency(results.chinaCalc.totalCostPerPiece)}</span>
+              </div>
+              <div className="text-center border-l border-slate-200">
+                <span className="block text-[9px] uppercase font-bold text-blue-600">Costo Pza (Nuestro)</span>
+                <span className="block text-lg font-bold text-blue-700">{formatCurrency(results.premiumCalc.totalCostPerPiece)}</span>
+              </div>
+            </div>
+            <div className={`p-2 rounded-md border flex items-center gap-2 ${trafficColors[results.trafficLight]}`}>
+              {results.trafficLight === 'green' ? <TrendingUp className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+              <p className="text-[11px] font-medium leading-snug">
+                {results.argument || "Cargando datos..."}
+              </p>
+            </div>
         </div>
 
         <Form {...form}>
@@ -230,31 +249,6 @@ Quedo a su entera disposición para cualquier consulta.`;
             </div>
           </form>
         </Form>
-      </div>
-
-      {/* FLOATING BOTTOM BAR (RESULTADOS EN VIVO) */}
-      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-50 p-4">
-        <div className="max-w-2xl mx-auto">
-          
-          <div className="grid grid-cols-2 gap-4 mb-3">
-            <div className="text-center">
-              <span className="block text-[10px] uppercase font-bold text-slate-500">Costo Pza (Competidor)</span>
-              <span className="block text-xl font-black text-slate-700">{formatCurrency(results.chinaCalc.totalCostPerPiece)}</span>
-            </div>
-            <div className="text-center border-l border-slate-200">
-              <span className="block text-[10px] uppercase font-bold text-blue-600">Costo Pza (Nuestro)</span>
-              <span className="block text-xl font-black text-blue-700">{formatCurrency(results.premiumCalc.totalCostPerPiece)}</span>
-            </div>
-          </div>
-
-          <div className={`p-3 rounded-lg border flex items-start gap-3 ${trafficColors[results.trafficLight]}`}>
-            {results.trafficLight === 'green' ? <TrendingUp className="w-5 h-5 mt-0.5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />}
-            <p className="text-xs font-medium leading-relaxed">
-              {results.argument || "Cargando datos..."}
-            </p>
-          </div>
-
-        </div>
       </div>
 
       {/* PDF REPORT TEMPLATE (HIDDEN CORRECTAMENTE - UNA SOLA HOJA A4) */}
@@ -358,5 +352,3 @@ Quedo a su entera disposición para cualquier consulta.`;
     </div>
   );
 }
-
-    
