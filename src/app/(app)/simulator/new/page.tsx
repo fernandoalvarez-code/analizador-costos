@@ -78,9 +78,9 @@ export default function NewSimulatorPage() {
   const handleWhatsAppShare = () => {
     const values = form.getValues();
     const { clientName, china, premium } = values;
-    const { chinaCalc, premiumCalc, competitivenessIndex, argument } = results;
+    const { chinaCalc, premiumCalc, argument } = results;
 
-    const savingsPct = competitivenessIndex > 0 ? (1 - competitivenessIndex) * 100 : 0;
+    const savingsPct = chinaCalc.totalCostPerPiece > 0 ? (1 - (premiumCalc.totalCostPerPiece / chinaCalc.totalCostPerPiece)) * 100 : 0;
     
     const message = `Estimado/a *${clientName || "Cliente"}*,
 Le comparto el resumen de nuestra simulación técnica de mecanizado:
@@ -152,7 +152,7 @@ Quedo a su entera disposición para cualquier consulta.`;
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-lg shadow-sm z-10 p-3 my-6">
+        <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-slate-200 rounded-lg shadow-md z-10 p-3 my-6">
             <div className="grid grid-cols-2 gap-3 mb-2">
               <div className="text-center">
                 <span className="block text-[9px] uppercase font-bold text-slate-500">Costo Pza (Competidor)</span>
