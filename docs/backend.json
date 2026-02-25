@@ -138,6 +138,20 @@
                 "description": "URL for the Seco Tools logo, to be used in PDF reports."
             }
         }
+    },
+    "Simulation": {
+      "title": "Simulation",
+      "type": "object",
+      "description": "Represents a competitiveness simulation run by a user.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "results": { "type": "object" },
+        "inputs": { "type": "object" }
+      },
+      "required": ["id", "userId", "date"]
     }
   },
   "auth": {
@@ -212,6 +226,22 @@
                   }
               ]
           }
+      },
+      {
+        "path": "/simulations/{simulationId}",
+        "definition": {
+          "entityName": "Simulation",
+          "schema": {
+            "$ref": "#/backend/entities/Simulation"
+          },
+          "description": "Stores all competitiveness simulations. All authenticated users can read/create, but only the owner or an admin can delete.",
+          "params": [
+            {
+              "name": "simulationId",
+              "description": "The unique identifier of the simulation."
+            }
+          ]
+        }
       }
     ],
     "reasoning": "The Firestore data structure has been updated to support a global repository of cutting tool analysis cases, making them visible to all authenticated users. This promotes knowledge sharing within the organization. The user-specific subcollection has been migrated to a root-level collection `/cuttingToolAnalyses`. The security rules will be updated to allow read access for all authenticated users while restricting write/delete operations to the document owner or an administrator, ensuring data integrity. A new 'settings' collection has been added to store global application configurations like logos, accessible by admins."

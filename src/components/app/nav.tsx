@@ -9,6 +9,7 @@ import {
   Settings,
   Briefcase,
   Calculator,
+  History,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -40,6 +41,11 @@ export default function AppNav() {
       label: 'Simulador de Competitividad',
       icon: Calculator,
     },
+    {
+      href: '/simulator/history',
+      label: 'Historial Simulador',
+      icon: History,
+    },
     // {
     //   href: '/insights',
     //   label: 'Perspectivas de IA',
@@ -65,7 +71,7 @@ export default function AppNav() {
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild
-                isActive={pathname === item.href}
+                isActive={pathname.startsWith(item.href)}
                 tooltip={{ children: item.label }}
               >
                 <Link href={item.href}>

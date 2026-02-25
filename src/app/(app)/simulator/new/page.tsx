@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -12,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Save, TrendingUp, AlertCircle, Download, Share2, Loader2, Wifi, WifiOff } from "lucide-react";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
-import { useDoc, useFirestore, useMemoFirebase, doc } from "@/firebase";
+import { useUser, useDoc, useFirestore, useMemoFirebase, doc, collection, addDoc, serverTimestamp } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 
 export default function NewSimulatorPage() {
@@ -24,6 +23,7 @@ export default function NewSimulatorPage() {
 
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { user } = useUser();
 
   // --- Hooks para data y estado de conexión ---
   const settingsRef = useMemoFirebase(() => {
@@ -135,7 +135,6 @@ export default function NewSimulatorPage() {
 
   const handleWhatsAppShare = () => {
     const { chinaCalc, premiumCalc } = results;
-
     const ahorroAbsoluto = chinaCalc.totalCostPerPiece - premiumCalc.totalCostPerPiece;
     const porcentajeVisual = results.competitivenessIndex > 0 ? ((1 - results.competitivenessIndex) * 100).toFixed(1) : "0.0";
     
@@ -165,7 +164,7 @@ Adjunto el informe PDF completo con el fundamento técnico.`;
     window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
   };
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: z.infer<typeof SimulatorSchema>) => {
     if (!navigator.onLine) {
         setIsSaving(true);
         try {
@@ -191,15 +190,30 @@ Adjunto el informe PDF completo con el fundamento técnico.`;
         return;
     }
 
-    // --- Online Logic ---
+    if (!user) {
+        toast({ variant: 'destructive', title: "Error", description: "Debes iniciar sesión para guardar la simulación." });
+        return;
+    }
+
     setIsSaving(true);
     try {
-      // AQUÍ IRÁ LA CONEXIÓN A FIREBASE EN EL PRÓXIMO PASO
-      console.log("Data lista para Firebase:", data);
-      console.log("Resultados a guardar:", results);
-      toast({ title: "Simulación Guardada", description: "La simulación ha sido guardada online." });
-    } catch (error) {
-      console.error(error);
+      if (!firestore) throw new Error("Firestore no está disponible");
+      
+      const simulationData = {
+        userId: user.uid,
+        clientName: data.clientName || "Sin Cliente",
+        date: serverTimestamp(),
+        results: results,
+        inputs: data,
+      };
+
+      await addDoc(collection(firestore, "simulations"), simulationData);
+
+      toast({ title: "Simulación Guardada", description: "La simulación ha sido guardada en el historial." });
+      form.reset();
+    } catch (error: any) {
+      console.error("Error guardando en Firebase:", error);
+      toast({ variant: 'destructive', title: "Error al Guardar", description: error.message || "No se pudo guardar la simulación online." });
     } finally {
       setIsSaving(false);
     }
@@ -223,7 +237,7 @@ Adjunto el informe PDF completo con el fundamento técnico.`;
       <div id="simulator-content" className="max-w-2xl mx-auto p-4">
         
         <div className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-sm py-4 border-b shadow-sm mb-6">
-            <div className="flex justify-between items-center mb-6" id="header-actions">
+            <div className="flex justify-between items-center mb-2">
             <div className="flex items-center">
                 {companyLogoSrc ? (
                     // eslint-disable-next-line @next/next/no-img-element

@@ -54,6 +54,21 @@ service cloud.firestore {
     }
 
     /**
+     * COLECCIÓN DE SIMULACIONES
+     */
+    match /simulations/{simulationId} {
+      // Cualquiera logueado puede leer y crear su propia simulación
+      allow get, list: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      
+      // Actualizar: Dueño o Admin (si se implementa edición en el futuro)
+      allow update: if request.auth != null && (resource.data.userId == request.auth.uid || isRequestingUserAdmin());
+      
+      // Eliminar: Dueño o Admin
+      allow delete: if request.auth != null && (resource.data.userId == request.auth.uid || isRequestingUserAdmin());
+    }
+
+    /**
      * NOTIFICACIONES
      */
     match /notifications/{notificationId} {
