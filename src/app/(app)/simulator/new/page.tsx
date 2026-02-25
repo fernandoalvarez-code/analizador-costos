@@ -76,7 +76,7 @@ export default function NewSimulatorPage() {
   }, [settings]);
 
 
-  const form = useForm({
+  const form = useForm<z.infer<typeof SimulatorSchema>>({
     resolver: zodResolver(SimulatorSchema),
     defaultValues: {
       clientName: "",
@@ -95,9 +95,9 @@ export default function NewSimulatorPage() {
   const scrapCostUsdPerPiece = useWatch({ control: form.control, name: "scrapCostUsdPerPiece" });
 
   const results = useSimulatorCalc(
-    chinaVals as any,
-    premiumVals as any,
-    { machineUsdPerHour, toolChangeMin, scrapCostUsdPerPiece } as any
+    chinaVals,
+    premiumVals,
+    { machineUsdPerHour, toolChangeMin, scrapCostUsdPerPiece }
   );
   
   const handleDownloadPDF = async () => {
@@ -488,6 +488,18 @@ Quedo a su entera disposición para cualquier consulta.`;
                     {results.argument || "Complete los campos para generar una conclusión."}
                   </p>
                </div>
+          </div>
+
+          {/* FUNDAMENTO TÉCNICO (ANEXO) */}
+          <div className="mt-6 pt-4 border-t border-slate-300 text-slate-600 text-xs leading-relaxed">
+            <h4 className="font-bold text-slate-800 uppercase mb-2">Fundamento Técnico del Cálculo de Costos</h4>
+            <p className="mb-2">En la industria del mecanizado, el precio de compra del inserto representa típicamente menos del <strong>5% del costo total</strong> de producción. El verdadero gasto (95%) radica en el tiempo de máquina, las paradas y el descarte de piezas.</p>
+            <ul className="list-disc pl-5 space-y-1.5 mb-2">
+                <li><strong>Optimización del Ciclo (Hora-Máquina):</strong> Herramientas de alto rendimiento permiten mayores parámetros de corte. Reducir segundos en el ciclo diluye el costo fijo de la máquina.</li>
+                <li><strong>Reducción de Tiempos Muertos:</strong> Una mayor vida útil (Piezas/Filo) disminuye drásticamente las paradas de máquina para rotar o cambiar herramientas.</li>
+                <li><strong>Seguridad del Proceso:</strong> La estabilidad del inserto premium minimiza la rotura imprevista (Scrap), salvando material costoso y tiempo de retrabajo.</li>
+            </ul>
+            <p className="font-semibold italic text-slate-700">Invertir en tecnología de corte premium es la forma más rápida de aumentar la capacidad productiva de la planta y reducir el costo unitario sin comprar máquinas nuevas.</p>
           </div>
 
           <div className="text-center pt-2 mt-auto">
