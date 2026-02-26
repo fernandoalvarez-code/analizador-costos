@@ -436,14 +436,10 @@ export default function TaylorCurvePage() {
             {/* HEADER DEL PDF CON LOGOS */}
             <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
               <div className="flex items-center gap-4">
-                {/* LOGO PRINCIPAL SECOCUT */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img 
-                  src="/logo.png" 
-                  alt="Secocut Logo" 
-                  className="h-10 w-auto object-contain" 
-                  crossOrigin="anonymous" 
-                />
+                {/* LOGO PRINCIPAL SECOCUT (Reemplazado por div para evitar CORS) */}
+                <div className="h-10 w-auto flex items-center justify-center bg-blue-600 text-white font-black px-4 rounded text-lg">
+                  SECOCUT
+                </div>
                 
                 <div className="ml-2">
                   <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Análisis de Curva de Taylor</h1>
