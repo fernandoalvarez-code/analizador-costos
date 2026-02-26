@@ -30,7 +30,8 @@ export default function TaylorCurvePage() {
   const [feedCurrent, setFeedCurrent] = useState<number | "">("");
   const [vcCurrent, setVcCurrent] = useState<number | "">("");
   const [pcsCurrent, setPcsCurrent] = useState<number | "">("");
-  const [tcCurrent, setTcCurrent] = useState<number | "">("");
+  const [tcCurrentMin, setTcCurrentMin] = useState<number | "">("");
+  const [tcCurrentSec, setTcCurrentSec] = useState<number | "">("");
   
   // Premium
   const [toolCostPremium, setToolCostPremium] = useState<number | "">("");
@@ -61,7 +62,6 @@ export default function TaylorCurvePage() {
       
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       
-      // Intentar usar la API Nativa de Compartir (WhatsApp, Email, etc en Móvil)
       const pdfBlob = pdf.output('blob');
       const file = new File([pdfBlob], `Reporte_Taylor_${new Date().getTime()}.pdf`, { type: 'application/pdf' });
 
@@ -72,7 +72,6 @@ export default function TaylorCurvePage() {
           files: [file],
         });
       } else {
-        // Fallback: Descargar tradicional si está en PC o no soporta Share
         pdf.save(`Reporte_Taylor_Secocut.pdf`);
       }
     } catch (error) {
@@ -97,8 +96,10 @@ export default function TaylorCurvePage() {
     const safeVcPremium = Number(vcPremium) || 0.0001;
     const safePcsCurrent = Number(pcsCurrent) || 1;
     const safePcsPremium = Number(pcsPremium) || 1;
-    const safeTcCurrent = Number(tcCurrent) || 0;
     const safeMonthlyProduction = Number(monthlyProduction) || 0;
+
+    // Convertir el input de "reloj" a decimal interno
+    const safeTcCurrent = (Number(tcCurrentMin) || 0) + ((Number(tcCurrentSec) || 0) / 60);
 
     const mat = MATERIALS.find(m => m.id === materialId) || MATERIALS[2];
     const premiumC = mat.C * 1.25;
@@ -151,8 +152,10 @@ export default function TaylorCurvePage() {
       monthlySavings,
       tcPremium
     };
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, monthlyProduction]);
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, monthlyProduction]);
 
+  const premiumMins = Math.floor(curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0);
+  const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
 
   return (
     <div className="container mx-auto space-y-8 pb-16">
@@ -190,16 +193,18 @@ export default function TaylorCurvePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* PANEL DE INPUTS (Izquierda) */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-6 lg:col-span-1">
+      {/* LAYOUT PRINCIPAL: INPUTS ARRIBA, GRÁFICO ABAJO */}
+      <div className="space-y-6">
+        
+        {/* PANEL DE INPUTS (Horizontal 4 Columnas) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           
           {/* 1. PARÁMETROS GENERALES */}
-          <div>
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <h2 className="font-bold text-slate-700 text-xs uppercase border-b border-slate-200 pb-2 mb-3">1. Parámetros del Taller</h2>
             <div className="space-y-3">
               <div>
-                <Label htmlFor="material-select" className="block text-[11px] font-bold text-slate-500 mb-1">Material a Mecanizar</Label>
+                <Label htmlFor="material-select" className="block text-[11px] font-bold text-slate-500 mb-1">Material</Label>
                  <Select value={materialId} onValueChange={setMaterialId}>
                     <SelectTrigger id="material-select" className="w-full">
                         <SelectValue placeholder="Selecciona un material" />
@@ -209,88 +214,99 @@ export default function TaylorCurvePage() {
                     </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="machine-cost" className="block text-[11px] font-bold text-slate-500 mb-1">Costo Máquina ($/hr)</Label>
-                  <Input id="machine-cost" type="number" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value === "" ? "" : Number(e.target.value))} />
-                </div>
-                <div>
-                  <Label htmlFor="tool-change-time" className="block text-[11px] font-bold text-slate-500 mb-1">Cambio Herram. (min)</Label>
-                  <Input id="tool-change-time" type="number" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value === "" ? "" : Number(e.target.value))} />
-                </div>
+              <div>
+                <Label htmlFor="machine-cost" className="block text-[11px] font-bold text-slate-500 mb-1">Costo Máquina ($/hr)</Label>
+                <Input id="machine-cost" type="number" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value === "" ? "" : Number(e.target.value))} />
+              </div>
+              <div>
+                <Label htmlFor="tool-change-time" className="block text-[11px] font-bold text-slate-500 mb-1">Cambio Herram. (min)</Label>
+                <Input id="tool-change-time" type="number" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
             </div>
           </div>
 
           {/* 2. SITUACIÓN ACTUAL (COMPETIDOR) */}
-          <div className="bg-red-50/50 p-3 rounded-lg border border-red-100">
+          <div className="bg-red-50/50 p-4 rounded-xl border border-red-100 flex flex-col justify-between">
             <h2 className="font-bold text-red-700 text-xs uppercase mb-3 flex items-center gap-1">🔴 Condición Actual</h2>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="block text-[10px] font-bold text-red-600 mb-1">Inserto Competidor ($)</Label>
-                <Input type="number" className="p-1.5 border-red-200" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+                <Label className="block text-[10px] font-bold text-red-600 mb-1">Inserto ($)</Label>
+                <Input type="number" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
                 <Label className="block text-[10px] font-bold text-red-600 mb-1">Avance (mm/rev)</Label>
-                <Input type="number" step="0.01" className="p-1.5 border-red-200" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+                <Input type="number" step="0.01" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
                 <Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label>
-                <Input type="number" className="p-1.5 border-red-200" value={vcCurrent} onChange={e => setVcCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+                <Input type="number" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white" value={vcCurrent} onChange={e => setVcCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
-                <Label className="block text-[10px] font-bold text-red-600 mb-1">Rendimiento (Pzas/filo)</Label>
-                <Input type="number" className="p-1.5 border-red-200" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+                <Label className="block text-[10px] font-bold text-red-600 mb-1">Pzas / filo</Label>
+                <Input type="number" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
+              
+              {/* INPUT DE RELOJ */}
               <div className="col-span-2">
-                <Label className="block text-[10px] font-bold text-red-700 mb-1">Tiempo de Corte Actual (minutos)</Label>
-                <Input type="number" step="0.1" className="p-2 border-2 border-red-300 font-bold" value={tcCurrent} onChange={e => setTcCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+                <Label className="block text-[10px] font-bold text-red-700 mb-1">Tiempo Actual (Corte)</Label>
+                <div className="flex gap-2">
+                  <div className="relative w-1/2">
+                    <Input type="number" className="w-full p-2 pr-7 border-2 border-red-300 rounded-md text-sm font-bold bg-white" value={tcCurrentMin} onChange={e => setTcCurrentMin(e.target.value === "" ? "" : Number(e.target.value))} />
+                    <span className="absolute right-2 top-2 text-[10px] font-bold text-red-400">min</span>
+                  </div>
+                  <div className="relative w-1/2">
+                    <Input type="number" className="w-full p-2 pr-7 border-2 border-red-300 rounded-md text-sm font-bold bg-white" value={tcCurrentSec} onChange={e => setTcCurrentSec(e.target.value === "" ? "" : Number(e.target.value))} />
+                    <span className="absolute right-2 top-2 text-[10px] font-bold text-red-400">seg</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           {/* 3. PROPUESTA PREMIUM */}
-          <div className="bg-green-50/50 p-3 rounded-lg border border-green-100">
+          <div className="bg-green-50/50 p-4 rounded-xl border border-green-100 flex flex-col justify-between">
             <h2 className="font-bold text-green-700 text-xs uppercase mb-3 flex items-center gap-1">🟢 Propuesta Premium</h2>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="block text-[10px] font-bold text-green-700 mb-1">Inserto Seco ($)</Label>
-                <Input type="number" className="p-1.5 border-green-200" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value === "" ? "" : Number(e.target.value))} />
+                <Label className="block text-[10px] font-bold text-green-700 mb-1">Inserto ($)</Label>
+                <Input type="number" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
                 <Label className="block text-[10px] font-bold text-green-700 mb-1">Avance (mm/rev)</Label>
-                <Input type="number" step="0.01" className="p-1.5 border-green-200" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} />
+                <Input type="number" step="0.01" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
                 <Label className="block text-[10px] font-bold text-green-700 mb-1">Vc Propuesta (m/min)</Label>
-                <Input type="number" className="p-1.5 border-green-200" value={vcPremium} onChange={e => setVcPremium(e.target.value === "" ? "" : Number(e.target.value))} />
+                <Input type="number" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white" value={vcPremium} onChange={e => setVcPremium(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
-                <Label className="block text-[10px] font-bold text-green-700 mb-1">Rendimiento (Pzas/filo)</Label>
-                <Input type="number" className="p-1.5 border-green-200" value={pcsPremium} onChange={e => setPcsPremium(e.target.value === "" ? "" : Number(e.target.value))} />
+                <Label className="block text-[10px] font-bold text-green-700 mb-1">Pzas / filo</Label>
+                <Input type="number" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white" value={pcsPremium} onChange={e => setPcsPremium(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
+              
+              {/* OUTPUT DE RELOJ */}
               <div className="col-span-2">
-                <Label className="block text-[10px] font-bold text-green-800 mb-1">Tiempo Propuesto Deducido (minutos)</Label>
-                <div className="w-full p-2 border-2 border-green-300 bg-green-100 text-green-800 rounded-md text-sm font-bold flex items-center shadow-inner h-10">
-                  {curveDataInfo.tcPremium > 0 && isFinite(curveDataInfo.tcPremium) ? `${curveDataInfo.tcPremium.toFixed(2)} min` : "0.00 min"}
+                <Label className="block text-[10px] font-bold text-green-800 mb-1">Tiempo Deducido (Corte)</Label>
+                <div className="w-full p-2 border-2 border-green-300 bg-green-100 text-green-800 rounded-md text-sm font-bold flex items-center justify-center shadow-inner h-10">
+                  {premiumMins} min {premiumSecs} seg
                 </div>
               </div>
             </div>
           </div>
 
           {/* 4. VOLUMEN DE PRODUCCIÓN */}
-          <div>
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col">
             <h2 className="font-bold text-slate-700 text-xs uppercase border-b border-slate-200 pb-2 mb-3">4. Escala Comercial</h2>
             <div>
-              <Label htmlFor="monthly-production" className="block text-[11px] font-bold text-slate-500 mb-1">Producción Mensual (Piezas/mes)</Label>
-              <Input id="monthly-production" type="number" className="p-2 border-slate-300 bg-slate-50 font-bold text-blue-700" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value === "" ? "" : Number(e.target.value))} />
+              <Label htmlFor="monthly-prod-input" className="block text-[11px] font-bold text-slate-500 mb-1">Prod. Mensual (Piezas)</Label>
+              <Input id="monthly-prod-input" type="number" className="w-full p-2 border border-slate-300 rounded-md text-2xl bg-slate-50 font-black text-blue-700 text-center" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value === "" ? "" : Number(e.target.value))} />
             </div>
           </div>
 
         </div>
 
-        {/* GRÁFICO Y RESULTADOS */}
-        <Card className="lg:col-span-2">
+        {/* GRAFICO (Ancho Completo Abajo) */}
+        <Card>
             <CardHeader>
                 <CardTitle>Curva de Costo vs. Velocidad</CardTitle>
                 <CardDescription>Los puntos marcan el costo operativo real en la Vc seleccionada.</CardDescription>
@@ -307,7 +323,6 @@ export default function TaylorCurvePage() {
                         <Line type="monotone" dataKey="costoActual" name="Inserto Competidor" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#ef4444' }} />
                         <Line type="monotone" dataKey="costoPremium" name="Inserto Premium" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#22c55e' }} />
 
-                        {/* Puntos de operación real */}
                         {isFinite(curveDataInfo.actualCostCurrent) && <ReferenceDot x={Number(vcCurrent)} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />}
                         {isFinite(curveDataInfo.actualCostPremium) && <ReferenceDot x={Number(vcPremium)} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
                     </LineChart>
@@ -319,7 +334,6 @@ export default function TaylorCurvePage() {
 
        {/* EL GRAN REMATE VISUAL - AHORRO MENSUAL */}
       <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl p-8 text-center shadow-2xl relative overflow-hidden mt-6">
-        {/* Decoración de fondo */}
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-black opacity-10 rounded-full blur-2xl"></div>
         
@@ -348,16 +362,13 @@ export default function TaylorCurvePage() {
         <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
           <div id="pdf-taylor-template" className="w-[210mm] min-h-[290mm] bg-white text-black p-10 font-sans box-border flex flex-col">
             
-            {/* HEADER */}
             <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
-              <div className="flex items-center gap-4">
                 <div className="h-12 flex items-center justify-center bg-blue-600 text-white font-black px-4 rounded">
                   SECOCUT
                 </div>
-                <div>
-                  <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Análisis de Curva de Taylor</h1>
-                  <p className="text-sm font-bold text-blue-600 uppercase tracking-widest">Secocut SRL</p>
-                </div>
+              <div>
+                <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Análisis de Curva de Taylor</h1>
+                <p className="text-sm font-bold text-blue-600 uppercase tracking-widest">Secocut SRL</p>
               </div>
               <div className="text-right">
                 <p className="text-xs font-bold text-slate-500 uppercase">FECHA</p>
@@ -365,7 +376,6 @@ export default function TaylorCurvePage() {
               </div>
             </div>
 
-            {/* DATOS INGRESADOS */}
             <div className="mb-6">
               <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">1. Condiciones de Trabajo Evaluadas</h2>
               <div className="grid grid-cols-4 gap-4 text-xs">
@@ -376,7 +386,6 @@ export default function TaylorCurvePage() {
               </div>
             </div>
 
-            {/* TABLA COMPARATIVA */}
             <div className="mb-6">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
@@ -394,8 +403,8 @@ export default function TaylorCurvePage() {
                   </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Tiempo de Corte (min)</td>
-                    <td className="p-2 border border-slate-300">{Number(tcCurrent).toFixed(2)}</td>
-                    <td className="p-2 border border-slate-300">{isFinite(curveDataInfo.tcPremium) ? curveDataInfo.tcPremium.toFixed(2) : 'N/A'}</td>
+                    <td className="p-2 border border-slate-300">{`${tcCurrentMin || 0}m ${tcCurrentSec || 0}s`}</td>
+                    <td className="p-2 border border-slate-300">{`${premiumMins}m ${premiumSecs}s`}</td>
                   </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Velocidad de Corte (Vc)</td>
@@ -414,14 +423,13 @@ export default function TaylorCurvePage() {
                   </tr>
                   <tr className="bg-slate-50">
                     <td className="p-2 border border-slate-300 font-bold text-slate-800">Costo Real por Pieza</td>
-                    <td className="p-2 border border-slate-300 font-bold text-red-600">{formatCurrency(curveDataInfo.actualCostCurrent)}</td>
-                    <td className="p-2 border border-slate-300 font-bold text-green-600">{formatCurrency(curveDataInfo.actualCostPremium)}</td>
+                    <td className="p-2 border border-slate-300 font-bold text-red-600">{isFinite(curveDataInfo.actualCostCurrent) ? formatCurrency(curveDataInfo.actualCostCurrent) : 'N/A'}</td>
+                    <td className="p-2 border border-slate-300 font-bold text-green-600">{isFinite(curveDataInfo.actualCostPremium) ? formatCurrency(curveDataInfo.actualCostPremium) : 'N/A'}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            {/* IMPACTO COMERCIAL - EL TITULAR DEL PDF */}
             <div className="bg-green-50 border-2 border-green-500 rounded-xl p-6 text-center mb-8 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
               <p className="text-sm font-bold text-green-700 uppercase tracking-widest mb-2 mt-2">Ahorro Mensual Proyectado</p>
@@ -435,11 +443,9 @@ export default function TaylorCurvePage() {
               </div>
             </div>
 
-            {/* GRÁFICA CAPTURADA */}
             <div>
               <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">2. Análisis de Optimización (Curva Vc vs Costo)</h2>
               <div className="w-[180mm] h-[300px] mx-auto border border-slate-200 p-2 bg-white">
-                {/* Le damos width y height fijos a LineChart para que html2canvas lo capture sin fallar */}
                 <LineChart width={650} height={280} data={curveDataInfo.data}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="speed" label={{ value: 'Vc (m/min)', position: 'bottom', offset: -5 }} />
@@ -458,6 +464,6 @@ export default function TaylorCurvePage() {
             </div>
           </div>
         </div>
-      </div>
+    </div>
   );
 }
