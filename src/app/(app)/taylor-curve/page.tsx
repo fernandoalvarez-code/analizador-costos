@@ -5,8 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, Info } from 'lucide-react';
+import { TrendingUp, Info, Share2, Download, Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
+import { Button } from '@/components/ui/button';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const MATERIALS = [
   { id: 'alu', name: 'Aluminio (Ej: 6061)', n: 0.35, C: 900 },
@@ -27,6 +30,54 @@ export default function TaylorCurvePage() {
   const [feedPremium, setFeedPremium] = useState<number>(0.4);
   const [vcCurrent, setVcCurrent] = useState<number>(100);
   const [vcPremium, setVcPremium] = useState<number>(120);
+
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGeneratePDF = async () => {
+    setIsGenerating(true);
+    try {
+      const element = document.getElementById('pdf-taylor-template');
+      if (!element) return;
+
+      // Hacemos el elemento temporalmente visible para html2canvas
+      element.style.display = 'block';
+      
+      const canvas = await html2canvas(element, { 
+        scale: 2, 
+        useCORS: true,
+        logging: false
+      });
+      
+      element.style.display = 'none';
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      
+      // Intentar usar la API Nativa de Compartir (WhatsApp, Email, etc en Móvil)
+      const pdfBlob = pdf.output('blob');
+      const file = new File([pdfBlob], `Reporte_Taylor_${new Date().getTime()}.pdf`, { type: 'application/pdf' });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: 'Reporte de Optimización CNC',
+          text: 'Adjunto el análisis de la Curva de Taylor y el cálculo de ahorro de mecanizado.',
+          files: [file],
+        });
+      } else {
+        // Fallback: Descargar tradicional si está en PC o no soporta Share
+        pdf.save(`Reporte_Taylor_Secocut.pdf`);
+      }
+    } catch (error) {
+      console.error("Error al generar PDF:", error);
+      alert("Hubo un problema al generar el reporte.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const curveDataInfo = useMemo(() => {
     const mat = MATERIALS.find(m => m.id === materialId) || MATERIALS[2];
@@ -71,14 +122,25 @@ export default function TaylorCurvePage() {
 
   return (
     <div className="container mx-auto space-y-8">
-        <div className="flex items-center gap-3">
-            <TrendingUp className="h-8 w-8 text-primary" />
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight font-headline">Análisis de Curva de Taylor</h1>
-                <p className="text-muted-foreground">Compara la Vc actual vs. la propuesta para demostrar el ahorro real.</p>
+        <div className="flex justify-between items-start">
+            <div className="flex items-center gap-3">
+                <TrendingUp className="h-8 w-8 text-primary" />
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight font-headline">Análisis de Curva de Taylor</h1>
+                    <p className="text-muted-foreground">Compara la Vc actual vs. la propuesta para demostrar el ahorro real.</p>
+                </div>
+            </div>
+            <div className="flex items-center gap-2">
+                <Button onClick={handleGeneratePDF} disabled={isGenerating} variant="outline" className="hidden sm:flex">
+                    {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4" />}
+                    Compartir
+                </Button>
+                <Button onClick={handleGeneratePDF} disabled={isGenerating}>
+                    {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    {isGenerating ? "Generando..." : "Reporte PDF"}
+                </Button>
             </div>
         </div>
-
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* PANEL DE INPUTS */}
@@ -212,6 +274,60 @@ export default function TaylorCurvePage() {
                     <li>El objetivo es que el punto verde esté por debajo del rojo, lo que significa un ahorro real por cada pieza fabricada.</li>
                 </ul>
             </div>
+        </div>
+
+        {/* PDF Template */}
+        <div id="pdf-taylor-template" style={{ display: 'none', position: 'absolute', left: '-9999px', width: '210mm', height: '297mm', background: 'white', color: 'black', padding: '15mm' }}>
+          <div className="h-full w-full flex flex-col font-sans">
+              
+              <header className="flex justify-between items-center pb-4 border-b-2 border-slate-800">
+                  <div className="text-left">
+                      <h1 className="text-3xl font-extrabold text-slate-900 uppercase">Reporte de Optimización</h1>
+                      <p className="text-lg font-bold text-blue-600">Análisis de Curva de Taylor</p>
+                  </div>
+                  {/* Logos can be added here if available as base64 or via CORS-enabled URLs */}
+              </header>
+
+              <main className="flex-1 mt-8">
+                  <div className="h-[120mm] w-full mb-8">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={curveDataInfo.data} margin={{ top: 5, right: 5, left: 20, bottom: 20 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cccccc" />
+                          <XAxis type="number" dataKey="speed" domain={['dataMin', 'dataMax']} label={{ value: 'Velocidad de Corte Vc (m/min)', position: 'bottom', offset: 0, fontSize: 10 }} tick={{fontSize: 10}} />
+                          <YAxis label={{ value: 'Costo Total', angle: -90, position: 'insideLeft', offset: -10, fontSize: 10 }} tick={{fontSize: 10}} tickFormatter={(value) => formatCurrency(value).replace('USD ', '$')} />
+                          <Tooltip formatter={(value) => [`${formatCurrency(Number(value))}`, 'Costo']} labelFormatter={(label) => `Vc: ${label} m/min`} />
+                          <Legend verticalAlign="top" height={30} iconSize={10} wrapperStyle={{fontSize: "10px"}} />
+                          <Line type="monotone" dataKey="costoActual" name="Inserto Competidor" stroke="#ef4444" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="costoPremium" name="Inserto Premium" stroke="#22c55e" strokeWidth={2} dot={false} />
+                          <ReferenceDot x={vcCurrent} y={curveDataInfo.actualCostCurrent} r={5} fill="#ef4444" stroke="white" strokeWidth={1} />
+                          <ReferenceDot x={vcPremium} y={curveDataInfo.actualCostPremium} r={5} fill="#22c55e" stroke="white" strokeWidth={1} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-4 text-xs">
+                      <div className="bg-red-50 p-3 rounded-lg border border-red-200 text-center">
+                          <p className="font-bold text-red-700 uppercase mb-1">Costo Operativo (Actual)</p>
+                          <p className="text-xl font-extrabold text-red-800">{isFinite(curveDataInfo.actualCostCurrent) ? formatCurrency(curveDataInfo.actualCostCurrent) : 'N/A'}</p>
+                          <p className="text-[9px] text-red-600 mt-1">Vc: {vcCurrent} m/min | f: {feedCurrent} mm/rev</p>
+                      </div>
+                      <div className="bg-green-50 p-3 rounded-lg border border-green-200 text-center">
+                          <p className="font-bold text-green-700 uppercase mb-1">Costo Operativo (Propuesta)</p>
+                          <p className="text-xl font-extrabold text-green-800">{isFinite(curveDataInfo.actualCostPremium) ? formatCurrency(curveDataInfo.actualCostPremium) : 'N/A'}</p>
+                           <p className="text-[9px] text-green-600 mt-1">Vc: {vcPremium} m/min | f: {feedPremium} mm/rev</p>
+                      </div>
+                      <div className="bg-slate-800 text-white p-3 rounded-lg flex flex-col justify-center items-center text-center">
+                          <p className="font-bold text-green-400 uppercase text-[10px] tracking-wide">Ahorro Real</p>
+                          <p className="text-2xl font-extrabold">{isFinite(curveDataInfo.realAbsoluteSavings) ? formatCurrency(curveDataInfo.realAbsoluteSavings) : 'N/A'}</p>
+                           {isFinite(curveDataInfo.realSavingsPercentage) && <p className="text-sm font-medium text-slate-300">({curveDataInfo.realSavingsPercentage.toFixed(1)}%)</p>}
+                      </div>
+                  </div>
+              </main>
+
+              <footer className="text-center mt-8 pt-4 border-t border-slate-200">
+                  <p className="text-[9px] text-slate-500">Reporte generado con el Analizador de Costos de Secocut | {new Date().toLocaleDateString()}</p>
+              </footer>
+          </div>
         </div>
     </div>
   );
