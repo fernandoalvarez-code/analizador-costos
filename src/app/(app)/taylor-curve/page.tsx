@@ -21,6 +21,7 @@ const MATERIALS = [
 
 export default function TaylorCurvePage() {
   // --- ESTADOS DEL FORMULARIO (Inician vacíos por requerimiento de UX) ---
+  const [operationType, setOperationType] = useState<'turning' | 'milling'>('turning');
   const [materialId, setMaterialId] = useState('med_c'); // El select sí tiene default
   const [machineCostHr, setMachineCostHr] = useState<number | "">("");
   const [toolChangeTime, setToolChangeTime] = useState<number | "">("");
@@ -125,14 +126,14 @@ export default function TaylorCurvePage() {
     const safePcsPremium = Number(pcsPremium) || 1;
     const safeMonthlyProduction = Number(monthlyProduction) || 0;
 
-    // Variables seguras para Fresado (Torno por defecto = 1)
-    const safeZCurrent = Number(zCurrent) || 1;
-    const safeZPremium = Number(zPremium) || 1;
-    const safeEdgesCurrent = Number(edgesCurrent) || 1;
-    const safeEdgesPremium = Number(edgesPremium) || 1;
-
     // Convertir el input de "reloj" a decimal interno
     const safeTcCurrent = (Number(tcCurrentMin) || 0) + ((Number(tcCurrentSec) || 0) / 60);
+
+    // Variables seguras controladas por el Toggle
+    const safeZCurrent = operationType === 'turning' ? 1 : (Number(zCurrent) || 1);
+    const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1);
+    const safeEdgesCurrent = Number(edgesCurrent) || 1;
+    const safeEdgesPremium = Number(edgesPremium) || 1;
 
     const mat = MATERIALS.find(m => m.id === materialId) || MATERIALS[2];
     const premiumC = mat.C * 1.25;
@@ -202,7 +203,7 @@ export default function TaylorCurvePage() {
       monthlySavings,
       tcPremium
     };
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, monthlyProduction, zCurrent, edgesCurrent, zPremium, edgesPremium]);
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, monthlyProduction, zCurrent, edgesCurrent, zPremium, edgesPremium, operationType]);
 
   const premiumMins = Math.floor(curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0);
   const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
@@ -313,6 +314,21 @@ export default function TaylorCurvePage() {
           {/* 1. PARÁMETROS GENERALES */}
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <h2 className="font-bold text-slate-700 text-xs uppercase border-b border-slate-200 pb-2 mb-3">1. Parámetros del Taller</h2>
+            {/* TOGGLE SWITCH: TORNEADO / FRESADO */}
+            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 mb-4 mt-2">
+              <button
+                onClick={() => setOperationType('turning')}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'turning' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                🔄 Torneado
+              </button>
+              <button
+                onClick={() => setOperationType('milling')}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'milling' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                ⚙️ Fresado
+              </button>
+            </div>
             <div className="space-y-3">
               <div>
                 <Label htmlFor="material-select" className="block text-[11px] font-bold text-slate-500 mb-1">Material</Label>
@@ -341,19 +357,28 @@ export default function TaylorCurvePage() {
             <h2 className="font-bold text-red-700 text-xs uppercase mb-3 flex items-center gap-1">🔴 Condición Actual</h2>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="block text-[10px] font-bold text-red-600 mb-1">Precio Inserto ($)</Label>
+                <Label className="block text-[10px] font-bold text-red-600 mb-1">
+                  Precio Inserto {operationType === 'turning' ? 'Torno' : 'Fresa'} ($)
+                </Label>
                 <Input type="number" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
-                <Label className="block text-[10px] font-bold text-red-600 mb-1">Filos por Inserto</Label>
-                <Input type="number" placeholder="Ej: 4" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white placeholder:text-red-200" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+                <Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label>
+                <Input type="number" placeholder="Ej: 4" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white placeholder:text-red-200/50" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
+              
+              {/* CAMPO Z: SOLO VISIBLE EN FRESADO */}
+              {operationType === 'milling' && (
+                <div>
+                  <Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Insertos (Z)</Label>
+                  <Input type="number" placeholder="Ej: 6" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white placeholder:text-red-200/50" value={zCurrent} onChange={e => setZCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+                </div>
+              )}
+
               <div>
-                <Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Insertos (Z)</Label>
-                <Input type="number" placeholder="Ej: 1 (Torno)" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white placeholder:text-red-200" value={zCurrent} onChange={e => setZCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
-              </div>
-              <div>
-                <Label className="block text-[10px] font-bold text-red-600 mb-1">Avance (mm/rev o diente)</Label>
+                <Label className="block text-[10px] font-bold text-red-600 mb-1">
+                  Avance {operationType === 'turning' ? '(mm/rev)' : '(mm/z)'}
+                </Label>
                 <Input type="number" step="0.01" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
@@ -387,19 +412,28 @@ export default function TaylorCurvePage() {
             <h2 className="font-bold text-green-700 text-xs uppercase mb-3 flex items-center gap-1">🟢 Propuesta Premium</h2>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="block text-[10px] font-bold text-green-700 mb-1">Precio Inserto ($)</Label>
+                <Label className="block text-[10px] font-bold text-green-700 mb-1">
+                    Inserto {operationType === 'turning' ? 'Torno' : 'Fresa'} ($)
+                </Label>
                 <Input type="number" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
-                <Label className="block text-[10px] font-bold text-green-700 mb-1">Filos por Inserto</Label>
-                <Input type="number" placeholder="Ej: 8" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white placeholder:text-green-200" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value === "" ? "" : Number(e.target.value))} />
+                <Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label>
+                <Input type="number" placeholder="Ej: 8" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white placeholder:text-green-200/50" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
+
+              {/* CAMPO Z: SOLO VISIBLE EN FRESADO */}
+              {operationType === 'milling' && (
+                <div>
+                  <Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Insertos (Z)</Label>
+                  <Input type="number" placeholder="Ej: 5" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white placeholder:text-green-200/50" value={zPremium} onChange={e => setZPremium(e.target.value === "" ? "" : Number(e.target.value))} />
+                </div>
+              )}
+
               <div>
-                <Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Insertos (Z)</Label>
-                <Input type="number" placeholder="Ej: 5" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white placeholder:text-green-200" value={zPremium} onChange={e => setZPremium(e.target.value === "" ? "" : Number(e.target.value))} />
-              </div>
-              <div>
-                <Label className="block text-[10px] font-bold text-green-700 mb-1">Avance (mm/rev o diente)</Label>
+                <Label className="block text-[10px] font-bold text-green-700 mb-1">
+                  Avance {operationType === 'turning' ? '(mm/rev)' : '(mm/z)'}
+                </Label>
                 <Input type="number" step="0.01" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
@@ -412,7 +446,7 @@ export default function TaylorCurvePage() {
               </div>
 
               {/* ALERTA DINÁMICA DE IMPACTO Z */}
-              {(Number(zPremium) || 1) > (Number(zCurrent) || 1) && (
+              {operationType === 'milling' && (Number(zPremium) || 1) > (Number(zCurrent) || 1) && (
                 <div className="col-span-2 mt-2 bg-green-200/50 border border-green-300 p-2 rounded flex items-start gap-2 animate-in fade-in slide-in-from-top-2">
                   <span className="text-green-700 mt-0.5">💡</span>
                   <p className="text-[10px] text-green-800 font-medium leading-tight">
@@ -610,3 +644,4 @@ export default function TaylorCurvePage() {
     </div>
   );
 }
+
