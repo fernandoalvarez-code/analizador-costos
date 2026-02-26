@@ -1,11 +1,11 @@
 "use client";
 import React, { useState, useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Dot, ReferenceLine } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, Info, Zap } from 'lucide-react';
+import { TrendingUp, Info } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
 
 const MATERIALS = [
@@ -16,18 +16,6 @@ const MATERIALS = [
   { id: 'inox', name: 'Acero Inoxidable', n: 0.20, C: 150 },
 ];
 
-// Custom Dot to find the minimum point
-const CustomMinDot = (props: any) => {
-    const { cx, cy, stroke, payload, dataKey, data } = props;
-    if (!data) return null;
-    const minY = Math.min(...data.map((d: any) => d[dataKey]));
-
-    if (payload[dataKey] === minY) {
-        return <Dot cx={cx} cy={cy} r={6} stroke={stroke} fill={"#fff"} strokeWidth={2} />;
-    }
-    return null;
-};
-
 
 export default function TaylorCurvePage() {
   const [machineCostHr, setMachineCostHr] = useState<number>(35);
@@ -37,46 +25,49 @@ export default function TaylorCurvePage() {
   const [materialId, setMaterialId] = useState('med_c');
   const [feedCurrent, setFeedCurrent] = useState<number>(0.2);
   const [feedPremium, setFeedPremium] = useState<number>(0.4);
+  const [vcCurrent, setVcCurrent] = useState<number>(100);
+  const [vcPremium, setVcPremium] = useState<number>(120);
 
   const curveDataInfo = useMemo(() => {
     const mat = MATERIALS.find(m => m.id === materialId) || MATERIALS[2];
     const machineCostMin = machineCostHr / 60;
     const premiumC = mat.C * 1.25;
 
+    // Función pura para calcular costo en un punto exacto
+    const calcCost = (v: number, isPremium: boolean, feed: number) => {
+      const C = isPremium ? premiumC : mat.C;
+      const toolCost = isPremium ? toolCostPremium : toolCostCurrent;
+      const tm = 1000 / (v * feed); 
+      const life = Math.pow((C / v), (1 / mat.n));
+      return (machineCostMin * tm) + ((machineCostMin * toolChangeTime + toolCost) * (tm / life));
+    };
+
+    // 1. Generar la curva (teoría)
     const data = [];
-    let minCostCurrent = Infinity;
-    let minCostPremium = Infinity;
-    let optimalVcCurrent = 0;
-    let optimalVcPremium = 0;
-
-    for (let v = 50; v <= mat.C * 1.2; v += 10) {
-      // El tiempo base (normalizado a 1000) se divide por (V * avance)
-      const tmCurrent = 1000 / (v * feedCurrent); 
-      const tmPremium = 1000 / (v * feedPremium); 
-      
-      // Costo Actual
-      const lifeCurrent = Math.pow((mat.C / v), (1 / mat.n));
-      const costCurrent = (machineCostMin * tmCurrent) + ((machineCostMin * toolChangeTime + toolCostCurrent) * (tmCurrent / lifeCurrent));
-      
-      // Costo Premium
-      const lifePremium = Math.pow((premiumC / v), (1 / mat.n));
-      const costPremium = (machineCostMin * tmPremium) + ((machineCostMin * toolChangeTime + toolCostPremium) * (tmPremium / lifePremium));
-
-      if (costCurrent < minCostCurrent) { minCostCurrent = costCurrent; optimalVcCurrent = v; }
-      if (costPremium < minCostPremium) { minCostPremium = costPremium; optimalVcPremium = v; }
-
+    for (let v = 50; v <= mat.C * 1.3; v += 10) {
       data.push({
         speed: v,
-        costoActual: Number(costCurrent.toFixed(2)),
-        costoPremium: Number(costPremium.toFixed(2)),
+        costoActual: Number(calcCost(v, false, feedCurrent).toFixed(2)),
+        costoPremium: Number(calcCost(v, true, feedPremium).toFixed(2)),
       });
     }
     
-    const absoluteSavings = minCostCurrent - minCostPremium;
-    const savingsPercentage = (absoluteSavings / minCostCurrent) * 100;
+    // 2. Calcular los PUNTOS REALES operativos
+    const actualCostCurrent = calcCost(vcCurrent, false, feedCurrent);
+    const actualCostPremium = calcCost(vcPremium, true, feedPremium);
+    
+    // 3. Calcular el Ahorro Real
+    const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
+    const realSavingsPercentage = (realAbsoluteSavings / actualCostCurrent) * 100;
 
-    return { data, minCostCurrent, minCostPremium, optimalVcCurrent, optimalVcPremium, absoluteSavings, savingsPercentage };
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium]);
+    return { 
+      data, 
+      actualCostCurrent, 
+      actualCostPremium, 
+      realAbsoluteSavings, 
+      realSavingsPercentage 
+    };
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium]);
 
   return (
     <div className="container mx-auto space-y-8">
@@ -84,7 +75,7 @@ export default function TaylorCurvePage() {
             <TrendingUp className="h-8 w-8 text-primary" />
             <div>
                 <h1 className="text-3xl font-bold tracking-tight font-headline">Análisis de Curva de Taylor</h1>
-                <p className="text-muted-foreground">Encuentra la Velocidad de Corte (Vc) óptima para minimizar el costo total.</p>
+                <p className="text-muted-foreground">Compara la Vc actual vs. la propuesta para demostrar el ahorro real.</p>
             </div>
         </div>
 
@@ -121,6 +112,10 @@ export default function TaylorCurvePage() {
                         <Label htmlFor="current-tool-cost" className="text-destructive">Inserto Competidor ($)</Label>
                         <Input id="current-tool-cost" type="number" value={toolCostCurrent} onChange={e => setToolCostCurrent(Number(e.target.value) || 0)} className="border-destructive/50 focus-visible:ring-destructive" />
                     </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="vc-current" className="text-destructive">Vc REAL Competidor (m/min)</Label>
+                        <Input id="vc-current" type="number" value={vcCurrent} onChange={e => setVcCurrent(Number(e.target.value) || 0)} className="border-destructive/50 focus-visible:ring-destructive" />
+                    </div>
                     <div className="space-y-2">
                         <Label htmlFor="current-feed" className="text-destructive">Avance Competidor (mm/rev)</Label>
                         <Input id="current-feed" type="number" step="0.05" value={feedCurrent} onChange={e => setFeedCurrent(Number(e.target.value) || 0)} className="border-destructive/50 focus-visible:ring-destructive" />
@@ -131,6 +126,10 @@ export default function TaylorCurvePage() {
                     <div className="space-y-2">
                         <Label htmlFor="premium-tool-cost" className="text-green-600">Inserto Premium ($)</Label>
                         <Input id="premium-tool-cost" type="number" value={toolCostPremium} onChange={e => setToolCostPremium(Number(e.target.value) || 0)} className="border-green-500/50 focus-visible:ring-green-500" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="vc-premium" className="text-green-600">Vc PROPUESTA Premium (m/min)</Label>
+                        <Input id="vc-premium" type="number" value={vcPremium} onChange={e => setVcPremium(Number(e.target.value) || 0)} className="border-green-500/50 focus-visible:ring-green-500" />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="premium-feed" className="text-green-600">Avance Premium (mm/rev)</Label>
@@ -144,6 +143,7 @@ export default function TaylorCurvePage() {
         <Card className="lg:col-span-2">
             <CardHeader>
                 <CardTitle>Curva de Costo vs. Velocidad</CardTitle>
+                <CardDescription>Los puntos marcan el costo operativo real en la Vc seleccionada.</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="h-[400px] w-full">
@@ -154,17 +154,12 @@ export default function TaylorCurvePage() {
                         <YAxis label={{ value: 'Costo Total Relativo', angle: -90, position: 'insideLeft', offset: 0 }} tick={{fontSize: 12}} tickFormatter={(value) => formatCurrency(value).replace('USD ', '$')} />
                         <Tooltip contentStyle={{backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))"}} formatter={(value) => [`${formatCurrency(Number(value))}`, 'Costo']} labelFormatter={(label) => `Vc: ${label} m/min`} />
                         <Legend verticalAlign="top" height={36} />
-                        <Line type="monotone" dataKey="costoActual" name="Inserto Competidor" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#ef4444' }} >
-                             <CustomMinDot data={curveDataInfo.data} dataKey="costoActual" />
-                        </Line>
-                        <Line type="monotone" dataKey="costoPremium" name="Inserto Premium" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#22c55e' }} >
-                             <CustomMinDot data={curveDataInfo.data} dataKey="costoPremium" />
-                        </Line>
+                        <Line type="monotone" dataKey="costoActual" name="Inserto Competidor" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#ef4444' }} />
+                        <Line type="monotone" dataKey="costoPremium" name="Inserto Premium" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#22c55e' }} />
 
-                        <ReferenceLine x={curveDataInfo.optimalVcCurrent} stroke="#ef4444" strokeDasharray="3 3" />
-                        <ReferenceLine x={curveDataInfo.optimalVcPremium} stroke="#22c55e" strokeDasharray="3 3" />
-                        <ReferenceLine y={curveDataInfo.minCostCurrent} stroke="#ef4444" strokeDasharray="3 3" />
-                        <ReferenceLine y={curveDataInfo.minCostPremium} stroke="#22c55e" strokeDasharray="3 3" />
+                        {/* Puntos de operación real */}
+                        <ReferenceDot x={vcCurrent} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="#fff" strokeWidth={2} ifOverflow="extendDomain" />
+                        <ReferenceDot x={vcPremium} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="#fff" strokeWidth={2} ifOverflow="extendDomain" />
                     </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -175,23 +170,28 @@ export default function TaylorCurvePage() {
        {/* PANEL DE RESULTADOS COMERCIALES (REMATE DE VENTAS) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
         <div className="bg-red-50 p-4 rounded-xl border border-red-200 text-center flex flex-col justify-center">
-          <p className="text-xs font-bold text-red-700 uppercase mb-1">Costo Óptimo Competidor</p>
-          <p className="text-2xl font-black text-red-800">{isFinite(curveDataInfo.minCostCurrent) ? formatCurrency(curveDataInfo.minCostCurrent) : 'N/A'}</p>
-          <p className="text-[10px] text-red-600 mt-1">Vc: {curveDataInfo.optimalVcCurrent} m/min | f: {feedCurrent} mm/rev</p>
+          <p className="text-xs font-bold text-red-700 uppercase mb-1">Costo Operativo Competidor</p>
+          <p className="text-2xl font-black text-red-800">{isFinite(curveDataInfo.actualCostCurrent) ? formatCurrency(curveDataInfo.actualCostCurrent) : 'N/A'}</p>
+          <p className="text-[10px] text-red-600 mt-1">Vc: {vcCurrent} m/min | f: {feedCurrent} mm/rev</p>
         </div>
         
         <div className="bg-green-50 p-4 rounded-xl border border-green-200 text-center flex flex-col justify-center">
-          <p className="text-xs font-bold text-green-700 uppercase mb-1">Costo Óptimo Premium</p>
-          <p className="text-2xl font-black text-green-800">{isFinite(curveDataInfo.minCostPremium) ? formatCurrency(curveDataInfo.minCostPremium) : 'N/A'}</p>
-          <p className="text-[10px] text-green-600 mt-1">Vc: {curveDataInfo.optimalVcPremium} m/min | f: {feedPremium} mm/rev</p>
+          <p className="text-xs font-bold text-green-700 uppercase mb-1">Costo Operativo Premium</p>
+          <p className="text-2xl font-black text-green-800">{isFinite(curveDataInfo.actualCostPremium) ? formatCurrency(curveDataInfo.actualCostPremium) : 'N/A'}</p>
+          <p className="text-[10px] text-green-600 mt-1">Vc: {vcPremium} m/min | f: {feedPremium} mm/rev</p>
         </div>
 
         <div className="bg-slate-800 p-6 rounded-xl border-2 border-green-400 text-center shadow-lg flex flex-col justify-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-emerald-500"></div>
           <p className="text-xs font-bold text-green-400 uppercase tracking-widest mb-1">Ahorro Real por Pieza</p>
-          <p className="text-4xl font-black text-white mb-1">{isFinite(curveDataInfo.absoluteSavings) ? formatCurrency(curveDataInfo.absoluteSavings) : 'N/A'}</p>
+          <p className="text-4xl font-black text-white mb-1">{isFinite(curveDataInfo.realAbsoluteSavings) ? formatCurrency(curveDataInfo.realAbsoluteSavings) : 'N/A'}</p>
           <p className="text-sm font-medium text-slate-300">
-            Reducción del <span className="text-green-400 font-bold">{isFinite(curveDataInfo.savingsPercentage) ? curveDataInfo.savingsPercentage.toFixed(1) : '...'}%</span> en el costo de fabricación
+            {isFinite(curveDataInfo.realSavingsPercentage) && curveDataInfo.realSavingsPercentage > 0 && (
+                <>Reducción del <span className="text-green-400 font-bold">{curveDataInfo.realSavingsPercentage.toFixed(1)}%</span> en el costo de fabricación</>
+            )}
+            {isFinite(curveDataInfo.realSavingsPercentage) && curveDataInfo.realSavingsPercentage <= 0 && (
+                <>Aumento del <span className="text-red-400 font-bold">{Math.abs(curveDataInfo.realSavingsPercentage).toFixed(1)}%</span> en el costo</>
+            )}
           </p>
         </div>
       </div>
@@ -202,9 +202,8 @@ export default function TaylorCurvePage() {
                 <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-1">¿Cómo leer este gráfico?</h3>
                 <p className="text-sm text-blue-900 dark:text-blue-300 mb-2">La curva muestra cómo varía el costo de fabricar una pieza a medida que aumentamos la Velocidad de Corte (Vc).</p>
                 <ul className="text-xs text-blue-800 dark:text-blue-400 space-y-1.5 list-disc pl-4">
-                    <li>El <strong>punto más bajo</strong> de la curva (marcado con un punto) es la velocidad exacta donde la pieza sale más barata.</li>
-                    <li>Si cortamos muy lento, el costo sube porque la hora-máquina nos come la ganancia.</li>
-                    <li>Si cortamos muy rápido, el costo sube bruscamente porque el inserto se desgasta y gastamos más en herramientas.</li>
+                    <li>El <strong>punto rojo</strong> marca tu costo operativo actual, mientras que el <strong>punto verde</strong> marca el costo con la Vc y Avance que proponemos para el inserto premium.</li>
+                    <li>El objetivo es que el punto verde esté por debajo del rojo, lo que significa un ahorro real por cada pieza fabricada.</li>
                 </ul>
             </div>
         </div>
