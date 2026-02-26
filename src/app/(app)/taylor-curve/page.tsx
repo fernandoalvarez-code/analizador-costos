@@ -168,55 +168,33 @@ export default function TaylorCurvePage() {
                     </LineChart>
                     </ResponsiveContainer>
                 </div>
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
-                    <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800/30">
-                        <p className="text-sm font-bold text-red-600 dark:text-red-400">Vc Óptima (Competidor)</p>
-                        <p className="text-xl font-black text-red-700 dark:text-red-300">{curveDataInfo.optimalVcCurrent} m/min</p>
-                    </div>
-                     <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800/30">
-                        <p className="text-sm font-bold text-green-600 dark:text-green-400">Vc Óptima (Premium)</p>
-                        <p className="text-xl font-black text-green-700 dark:text-green-300">{curveDataInfo.optimalVcPremium} m/min</p>
-                    </div>
-                </div>
             </CardContent>
         </Card>
       </div>
 
-       <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200 shadow-lg">
-        <CardHeader className="flex flex-row items-center gap-4">
-            <Zap className="h-8 w-8 text-blue-600" />
-            <div>
-                <CardTitle className="text-blue-800">Impacto Comercial y Remate de Ventas</CardTitle>
-                <CardDescription className="text-blue-700">Argumentos clave para cerrar la venta basados en los datos.</CardDescription>
-            </div>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-            <div className="space-y-4">
-                 <h3 className="font-bold text-lg text-slate-800">Argumento Técnico-Comercial</h3>
-                 {curveDataInfo.savingsPercentage > 0 ? (
-                    <p className="text-slate-700">
-                        Al implementar nuestro inserto premium, no solo optimizamos la velocidad de corte a <strong className="text-green-600">{curveDataInfo.optimalVcPremium} m/min</strong>, sino que también aprovechamos un avance superior de <strong className="text-green-600">{feedPremium} mm/rev</strong>. 
-                        Esta combinación resulta en una reducción directa del costo por pieza de <strong className="text-green-700">{curveDataInfo.savingsPercentage.toFixed(1)}%</strong>, lo que demuestra que la inversión inicial en una herramienta de mayor calidad se traduce en un ahorro significativo a escala.
-                    </p>
-                 ) : (
-                     <p className="text-slate-600 italic">
-                        En este escenario, el costo del competidor es menor. Sin embargo, nuestro inserto premium podría justificarse si el cliente experimenta problemas de calidad, acabado superficial o roturas imprevistas que no se capturan en este análisis de costos. La estabilidad y confiabilidad de nuestro inserto premium pueden ser el factor decisivo.
-                    </p>
-                 )}
-            </div>
-            <div className="flex justify-center items-center">
-                <div className="text-center bg-white p-6 rounded-xl border-2 border-primary shadow-2xl">
-                    <p className="text-sm font-bold text-primary uppercase tracking-wider">Ahorro Relativo Final</p>
-                    <p className={`text-6xl font-black my-2 ${curveDataInfo.savingsPercentage > 0 ? 'text-green-600' : 'text-destructive'}`}>
-                        {isFinite(curveDataInfo.savingsPercentage) ? `${curveDataInfo.savingsPercentage.toFixed(1)}%` : 'N/A'}
-                    </p>
-                    <p className="text-xs text-muted-foreground font-medium">
-                        {isFinite(curveDataInfo.absoluteSavings) ? `Equivalente a ${formatCurrency(curveDataInfo.absoluteSavings)} por ciclo` : 'Cálculo pendiente'}
-                    </p>
-                </div>
-            </div>
-        </CardContent>
-      </Card>
+       {/* PANEL DE RESULTADOS COMERCIALES (REMATE DE VENTAS) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+        <div className="bg-red-50 p-4 rounded-xl border border-red-200 text-center flex flex-col justify-center">
+          <p className="text-xs font-bold text-red-700 uppercase mb-1">Costo Óptimo Competidor</p>
+          <p className="text-2xl font-black text-red-800">{isFinite(curveDataInfo.minCostCurrent) ? formatCurrency(curveDataInfo.minCostCurrent) : 'N/A'}</p>
+          <p className="text-[10px] text-red-600 mt-1">Vc: {curveDataInfo.optimalVcCurrent} m/min | f: {feedCurrent} mm/rev</p>
+        </div>
+        
+        <div className="bg-green-50 p-4 rounded-xl border border-green-200 text-center flex flex-col justify-center">
+          <p className="text-xs font-bold text-green-700 uppercase mb-1">Costo Óptimo Premium</p>
+          <p className="text-2xl font-black text-green-800">{isFinite(curveDataInfo.minCostPremium) ? formatCurrency(curveDataInfo.minCostPremium) : 'N/A'}</p>
+          <p className="text-[10px] text-green-600 mt-1">Vc: {curveDataInfo.optimalVcPremium} m/min | f: {feedPremium} mm/rev</p>
+        </div>
+
+        <div className="bg-slate-800 p-6 rounded-xl border-2 border-green-400 text-center shadow-lg flex flex-col justify-center relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-emerald-500"></div>
+          <p className="text-xs font-bold text-green-400 uppercase tracking-widest mb-1">Ahorro Real por Pieza</p>
+          <p className="text-4xl font-black text-white mb-1">{isFinite(curveDataInfo.absoluteSavings) ? formatCurrency(curveDataInfo.absoluteSavings) : 'N/A'}</p>
+          <p className="text-sm font-medium text-slate-300">
+            Reducción del <span className="text-green-400 font-bold">{isFinite(curveDataInfo.savingsPercentage) ? curveDataInfo.savingsPercentage.toFixed(1) : '...'}%</span> en el costo de fabricación
+          </p>
+        </div>
+      </div>
       
         <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800/30 flex items-start gap-3">
             <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
