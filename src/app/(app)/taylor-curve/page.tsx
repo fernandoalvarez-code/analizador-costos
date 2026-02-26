@@ -130,16 +130,6 @@ export default function TaylorCurvePage() {
                     <p className="text-muted-foreground">Compara la Vc actual vs. la propuesta para demostrar el ahorro real.</p>
                 </div>
             </div>
-            <div className="flex items-center gap-2">
-                <Button onClick={handleGeneratePDF} disabled={isGenerating} variant="outline" className="hidden sm:flex">
-                    {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4" />}
-                    Compartir
-                </Button>
-                <Button onClick={handleGeneratePDF} disabled={isGenerating}>
-                    {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    {isGenerating ? "Generando..." : "Reporte PDF"}
-                </Button>
-            </div>
         </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -329,6 +319,15 @@ export default function TaylorCurvePage() {
               </footer>
           </div>
         </div>
+
+        <button 
+            onClick={handleGeneratePDF}
+            disabled={isGenerating}
+            className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-2xl flex items-center justify-center transition-all z-50 disabled:opacity-50"
+            title="Generar Reporte PDF"
+        >
+            {isGenerating ? <span className="animate-spin text-xl">⏳</span> : <Share2 size={24} />}
+        </button>
     </div>
   );
 }
