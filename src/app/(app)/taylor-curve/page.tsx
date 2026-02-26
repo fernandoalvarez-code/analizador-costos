@@ -164,8 +164,8 @@ export default function TaylorCurvePage() {
                         <Line type="monotone" dataKey="costoPremium" name="Inserto Premium" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#22c55e' }} />
 
                         {/* Puntos de operación real */}
-                        <ReferenceDot x={vcCurrent} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="#fff" strokeWidth={2} ifOverflow="extendDomain" />
-                        <ReferenceDot x={vcPremium} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="#fff" strokeWidth={2} ifOverflow="extendDomain" />
+                        <ReferenceDot x={vcCurrent} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />
+                        <ReferenceDot x={vcPremium} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />
                     </LineChart>
                     </ResponsiveContainer>
                 </div>
