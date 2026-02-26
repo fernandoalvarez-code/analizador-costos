@@ -111,58 +111,56 @@ export default function TaylorCurvePage() {
   };
 
   const curveDataInfo = useMemo(() => {
-    // Variables seguras para matemáticas (Evitar NaN e Infinity cuando están vacíos)
+    // Variables seguras para evitar NaN o Infinity
     const safeMachineCostMin = (Number(machineCostHr) || 0) / 60;
     const safeToolCostCurrent = Number(toolCostCurrent) || 0;
     const safeToolCostPremium = Number(toolCostPremium) || 0;
     const safeToolChangeTime = Number(toolChangeTime) || 0;
     
-    // Para divisores, usamos un mínimo de 0.0001 o 1 para no romper el algoritmo de Taylor
-    const safeFeedCurrent = Number(feedCurrent) || 0.0001;
-    const safeFeedPremium = Number(feedPremium) || 0.0001;
+    // Tiempos y parámetros
+    const safeTcCurrent = (Number(tcCurrentMin) || 0) + ((Number(tcCurrentSec) || 0) / 60);
     const safeVcCurrent = Number(vcCurrent) || 0.0001;
+    const safeFeedCurrent = Number(feedCurrent) || 0.0001;
     const safeVcPremium = Number(vcPremium) || 0.0001;
+    const safeFeedPremium = Number(feedPremium) || 0.0001;
+
+    // Variables de Fresado (Z y Filos) controladas por el Toggle
+    const safeZCurrent = operationType === 'turning' ? 1 : (Number(zCurrent) || 1);
+    const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || safeZCurrent);
+    const safeEdgesCurrent = Number(edgesCurrent) || 1;
+    const safeEdgesPremium = Number(edgesPremium) || 1;
+
     const safePcsCurrent = Number(pcsCurrent) || 1;
     const safePcsPremium = Number(pcsPremium) || 1;
     const safeMonthlyProduction = Number(monthlyProduction) || 0;
 
-    // Convertir el input de "reloj" a decimal interno
-    const safeTcCurrent = (Number(tcCurrentMin) || 0) + ((Number(tcCurrentSec) || 0) / 60);
-
-    // Variables seguras controladas por el Toggle
-    const safeZCurrent = operationType === 'turning' ? 1 : (Number(zCurrent) || 1);
-    const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1);
-    const safeEdgesCurrent = Number(edgesCurrent) || 1;
-    const safeEdgesPremium = Number(edgesPremium) || 1;
-
     const mat = MATERIALS.find(m => m.id === materialId) || MATERIALS[2];
     const premiumC = mat.C * 1.25;
 
-    // Constante de proporción usando variables seguras
-    const constantDistance = safeTcCurrent * safeVcCurrent * safeFeedCurrent;
-    const tcPremium = constantDistance / (safeVcPremium * safeFeedPremium);
+    // EL CORAZÓN DE LA AUTOMATIZACIÓN: Constante de proporción incluyendo Z
+    const constantDistance = safeTcCurrent * safeVcCurrent * safeFeedCurrent * safeZCurrent;
+    
+    // CÁLCULO REACTIVO DEL TIEMPO PREMIUM (Se reduce automáticamente si sube Z, Vc o Avance)
+    const tcPremium = constantDistance / (safeVcPremium * safeFeedPremium * safeZPremium);
 
-    // 1. Función Teórica (Actualizada con Z y Filos)
+    // 1. Función Teórica
     const calcCost = (v: number, isPremium: boolean, feed: number) => {
-      if (v <= 0 || feed <= 0) return Infinity;
       const C = isPremium ? premiumC : mat.C;
       const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
       const z = isPremium ? safeZPremium : safeZCurrent;
       const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
       
-      const tc = constantDistance / (v * feed); 
+      const tc = constantDistance / (v * feed * z); 
       const lifeMins = Math.pow((C / v), (1 / mat.n));
-      if (tc <= 0 || lifeMins <= 0 || !isFinite(lifeMins)) return Infinity;
-
-      const costPorPunta = edges > 0 ? toolPrice / edges : 0;
+      
+      const costPorPunta = toolPrice / edges;
       const costJuego = costPorPunta * z;
       
       return (safeMachineCostMin * tc) + ((safeMachineCostMin * safeToolChangeTime + costJuego) * (tc / lifeMins));
     };
 
-    // 2. Función Empírica (Actualizada con Z y Filos)
+    // 2. Función Empírica
     const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
-      if (tc <= 0 || toolPrice < 0 || pcsPerEdge <= 0 || z <= 0 || edges <= 0) return Infinity;
       const costCorte = safeMachineCostMin * tc;
       const costPorPunta = toolPrice / edges;
       const costJuego = costPorPunta * z;
@@ -171,7 +169,7 @@ export default function TaylorCurvePage() {
       return costCorte + costHerr + costCambio;
     };
 
-    // Crear un Set con las velocidades de 10 en 10 + las velocidades manuales exactas
+    // Crear Set para forzar las Vc en el eje X
     const speedsSet = new Set<number>();
     for (let v = 50; v <= mat.C * 1.3; v += 10) {
       speedsSet.add(v);
@@ -179,31 +177,32 @@ export default function TaylorCurvePage() {
     if (safeVcCurrent > 0) speedsSet.add(safeVcCurrent);
     if (safeVcPremium > 0) speedsSet.add(safeVcPremium);
 
-    // Ordenar de menor a mayor
     const sortedSpeeds = Array.from(speedsSet).sort((a, b) => a - b);
-
-    const data = sortedSpeeds.map(v => ({
+    const data = [];
+    sortedSpeeds.forEach(v => {
+      data.push({
         speed: v,
         costoActual: Number(calcCost(v, false, safeFeedCurrent).toFixed(2)),
         costoPremium: Number(calcCost(v, true, safeFeedPremium).toFixed(2)),
-    }));
+      });
+    });
     
-    // 3. Calcular los PUNTOS REALES operativos
+    // 3. Puntos Reales
     const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, safePcsCurrent, safeZCurrent, safeEdgesCurrent);
     const actualCostPremium = calcEmpiricalCost(tcPremium, safeToolCostPremium, safePcsPremium, safeZPremium, safeEdgesPremium);
     
-    const realAbsoluteSavings = isFinite(actualCostCurrent) && isFinite(actualCostPremium) ? actualCostCurrent - actualCostPremium : 0;
-    const monthlySavings = realAbsoluteSavings * safeMonthlyProduction;
+    const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
+    const realSavingsPercentage = actualCostCurrent > 0 ? (realAbsoluteSavings / actualCostCurrent) * 100 : 0;
 
     return { 
       data, 
       actualCostCurrent, 
       actualCostPremium, 
-      realAbsoluteSavings,
-      monthlySavings,
+      realAbsoluteSavings, 
+      realSavingsPercentage,
       tcPremium
     };
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, monthlyProduction, zCurrent, edgesCurrent, zPremium, edgesPremium, operationType]);
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction]);
 
   const premiumMins = Math.floor(curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0);
   const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
@@ -444,16 +443,6 @@ export default function TaylorCurvePage() {
                 <Label className="block text-[10px] font-bold text-green-700 mb-1">Pzas / filo</Label>
                 <Input type="number" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white" value={pcsPremium} onChange={e => setPcsPremium(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
-
-              {/* ALERTA DINÁMICA DE IMPACTO Z */}
-              {operationType === 'milling' && (Number(zPremium) || 1) > (Number(zCurrent) || 1) && (
-                <div className="col-span-2 mt-2 bg-green-200/50 border border-green-300 p-2 rounded flex items-start gap-2 animate-in fade-in slide-in-from-top-2">
-                  <span className="text-green-700 mt-0.5">💡</span>
-                  <p className="text-[10px] text-green-800 font-medium leading-tight">
-                    Mayor densidad de insertos (Z={zPremium} vs Z={zCurrent}). El avance de mesa (Vf) aumentará proporcionalmente. <strong className="font-black">¡Asegúrate de ajustar el Avance o el Tiempo para reflejar esta ganancia!</strong>
-                  </p>
-                </div>
-              )}
               
               {/* OUTPUT DE RELOJ */}
               <div className="col-span-2">
@@ -644,4 +633,3 @@ export default function TaylorCurvePage() {
     </div>
   );
 }
-
