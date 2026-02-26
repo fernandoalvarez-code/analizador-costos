@@ -31,8 +31,8 @@ export default function TaylorCurvePage() {
   const [vcPremium, setVcPremium] = useState<number>(120);
   const [pcsCurrent, setPcsCurrent] = useState<number>(6);
   const [pcsPremium, setPcsPremium] = useState<number>(20);
-  const [monthlyProduction, setMonthlyProduction] = useState<number>(1000);
   const [tcCurrent, setTcCurrent] = useState<number>(3);
+  const [monthlyProduction, setMonthlyProduction] = useState<number>(1000);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGeneratePDF = async () => {
@@ -40,9 +40,6 @@ export default function TaylorCurvePage() {
     try {
       const element = document.getElementById('pdf-taylor-template');
       if (!element) return;
-
-      // Hacemos el elemento temporalmente visible para html2canvas
-      element.style.display = 'block';
       
       const canvas = await html2canvas(element, { 
         scale: 2, 
@@ -50,8 +47,6 @@ export default function TaylorCurvePage() {
         logging: false
       });
       
-      element.style.display = 'none';
-
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -97,6 +92,7 @@ export default function TaylorCurvePage() {
       const toolCost = isPremium ? toolCostPremium : toolCostCurrent;
       const tc = constantDistance / (v * feed); 
       const lifeMins = Math.pow((C / v), (1 / mat.n));
+      if (tc <= 0 || lifeMins <= 0) return Infinity;
       return (machineCostMin * tc) + ((machineCostMin * toolChangeTime + toolCost) * (tc / lifeMins));
     };
 
@@ -123,15 +119,13 @@ export default function TaylorCurvePage() {
     const actualCostPremium = calcEmpiricalCost(tcPremium, toolCostPremium, pcsPremium);
     
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
-    const realSavingsPercentage = (realAbsoluteSavings / actualCostCurrent) * 100;
     const monthlySavings = realAbsoluteSavings * monthlyProduction;
 
     return { 
       data, 
       actualCostCurrent, 
       actualCostPremium, 
-      realAbsoluteSavings, 
-      realSavingsPercentage,
+      realAbsoluteSavings,
       monthlySavings,
       tcPremium
     };
@@ -226,56 +220,56 @@ export default function TaylorCurvePage() {
                 </div>
 
                 <div className="col-span-2 mt-4 pt-4 border-t border-slate-200">
-                    <h3 className="font-bold text-slate-700 text-xs uppercase mb-3">Condiciones Reales de Trabajo</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Fila 1: Tiempo de Corte */}
-                      <div>
-                        <Label htmlFor="tc-current" className="text-red-600">Tiempo de Corte Actual (min)</Label>
-                        <Input id="tc-current" type="number" step={0.1} value={tcCurrent} onChange={e => setTcCurrent(Number(e.target.value) || 0)} className="border-red-300 bg-red-50 font-bold"/>
-                      </div>
-                      <div>
-                        <Label htmlFor="tc-premium" className="text-green-600">Tiempo de Corte Propuesto (min)</Label>
-                        <div id="tc-premium" className="w-full h-10 p-2 border border-green-200 bg-green-100 text-green-800 rounded-md text-sm font-bold flex items-center shadow-inner">
-                          {curveDataInfo.tcPremium > 0 && isFinite(curveDataInfo.tcPremium) ? `${curveDataInfo.tcPremium.toFixed(2)} min` : '...'}
-                        </div>
-                        <p className="text-[9px] text-green-600 mt-1 italic">*Calculado por proporción</p>
-                      </div>
-                      
-                      {/* Fila 2: Velocidades */}
-                      <div>
-                        <Label htmlFor="vc-current" className="text-red-600">Vc Actual (m/min)</Label>
-                        <Input id="vc-current" type="number" value={vcCurrent} onChange={e => setVcCurrent(Number(e.target.value))} className="border-red-300 bg-red-50"/>
-                      </div>
-                      <div>
-                        <Label htmlFor="vc-premium" className="text-green-600">Vc Propuesta (m/min)</Label>
-                        <Input id="vc-premium" type="number" value={vcPremium} onChange={e => setVcPremium(Number(e.target.value))} className="border-green-300 bg-green-50"/>
-                      </div>
-                      
-                      {/* Fila 3: Rendimientos */}
-                      <div>
-                        <Label htmlFor="pcs-current" className="text-red-600">Rendimiento (Pzas/Filo)</Label>
-                        <Input id="pcs-current" type="number" value={pcsCurrent} onChange={e => setPcsCurrent(Number(e.target.value))} className="border-red-300 bg-red-50"/>
-                      </div>
-                      <div>
-                        <Label htmlFor="pcs-premium" className="text-green-600">Rendimiento (Pzas/Filo)</Label>
-                        <Input id="pcs-premium" type="number" value={pcsPremium} onChange={e => setPcsPremium(Number(e.target.value))} className="border-green-300 bg-green-50"/>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="col-span-2 mt-4 pt-4 border-t border-slate-200">
-                    <h3 className="font-bold text-slate-700 text-xs uppercase mb-3">Volumen de Producción</h3>
+                  <h3 className="font-bold text-slate-700 text-xs uppercase mb-3">Condiciones Reales de Trabajo</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Fila 1: Tiempos de Corte */}
                     <div>
-                      <Label htmlFor="monthly-production" className="text-xs font-bold text-slate-500 mb-1">Producción Mensual (Piezas/mes)</Label>
-                      <Input 
-                        id="monthly-production"
-                        type="number" 
-                        className="w-full bg-slate-50 font-bold" 
-                        value={monthlyProduction} 
-                        onChange={e => setMonthlyProduction(Number(e.target.value) || 0)} 
-                      />
+                      <Label htmlFor="tc-current" className="text-red-600">Tiempo de Corte Actual (min)</Label>
+                      <Input id="tc-current" type="number" step={0.1} value={tcCurrent} onChange={e => setTcCurrent(Number(e.target.value) || 0)} className="border-red-300 bg-red-50 font-bold"/>
+                    </div>
+                    <div>
+                      <Label htmlFor="tc-premium" className="text-green-600">Tiempo de Corte Propuesto (min)</Label>
+                      <div id="tc-premium" className="w-full h-10 p-2 border border-green-200 bg-green-100 text-green-800 rounded-md text-sm font-bold flex items-center shadow-inner">
+                        {curveDataInfo.tcPremium > 0 && isFinite(curveDataInfo.tcPremium) ? `${curveDataInfo.tcPremium.toFixed(2)} min` : '...'}
+                      </div>
+                      <p className="text-[9px] text-green-600 mt-1 italic">*Calculado por proporción</p>
+                    </div>
+                    
+                    {/* Fila 2: Velocidades */}
+                    <div>
+                      <Label htmlFor="vc-current" className="text-red-600">Vc Actual (m/min)</Label>
+                      <Input id="vc-current" type="number" value={vcCurrent} onChange={e => setVcCurrent(Number(e.target.value))} className="border-red-300 bg-red-50"/>
+                    </div>
+                    <div>
+                      <Label htmlFor="vc-premium" className="text-green-600">Vc Propuesta (m/min)</Label>
+                      <Input id="vc-premium" type="number" value={vcPremium} onChange={e => setVcPremium(Number(e.target.value))} className="border-green-300 bg-green-50"/>
+                    </div>
+                    
+                    {/* Fila 3: Rendimientos */}
+                    <div>
+                      <Label htmlFor="pcs-current" className="text-red-600">Rendimiento (Pzas/Filo)</Label>
+                      <Input id="pcs-current" type="number" value={pcsCurrent} onChange={e => setPcsCurrent(Number(e.target.value))} className="border-red-300 bg-red-50"/>
+                    </div>
+                    <div>
+                      <Label htmlFor="pcs-premium" className="text-green-600">Rendimiento (Pzas/Filo)</Label>
+                      <Input id="pcs-premium" type="number" value={pcsPremium} onChange={e => setPcsPremium(Number(e.target.value))} className="border-green-300 bg-green-50"/>
                     </div>
                   </div>
+                </div>
+                  
+                <div className="col-span-2 mt-4 pt-4 border-t border-slate-200">
+                  <h3 className="font-bold text-slate-700 text-xs uppercase mb-3">Volumen de Producción</h3>
+                  <div>
+                    <Label htmlFor="monthly-production" className="text-xs font-bold text-slate-500 mb-1">Producción Mensual (Piezas/mes)</Label>
+                    <Input 
+                      id="monthly-production"
+                      type="number" 
+                      className="w-full bg-slate-50 font-bold" 
+                      value={monthlyProduction} 
+                      onChange={e => setMonthlyProduction(Number(e.target.value) || 0)} 
+                    />
+                  </div>
+                </div>
 
             </CardContent>
         </Card>
@@ -335,118 +329,119 @@ export default function TaylorCurvePage() {
             </div>
         </div>
 
-        {/* PLANTILLA OCULTA PARA PDF */}
-        <div id="pdf-taylor-template" className="w-[210mm] min-h-[290mm] bg-white text-black p-10 font-sans box-border absolute top-[-9999px] left-[-9999px] flex flex-col">
-          
-          {/* HEADER */}
-          <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
-            <div className="flex items-center gap-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="Secocut Logo" className="h-12 w-auto object-contain" crossOrigin="anonymous" />
-              <div>
-                <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Análisis de Curva de Taylor</h1>
-                <p className="text-sm font-bold text-blue-600 uppercase tracking-widest">Secocut SRL</p>
+        {/* PLANTILLA OCULTA PARA PDF (Renderizada fuera de pantalla para html2canvas) */}
+        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+          <div id="pdf-taylor-template" className="w-[210mm] min-h-[290mm] bg-white text-black p-10 font-sans box-border flex flex-col">
+            
+            {/* HEADER */}
+            <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
+              <div className="flex items-center gap-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.png" alt="Secocut Logo" className="h-12 w-auto object-contain" crossOrigin="anonymous" />
+                <div>
+                  <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Análisis de Curva de Taylor</h1>
+                  <p className="text-sm font-bold text-blue-600 uppercase tracking-widest">Secocut SRL</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-bold text-slate-500 uppercase">FECHA</p>
+                <p className="text-base font-semibold text-slate-800">{new Date().toLocaleDateString('es-ES')}</p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-xs font-bold text-slate-500 uppercase">FECHA</p>
-              <p className="text-base font-semibold text-slate-800">{new Date().toLocaleDateString('es-ES')}</p>
+
+            {/* DATOS INGRESADOS */}
+            <div className="mb-6">
+              <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">1. Condiciones de Trabajo Evaluadas</h2>
+              <div className="grid grid-cols-4 gap-4 text-xs">
+                <div><p className="text-slate-500">Material:</p><p className="font-bold">{MATERIALS.find(m => m.id === materialId)?.name}</p></div>
+                <div><p className="text-slate-500">Costo Máquina:</p><p className="font-bold">{formatCurrency(machineCostHr)} / hr</p></div>
+                <div><p className="text-slate-500">Tiempo Cambio Herr.:</p><p className="font-bold">{toolChangeTime} min</p></div>
+                <div><p className="text-slate-500">Producción Mensual:</p><p className="font-bold">{formatNumber(monthlyProduction)} pzs/mes</p></div>
+              </div>
             </div>
-          </div>
 
-          {/* DATOS INGRESADOS */}
-           <div className="mb-6">
-            <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">1. Condiciones de Trabajo Evaluadas</h2>
-            <div className="grid grid-cols-4 gap-4 text-xs">
-              <div><p className="text-slate-500">Material:</p><p className="font-bold">{MATERIALS.find(m => m.id === materialId)?.name}</p></div>
-              <div><p className="text-slate-500">Costo Máquina:</p><p className="font-bold">{formatCurrency(machineCostHr)} / hr</p></div>
-              <div><p className="text-slate-500">Tiempo Cambio Herr.:</p><p className="font-bold">{toolChangeTime} min</p></div>
-              <div><p className="text-slate-500">Producción Mensual:</p><p className="font-bold">{formatNumber(monthlyProduction)} pzs/mes</p></div>
+            {/* TABLA COMPARATIVA */}
+            <div className="mb-6">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-800 text-white">
+                    <th className="p-2 border border-slate-700">Parámetro</th>
+                    <th className="p-2 border border-slate-700">Condición Actual (Competidor)</th>
+                    <th className="p-2 border border-slate-700">Propuesta Premium (Secocut)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold">Precio Inserto</td>
+                    <td className="p-2 border border-slate-300">{formatCurrency(toolCostCurrent)}</td>
+                    <td className="p-2 border border-slate-300">{formatCurrency(toolCostPremium)}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold">Tiempo de Corte (min)</td>
+                    <td className="p-2 border border-slate-300">{tcCurrent.toFixed(2)}</td>
+                    <td className="p-2 border border-slate-300">{isFinite(curveDataInfo.tcPremium) ? curveDataInfo.tcPremium.toFixed(2) : 'N/A'}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold">Velocidad de Corte (Vc)</td>
+                    <td className="p-2 border border-slate-300">{vcCurrent} m/min</td>
+                    <td className="p-2 border border-slate-300">{vcPremium} m/min</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold">Avance (f)</td>
+                    <td className="p-2 border border-slate-300">{feedCurrent} mm/rev</td>
+                    <td className="p-2 border border-slate-300">{feedPremium} mm/rev</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold">Rendimiento (Pzas/Filo)</td>
+                    <td className="p-2 border border-slate-300">{pcsCurrent} pzs</td>
+                    <td className="p-2 border border-slate-300">{pcsPremium} pzs</td>
+                  </tr>
+                  <tr className="bg-slate-50">
+                    <td className="p-2 border border-slate-300 font-bold text-slate-800">Costo Real por Pieza</td>
+                    <td className="p-2 border border-slate-300 font-bold text-red-600">{formatCurrency(curveDataInfo.actualCostCurrent)}</td>
+                    <td className="p-2 border border-slate-300 font-bold text-green-600">{formatCurrency(curveDataInfo.actualCostPremium)}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-          </div>
 
-          {/* TABLA COMPARATIVA */}
-          <div className="mb-6">
-            <table className="w-full text-xs text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-800 text-white">
-                  <th className="p-2 border border-slate-700">Parámetro</th>
-                  <th className="p-2 border border-slate-700">Condición Actual (Competidor)</th>
-                  <th className="p-2 border border-slate-700">Propuesta Premium (Secocut)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="p-2 border border-slate-300 font-bold">Precio Inserto</td>
-                  <td className="p-2 border border-slate-300">{formatCurrency(toolCostCurrent)}</td>
-                  <td className="p-2 border border-slate-300">{formatCurrency(toolCostPremium)}</td>
-                </tr>
-                <tr>
-                  <td className="p-2 border border-slate-300 font-bold">Tiempo de Corte (min)</td>
-                  <td className="p-2 border border-slate-300">{tcCurrent.toFixed(2)}</td>
-                  <td className="p-2 border border-slate-300">{isFinite(curveDataInfo.tcPremium) ? curveDataInfo.tcPremium.toFixed(2) : 'N/A'}</td>
-                </tr>
-                <tr>
-                  <td className="p-2 border border-slate-300 font-bold">Velocidad de Corte (Vc)</td>
-                  <td className="p-2 border border-slate-300">{vcCurrent} m/min</td>
-                  <td className="p-2 border border-slate-300">{vcPremium} m/min</td>
-                </tr>
-                <tr>
-                  <td className="p-2 border border-slate-300 font-bold">Avance (f)</td>
-                  <td className="p-2 border border-slate-300">{feedCurrent} mm/rev</td>
-                  <td className="p-2 border border-slate-300">{feedPremium} mm/rev</td>
-                </tr>
-                <tr>
-                  <td className="p-2 border border-slate-300 font-bold">Rendimiento (Pzas/Filo)</td>
-                  <td className="p-2 border border-slate-300">{pcsCurrent} pzs</td>
-                  <td className="p-2 border border-slate-300">{pcsPremium} pzs</td>
-                </tr>
-                <tr className="bg-slate-50">
-                  <td className="p-2 border border-slate-300 font-bold text-slate-800">Costo Real por Pieza</td>
-                  <td className="p-2 border border-slate-300 font-bold text-red-600">{formatCurrency(curveDataInfo.actualCostCurrent)}</td>
-                  <td className="p-2 border border-slate-300 font-bold text-green-600">{formatCurrency(curveDataInfo.actualCostPremium)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* IMPACTO COMERCIAL - EL TITULAR DEL PDF */}
-          <div className="bg-green-50 border-2 border-green-500 rounded-xl p-6 text-center mb-8 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
-            <p className="text-sm font-bold text-green-700 uppercase tracking-widest mb-2 mt-2">Ahorro Mensual Proyectado</p>
-            <p className="text-5xl font-black text-green-800 mb-2">
-              {formatCurrency(curveDataInfo.monthlySavings)}
-            </p>
-            <div className="inline-block bg-green-100 px-4 py-2 rounded-full mt-2">
-              <p className="text-sm font-bold text-green-800">
-                Basado en {formatNumber(monthlyProduction)} piezas/mes • Ahorro unitario: {formatCurrency(curveDataInfo.realAbsoluteSavings)}
+            {/* IMPACTO COMERCIAL - EL TITULAR DEL PDF */}
+            <div className="bg-green-50 border-2 border-green-500 rounded-xl p-6 text-center mb-8 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
+              <p className="text-sm font-bold text-green-700 uppercase tracking-widest mb-2 mt-2">Ahorro Mensual Proyectado</p>
+              <p className="text-5xl font-black text-green-800 mb-2">
+                {formatCurrency(curveDataInfo.monthlySavings)}
               </p>
+              <div className="inline-block bg-green-100 px-4 py-2 rounded-full mt-2">
+                <p className="text-sm font-bold text-green-800">
+                  Basado en {formatNumber(monthlyProduction)} piezas/mes • Ahorro unitario: {formatCurrency(curveDataInfo.realAbsoluteSavings)}
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* GRÁFICA CAPTURADA */}
-          <div>
-            <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">2. Análisis de Optimización (Curva Vc vs Costo)</h2>
-            <div className="w-[180mm] h-[300px] mx-auto border border-slate-200 p-2 bg-white">
-              {/* Le damos width y height fijos a LineChart para que html2canvas lo capture sin fallar */}
-              <LineChart width={650} height={280} data={curveDataInfo.data}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="speed" label={{ value: 'Vc (m/min)', position: 'bottom', offset: -5 }} />
-                <YAxis label={{ value: 'Costo USD', angle: -90, position: 'insideLeft' }} />
-                <Legend verticalAlign="top" height={36} />
-                <Line type="monotone" dataKey="costoActual" stroke="#ef4444" strokeWidth={3} dot={false} />
-                <Line type="monotone" dataKey="costoPremium" stroke="#22c55e" strokeWidth={3} dot={false} />
-                <ReferenceDot x={vcCurrent} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />
-                <ReferenceDot x={vcPremium} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />
-              </LineChart>
+            {/* GRÁFICA CAPTURADA */}
+            <div>
+              <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">2. Análisis de Optimización (Curva Vc vs Costo)</h2>
+              <div className="w-[180mm] h-[300px] mx-auto border border-slate-200 p-2 bg-white">
+                {/* Le damos width y height fijos a LineChart para que html2canvas lo capture sin fallar */}
+                <LineChart width={650} height={280} data={curveDataInfo.data}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="speed" label={{ value: 'Vc (m/min)', position: 'bottom', offset: -5 }} />
+                  <YAxis label={{ value: 'Costo USD', angle: -90, position: 'insideLeft' }} />
+                  <Legend verticalAlign="top" height={36} />
+                  <Line type="monotone" dataKey="costoActual" stroke="#ef4444" strokeWidth={3} dot={false} />
+                  <Line type="monotone" dataKey="costoPremium" stroke="#22c55e" strokeWidth={3} dot={false} />
+                  <ReferenceDot x={vcCurrent} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />
+                  <ReferenceDot x={vcPremium} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />
+                </LineChart>
+              </div>
             </div>
-          </div>
 
-          <div className="mt-auto pt-4 border-t border-slate-300 text-center text-[10px] text-slate-500">
-            Documento generado automáticamente por Simulador de Competitividad Secocut SRL.
+            <div className="mt-auto pt-4 border-t border-slate-300 text-center text-[10px] text-slate-500">
+              Documento generado automáticamente por Simulador de Competitividad Secocut SRL.
+            </div>
           </div>
         </div>
       </div>
-    </div>
   );
 }
