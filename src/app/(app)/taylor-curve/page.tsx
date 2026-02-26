@@ -33,6 +33,7 @@ export default function TaylorCurvePage() {
   const [pcsCurrent, setPcsCurrent] = useState<number>(6);
   const [pcsPremium, setPcsPremium] = useState<number>(20);
   const [monthlyProduction, setMonthlyProduction] = useState<number>(1000);
+  const [tcCurrent, setTcCurrent] = useState<number>(3);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGeneratePDF = async () => {
@@ -86,20 +87,24 @@ export default function TaylorCurvePage() {
     const machineCostMin = machineCostHr / 60;
     const premiumC = mat.C * 1.25;
 
+    // Constante de proporción (Distancia virtual)
+    const constantDistance = tcCurrent * vcCurrent * feedCurrent;
+    // Cálculo dinámico del tiempo propuesto
+    const tcPremium = constantDistance / (vcPremium * feedPremium);
+
     // 1. Función Teórica (Para las líneas de la Curva U)
     const calcCost = (v: number, isPremium: boolean, feed: number) => {
       const C = isPremium ? premiumC : mat.C;
       const toolCost = isPremium ? toolCostPremium : toolCostCurrent;
-      const tm = 1000 / (v * feed); 
-      const life = Math.pow((C / v), (1 / mat.n));
-      return (machineCostMin * tm) + ((machineCostMin * toolChangeTime + toolCost) * (tm / life));
+      const tc = constantDistance / (v * feed); 
+      const lifeMins = Math.pow((C / v), (1 / mat.n));
+      return (machineCostMin * tc) + ((machineCostMin * toolChangeTime + toolCost) * (tc / lifeMins));
     };
 
     // 2. Función Empírica / Real (Para los puntos y el remate de ventas)
-    const calcEmpiricalCost = (v: number, feed: number, toolPrice: number, pcsPerEdge: number) => {
-      if (v <= 0 || feed <= 0 || toolPrice < 0 || pcsPerEdge <= 0) return Infinity;
-      const tm = 1000 / (v * feed); // Mantenemos la misma constante de distancia para la escala
-      const costCorte = machineCostMin * tm;
+    const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number) => {
+      if (tc <= 0 || toolPrice < 0 || pcsPerEdge <= 0) return Infinity;
+      const costCorte = machineCostMin * tc;
       const costHerr = toolPrice / pcsPerEdge;
       const costCambio = (machineCostMin * toolChangeTime) / pcsPerEdge;
       return costCorte + costHerr + costCambio;
@@ -114,9 +119,9 @@ export default function TaylorCurvePage() {
       });
     }
     
-    // 3. Calcular los PUNTOS REALES operativos (Usando Piezas/Filo)
-    const actualCostCurrent = calcEmpiricalCost(vcCurrent, feedCurrent, toolCostCurrent, pcsCurrent);
-    const actualCostPremium = calcEmpiricalCost(vcPremium, feedPremium, toolCostPremium, pcsPremium);
+    // 3. Calcular los PUNTOS REALES operativos
+    const actualCostCurrent = calcEmpiricalCost(tcCurrent, toolCostCurrent, pcsCurrent);
+    const actualCostPremium = calcEmpiricalCost(tcPremium, toolCostPremium, pcsPremium);
     
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
     const realSavingsPercentage = (realAbsoluteSavings / actualCostCurrent) * 100;
@@ -128,9 +133,10 @@ export default function TaylorCurvePage() {
       actualCostPremium, 
       realAbsoluteSavings, 
       realSavingsPercentage,
-      monthlySavings
+      monthlySavings,
+      tcPremium
     };
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, monthlyProduction]);
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, monthlyProduction]);
 
 
   return (
@@ -223,23 +229,34 @@ export default function TaylorCurvePage() {
                 <div className="col-span-2 mt-4 pt-4 border-t border-slate-200">
                     <h3 className="font-bold text-slate-700 text-xs uppercase mb-3">Condiciones Reales de Trabajo</h3>
                     <div className="grid grid-cols-2 gap-4">
-                      {/* Fila 1: Velocidades */}
+                      {/* Fila 1: Tiempo de Corte */}
                       <div>
-                        <Label className="block text-xs font-bold text-red-600 mb-1">Vc Actual (m/min)</Label>
-                        <Input type="number" className="border-red-200 bg-red-50" value={vcCurrent} onChange={e => setVcCurrent(Number(e.target.value))} />
+                        <Label htmlFor="tc-current" className="text-red-600">Tiempo de Corte Actual (min)</Label>
+                        <Input id="tc-current" type="number" value={tcCurrent} onChange={e => setTcCurrent(Number(e.target.value) || 0)} className="border-red-300 bg-red-50"/>
                       </div>
                       <div>
-                        <Label className="block text-xs font-bold text-green-600 mb-1">Vc Propuesta (m/min)</Label>
-                        <Input type="number" className="border-green-200 bg-green-50" value={vcPremium} onChange={e => setVcPremium(Number(e.target.value))} />
+                        <Label htmlFor="tc-premium" className="text-green-600">Tiempo de Corte Propuesto (min)</Label>
+                        <Input id="tc-premium" type="text" value={curveDataInfo.tcPremium > 0 && isFinite(curveDataInfo.tcPremium) ? curveDataInfo.tcPremium.toFixed(2) : '...'} disabled className="border-green-300 bg-green-50 font-bold"/>
                       </div>
-                      {/* Fila 2: Rendimientos */}
+                      
+                      {/* Fila 2: Velocidades */}
                       <div>
-                        <Label className="block text-xs font-bold text-red-600 mb-1">Rendimiento (Pzas/Filo)</Label>
-                        <Input type="number" className="border-red-200 bg-red-50" value={pcsCurrent} onChange={e => setPcsCurrent(Number(e.target.value))} />
+                        <Label htmlFor="vc-current" className="text-red-600">Vc Actual (m/min)</Label>
+                        <Input id="vc-current" type="number" value={vcCurrent} onChange={e => setVcCurrent(Number(e.target.value))} className="border-red-300 bg-red-50"/>
                       </div>
                       <div>
-                        <Label className="block text-xs font-bold text-green-600 mb-1">Rendimiento (Pzas/Filo)</Label>
-                        <Input type="number" className="border-green-200 bg-green-50" value={pcsPremium} onChange={e => setPcsPremium(Number(e.target.value))} />
+                        <Label htmlFor="vc-premium" className="text-green-600">Vc Propuesta (m/min)</Label>
+                        <Input id="vc-premium" type="number" value={vcPremium} onChange={e => setVcPremium(Number(e.target.value))} className="border-green-300 bg-green-50"/>
+                      </div>
+                      
+                      {/* Fila 3: Rendimientos */}
+                      <div>
+                        <Label htmlFor="pcs-current" className="text-red-600">Rendimiento (Pzas/Filo)</Label>
+                        <Input id="pcs-current" type="number" value={pcsCurrent} onChange={e => setPcsCurrent(Number(e.target.value))} className="border-red-300 bg-red-50"/>
+                      </div>
+                      <div>
+                        <Label htmlFor="pcs-premium" className="text-green-600">Rendimiento (Pzas/Filo)</Label>
+                        <Input id="pcs-premium" type="number" value={pcsPremium} onChange={e => setPcsPremium(Number(e.target.value))} className="border-green-300 bg-green-50"/>
                       </div>
                     </div>
                   </div>
@@ -364,6 +381,11 @@ export default function TaylorCurvePage() {
                   <td className="p-2 border border-slate-300">{formatCurrency(toolCostPremium)}</td>
                 </tr>
                 <tr>
+                  <td className="p-2 border border-slate-300 font-bold">Tiempo de Corte (min)</td>
+                  <td className="p-2 border border-slate-300">{tcCurrent.toFixed(2)}</td>
+                  <td className="p-2 border border-slate-300">{isFinite(curveDataInfo.tcPremium) ? curveDataInfo.tcPremium.toFixed(2) : 'N/A'}</td>
+                </tr>
+                <tr>
                   <td className="p-2 border border-slate-300 font-bold">Velocidad de Corte (Vc)</td>
                   <td className="p-2 border border-slate-300">{vcCurrent} m/min</td>
                   <td className="p-2 border border-slate-300">{vcPremium} m/min</td>
@@ -374,7 +396,7 @@ export default function TaylorCurvePage() {
                   <td className="p-2 border border-slate-300">{feedPremium} mm/rev</td>
                 </tr>
                 <tr>
-                  <td className="p-2 border border-slate-300 font-bold">Piezas / Filo (Real)</td>
+                  <td className="p-2 border border-slate-300 font-bold">Rendimiento (Pzas/Filo)</td>
                   <td className="p-2 border border-slate-300">{pcsCurrent} pzs</td>
                   <td className="p-2 border border-slate-300">{pcsPremium} pzs</td>
                 </tr>
