@@ -263,28 +263,19 @@ export default function TaylorCurvePage() {
         </Card>
       </div>
 
-       {/* PANEL DE RESULTADOS COMERCIALES (REMATE DE VENTAS) */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
-        <div className="bg-red-50 p-4 rounded-xl border border-red-200 text-center flex flex-col justify-center">
-          <p className="text-xs font-bold text-red-700 uppercase mb-1">Costo Operativo Competidor</p>
-          <p className="text-2xl font-black text-red-800">{isFinite(curveDataInfo.actualCostCurrent) ? formatCurrency(curveDataInfo.actualCostCurrent) : 'N/A'}</p>
-          <p className="text-[10px] text-red-600 mt-1">por pieza</p>
-        </div>
+       {/* EL GRAN REMATE VISUAL - AHORRO MENSUAL */}
+       <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl p-8 text-center shadow-2xl relative overflow-hidden mt-6">
+        {/* Decoración de fondo */}
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-black opacity-10 rounded-full blur-2xl"></div>
         
-        <div className="bg-green-50 p-4 rounded-xl border border-green-200 text-center flex flex-col justify-center">
-          <p className="text-xs font-bold text-green-700 uppercase mb-1">Costo Operativo Premium</p>
-          <p className="text-2xl font-black text-green-800">{isFinite(curveDataInfo.actualCostPremium) ? formatCurrency(curveDataInfo.actualCostPremium) : 'N/A'}</p>
-          <p className="text-[10px] text-green-600 mt-1">por pieza</p>
-        </div>
-
-        <div className="md:col-span-2 bg-slate-800 p-6 rounded-xl border-2 border-green-400 text-center shadow-lg flex flex-col justify-center relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-emerald-500"></div>
-          <p className="text-sm font-bold text-green-400 uppercase tracking-widest mb-1">Impacto Mensual Total</p>
-          <p className="text-5xl font-black text-white mb-1">{isFinite(curveDataInfo.monthlySavings) ? formatCurrency(curveDataInfo.monthlySavings) : 'N/A'}</p>
-          <p className="text-sm font-medium text-slate-300">
-            Ahorro basado en {formatNumber(monthlyProduction)} piezas/mes
-          </p>
-        </div>
+        <p className="relative z-10 text-green-100 font-bold tracking-widest uppercase text-sm mb-2">💰 Impacto Financiero Proyectado</p>
+        <h2 className="relative z-10 text-5xl md:text-6xl font-black text-white drop-shadow-md mb-3">
+          {formatCurrency(curveDataInfo.monthlySavings)}
+        </h2>
+        <p className="relative z-10 text-lg text-green-50 font-medium">
+          Ahorro mensual neto al fabricar <span className="font-bold text-white bg-green-700 px-2 py-1 rounded">{formatNumber(monthlyProduction)} piezas</span> con tecnología Secocut Premium.
+        </p>
       </div>
       
         <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800/30 flex items-start gap-3">
