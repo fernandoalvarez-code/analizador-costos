@@ -308,8 +308,8 @@ export default function TaylorCurvePage() {
                         <Line type="monotone" dataKey="costoPremium" name="Inserto Premium" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#22c55e' }} />
 
                         {/* Puntos de operación real */}
-                        {isFinite(curveDataInfo.actualCostCurrent) && <ReferenceDot x={vcCurrent} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />}
-                        {isFinite(curveDataInfo.actualCostPremium) && <ReferenceDot x={vcPremium} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
+                        {isFinite(curveDataInfo.actualCostCurrent) && <ReferenceDot x={Number(vcCurrent)} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />}
+                        {isFinite(curveDataInfo.actualCostPremium) && <ReferenceDot x={Number(vcPremium)} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
                     </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -328,7 +328,7 @@ export default function TaylorCurvePage() {
           {formatCurrency(curveDataInfo.monthlySavings)}
         </h2>
         <p className="relative z-10 text-lg text-green-50 font-medium">
-          Ahorro mensual neto al fabricar <span className="font-bold text-white bg-green-700 px-2 py-1 rounded">{formatNumber(monthlyProduction)} piezas</span> con tecnología Secocut Premium.
+          Ahorro mensual neto al fabricar <span className="font-bold text-white bg-green-700 px-2 py-1 rounded">{formatNumber(Number(monthlyProduction))} piezas</span> con tecnología Secocut Premium.
         </p>
       </div>
       
