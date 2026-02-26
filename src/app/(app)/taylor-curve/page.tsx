@@ -188,33 +188,54 @@ export default function TaylorCurvePage() {
   const premiumMins = Math.floor(curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0);
   const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
 
-  // --- CUSTOM TOOLTIP PARA RECHARTS ---
+  // --- CUSTOM TOOLTIP PARA RECHARTS (Con % de Ahorro) ---
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      // Detectar si el mouse está exactamente sobre las Vc ingresadas por el usuario
+      // 1. Detectar si estamos en los puntos reales del usuario
       const isUserCurrentVc = label === (Number(vcCurrent) || 0);
       const isUserPremiumVc = label === (Number(vcPremium) || 0);
 
-      // Si estamos en la Vc del usuario, mostramos el costo real (empírico). Si no, el teórico de la curva.
+      // 2. Obtener los costos a mostrar
       const displayCostCurrent = isUserCurrentVc ? curveDataInfo.actualCostCurrent : payload[0]?.value;
       const displayCostPremium = isUserPremiumVc ? curveDataInfo.actualCostPremium : payload[1]?.value;
 
+      // 3. Calcular el Porcentaje de Ahorro Real
+      const currentCost = curveDataInfo.actualCostCurrent;
+      const premiumCost = curveDataInfo.actualCostPremium;
+      const savingsPercentage = currentCost > 0 ? ((currentCost - premiumCost) / currentCost) * 100 : 0;
+
       return (
-        <div className="bg-white p-4 border border-slate-200 rounded-lg shadow-xl text-sm min-w-[200px]">
+        <div className="bg-white p-4 border border-slate-200 rounded-lg shadow-xl text-sm min-w-[220px]">
           <p className="font-black text-slate-700 mb-3 border-b pb-1">Vc: {label} m/min</p>
           
-          <div className="space-y-2">
+          <div className="space-y-3">
+            {/* COMPETIDOR */}
             <div>
-              <p className="text-[10px] font-bold text-red-500 uppercase">{isUserCurrentVc ? '🔴 COSTO REAL (Tu Parámetro)' : 'Costo Teórico (Competidor)'}</p>
+              <p className="text-[10px] font-bold text-red-500 uppercase">
+                {isUserCurrentVc ? '🔴 COSTO REAL (Tu Parámetro)' : 'Costo Teórico (Competidor)'}
+              </p>
               <p className="font-bold text-red-700">USD {Number(displayCostCurrent).toFixed(2)}</p>
             </div>
             
+            {/* PREMIUM + BADGE DE AHORRO */}
             <div>
-              <p className="text-[10px] font-bold text-green-600 uppercase">{isUserPremiumVc ? '🟢 COSTO REAL (Nuestra Propuesta)' : 'Costo Teórico (Premium)'}</p>
-              <p className="font-bold text-green-700">USD {Number(displayCostPremium).toFixed(2)}</p>
+              <p className="text-[10px] font-bold text-green-600 uppercase">
+                {isUserPremiumVc ? '🟢 COSTO REAL (Nuestra Propuesta)' : 'Costo Teórico (Premium)'}
+              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="font-bold text-green-700">USD {Number(displayCostPremium).toFixed(2)}</p>
+                
+                {/* Lógica Condicional: Mostrar etiqueta solo en puntos reales y si hay ahorro */}
+                {(isUserCurrentVc || isUserPremiumVc) && savingsPercentage > 0.1 && (
+                  <span className="bg-green-100 text-green-800 border border-green-200 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center shadow-sm">
+                    ↓ {savingsPercentage.toFixed(1)}%
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           
+          {/* Nota al pie condicional */}
           {(isUserCurrentVc || isUserPremiumVc) && (
             <p className="mt-3 pt-2 border-t text-[9px] text-slate-400 italic leading-tight">
               *Los puntos marcados usan el cálculo empírico exacto ingresado en el formulario (rendimiento y tiempos reales).
@@ -437,7 +458,7 @@ export default function TaylorCurvePage() {
             <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
               <div className="flex items-center gap-4">
                 {/* LOGO PRINCIPAL SECOCUT (Reemplazado por div para evitar CORS) */}
-                <div className="h-10 w-auto flex items-center justify-center bg-blue-600 text-white font-black px-4 rounded text-lg">
+                <div className="h-12 flex items-center justify-center bg-blue-600 text-white font-black px-4 rounded text-lg">
                   SECOCUT
                 </div>
                 
