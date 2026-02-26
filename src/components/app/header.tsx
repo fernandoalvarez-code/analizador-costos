@@ -1,33 +1,27 @@
-
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Bell,
-  Home,
   LogOut,
   Search,
   Settings,
   User,
+  Menu,
+  LayoutDashboard,
+  FolderKanban,
+  Calculator,
+  History,
+  TrendingUp,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
 import { query, orderBy, limit } from "firebase/firestore";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-
 import { useAuth, useUser, useCollection, useFirestore, useMemoFirebase, collection } from "@/firebase";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -38,33 +32,38 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "../ui/skeleton";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 
-function getBreadcrumb(path: string) {
-    const segments = path.split('/').filter(Boolean);
-    if (segments.length === 0) return 'Dashboard';
-    
-    const pageName = segments[segments.length - 1];
-    
-    switch(pageName) {
-        case 'dashboard':
-            return 'Dashboard';
-        case 'cases':
-            return 'Gestión de Casos';
-        case 'insights':
-            return 'Perspectivas de IA';
-        case 'settings':
-            return 'Configuración';
-        default:
-            // For dynamic routes like /cases/[id]
-            if (segments.length > 1 && segments[0] === 'cases') {
-                return 'Detalle del Caso';
-            }
-            return pageName.charAt(0).toUpperCase() + pageName.slice(1);
-    }
-}
+const menuItems = [
+    {
+      href: '/dashboard',
+      label: 'Dashboard',
+      icon: LayoutDashboard,
+    },
+    {
+      href: '/cases',
+      label: 'Gestión de Casos',
+      icon: FolderKanban,
+    },
+    {
+      href: '/simulator/new',
+      label: 'Simulador',
+      icon: Calculator,
+    },
+    {
+      href: '/simulator/history',
+      label: 'Historial',
+      icon: History,
+    },
+     {
+      href: '/taylor-curve',
+      label: 'Curva de Taylor',
+      icon: TrendingUp,
+    },
+];
 
 type Notification = {
     id: string;
@@ -79,7 +78,6 @@ export default function AppHeader() {
   const { user } = useUser();
   const router = useRouter();
   const pathname = usePathname();
-  const pageTitle = getBreadcrumb(pathname);
   const firestore = useFirestore();
 
   const notificationsQuery = useMemoFirebase(() => {
@@ -88,7 +86,6 @@ export default function AppHeader() {
   }, [firestore]);
 
   const { data: notifications, isLoading: isLoadingNotifications } = useCollection<Notification>(notificationsQuery);
-
 
   const handleSignOut = async () => {
     if (!auth) return;
@@ -102,39 +99,45 @@ export default function AppHeader() {
   }
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6 sticky top-0 z-30">
-      <SidebarTrigger className="shrink-0 md:hidden" />
-      <div className="w-full flex-1">
-        <Breadcrumb className="hidden md:flex">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link href="/dashboard">
-                  <Home className="h-4 w-4" />
-                </Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage className="font-medium">{pageTitle}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+    <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 sticky top-0 z-50 shadow-sm flex items-center justify-between">
+      {/* Logo & Desktop Nav */}
+      <div className="flex items-center gap-8">
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <span className="text-2xl font-black text-blue-600 tracking-tight">Secocut SRL</span>
+        </Link>
+
+        <nav className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+          {menuItems.map(item => (
+            <Link 
+              key={item.href}
+              href={item.href} 
+              className={cn(
+                "px-4 py-2 text-sm font-bold text-slate-700 hover:text-blue-600 rounded-md transition-colors",
+                pathname.startsWith(item.href) && "bg-white text-blue-700 shadow-sm border border-slate-200"
+              )}
+            >
+              {item.label === 'Curva de Taylor' ? 'Curva Taylor' : item.label.split(' ')[0]}
+            </Link>
+          ))}
+        </nav>
       </div>
-      <div className="flex items-center gap-4">
-        <form className="relative ml-auto flex-1 sm:flex-initial">
+      
+      {/* Right side controls */}
+      <div className="flex items-center gap-2">
+        <div className="hidden sm:flex relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Buscar casos..."
-              className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
+              placeholder="Buscar..."
+              className="pl-8 sm:w-[150px] md:w-[200px] lg:w-[250px]"
             />
-        </form>
+        </div>
+
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
                     <Bell className="h-5 w-5" />
-                    <span className="sr-only">Toggle notifications</span>
+                    <span className="sr-only">Notificaciones</span>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
@@ -164,7 +167,7 @@ export default function AppHeader() {
                 )}
                  <DropdownMenuSeparator />
                  <DropdownMenuItem className="justify-center text-sm text-primary hover:underline">
-                    Ver todas las notificaciones
+                    Ver todas
                  </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
@@ -174,11 +177,11 @@ export default function AppHeader() {
             <Button variant="ghost" size="icon" className="rounded-full">
               <Avatar className="h-9 w-9">
                 {user?.photoURL ? (
-                  <AvatarImage src={user.photoURL} alt={user.displayName || "Avatar de usuario"} />
+                  <AvatarImage src={user.photoURL} alt={user.displayName || "Avatar"} />
                 ) : null}
                 <AvatarFallback>{getInitials(user?.displayName || user?.email)}</AvatarFallback>
               </Avatar>
-              <span className="sr-only">Toggle user menu</span>
+              <span className="sr-only">Menú de usuario</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
@@ -204,6 +207,36 @@ export default function AppHeader() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Mobile Menu */}
+        <Sheet>
+            <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden">
+                    <Menu className="h-6 w-6" />
+                    <span className="sr-only">Abrir menú</span>
+                </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-4 w-[300px] sm:w-[340px]">
+                <nav className="grid gap-2 text-lg font-medium mt-6">
+                    <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold mb-4">
+                        <span className="text-xl font-black text-blue-600 tracking-tight">Secocut SRL</span>
+                    </Link>
+                    {menuItems.map(item => (
+                         <Link 
+                            key={item.href}
+                            href={item.href} 
+                            className={cn(
+                                "flex items-center gap-4 px-2.5 py-2 text-base text-muted-foreground hover:text-foreground",
+                                pathname.startsWith(item.href) && "text-foreground bg-slate-100 rounded-md"
+                            )}
+                        >
+                            <item.icon className="h-5 w-5" />
+                            {item.label}
+                        </Link>
+                    ))}
+                </nav>
+            </SheetContent>
+        </Sheet>
       </div>
     </header>
   );

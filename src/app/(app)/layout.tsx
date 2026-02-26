@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect } from "react";
@@ -6,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { getDoc, setDoc } from "firebase/firestore";
 import { useUser, useFirestore, doc } from "@/firebase";
 import AppHeader from "@/components/app/header";
-import AppNav from "@/components/app/nav";
-import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import StaleCaseChecker from "@/components/app/stale-case-checker";
 import { setCustomUserClaims } from "@/firebase/auth/set-custom-claims";
@@ -67,19 +64,12 @@ export default function AppLayout({
   }
 
   return (
-    <SidebarProvider>
-      <Sidebar>
-        <AppNav />
-      </Sidebar>
-      <SidebarInset>
-        <div className="flex flex-col h-full">
-          <AppHeader />
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-            {children}
-            <StaleCaseChecker />
-          </main>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+      <AppHeader />
+      <main className="flex-1 w-full max-w-[1800px] mx-auto p-4 md:p-6 lg:p-8">
+        {children}
+        <StaleCaseChecker />
+      </main>
+    </div>
   );
 }
