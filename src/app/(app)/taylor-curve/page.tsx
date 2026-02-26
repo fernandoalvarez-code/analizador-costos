@@ -336,7 +336,6 @@ export default function TaylorCurvePage() {
         </div>
 
         {/* PLANTILLA OCULTA PARA PDF */}
-      <div className="hidden">
         <div id="pdf-taylor-template" className="w-[210mm] min-h-[290mm] bg-white text-black p-10 font-sans box-border absolute top-[-9999px] left-[-9999px] flex flex-col">
           
           {/* HEADER */}
