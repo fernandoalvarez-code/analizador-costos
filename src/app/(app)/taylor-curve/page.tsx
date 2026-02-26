@@ -264,7 +264,7 @@ export default function TaylorCurvePage() {
       </div>
 
        {/* EL GRAN REMATE VISUAL - AHORRO MENSUAL */}
-       <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl p-8 text-center shadow-2xl relative overflow-hidden mt-6">
+      <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl p-8 text-center shadow-2xl relative overflow-hidden mt-6">
         {/* Decoración de fondo */}
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-black opacity-10 rounded-full blur-2xl"></div>
@@ -361,18 +361,16 @@ export default function TaylorCurvePage() {
             </table>
           </div>
 
-          {/* IMPACTO COMERCIAL - BLOQUE GIGANTE */}
-          <div className="bg-green-50 border-2 border-green-500 p-6 rounded-lg text-center mb-8">
-            <p className="text-sm font-bold text-green-700 uppercase tracking-widest mb-2">Impacto Económico Demostrado</p>
-            <p className="text-3xl font-black text-green-800 mb-2">
-              {formatCurrency(curveDataInfo.realAbsoluteSavings)}
-              <span className="text-lg font-semibold text-green-700"> ahorro / pieza</span>
+          {/* IMPACTO COMERCIAL - EL TITULAR DEL PDF */}
+          <div className="bg-green-50 border-2 border-green-500 rounded-xl p-6 text-center mb-8 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
+            <p className="text-sm font-bold text-green-700 uppercase tracking-widest mb-2 mt-2">Ahorro Mensual Proyectado</p>
+            <p className="text-5xl font-black text-green-800 mb-2">
+              {formatCurrency(curveDataInfo.monthlySavings)}
             </p>
-            <div className="border-t border-green-200 mt-4 pt-4">
-              <p className="text-base font-bold text-green-800 uppercase tracking-widest mb-2">Proyección Mensual</p>
-              <p className="text-5xl font-black text-green-800 mb-2">
-                {formatCurrency(curveDataInfo.monthlySavings)}
-                <span className="text-xl font-semibold text-green-700"> ahorro / mes</span>
+            <div className="inline-block bg-green-100 px-4 py-2 rounded-full mt-2">
+              <p className="text-sm font-bold text-green-800">
+                Basado en {formatNumber(monthlyProduction)} piezas/mes • Ahorro unitario: {formatCurrency(curveDataInfo.realAbsoluteSavings)}
               </p>
             </div>
           </div>
