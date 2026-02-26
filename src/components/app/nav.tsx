@@ -10,6 +10,7 @@ import {
   Briefcase,
   Calculator,
   History,
+  TrendingUp,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -45,6 +46,11 @@ export default function AppNav() {
       href: '/simulator/history',
       label: 'Historial Simulador',
       icon: History,
+    },
+     {
+      href: '/taylor-curve',
+      label: 'Curva de Taylor',
+      icon: TrendingUp,
     },
     // {
     //   href: '/insights',
