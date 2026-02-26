@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, Info, Share2 } from 'lucide-react';
+import { TrendingUp, Info, Share2, FileText } from 'lucide-react';
 import { formatCurrency, formatNumber } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import jsPDF from 'jspdf';
@@ -135,14 +135,40 @@ export default function TaylorCurvePage() {
 
   return (
     <div className="container mx-auto space-y-8 pb-16">
-        <div className="flex justify-between items-start">
-            <div className="flex items-center gap-3">
-                <TrendingUp className="h-8 w-8 text-primary" />
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight font-headline">Análisis de Curva de Taylor</h1>
-                    <p className="text-muted-foreground">Compara la Vc actual vs. la propuesta para demostrar el ahorro real.</p>
-                </div>
-            </div>
+        {/* HEADER Y BOTONES DE ACCIÓN */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+              <TrendingUp className="text-blue-600 h-7 w-7" />
+              Análisis de Curva de Taylor
+            </h1>
+            <p className="text-slate-500 text-sm mt-1">Compara la Vc actual vs. la propuesta para demostrar el ahorro real.</p>
+          </div>
+
+          {/* BOTONERA ESTILO "SIMULADOR PRINCIPAL" */}
+          <div className="flex flex-wrap gap-2 w-full md:w-auto bg-slate-100 p-1.5 rounded-lg border border-slate-200">
+            <button
+              onClick={handleGeneratePDF}
+              disabled={isGenerating}
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-md text-sm font-bold shadow-sm transition-all disabled:opacity-50"
+            >
+              {isGenerating ? <span className="animate-pulse">⏳ Generando...</span> : <>
+                <FileText size={16} />
+                PDF
+              </>}
+            </button>
+            
+            <button
+              onClick={handleGeneratePDF}
+              disabled={isGenerating}
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-md text-sm font-bold shadow-sm transition-all disabled:opacity-50"
+            >
+              {isGenerating ? <span className="animate-pulse">⏳...</span> : <>
+                <Share2 size={16} />
+                WhatsApp
+              </>}
+            </button>
+          </div>
         </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -398,15 +424,6 @@ export default function TaylorCurvePage() {
           </div>
         </div>
       </div>
-
-        <button 
-            onClick={handleGeneratePDF}
-            disabled={isGenerating}
-            className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-2xl flex items-center justify-center transition-all z-50 disabled:opacity-50"
-            title="Generar Reporte PDF"
-        >
-            {isGenerating ? <span className="animate-spin text-xl">⏳</span> : <Share2 size={24} />}
-        </button>
     </div>
   );
 }
