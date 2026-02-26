@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, Info } from 'lucide-react';
+import { TrendingUp, Info, Zap } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
 
 const MATERIALS = [
@@ -34,44 +34,48 @@ export default function TaylorCurvePage() {
   const [toolCostPremium, setToolCostPremium] = useState<number>(13);
   const [toolChangeTime, setToolChangeTime] = useState<number>(2);
   const [materialId, setMaterialId] = useState('med_c');
+  const [feedCurrent, setFeedCurrent] = useState<number>(0.2);
+  const [feedPremium, setFeedPremium] = useState<number>(0.4);
 
-  const { curveData, optimalSpeedCurrent, optimalSpeedPremium, minCostCurrent, minCostPremium } = useMemo(() => {
+  const { data, minCostCurrent, minCostPremium, optimalVcCurrent, optimalVcPremium, absoluteSavings, savingsPercentage } = useMemo(() => {
     const mat = MATERIALS.find(m => m.id === materialId) || MATERIALS[2];
     const machineCostMin = machineCostHr / 60;
-    const premiumC = mat.C * 1.25; // 25% más resistente a la temperatura
+    const premiumC = mat.C * 1.25;
 
     const data = [];
-    let tempMinCostCurrent = Infinity;
-    let tempOptimalSpeedCurrent = 0;
-    let tempMinCostPremium = Infinity;
-    let tempOptimalSpeedPremium = 0;
+    let minCostCurrent = Infinity;
+    let minCostPremium = Infinity;
+    let optimalVcCurrent = 0;
+    let optimalVcPremium = 0;
 
     for (let v = 50; v <= mat.C * 1.2; v += 10) {
-      const tm = 1000 / v; // Tiempo para una distancia estándar
+      // El tiempo base (normalizado a 1000) se divide por (V * avance)
+      const tmCurrent = 1000 / (v * feedCurrent); 
+      const tmPremium = 1000 / (v * feedPremium); 
       
+      // Costo Actual
       const lifeCurrent = Math.pow((mat.C / v), (1 / mat.n));
-      const costCurrent = (machineCostMin * tm) + ((machineCostMin * toolChangeTime + toolCostCurrent) * (tm / lifeCurrent));
+      const costCurrent = (machineCostMin * tmCurrent) + ((machineCostMin * toolChangeTime + toolCostCurrent) * (tmCurrent / lifeCurrent));
       
+      // Costo Premium
       const lifePremium = Math.pow((premiumC / v), (1 / mat.n));
-      const costPremium = (machineCostMin * tm) + ((machineCostMin * toolChangeTime + toolCostPremium) * (tm / lifePremium));
+      const costPremium = (machineCostMin * tmPremium) + ((machineCostMin * toolChangeTime + toolCostPremium) * (tmPremium / lifePremium));
 
-      if (costCurrent < tempMinCostCurrent) {
-        tempMinCostCurrent = costCurrent;
-        tempOptimalSpeedCurrent = v;
-      }
-      if (costPremium < tempMinCostPremium) {
-        tempMinCostPremium = costPremium;
-        tempOptimalSpeedPremium = v;
-      }
+      if (costCurrent < minCostCurrent) { minCostCurrent = costCurrent; optimalVcCurrent = v; }
+      if (costPremium < minCostPremium) { minCostPremium = costPremium; optimalVcPremium = v; }
 
       data.push({
         speed: v,
-        costoActual: Number(costCurrent.toFixed(3)),
-        costoPremium: Number(costPremium.toFixed(3)),
+        costoActual: Number(costCurrent.toFixed(2)),
+        costoPremium: Number(costPremium.toFixed(2)),
       });
     }
-    return { curveData: data, optimalSpeedCurrent: tempOptimalSpeedCurrent, optimalSpeedPremium: tempOptimalSpeedPremium, minCostCurrent: tempMinCostCurrent, minCostPremium: tempMinCostPremium };
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId]);
+    
+    const absoluteSavings = minCostCurrent - minCostPremium;
+    const savingsPercentage = (absoluteSavings / minCostCurrent) * 100;
+
+    return { data, minCostCurrent, minCostPremium, optimalVcCurrent, optimalVcPremium, absoluteSavings, savingsPercentage };
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium]);
 
   return (
     <div className="container mx-auto space-y-8">
@@ -111,13 +115,26 @@ export default function TaylorCurvePage() {
                     <Label htmlFor="tool-change-time">Cambio Herram. (min)</Label>
                     <Input id="tool-change-time" type="number" value={toolChangeTime} onChange={e => setToolChangeTime(Number(e.target.value) || 0)} />
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="current-tool-cost" className="text-destructive">Inserto Competidor ($)</Label>
-                    <Input id="current-tool-cost" type="number" value={toolCostCurrent} onChange={e => setToolCostCurrent(Number(e.target.value) || 0)} className="border-destructive/50 focus-visible:ring-destructive" />
+                <div className="grid grid-cols-2 gap-x-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="current-tool-cost" className="text-destructive">Inserto Competidor ($)</Label>
+                        <Input id="current-tool-cost" type="number" value={toolCostCurrent} onChange={e => setToolCostCurrent(Number(e.target.value) || 0)} className="border-destructive/50 focus-visible:ring-destructive" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="current-feed" className="text-destructive">Avance Competidor (mm/rev)</Label>
+                        <Input id="current-feed" type="number" step="0.01" value={feedCurrent} onChange={e => setFeedCurrent(Number(e.target.value) || 0)} className="border-destructive/50 focus-visible:ring-destructive" />
+                    </div>
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="premium-tool-cost" className="text-green-600">Inserto Premium ($)</Label>
-                    <Input id="premium-tool-cost" type="number" value={toolCostPremium} onChange={e => setToolCostPremium(Number(e.target.value) || 0)} className="border-green-500/50 focus-visible:ring-green-500" />
+
+                <div className="grid grid-cols-2 gap-x-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="premium-tool-cost" className="text-green-600">Inserto Premium ($)</Label>
+                        <Input id="premium-tool-cost" type="number" value={toolCostPremium} onChange={e => setToolCostPremium(Number(e.target.value) || 0)} className="border-green-500/50 focus-visible:ring-green-500" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="premium-feed" className="text-green-600">Avance Premium (mm/rev)</Label>
+                        <Input id="premium-feed" type="number" step="0.01" value={feedPremium} onChange={e => setFeedPremium(Number(e.target.value) || 0)} className="border-green-500/50 focus-visible:ring-green-500" />
+                    </div>
                 </div>
             </CardContent>
         </Card>
@@ -130,21 +147,21 @@ export default function TaylorCurvePage() {
             <CardContent>
                 <div className="h-[400px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={curveData} margin={{ top: 5, right: 20, left: 10, bottom: 30 }}>
+                    <LineChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 30 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                         <XAxis type="number" dataKey="speed" domain={['dataMin', 'dataMax']} label={{ value: 'Velocidad de Corte Vc (m/min)', position: 'bottom', offset: 15 }} tick={{fontSize: 12}} />
                         <YAxis label={{ value: 'Costo Total Relativo', angle: -90, position: 'insideLeft', offset: 0 }} tick={{fontSize: 12}} tickFormatter={(value) => formatCurrency(value).replace('USD ', '$')} />
                         <Tooltip contentStyle={{backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))"}} formatter={(value) => [`${formatCurrency(Number(value))}`, 'Costo']} labelFormatter={(label) => `Vc: ${label} m/min`} />
                         <Legend verticalAlign="top" height={36} />
                         <Line type="monotone" dataKey="costoActual" name="Inserto Competidor" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#ef4444' }} >
-                             <CustomMinDot data={curveData} dataKey="costoActual" />
+                             <CustomMinDot data={data} dataKey="costoActual" />
                         </Line>
                         <Line type="monotone" dataKey="costoPremium" name="Inserto Premium" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#22c55e' }} >
-                             <CustomMinDot data={curveData} dataKey="costoPremium" />
+                             <CustomMinDot data={data} dataKey="costoPremium" />
                         </Line>
 
-                        <ReferenceLine x={optimalSpeedCurrent} stroke="#ef4444" strokeDasharray="3 3" />
-                        <ReferenceLine x={optimalSpeedPremium} stroke="#22c55e" strokeDasharray="3 3" />
+                        <ReferenceLine x={optimalVcCurrent} stroke="#ef4444" strokeDasharray="3 3" />
+                        <ReferenceLine x={optimalVcPremium} stroke="#22c55e" strokeDasharray="3 3" />
                         <ReferenceLine y={minCostCurrent} stroke="#ef4444" strokeDasharray="3 3" />
                         <ReferenceLine y={minCostPremium} stroke="#22c55e" strokeDasharray="3 3" />
                     </LineChart>
@@ -153,28 +170,65 @@ export default function TaylorCurvePage() {
                 <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
                     <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800/30">
                         <p className="text-sm font-bold text-red-600 dark:text-red-400">Vc Óptima (Competidor)</p>
-                        <p className="text-xl font-black text-red-700 dark:text-red-300">{optimalSpeedCurrent} m/min</p>
+                        <p className="text-xl font-black text-red-700 dark:text-red-300">{optimalVcCurrent} m/min</p>
                     </div>
                      <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800/30">
                         <p className="text-sm font-bold text-green-600 dark:text-green-400">Vc Óptima (Premium)</p>
-                        <p className="text-xl font-black text-green-700 dark:text-green-300">{optimalSpeedPremium} m/min</p>
-                    </div>
-                </div>
-                <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800/30 flex items-start gap-3">
-                    <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                        <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-1">¿Cómo leer este gráfico?</h3>
-                        <p className="text-sm text-blue-900 dark:text-blue-300 mb-2">La curva muestra cómo varía el costo de fabricar una pieza a medida que aumentamos la Velocidad de Corte (Vc).</p>
-                        <ul className="text-xs text-blue-800 dark:text-blue-400 space-y-1.5 list-disc pl-4">
-                            <li>El <strong>punto más bajo</strong> de la curva (marcado con un punto) es la velocidad exacta donde la pieza sale más barata.</li>
-                            <li>Si cortamos muy lento, el costo sube porque la hora-máquina nos come la ganancia.</li>
-                            <li>Si cortamos muy rápido, el costo sube bruscamente porque el inserto se desgasta y gastamos más en herramientas.</li>
-                        </ul>
+                        <p className="text-xl font-black text-green-700 dark:text-green-300">{optimalVcPremium} m/min</p>
                     </div>
                 </div>
             </CardContent>
         </Card>
       </div>
+
+       <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200 shadow-lg">
+        <CardHeader className="flex flex-row items-center gap-4">
+            <Zap className="h-8 w-8 text-blue-600" />
+            <div>
+                <CardTitle className="text-blue-800">Impacto Comercial y Remate de Ventas</CardTitle>
+                <CardDescription className="text-blue-700">Argumentos clave para cerrar la venta basados en los datos.</CardDescription>
+            </div>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            <div className="space-y-4">
+                 <h3 className="font-bold text-lg text-slate-800">Argumento Técnico-Comercial</h3>
+                 {savingsPercentage > 0 ? (
+                    <p className="text-slate-700">
+                        Al implementar nuestro inserto premium, no solo optimizamos la velocidad de corte a <strong className="text-green-600">{optimalVcPremium} m/min</strong>, sino que también aprovechamos un avance superior de <strong className="text-green-600">{feedPremium} mm/rev</strong>. 
+                        Esta combinación resulta en una reducción directa del costo por pieza de <strong className="text-green-700">{savingsPercentage.toFixed(1)}%</strong>, lo que demuestra que la inversión inicial en una herramienta de mayor calidad se traduce en un ahorro significativo a escala.
+                    </p>
+                 ) : (
+                     <p className="text-slate-600 italic">
+                        En este escenario, el costo del competidor es menor. Sin embargo, nuestro inserto premium podría justificarse si el cliente experimenta problemas de calidad, acabado superficial o roturas imprevistas que no se capturan en este análisis de costos. La estabilidad y confiabilidad de nuestro inserto premium pueden ser el factor decisivo.
+                    </p>
+                 )}
+            </div>
+            <div className="flex justify-center items-center">
+                <div className="text-center bg-white p-6 rounded-xl border-2 border-primary shadow-2xl">
+                    <p className="text-sm font-bold text-primary uppercase tracking-wider">Ahorro Relativo Final</p>
+                    <p className={`text-6xl font-black my-2 ${savingsPercentage > 0 ? 'text-green-600' : 'text-destructive'}`}>
+                        {isFinite(savingsPercentage) ? `${savingsPercentage.toFixed(1)}%` : 'N/A'}
+                    </p>
+                    <p className="text-xs text-muted-foreground font-medium">
+                        {isFinite(absoluteSavings) ? `Equivalente a ${formatCurrency(absoluteSavings)} por ciclo` : 'Cálculo pendiente'}
+                    </p>
+                </div>
+            </div>
+        </CardContent>
+      </Card>
+      
+        <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800/30 flex items-start gap-3">
+            <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <div>
+                <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-1">¿Cómo leer este gráfico?</h3>
+                <p className="text-sm text-blue-900 dark:text-blue-300 mb-2">La curva muestra cómo varía el costo de fabricar una pieza a medida que aumentamos la Velocidad de Corte (Vc).</p>
+                <ul className="text-xs text-blue-800 dark:text-blue-400 space-y-1.5 list-disc pl-4">
+                    <li>El <strong>punto más bajo</strong> de la curva (marcado con un punto) es la velocidad exacta donde la pieza sale más barata.</li>
+                    <li>Si cortamos muy lento, el costo sube porque la hora-máquina nos come la ganancia.</li>
+                    <li>Si cortamos muy rápido, el costo sube bruscamente porque el inserto se desgasta y gastamos más en herramientas.</li>
+                </ul>
+            </div>
+        </div>
     </div>
   );
 }
