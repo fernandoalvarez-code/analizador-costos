@@ -151,14 +151,22 @@ export default function TaylorCurvePage() {
       return costCorte + costHerr + costCambio;
     };
 
-    const data = [];
+    // Crear un Set con las velocidades de 10 en 10 + las velocidades manuales exactas
+    const speedsSet = new Set<number>();
     for (let v = 50; v <= mat.C * 1.3; v += 10) {
-      data.push({
+      speedsSet.add(v);
+    }
+    if (safeVcCurrent > 0) speedsSet.add(safeVcCurrent);
+    if (safeVcPremium > 0) speedsSet.add(safeVcPremium);
+
+    // Ordenar de menor a mayor
+    const sortedSpeeds = Array.from(speedsSet).sort((a, b) => a - b);
+
+    const data = sortedSpeeds.map(v => ({
         speed: v,
         costoActual: Number(calcCost(v, false, safeFeedCurrent).toFixed(2)),
         costoPremium: Number(calcCost(v, true, safeFeedPremium).toFixed(2)),
-      });
-    }
+    }));
     
     // 3. Calcular los PUNTOS REALES operativos
     const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, safePcsCurrent);
@@ -179,6 +187,44 @@ export default function TaylorCurvePage() {
 
   const premiumMins = Math.floor(curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0);
   const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
+
+  // --- CUSTOM TOOLTIP PARA RECHARTS ---
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      // Detectar si el mouse está exactamente sobre las Vc ingresadas por el usuario
+      const isUserCurrentVc = label === (Number(vcCurrent) || 0);
+      const isUserPremiumVc = label === (Number(vcPremium) || 0);
+
+      // Si estamos en la Vc del usuario, mostramos el costo real (empírico). Si no, el teórico de la curva.
+      const displayCostCurrent = isUserCurrentVc ? curveDataInfo.actualCostCurrent : payload[0]?.value;
+      const displayCostPremium = isUserPremiumVc ? curveDataInfo.actualCostPremium : payload[1]?.value;
+
+      return (
+        <div className="bg-white p-4 border border-slate-200 rounded-lg shadow-xl text-sm min-w-[200px]">
+          <p className="font-black text-slate-700 mb-3 border-b pb-1">Vc: {label} m/min</p>
+          
+          <div className="space-y-2">
+            <div>
+              <p className="text-[10px] font-bold text-red-500 uppercase">{isUserCurrentVc ? '🔴 COSTO REAL (Tu Parámetro)' : 'Costo Teórico (Competidor)'}</p>
+              <p className="font-bold text-red-700">USD {Number(displayCostCurrent).toFixed(2)}</p>
+            </div>
+            
+            <div>
+              <p className="text-[10px] font-bold text-green-600 uppercase">{isUserPremiumVc ? '🟢 COSTO REAL (Nuestra Propuesta)' : 'Costo Teórico (Premium)'}</p>
+              <p className="font-bold text-green-700">USD {Number(displayCostPremium).toFixed(2)}</p>
+            </div>
+          </div>
+          
+          {(isUserCurrentVc || isUserPremiumVc) && (
+            <p className="mt-3 pt-2 border-t text-[9px] text-slate-400 italic leading-tight">
+              *Los puntos marcados usan el cálculo empírico exacto ingresado en el formulario (rendimiento y tiempos reales).
+            </p>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="container mx-auto space-y-8 pb-16">
@@ -343,7 +389,7 @@ export default function TaylorCurvePage() {
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                         <XAxis type="number" dataKey="speed" domain={['dataMin', 'dataMax']} label={{ value: 'Velocidad de Corte Vc (m/min)', position: 'bottom', offset: 15 }} tick={{fontSize: 12}} />
                         <YAxis label={{ value: 'Costo Total Relativo', angle: -90, position: 'insideLeft', offset: 0 }} tick={{fontSize: 12}} tickFormatter={(value) => formatCurrency(value).replace('USD ', '$')} />
-                        <Tooltip contentStyle={{backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))"}} formatter={(value) => [`${formatCurrency(Number(value))}`, 'Costo']} labelFormatter={(label) => `Vc: ${label} m/min`} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 2, strokeDasharray: '5 5' }} />
                         <Legend verticalAlign="top" height={36} />
                         <Line type="monotone" dataKey="costoActual" name="Inserto Competidor" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#ef4444' }} />
                         <Line type="monotone" dataKey="costoPremium" name="Inserto Premium" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#22c55e' }} />
