@@ -184,114 +184,103 @@ export default function TaylorCurvePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* PANEL DE INPUTS */}
-        <Card className="lg:col-span-1">
-            <CardHeader>
-                <CardTitle className="text-lg">Variables del Proceso</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="material-select">Material</Label>
-                    <Select value={materialId} onValueChange={setMaterialId}>
-                        <SelectTrigger id="material-select">
-                            <SelectValue placeholder="Selecciona un material" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {MATERIALS.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+        {/* PANEL DE INPUTS (Izquierda) */}
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-6 lg:col-span-1">
+          
+          {/* 1. PARÁMETROS GENERALES */}
+          <div>
+            <h2 className="font-bold text-slate-700 text-xs uppercase border-b border-slate-200 pb-2 mb-3">1. Parámetros del Taller</h2>
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="material-select" className="block text-[11px] font-bold text-slate-500 mb-1">Material a Mecanizar</Label>
+                 <Select value={materialId} onValueChange={setMaterialId}>
+                    <SelectTrigger id="material-select" className="w-full p-2 border-slate-300 rounded-md text-sm bg-slate-50">
+                        <SelectValue placeholder="Selecciona un material" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {MATERIALS.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="machine-cost" className="block text-[11px] font-bold text-slate-500 mb-1">Costo Máquina ($/hr)</Label>
+                  <Input id="machine-cost" type="number" className="w-full p-2 border-slate-300 rounded-md text-sm" value={machineCostHr} onChange={e => setMachineCostHr(Number(e.target.value) || 0)} />
                 </div>
-                
-                <div className="space-y-2">
-                    <Label htmlFor="machine-cost">Costo Máquina ($/hr)</Label>
-                    <Input id="machine-cost" type="number" value={machineCostHr} onChange={e => setMachineCostHr(Number(e.target.value) || 0)} />
+                <div>
+                  <Label htmlFor="tool-change-time" className="block text-[11px] font-bold text-slate-500 mb-1">Cambio Herram. (min)</Label>
+                  <Input id="tool-change-time" type="number" className="w-full p-2 border-slate-300 rounded-md text-sm" value={toolChangeTime} onChange={e => setToolChangeTime(Number(e.target.value) || 0)} />
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="tool-change-time">Cambio Herram. (min)</Label>
-                    <Input id="tool-change-time" type="number" value={toolChangeTime} onChange={e => setToolChangeTime(Number(e.target.value) || 0)} />
-                </div>
-                <div className="grid grid-cols-2 gap-x-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="current-tool-cost" className="text-destructive">Inserto Competidor ($)</Label>
-                        <Input id="current-tool-cost" type="number" value={toolCostCurrent} onChange={e => setToolCostCurrent(Number(e.target.value) || 0)} className="border-destructive/50 focus-visible:ring-destructive" />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="current-feed" className="text-destructive">Avance Competidor (mm/rev)</Label>
-                        <Input id="current-feed" type="number" step="0.05" value={feedCurrent} onChange={e => setFeedCurrent(Number(e.target.value) || 0)} className="border-destructive/50 focus-visible:ring-destructive" />
-                    </div>
-                </div>
+              </div>
+            </div>
+          </div>
 
-                <div className="grid grid-cols-2 gap-x-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="premium-tool-cost" className="text-green-600">Inserto Premium ($)</Label>
-                        <Input id="premium-tool-cost" type="number" value={toolCostPremium} onChange={e => setToolCostPremium(Number(e.target.value) || 0)} className="border-green-500/50 focus-visible:ring-green-500" />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="premium-feed" className="text-green-600">Avance Premium (mm/rev)</Label>
-                        <Input id="premium-feed" type="number" step="0.05" value={feedPremium} onChange={e => setFeedPremium(Number(e.target.value) || 0)} className="border-green-500/50 focus-visible:ring-green-500" />
-                    </div>
-                </div>
+          {/* 2. SITUACIÓN ACTUAL (COMPETIDOR) */}
+          <div className="bg-red-50/50 p-3 rounded-lg border border-red-100">
+            <h2 className="font-bold text-red-700 text-xs uppercase mb-3 flex items-center gap-1">🔴 Condición Actual</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="block text-[10px] font-bold text-red-600 mb-1">Inserto Competidor ($)</Label>
+                <Input type="number" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white" value={toolCostCurrent} onChange={e => setToolCostCurrent(Number(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label className="block text-[10px] font-bold text-red-600 mb-1">Avance (mm/rev)</Label>
+                <Input type="number" step="0.01" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white" value={feedCurrent} onChange={e => setFeedCurrent(Number(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label>
+                <Input type="number" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white" value={vcCurrent} onChange={e => setVcCurrent(Number(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label className="block text-[10px] font-bold text-red-600 mb-1">Rendimiento (Pzas/filo)</Label>
+                <Input type="number" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white" value={pcsCurrent} onChange={e => setPcsCurrent(Number(e.target.value) || 0)} />
+              </div>
+              <div className="col-span-2">
+                <Label className="block text-[10px] font-bold text-red-700 mb-1">Tiempo de Corte Actual (minutos)</Label>
+                <Input type="number" step="0.1" className="w-full p-2 border-2 border-red-300 rounded-md text-sm font-bold bg-white" value={tcCurrent} onChange={e => setTcCurrent(Number(e.target.value) || 0)} />
+              </div>
+            </div>
+          </div>
 
-                <div className="col-span-2 mt-4 pt-4 border-t border-slate-200">
-                  <h3 className="font-bold text-slate-700 text-xs uppercase mb-3">Condiciones Reales de Trabajo</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <h3 className="col-span-2 font-bold text-slate-700 text-xs uppercase mb-1">Tiempos de Corte (Mecanizado)</h3>
-                        <div>
-                            <Label htmlFor="tc-current" className="text-red-600">Tiempo Actual (min)</Label>
-                            <Input id="tc-current" type="number" step={0.1} value={tcCurrent} onChange={e => setTcCurrent(Number(e.target.value) || 0)} className="border-red-300 bg-red-50 font-bold"/>
-                        </div>
-                        <div>
-                            <Label htmlFor="tc-premium" className="text-green-600">Tiempo Propuesto (min)</Label>
-                            <div id="tc-premium" className="w-full h-10 p-2 border border-green-200 bg-green-100 text-green-800 rounded-md text-sm font-bold flex items-center shadow-inner">
-                                {curveDataInfo.tcPremium > 0 && isFinite(curveDataInfo.tcPremium) ? `${curveDataInfo.tcPremium.toFixed(2)} min` : '...'}
-                            </div>
-                            <p className="text-[9px] text-green-600 mt-1 italic">*Calculado por proporción</p>
-                        </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <h3 className="col-span-2 font-bold text-slate-700 text-xs uppercase mb-1">Velocidades de Corte (Vc)</h3>
-                      <div>
-                        <Label htmlFor="vc-current" className="text-red-600">Vc Actual (m/min)</Label>
-                        <Input id="vc-current" type="number" value={vcCurrent} onChange={e => setVcCurrent(Number(e.target.value))} className="border-red-300 bg-red-50"/>
-                      </div>
-                      <div>
-                        <Label htmlFor="vc-premium" className="text-green-600">Vc Propuesta (m/min)</Label>
-                        <Input id="vc-premium" type="number" value={vcPremium} onChange={e => setVcPremium(Number(e.target.value))} className="border-green-300 bg-green-50"/>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <h3 className="col-span-2 font-bold text-slate-700 text-xs uppercase mb-1">Rendimientos por Filo</h3>
-                      <div>
-                        <Label htmlFor="pcs-current" className="text-red-600">Rendimiento (Pzas/Filo)</Label>
-                        <Input id="pcs-current" type="number" value={pcsCurrent} onChange={e => setPcsCurrent(Number(e.target.value))} className="border-red-300 bg-red-50"/>
-                      </div>
-                      <div>
-                        <Label htmlFor="pcs-premium" className="text-green-600">Rendimiento (Pzas/Filo)</Label>
-                        <Input id="pcs-premium" type="number" value={pcsPremium} onChange={e => setPcsPremium(Number(e.target.value))} className="border-green-300 bg-green-50"/>
-                      </div>
-                    </div>
-                  </div>
+          {/* 3. PROPUESTA PREMIUM */}
+          <div className="bg-green-50/50 p-3 rounded-lg border border-green-100">
+            <h2 className="font-bold text-green-700 text-xs uppercase mb-3 flex items-center gap-1">🟢 Propuesta Premium</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="block text-[10px] font-bold text-green-700 mb-1">Inserto Seco ($)</Label>
+                <Input type="number" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white" value={toolCostPremium} onChange={e => setToolCostPremium(Number(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label className="block text-[10px] font-bold text-green-700 mb-1">Avance (mm/rev)</Label>
+                <Input type="number" step="0.01" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white" value={feedPremium} onChange={e => setFeedPremium(Number(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label className="block text-[10px] font-bold text-green-700 mb-1">Vc Propuesta (m/min)</Label>
+                <Input type="number" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white" value={vcPremium} onChange={e => setVcPremium(Number(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label className="block text-[10px] font-bold text-green-700 mb-1">Rendimiento (Pzas/filo)</Label>
+                <Input type="number" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white" value={pcsPremium} onChange={e => setPcsPremium(Number(e.target.value) || 0)} />
+              </div>
+              <div className="col-span-2">
+                <Label className="block text-[10px] font-bold text-green-800 mb-1">Tiempo Propuesto Deducido (minutos)</Label>
+                <div className="w-full p-2 border-2 border-green-300 bg-green-100 text-green-800 rounded-md text-sm font-bold flex items-center shadow-inner h-10">
+                  {curveDataInfo.tcPremium > 0 && isFinite(curveDataInfo.tcPremium) ? `${curveDataInfo.tcPremium.toFixed(2)} min` : "0.00 min"}
                 </div>
-                  
-                <div className="col-span-2 mt-4 pt-4 border-t border-slate-200">
-                  <h3 className="font-bold text-slate-700 text-xs uppercase mb-3">Volumen de Producción</h3>
-                  <div>
-                    <Label htmlFor="monthly-production" className="text-xs font-bold text-slate-500 mb-1">Producción Mensual (Piezas/mes)</Label>
-                    <Input 
-                      id="monthly-production"
-                      type="number" 
-                      className="w-full bg-slate-50 font-bold" 
-                      value={monthlyProduction} 
-                      onChange={e => setMonthlyProduction(Number(e.target.value) || 0)} 
-                    />
-                  </div>
-                </div>
+              </div>
+            </div>
+          </div>
 
-            </CardContent>
-        </Card>
+          {/* 4. VOLUMEN DE PRODUCCIÓN */}
+          <div>
+            <h2 className="font-bold text-slate-700 text-xs uppercase border-b border-slate-200 pb-2 mb-3">4. Escala Comercial</h2>
+            <div>
+              <Label htmlFor="monthly-production" className="block text-[11px] font-bold text-slate-500 mb-1">Producción Mensual (Piezas/mes)</Label>
+              <Input id="monthly-production" type="number" className="w-full p-2 border border-slate-300 rounded-md text-sm bg-slate-50 font-bold text-blue-700" value={monthlyProduction} onChange={e => setMonthlyProduction(Number(e.target.value) || 0)} />
+            </div>
+          </div>
+
+        </div>
 
         {/* GRÁFICO Y RESULTADOS */}
         <Card className="lg:col-span-2">
