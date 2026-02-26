@@ -190,27 +190,29 @@ export default function TaylorCurvePage() {
                     </div>
                 </div>
 
-                <div className="col-span-2 mt-2 pt-4 border-t border-slate-200">
+                <div className="col-span-2 mt-4 pt-4 border-t border-slate-200">
                     <h3 className="font-bold text-slate-700 text-xs uppercase mb-3">Condiciones Reales de Trabajo</h3>
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                        <Label className="block text-xs font-bold text-red-600 mb-1">Vc Actual Competidor (m/min)</Label>
-                        <Input type="number" className="w-full p-2 border border-red-200 bg-red-50 rounded-md text-sm" value={vcCurrent} onChange={e => setVcCurrent(Number(e.target.value))} />
-                        </div>
-                        <div>
-                        <Label className="block text-xs font-bold text-green-600 mb-1">Vc Propuesta Premium (m/min)</Label>
-                        <Input type="number" className="w-full p-2 border border-green-200 bg-green-50 rounded-md text-sm" value={vcPremium} onChange={e => setVcPremium(Number(e.target.value))} />
-                        </div>
-                        <div>
-                            <Label className="block text-xs font-bold text-red-600 mb-1">Piezas / Filo (Actual)</Label>
-                            <Input type="number" className="w-full p-2 border border-red-200 bg-red-50 rounded-md text-sm" value={pcsCurrent} onChange={e => setPcsCurrent(Number(e.target.value))} />
-                        </div>
-                        <div>
-                            <Label className="block text-xs font-bold text-green-600 mb-1">Piezas / Filo (Premium)</Label>
-                            <Input type="number" className="w-full p-2 border border-green-200 bg-green-50 rounded-md text-sm" value={pcsPremium} onChange={e => setPcsPremium(Number(e.target.value))} />
-                        </div>
+                      {/* Fila 1: Velocidades */}
+                      <div>
+                        <Label className="block text-xs font-bold text-red-600 mb-1">Vc Actual (m/min)</Label>
+                        <Input type="number" className="border-red-200 bg-red-50" value={vcCurrent} onChange={e => setVcCurrent(Number(e.target.value))} />
+                      </div>
+                      <div>
+                        <Label className="block text-xs font-bold text-green-600 mb-1">Vc Propuesta (m/min)</Label>
+                        <Input type="number" className="border-green-200 bg-green-50" value={vcPremium} onChange={e => setVcPremium(Number(e.target.value))} />
+                      </div>
+                      {/* Fila 2: Rendimientos */}
+                      <div>
+                        <Label className="block text-xs font-bold text-red-600 mb-1">Rendimiento (Pzas/Filo)</Label>
+                        <Input type="number" className="border-red-200 bg-red-50" value={pcsCurrent} onChange={e => setPcsCurrent(Number(e.target.value))} />
+                      </div>
+                      <div>
+                        <Label className="block text-xs font-bold text-green-600 mb-1">Rendimiento (Pzas/Filo)</Label>
+                        <Input type="number" className="border-green-200 bg-green-50" value={pcsPremium} onChange={e => setPcsPremium(Number(e.target.value))} />
+                      </div>
                     </div>
-                </div>
+                  </div>
             </CardContent>
         </Card>
 
