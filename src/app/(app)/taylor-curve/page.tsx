@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TrendingUp, Info, Share2, FileText } from 'lucide-react';
 import { formatCurrency, formatNumber } from '@/lib/formatters';
-import { Button } from '@/components/ui/button';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -232,11 +231,14 @@ export default function TaylorCurvePage() {
                       {/* Fila 1: Tiempo de Corte */}
                       <div>
                         <Label htmlFor="tc-current" className="text-red-600">Tiempo de Corte Actual (min)</Label>
-                        <Input id="tc-current" type="number" value={tcCurrent} onChange={e => setTcCurrent(Number(e.target.value) || 0)} className="border-red-300 bg-red-50"/>
+                        <Input id="tc-current" type="number" step={0.1} value={tcCurrent} onChange={e => setTcCurrent(Number(e.target.value) || 0)} className="border-red-300 bg-red-50 font-bold"/>
                       </div>
                       <div>
                         <Label htmlFor="tc-premium" className="text-green-600">Tiempo de Corte Propuesto (min)</Label>
-                        <Input id="tc-premium" type="text" value={curveDataInfo.tcPremium > 0 && isFinite(curveDataInfo.tcPremium) ? curveDataInfo.tcPremium.toFixed(2) : '...'} disabled className="border-green-300 bg-green-50 font-bold"/>
+                        <div id="tc-premium" className="w-full h-10 p-2 border border-green-200 bg-green-100 text-green-800 rounded-md text-sm font-bold flex items-center shadow-inner">
+                          {curveDataInfo.tcPremium > 0 && isFinite(curveDataInfo.tcPremium) ? `${curveDataInfo.tcPremium.toFixed(2)} min` : '...'}
+                        </div>
+                        <p className="text-[9px] text-green-600 mt-1 italic">*Calculado por proporción</p>
                       </div>
                       
                       {/* Fila 2: Velocidades */}
