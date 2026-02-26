@@ -32,12 +32,16 @@ export default function TaylorCurvePage() {
   const [pcsCurrent, setPcsCurrent] = useState<number | "">("");
   const [tcCurrentMin, setTcCurrentMin] = useState<number | "">("");
   const [tcCurrentSec, setTcCurrentSec] = useState<number | "">("");
+  const [zCurrent, setZCurrent] = useState<number | "">("");
+  const [edgesCurrent, setEdgesCurrent] = useState<number | "">("");
   
   // Premium
   const [toolCostPremium, setToolCostPremium] = useState<number | "">("");
   const [feedPremium, setFeedPremium] = useState<number | "">("");
   const [vcPremium, setVcPremium] = useState<number | "">("");
   const [pcsPremium, setPcsPremium] = useState<number | "">("");
+  const [zPremium, setZPremium] = useState<number | "">("");
+  const [edgesPremium, setEdgesPremium] = useState<number | "">("");
   
   // Volumen
   const [monthlyProduction, setMonthlyProduction] = useState<number | "">("");
@@ -121,6 +125,12 @@ export default function TaylorCurvePage() {
     const safePcsPremium = Number(pcsPremium) || 1;
     const safeMonthlyProduction = Number(monthlyProduction) || 0;
 
+    // Variables seguras para Fresado (Torno por defecto = 1)
+    const safeZCurrent = Number(zCurrent) || 1;
+    const safeZPremium = Number(zPremium) || 1;
+    const safeEdgesCurrent = Number(edgesCurrent) || 1;
+    const safeEdgesPremium = Number(edgesPremium) || 1;
+
     // Convertir el input de "reloj" a decimal interno
     const safeTcCurrent = (Number(tcCurrentMin) || 0) + ((Number(tcCurrentSec) || 0) / 60);
 
@@ -131,22 +141,31 @@ export default function TaylorCurvePage() {
     const constantDistance = safeTcCurrent * safeVcCurrent * safeFeedCurrent;
     const tcPremium = constantDistance / (safeVcPremium * safeFeedPremium);
 
-    // 1. Función Teórica (Para las líneas de la Curva U)
+    // 1. Función Teórica (Actualizada con Z y Filos)
     const calcCost = (v: number, isPremium: boolean, feed: number) => {
       if (v <= 0 || feed <= 0) return Infinity;
       const C = isPremium ? premiumC : mat.C;
-      const toolCost = isPremium ? safeToolCostPremium : safeToolCostCurrent;
+      const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
+      const z = isPremium ? safeZPremium : safeZCurrent;
+      const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
+      
       const tc = constantDistance / (v * feed); 
       const lifeMins = Math.pow((C / v), (1 / mat.n));
       if (tc <= 0 || lifeMins <= 0 || !isFinite(lifeMins)) return Infinity;
-      return (safeMachineCostMin * tc) + ((safeMachineCostMin * safeToolChangeTime + toolCost) * (tc / lifeMins));
+
+      const costPorPunta = edges > 0 ? toolPrice / edges : 0;
+      const costJuego = costPorPunta * z;
+      
+      return (safeMachineCostMin * tc) + ((safeMachineCostMin * safeToolChangeTime + costJuego) * (tc / lifeMins));
     };
 
-    // 2. Función Empírica / Real (Para los puntos y el remate de ventas)
-    const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number) => {
-      if (tc <= 0 || toolPrice < 0 || pcsPerEdge <= 0) return Infinity;
+    // 2. Función Empírica (Actualizada con Z y Filos)
+    const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
+      if (tc <= 0 || toolPrice < 0 || pcsPerEdge <= 0 || z <= 0 || edges <= 0) return Infinity;
       const costCorte = safeMachineCostMin * tc;
-      const costHerr = toolPrice / pcsPerEdge;
+      const costPorPunta = toolPrice / edges;
+      const costJuego = costPorPunta * z;
+      const costHerr = costJuego / pcsPerEdge;
       const costCambio = (safeMachineCostMin * safeToolChangeTime) / pcsPerEdge;
       return costCorte + costHerr + costCambio;
     };
@@ -169,8 +188,8 @@ export default function TaylorCurvePage() {
     }));
     
     // 3. Calcular los PUNTOS REALES operativos
-    const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, safePcsCurrent);
-    const actualCostPremium = calcEmpiricalCost(tcPremium, safeToolCostPremium, safePcsPremium);
+    const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, safePcsCurrent, safeZCurrent, safeEdgesCurrent);
+    const actualCostPremium = calcEmpiricalCost(tcPremium, safeToolCostPremium, safePcsPremium, safeZPremium, safeEdgesPremium);
     
     const realAbsoluteSavings = isFinite(actualCostCurrent) && isFinite(actualCostPremium) ? actualCostCurrent - actualCostPremium : 0;
     const monthlySavings = realAbsoluteSavings * safeMonthlyProduction;
@@ -183,7 +202,7 @@ export default function TaylorCurvePage() {
       monthlySavings,
       tcPremium
     };
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, monthlyProduction]);
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, monthlyProduction, zCurrent, edgesCurrent, zPremium, edgesPremium]);
 
   const premiumMins = Math.floor(curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0);
   const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
@@ -322,11 +341,19 @@ export default function TaylorCurvePage() {
             <h2 className="font-bold text-red-700 text-xs uppercase mb-3 flex items-center gap-1">🔴 Condición Actual</h2>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="block text-[10px] font-bold text-red-600 mb-1">Inserto ($)</Label>
+                <Label className="block text-[10px] font-bold text-red-600 mb-1">Precio Inserto ($)</Label>
                 <Input type="number" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
-                <Label className="block text-[10px] font-bold text-red-600 mb-1">Avance (mm/rev)</Label>
+                <Label className="block text-[10px] font-bold text-red-600 mb-1">Filos por Inserto</Label>
+                <Input type="number" placeholder="Ej: 4" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white placeholder:text-red-200" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+              </div>
+              <div>
+                <Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Insertos (Z)</Label>
+                <Input type="number" placeholder="Ej: 1 (Torno)" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white placeholder:text-red-200" value={zCurrent} onChange={e => setZCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+              </div>
+              <div>
+                <Label className="block text-[10px] font-bold text-red-600 mb-1">Avance (mm/rev o diente)</Label>
                 <Input type="number" step="0.01" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
@@ -360,11 +387,19 @@ export default function TaylorCurvePage() {
             <h2 className="font-bold text-green-700 text-xs uppercase mb-3 flex items-center gap-1">🟢 Propuesta Premium</h2>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="block text-[10px] font-bold text-green-700 mb-1">Inserto ($)</Label>
+                <Label className="block text-[10px] font-bold text-green-700 mb-1">Precio Inserto ($)</Label>
                 <Input type="number" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
-                <Label className="block text-[10px] font-bold text-green-700 mb-1">Avance (mm/rev)</Label>
+                <Label className="block text-[10px] font-bold text-green-700 mb-1">Filos por Inserto</Label>
+                <Input type="number" placeholder="Ej: 8" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white placeholder:text-green-200" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value === "" ? "" : Number(e.target.value))} />
+              </div>
+              <div>
+                <Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Insertos (Z)</Label>
+                <Input type="number" placeholder="Ej: 5" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white placeholder:text-green-200" value={zPremium} onChange={e => setZPremium(e.target.value === "" ? "" : Number(e.target.value))} />
+              </div>
+              <div>
+                <Label className="block text-[10px] font-bold text-green-700 mb-1">Avance (mm/rev o diente)</Label>
                 <Input type="number" step="0.01" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
@@ -375,6 +410,16 @@ export default function TaylorCurvePage() {
                 <Label className="block text-[10px] font-bold text-green-700 mb-1">Pzas / filo</Label>
                 <Input type="number" className="w-full p-1.5 border border-green-200 rounded text-sm bg-white" value={pcsPremium} onChange={e => setPcsPremium(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
+
+              {/* ALERTA DINÁMICA DE IMPACTO Z */}
+              {(Number(zPremium) || 1) > (Number(zCurrent) || 1) && (
+                <div className="col-span-2 mt-2 bg-green-200/50 border border-green-300 p-2 rounded flex items-start gap-2 animate-in fade-in slide-in-from-top-2">
+                  <span className="text-green-700 mt-0.5">💡</span>
+                  <p className="text-[10px] text-green-800 font-medium leading-tight">
+                    Mayor densidad de insertos (Z={zPremium} vs Z={zCurrent}). El avance de mesa (Vf) aumentará proporcionalmente. <strong className="font-black">¡Asegúrate de ajustar el Avance o el Tiempo para reflejar esta ganancia!</strong>
+                  </p>
+                </div>
+              )}
               
               {/* OUTPUT DE RELOJ */}
               <div className="col-span-2">
