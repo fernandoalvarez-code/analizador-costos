@@ -112,10 +112,6 @@ export default function TaylorCurvePage() {
                         <Label htmlFor="current-tool-cost" className="text-destructive">Inserto Competidor ($)</Label>
                         <Input id="current-tool-cost" type="number" value={toolCostCurrent} onChange={e => setToolCostCurrent(Number(e.target.value) || 0)} className="border-destructive/50 focus-visible:ring-destructive" />
                     </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="vc-current" className="text-destructive">Vc REAL Competidor (m/min)</Label>
-                        <Input id="vc-current" type="number" value={vcCurrent} onChange={e => setVcCurrent(Number(e.target.value) || 0)} className="border-destructive/50 focus-visible:ring-destructive" />
-                    </div>
                     <div className="space-y-2">
                         <Label htmlFor="current-feed" className="text-destructive">Avance Competidor (mm/rev)</Label>
                         <Input id="current-feed" type="number" step="0.05" value={feedCurrent} onChange={e => setFeedCurrent(Number(e.target.value) || 0)} className="border-destructive/50 focus-visible:ring-destructive" />
@@ -128,12 +124,22 @@ export default function TaylorCurvePage() {
                         <Input id="premium-tool-cost" type="number" value={toolCostPremium} onChange={e => setToolCostPremium(Number(e.target.value) || 0)} className="border-green-500/50 focus-visible:ring-green-500" />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="vc-premium" className="text-green-600">Vc PROPUESTA Premium (m/min)</Label>
-                        <Input id="vc-premium" type="number" value={vcPremium} onChange={e => setVcPremium(Number(e.target.value) || 0)} className="border-green-500/50 focus-visible:ring-green-500" />
-                    </div>
-                    <div className="space-y-2">
                         <Label htmlFor="premium-feed" className="text-green-600">Avance Premium (mm/rev)</Label>
                         <Input id="premium-feed" type="number" step="0.05" value={feedPremium} onChange={e => setFeedPremium(Number(e.target.value) || 0)} className="border-green-500/50 focus-visible:ring-green-500" />
+                    </div>
+                </div>
+
+                 <div className="pt-4 mt-2 border-t border-slate-200">
+                    <h3 className="font-bold text-slate-700 text-xs uppercase mb-3">Condiciones Reales de Trabajo</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="vc-current" className="text-destructive">Vc Actual Competidor (m/min)</Label>
+                            <Input id="vc-current" type="number" value={vcCurrent} onChange={e => setVcCurrent(Number(e.target.value) || 0)} className="border-destructive/50 focus-visible:ring-destructive" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="vc-premium" className="text-green-600">Vc Propuesta Premium (m/min)</Label>
+                            <Input id="vc-premium" type="number" value={vcPremium} onChange={e => setVcPremium(Number(e.target.value) || 0)} className="border-green-500/50 focus-visible:ring-green-500" />
+                        </div>
                     </div>
                 </div>
             </CardContent>
