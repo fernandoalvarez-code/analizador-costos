@@ -30,6 +30,8 @@ export default function TaylorCurvePage() {
   const [feedPremium, setFeedPremium] = useState<number>(0.4);
   const [vcCurrent, setVcCurrent] = useState<number>(100);
   const [vcPremium, setVcPremium] = useState<number>(120);
+  const [pcsCurrent, setPcsCurrent] = useState<number>(6);
+  const [pcsPremium, setPcsPremium] = useState<number>(20);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGeneratePDF = async () => {
@@ -83,7 +85,7 @@ export default function TaylorCurvePage() {
     const machineCostMin = machineCostHr / 60;
     const premiumC = mat.C * 1.25;
 
-    // Función pura para calcular costo en un punto exacto
+    // 1. Función Teórica (Para las líneas de la Curva U)
     const calcCost = (v: number, isPremium: boolean, feed: number) => {
       const C = isPremium ? premiumC : mat.C;
       const toolCost = isPremium ? toolCostPremium : toolCostCurrent;
@@ -92,7 +94,15 @@ export default function TaylorCurvePage() {
       return (machineCostMin * tm) + ((machineCostMin * toolChangeTime + toolCost) * (tm / life));
     };
 
-    // 1. Generar la curva (teoría)
+    // 2. Función Empírica / Real (Para los puntos y el remate de ventas)
+    const calcEmpiricalCost = (v: number, feed: number, toolPrice: number, pcsPerEdge: number) => {
+      const tm = 1000 / (v * feed); // Mantenemos la misma constante de distancia para la escala
+      const costCorte = machineCostMin * tm;
+      const costHerr = toolPrice / pcsPerEdge;
+      const costCambio = (machineCostMin * toolChangeTime) / pcsPerEdge;
+      return costCorte + costHerr + costCambio;
+    };
+
     const data = [];
     for (let v = 50; v <= mat.C * 1.3; v += 10) {
       data.push({
@@ -102,11 +112,10 @@ export default function TaylorCurvePage() {
       });
     }
     
-    // 2. Calcular los PUNTOS REALES operativos
-    const actualCostCurrent = calcCost(vcCurrent, false, feedCurrent);
-    const actualCostPremium = calcCost(vcPremium, true, feedPremium);
+    // 3. Calcular los PUNTOS REALES operativos (Usando Piezas/Filo)
+    const actualCostCurrent = calcEmpiricalCost(vcCurrent, feedCurrent, toolCostCurrent, pcsCurrent);
+    const actualCostPremium = calcEmpiricalCost(vcPremium, feedPremium, toolCostPremium, pcsPremium);
     
-    // 3. Calcular el Ahorro Real
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
     const realSavingsPercentage = (realAbsoluteSavings / actualCostCurrent) * 100;
 
@@ -117,7 +126,8 @@ export default function TaylorCurvePage() {
       realAbsoluteSavings, 
       realSavingsPercentage 
     };
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium]);
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium]);
+
 
   return (
     <div className="container mx-auto space-y-8">
@@ -190,6 +200,14 @@ export default function TaylorCurvePage() {
                         <div>
                         <Label className="block text-xs font-bold text-green-600 mb-1">Vc Propuesta Premium (m/min)</Label>
                         <Input type="number" className="w-full p-2 border border-green-200 bg-green-50 rounded-md text-sm" value={vcPremium} onChange={e => setVcPremium(Number(e.target.value))} />
+                        </div>
+                        <div>
+                            <Label className="block text-xs font-bold text-red-600 mb-1">Piezas / Filo (Actual)</Label>
+                            <Input type="number" className="w-full p-2 border border-red-200 bg-red-50 rounded-md text-sm" value={pcsCurrent} onChange={e => setPcsCurrent(Number(e.target.value))} />
+                        </div>
+                        <div>
+                            <Label className="block text-xs font-bold text-green-600 mb-1">Piezas / Filo (Premium)</Label>
+                            <Input type="number" className="w-full p-2 border border-green-200 bg-green-50 rounded-md text-sm" value={pcsPremium} onChange={e => setPcsPremium(Number(e.target.value))} />
                         </div>
                     </div>
                 </div>
@@ -320,6 +338,11 @@ export default function TaylorCurvePage() {
                   <td className="p-2 border border-slate-300 font-bold">Avance (f)</td>
                   <td className="p-2 border border-slate-300">{feedCurrent} mm/rev</td>
                   <td className="p-2 border border-slate-300">{feedPremium} mm/rev</td>
+                </tr>
+                <tr>
+                  <td className="p-2 border border-slate-300 font-bold">Piezas / Filo (Real)</td>
+                  <td className="p-2 border border-slate-300">{pcsCurrent} pzs</td>
+                  <td className="p-2 border border-slate-300">{pcsPremium} pzs</td>
                 </tr>
                 <tr className="bg-slate-50">
                   <td className="p-2 border border-slate-300 font-bold text-slate-800">Costo Real por Pieza</td>
