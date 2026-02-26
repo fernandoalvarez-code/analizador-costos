@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, Info, Share2, Download, Loader2 } from 'lucide-react';
-import { formatCurrency } from '@/lib/formatters';
+import { TrendingUp, Info, Share2 } from 'lucide-react';
+import { formatCurrency, formatNumber } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -32,6 +32,7 @@ export default function TaylorCurvePage() {
   const [vcPremium, setVcPremium] = useState<number>(120);
   const [pcsCurrent, setPcsCurrent] = useState<number>(6);
   const [pcsPremium, setPcsPremium] = useState<number>(20);
+  const [monthlyProduction, setMonthlyProduction] = useState<number>(1000);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGeneratePDF = async () => {
@@ -96,6 +97,7 @@ export default function TaylorCurvePage() {
 
     // 2. Función Empírica / Real (Para los puntos y el remate de ventas)
     const calcEmpiricalCost = (v: number, feed: number, toolPrice: number, pcsPerEdge: number) => {
+      if (v <= 0 || feed <= 0 || toolPrice < 0 || pcsPerEdge <= 0) return Infinity;
       const tm = 1000 / (v * feed); // Mantenemos la misma constante de distancia para la escala
       const costCorte = machineCostMin * tm;
       const costHerr = toolPrice / pcsPerEdge;
@@ -118,19 +120,21 @@ export default function TaylorCurvePage() {
     
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
     const realSavingsPercentage = (realAbsoluteSavings / actualCostCurrent) * 100;
+    const monthlySavings = realAbsoluteSavings * monthlyProduction;
 
     return { 
       data, 
       actualCostCurrent, 
       actualCostPremium, 
       realAbsoluteSavings, 
-      realSavingsPercentage 
+      realSavingsPercentage,
+      monthlySavings
     };
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium]);
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, monthlyProduction]);
 
 
   return (
-    <div className="container mx-auto space-y-8">
+    <div className="container mx-auto space-y-8 pb-16">
         <div className="flex justify-between items-start">
             <div className="flex items-center gap-3">
                 <TrendingUp className="h-8 w-8 text-primary" />
@@ -213,6 +217,21 @@ export default function TaylorCurvePage() {
                       </div>
                     </div>
                   </div>
+                  
+                  <div className="col-span-2 mt-4 pt-4 border-t border-slate-200">
+                    <h3 className="font-bold text-slate-700 text-xs uppercase mb-3">Volumen de Producción</h3>
+                    <div>
+                      <Label htmlFor="monthly-production" className="text-xs font-bold text-slate-500 mb-1">Producción Mensual (Piezas/mes)</Label>
+                      <Input 
+                        id="monthly-production"
+                        type="number" 
+                        className="w-full bg-slate-50 font-bold" 
+                        value={monthlyProduction} 
+                        onChange={e => setMonthlyProduction(Number(e.target.value) || 0)} 
+                      />
+                    </div>
+                  </div>
+
             </CardContent>
         </Card>
 
@@ -245,30 +264,25 @@ export default function TaylorCurvePage() {
       </div>
 
        {/* PANEL DE RESULTADOS COMERCIALES (REMATE DE VENTAS) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
         <div className="bg-red-50 p-4 rounded-xl border border-red-200 text-center flex flex-col justify-center">
           <p className="text-xs font-bold text-red-700 uppercase mb-1">Costo Operativo Competidor</p>
           <p className="text-2xl font-black text-red-800">{isFinite(curveDataInfo.actualCostCurrent) ? formatCurrency(curveDataInfo.actualCostCurrent) : 'N/A'}</p>
-          <p className="text-[10px] text-red-600 mt-1">Vc: {vcCurrent} m/min | f: {feedCurrent} mm/rev</p>
+          <p className="text-[10px] text-red-600 mt-1">por pieza</p>
         </div>
         
         <div className="bg-green-50 p-4 rounded-xl border border-green-200 text-center flex flex-col justify-center">
           <p className="text-xs font-bold text-green-700 uppercase mb-1">Costo Operativo Premium</p>
           <p className="text-2xl font-black text-green-800">{isFinite(curveDataInfo.actualCostPremium) ? formatCurrency(curveDataInfo.actualCostPremium) : 'N/A'}</p>
-          <p className="text-[10px] text-green-600 mt-1">Vc: {vcPremium} m/min | f: {feedPremium} mm/rev</p>
+          <p className="text-[10px] text-green-600 mt-1">por pieza</p>
         </div>
 
-        <div className="bg-slate-800 p-6 rounded-xl border-2 border-green-400 text-center shadow-lg flex flex-col justify-center relative overflow-hidden">
+        <div className="md:col-span-2 bg-slate-800 p-6 rounded-xl border-2 border-green-400 text-center shadow-lg flex flex-col justify-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-emerald-500"></div>
-          <p className="text-xs font-bold text-green-400 uppercase tracking-widest mb-1">Ahorro Real por Pieza</p>
-          <p className="text-4xl font-black text-white mb-1">{isFinite(curveDataInfo.realAbsoluteSavings) ? formatCurrency(curveDataInfo.realAbsoluteSavings) : 'N/A'}</p>
+          <p className="text-sm font-bold text-green-400 uppercase tracking-widest mb-1">Impacto Mensual Total</p>
+          <p className="text-5xl font-black text-white mb-1">{isFinite(curveDataInfo.monthlySavings) ? formatCurrency(curveDataInfo.monthlySavings) : 'N/A'}</p>
           <p className="text-sm font-medium text-slate-300">
-            {isFinite(curveDataInfo.realSavingsPercentage) && curveDataInfo.realSavingsPercentage > 0 && (
-                <>Reducción del <span className="text-green-400 font-bold">{curveDataInfo.realSavingsPercentage.toFixed(1)}%</span> en el costo de fabricación</>
-            )}
-            {isFinite(curveDataInfo.realSavingsPercentage) && curveDataInfo.realSavingsPercentage <= 0 && (
-                <>Aumento del <span className="text-red-400 font-bold">{Math.abs(curveDataInfo.realSavingsPercentage).toFixed(1)}%</span> en el costo</>
-            )}
+            Ahorro basado en {formatNumber(monthlyProduction)} piezas/mes
           </p>
         </div>
       </div>
@@ -306,12 +320,13 @@ export default function TaylorCurvePage() {
           </div>
 
           {/* DATOS INGRESADOS */}
-          <div className="mb-6">
+           <div className="mb-6">
             <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">1. Condiciones de Trabajo Evaluadas</h2>
-            <div className="grid grid-cols-3 gap-4 text-xs">
+            <div className="grid grid-cols-4 gap-4 text-xs">
               <div><p className="text-slate-500">Material:</p><p className="font-bold">{MATERIALS.find(m => m.id === materialId)?.name}</p></div>
               <div><p className="text-slate-500">Costo Máquina:</p><p className="font-bold">{formatCurrency(machineCostHr)} / hr</p></div>
               <div><p className="text-slate-500">Tiempo Cambio Herr.:</p><p className="font-bold">{toolChangeTime} min</p></div>
+              <div><p className="text-slate-500">Producción Mensual:</p><p className="font-bold">{formatNumber(monthlyProduction)} pzs/mes</p></div>
             </div>
           </div>
 
@@ -358,8 +373,17 @@ export default function TaylorCurvePage() {
           {/* IMPACTO COMERCIAL - BLOQUE GIGANTE */}
           <div className="bg-green-50 border-2 border-green-500 p-6 rounded-lg text-center mb-8">
             <p className="text-sm font-bold text-green-700 uppercase tracking-widest mb-2">Impacto Económico Demostrado</p>
-            <p className="text-5xl font-black text-green-800 mb-2">{formatCurrency(curveDataInfo.realAbsoluteSavings)} <span className="text-xl">ahorro / pieza</span></p>
-            <p className="text-lg font-bold text-green-700">Reducción del costo de fabricación: {isFinite(curveDataInfo.realSavingsPercentage) ? curveDataInfo.realSavingsPercentage.toFixed(1) : '0'}%</p>
+            <p className="text-3xl font-black text-green-800 mb-2">
+              {formatCurrency(curveDataInfo.realAbsoluteSavings)}
+              <span className="text-lg font-semibold text-green-700"> ahorro / pieza</span>
+            </p>
+            <div className="border-t border-green-200 mt-4 pt-4">
+              <p className="text-base font-bold text-green-800 uppercase tracking-widest mb-2">Proyección Mensual</p>
+              <p className="text-5xl font-black text-green-800 mb-2">
+                {formatCurrency(curveDataInfo.monthlySavings)}
+                <span className="text-xl font-semibold text-green-700"> ahorro / mes</span>
+              </p>
+            </div>
           </div>
 
           {/* GRÁFICA CAPTURADA */}
