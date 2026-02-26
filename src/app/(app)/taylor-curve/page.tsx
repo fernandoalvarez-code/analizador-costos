@@ -193,6 +193,9 @@ export default function TaylorCurvePage() {
     
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
     const realSavingsPercentage = actualCostCurrent > 0 ? (realAbsoluteSavings / actualCostCurrent) * 100 : 0;
+    
+    // CÁLCULO DEL AHORRO MENSUAL PARA EL BANNER
+    const monthlySavings = isFinite(realAbsoluteSavings) ? realAbsoluteSavings * safeMonthlyProduction : 0;
 
     return { 
       data, 
@@ -200,7 +203,8 @@ export default function TaylorCurvePage() {
       actualCostPremium, 
       realAbsoluteSavings, 
       realSavingsPercentage,
-      tcPremium
+      tcPremium,
+      monthlySavings,
     };
   }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction]);
 
