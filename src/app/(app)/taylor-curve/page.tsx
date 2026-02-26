@@ -84,15 +84,18 @@ export default function TaylorCurvePage() {
     // Constante de proporción (Distancia virtual)
     const constantDistance = tcCurrent * vcCurrent * feedCurrent;
     // Cálculo dinámico del tiempo propuesto
-    const tcPremium = constantDistance / (vcPremium * feedPremium);
+    const tcPremium = constantDistance > 0 && vcPremium > 0 && feedPremium > 0 
+      ? constantDistance / (vcPremium * feedPremium) 
+      : 0;
 
     // 1. Función Teórica (Para las líneas de la Curva U)
     const calcCost = (v: number, isPremium: boolean, feed: number) => {
+      if (v <= 0 || feed <= 0) return Infinity;
       const C = isPremium ? premiumC : mat.C;
       const toolCost = isPremium ? toolCostPremium : toolCostCurrent;
       const tc = constantDistance / (v * feed); 
       const lifeMins = Math.pow((C / v), (1 / mat.n));
-      if (tc <= 0 || lifeMins <= 0) return Infinity;
+      if (tc <= 0 || lifeMins <= 0 || !isFinite(lifeMins)) return Infinity;
       return (machineCostMin * tc) + ((machineCostMin * toolChangeTime + toolCost) * (tc / lifeMins));
     };
 
@@ -118,7 +121,7 @@ export default function TaylorCurvePage() {
     const actualCostCurrent = calcEmpiricalCost(tcCurrent, toolCostCurrent, pcsCurrent);
     const actualCostPremium = calcEmpiricalCost(tcPremium, toolCostPremium, pcsPremium);
     
-    const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
+    const realAbsoluteSavings = isFinite(actualCostCurrent) && isFinite(actualCostPremium) ? actualCostCurrent - actualCostPremium : 0;
     const monthlySavings = realAbsoluteSavings * monthlyProduction;
 
     return { 
@@ -223,16 +226,19 @@ export default function TaylorCurvePage() {
                   <h3 className="font-bold text-slate-700 text-xs uppercase mb-3">Condiciones Reales de Trabajo</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {/* Fila 1: Tiempos de Corte */}
-                    <div>
-                      <Label htmlFor="tc-current" className="text-red-600">Tiempo de Corte Actual (min)</Label>
-                      <Input id="tc-current" type="number" step={0.1} value={tcCurrent} onChange={e => setTcCurrent(Number(e.target.value) || 0)} className="border-red-300 bg-red-50 font-bold"/>
-                    </div>
-                    <div>
-                      <Label htmlFor="tc-premium" className="text-green-600">Tiempo de Corte Propuesto (min)</Label>
-                      <div id="tc-premium" className="w-full h-10 p-2 border border-green-200 bg-green-100 text-green-800 rounded-md text-sm font-bold flex items-center shadow-inner">
-                        {curveDataInfo.tcPremium > 0 && isFinite(curveDataInfo.tcPremium) ? `${curveDataInfo.tcPremium.toFixed(2)} min` : '...'}
-                      </div>
-                      <p className="text-[9px] text-green-600 mt-1 italic">*Calculado por proporción</p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <h3 className="col-span-2 font-bold text-slate-700 text-xs uppercase mb-1">Tiempos de Corte (Mecanizado)</h3>
+                        <div>
+                            <Label htmlFor="tc-current" className="text-red-600">Tiempo Actual (min)</Label>
+                            <Input id="tc-current" type="number" step={0.1} value={tcCurrent} onChange={e => setTcCurrent(Number(e.target.value) || 0)} className="border-red-300 bg-red-50 font-bold"/>
+                        </div>
+                        <div>
+                            <Label htmlFor="tc-premium" className="text-green-600">Tiempo Propuesto (min)</Label>
+                            <div id="tc-premium" className="w-full h-10 p-2 border border-green-200 bg-green-100 text-green-800 rounded-md text-sm font-bold flex items-center shadow-inner">
+                                {curveDataInfo.tcPremium > 0 && isFinite(curveDataInfo.tcPremium) ? `${curveDataInfo.tcPremium.toFixed(2)} min` : '...'}
+                            </div>
+                            <p className="text-[9px] text-green-600 mt-1 italic">*Calculado por proporción</p>
+                        </div>
                     </div>
                     
                     {/* Fila 2: Velocidades */}
@@ -293,8 +299,8 @@ export default function TaylorCurvePage() {
                         <Line type="monotone" dataKey="costoPremium" name="Inserto Premium" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#22c55e' }} />
 
                         {/* Puntos de operación real */}
-                        <ReferenceDot x={vcCurrent} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />
-                        <ReferenceDot x={vcPremium} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />
+                        {isFinite(curveDataInfo.actualCostCurrent) && <ReferenceDot x={vcCurrent} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />}
+                        {isFinite(curveDataInfo.actualCostPremium) && <ReferenceDot x={vcPremium} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
                     </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -336,8 +342,10 @@ export default function TaylorCurvePage() {
             {/* HEADER */}
             <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
               <div className="flex items-center gap-4">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="Secocut Logo" className="h-12 w-auto object-contain" crossOrigin="anonymous" />
+                {/* Reemplazo seguro del logo para evitar errores de CORS en html2canvas */}
+                <div className="h-12 flex items-center justify-center bg-blue-600 text-white font-black px-4 rounded">
+                  SECOCUT
+                </div>
                 <div>
                   <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Análisis de Curva de Taylor</h1>
                   <p className="text-sm font-bold text-blue-600 uppercase tracking-widest">Secocut SRL</p>
@@ -431,8 +439,8 @@ export default function TaylorCurvePage() {
                   <Legend verticalAlign="top" height={36} />
                   <Line type="monotone" dataKey="costoActual" stroke="#ef4444" strokeWidth={3} dot={false} />
                   <Line type="monotone" dataKey="costoPremium" stroke="#22c55e" strokeWidth={3} dot={false} />
-                  <ReferenceDot x={vcCurrent} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />
-                  <ReferenceDot x={vcPremium} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />
+                  {isFinite(curveDataInfo.actualCostCurrent) && <ReferenceDot x={vcCurrent} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />}
+                  {isFinite(curveDataInfo.actualCostPremium) && <ReferenceDot x={vcPremium} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
                 </LineChart>
               </div>
             </div>
