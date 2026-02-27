@@ -5,17 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, Info, Share2, FileText } from 'lucide-react';
+import { TrendingUp, Info, Share2, FileText, Save } from 'lucide-react';
 import { formatCurrency, formatNumber } from '@/lib/formatters';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "@/firebase";
 
 const MATERIALS = [
-  { id: 'alu', name: 'Aluminio (Ej: 6061)', n: 0.35, C: 900 },
-  { id: 'low_c', name: 'Acero Bajo Carbono', n: 0.30, C: 350 },
-  { id: 'med_c', name: 'Acero Medio Carbono', n: 0.25, C: 250 },
-  { id: 'cast', name: 'Fundición de Hierro', n: 0.25, C: 200 },
-  { id: 'inox', name: 'Acero Inoxidable', n: 0.20, C: 150 },
+  { id: 'alu', name: 'Aluminio (Ej: 6061)', n: 0.35, C: 900, kc: 700 },
+  { id: 'low_c', name: 'Acero Bajo Carbono', n: 0.30, C: 350, kc: 1500 },
+  { id: 'med_c', name: 'Acero Medio Carbono', n: 0.25, C: 200, kc: 1500 },
+  { id: 'cast', name: 'Fundición de Hierro', n: 0.25, C: 200, kc: 1200 },
+  { id: 'inox', name: 'Acero Inoxidable', n: 0.20, C: 150, kc: 2500 },
 ];
 
 
@@ -25,6 +28,8 @@ export default function TaylorCurvePage() {
   const [materialId, setMaterialId] = useState('med_c'); // El select sí tiene default
   const [machineCostHr, setMachineCostHr] = useState<number | "">("");
   const [toolChangeTime, setToolChangeTime] = useState<number | "">("");
+  const [pieceName, setPieceName] = useState<string>("");
+  const [ap, setAp] = useState<number | "">(""); // Profundidad de corte
   
   // Competidor
   const [toolCostCurrent, setToolCostCurrent] = useState<number | "">("");
@@ -47,28 +52,21 @@ export default function TaylorCurvePage() {
   // Volumen
   const [monthlyProduction, setMonthlyProduction] = useState<number | "">("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [saveClientName, setSaveClientName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleGeneratePDF = async (action: 'download' | 'share') => {
-    setIsGenerating(true);
+  const generatePdfBlob = async (): Promise<Blob | null> => {
     try {
       const element = document.getElementById('pdf-taylor-template');
-      if (!element) {
-        alert("Error crítico: No se encontró la plantilla del PDF.");
-        setIsGenerating(false);
-        return;
-      }
+      if (!element) throw new Error("No se encontró la plantilla del PDF.");
 
       element.style.position = 'absolute';
       element.style.top = '0px';
       element.style.left = '0px';
       element.style.zIndex = '-9999';
 
-      const canvas = await html2canvas(element, { 
-        scale: 2, 
-        useCORS: true,
-        allowTaint: true
-      });
-      
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true, allowTaint: true });
       element.style.top = '-9999px';
 
       const imgData = canvas.toDataURL('image/png');
@@ -77,39 +75,41 @@ export default function TaylorCurvePage() {
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      
-      // Lógica de separación de botones
-      const fileName = `Reporte_Secocut_${new Date().getTime()}.pdf`;
-      
-      if (action === 'share') {
-        try {
-          const pdfBlob = pdf.output('blob');
-          const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
-          if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              title: 'Reporte de Optimización Secocut',
-              files: [file],
-            });
-          } else {
-            pdf.save(fileName); // Fallback si no soporta compartir
-          }
-        } catch (shareError) {
-          console.log("Compartir cancelado o fallido, descargando...", shareError);
-          pdf.save(fileName);
-        }
-      } else {
-        // Acción 'download' fuerza la descarga directa del PDF
-        pdf.save(fileName);
-      }
-
+      return pdf.output('blob');
     } catch (error) {
-      console.error("Error al generar PDF:", error);
-      alert("Error detallado en PDF: " + (error instanceof Error ? error.message : JSON.stringify(error)));
+      console.error("Error generando Blob del PDF:", error);
+      return null;
+    }
+  };
+
+  const handleGeneratePDF = async (action: 'download' | 'share') => {
+    setIsGenerating(true);
+    try {
+      const pdfBlob = await generatePdfBlob();
+      if (!pdfBlob) throw new Error("Fallo al crear el documento.");
+
+      const fileName = `Reporte_Secocut_${new Date().getTime()}.pdf`;
+      const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+      if (action === 'share' && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ title: 'Reporte Secocut', files: [file] });
+      } else {
+        // Fallback a descarga si falla el share o si es acción download
+        const url = URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error al procesar el PDF.");
     } finally {
       setIsGenerating(false);
     }
   };
-
+  
   const curveDataInfo = useMemo(() => {
     // Variables seguras para evitar NaN o Infinity
     const safeMachineCostMin = (Number(machineCostHr) || 0) / 60;
@@ -142,6 +142,18 @@ export default function TaylorCurvePage() {
     
     // CÁLCULO REACTIVO DEL TIEMPO PREMIUM (Se reduce automáticamente si sube Z, Vc o Avance)
     const tcPremium = constantDistance / (safeVcPremium * safeFeedPremium * safeZPremium);
+
+    // Constante kc del material (Fallback a 1500 si no existe)
+    const kc = mat.kc || 1500;
+    const safeAp = Number(ap) || 2.0; // Profundidad por defecto: 2mm para evitar potencia 0
+
+    // CÁLCULO DE POTENCIA (kW a HP)
+    // El avance 'feed' se multiplica por 'Z' para unificar Torneado (Z=1) y Fresado (Z>1)
+    const kwCurrent = (safeAp * safeFeedCurrent * safeVcCurrent * kc * safeZCurrent) / 60000;
+    const hpCurrent = kwCurrent * 1.341;
+
+    const kwPremium = (safeAp * safeFeedPremium * safeVcPremium * kc * safeZPremium) / 60000;
+    const hpPremium = kwPremium * 1.341;
 
     // 1. Función Teórica
     const calcCost = (v: number, isPremium: boolean, feed: number) => {
@@ -205,8 +217,10 @@ export default function TaylorCurvePage() {
       realSavingsPercentage,
       tcPremium,
       monthlySavings,
+      hpCurrent,
+      hpPremium,
     };
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction]);
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, ap]);
 
   const premiumMins = Math.floor(curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0);
   const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
@@ -305,6 +319,14 @@ export default function TaylorCurvePage() {
               WhatsApp
             </>}
           </button>
+          <button
+            onClick={() => setIsSaveModalOpen(true)}
+            disabled={isSaving}
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md text-sm font-bold shadow-sm transition-all disabled:opacity-50"
+          >
+            <Save size={16} />
+            Guardar en CRM
+          </button>
         </div>
       </div>
 
@@ -334,19 +356,29 @@ export default function TaylorCurvePage() {
             </div>
             <div className="space-y-3">
               <div>
-                <Label htmlFor="material-select" className="block text-[11px] font-bold text-slate-500 mb-1">Material</Label>
-                 <Select value={materialId} onValueChange={setMaterialId}>
-                    <SelectTrigger id="material-select" className="w-full">
+                <Label className="block text-[11px] font-bold text-slate-500 mb-1">Pieza / Operación</Label>
+                <Input type="text" placeholder="Ej: Eje principal" className="w-full p-2 border border-slate-300 rounded-md text-sm font-semibold bg-white" value={pieceName} onChange={e => setPieceName(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <Label className="block text-[11px] font-bold text-slate-500 mb-1">Material</Label>
+                  <Select value={materialId} onValueChange={setMaterialId}>
+                    <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecciona un material" />
                     </SelectTrigger>
                     <SelectContent>
                         {MATERIALS.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                     </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="machine-cost" className="block text-[11px] font-bold text-slate-500 mb-1">Costo Máquina ($/hr)</Label>
-                <Input id="machine-cost" type="number" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value === "" ? "" : Number(e.target.value))} />
+                  </Select>
+                </div>
+                <div>
+                  <Label className="block text-[11px] font-bold text-slate-500 mb-1">Prof. Corte (ap) mm</Label>
+                  <Input type="number" step="0.1" placeholder="Ej: 2.0" className="w-full p-2 border border-slate-300 rounded-md text-sm bg-white" value={ap} onChange={e => setAp(e.target.value === "" ? "" : Number(e.target.value))} />
+                </div>
+                <div>
+                  <Label htmlFor="machine-cost" className="block text-[11px] font-bold text-slate-500 mb-1">Costo Máquina ($/hr)</Label>
+                  <Input id="machine-cost" type="number" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value === "" ? "" : Number(e.target.value))} />
+                </div>
               </div>
               <div>
                 <Label htmlFor="tool-change-time" className="block text-[11px] font-bold text-slate-500 mb-1">Cambio Herram. (min)</Label>
@@ -361,7 +393,7 @@ export default function TaylorCurvePage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="block text-[10px] font-bold text-red-600 mb-1">
-                  Precio Inserto {operationType === 'turning' ? 'Torno' : 'Fresa'} ($)
+                  Inserto {operationType === 'turning' ? 'Torno' : 'Fresa'} ($)
                 </Label>
                 <Input type="number" className="w-full p-1.5 border border-red-200 rounded text-sm bg-white" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
@@ -406,6 +438,11 @@ export default function TaylorCurvePage() {
                     <span className="absolute right-2 top-2 text-[10px] font-bold text-red-400">seg</span>
                   </div>
                 </div>
+              </div>
+              {/* BADGE DE POTENCIA COMPETIDOR */}
+              <div className="col-span-2 mt-2 bg-red-100/50 border border-red-200 p-2 rounded flex items-center justify-between">
+                <span className="text-[10px] font-bold text-red-600 uppercase">Potencia Requerida</span>
+                <span className="text-xs font-black text-red-800">⚡ {curveDataInfo.hpCurrent.toFixed(1)} HP</span>
               </div>
             </div>
           </div>
@@ -454,6 +491,11 @@ export default function TaylorCurvePage() {
                 <div className="w-full p-2 border-2 border-green-300 bg-green-100 text-green-800 rounded-md text-sm font-bold flex items-center justify-center shadow-inner h-10">
                   {premiumMins} min {premiumSecs} seg
                 </div>
+              </div>
+              {/* BADGE DE POTENCIA PREMIUM */}
+              <div className="col-span-2 mt-2 bg-emerald-100/50 border border-emerald-200 p-2 rounded flex items-center justify-between">
+                <span className="text-[10px] font-bold text-emerald-600 uppercase">Potencia Requerida</span>
+                <span className="text-xs font-black text-emerald-800">⚡ {curveDataInfo.hpPremium.toFixed(1)} HP</span>
               </div>
             </div>
           </div>
@@ -522,6 +564,96 @@ export default function TaylorCurvePage() {
             </div>
         </div>
 
+        {/* MODAL DE GUARDADO EN CRM */}
+      {isSaveModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-slate-50 border-b border-slate-200 p-4">
+              <h3 className="font-black text-slate-800 text-lg flex items-center gap-2">
+                💾 Guardar Simulación
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">Este análisis se guardará en la tabla de Gestión de Casos como "Simulación" (Pendiente).</p>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Cliente / Empresa</label>
+                <input type="text" placeholder="Ej: John Deere" className="w-full p-2 border border-slate-300 rounded-md text-sm" value={saveClientName} onChange={e => setSaveClientName(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Nombre de la Operación</label>
+                <input type="text" placeholder="Ej: Torneado Eje Principal" className="w-full p-2 border border-slate-300 rounded-md text-sm" value={pieceName} disabled />
+              </div>
+              
+              <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+                <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Ahorro Anual Proyectado (Automático)</p>
+                <p className="font-black text-emerald-800 text-xl">
+                  {formatCurrency((curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12)}
+                </p>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50">
+              <button onClick={() => setIsSaveModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-md transition-colors">Cancelar</button>
+              <button 
+                onClick={async () => {
+                  setIsSaving(true);
+                  try {
+                    // 1. Generar el PDF en segundo plano
+                    const pdfBlob = await generatePdfBlob();
+                    let pdfDownloadUrl = "";
+
+                    // 2. Subir a Firebase Storage si se generó correctamente
+                    if (pdfBlob && storage) {
+                      const fileName = `taylor_reports/Simulacion_${pieceName.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+                      const storageRef = ref(storage, fileName);
+                      await uploadBytes(storageRef, pdfBlob);
+                      pdfDownloadUrl = await getDownloadURL(storageRef);
+                    }
+
+                    // 3. Guardar en Firestore (CRM)
+                    const payload = {
+                      cliente: saveClientName,
+                      name: pieceName || 'Simulación sin nombre',
+                      recordType: 'simulation', 
+                      status: 'Pendiente',
+                      annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12,
+                      pdfUrl: pdfDownloadUrl,
+                      dateCreated: serverTimestamp(),
+                      taylorInputs: {
+                          operationType,
+                          materialId,
+                          machineCostHr,
+                          toolChangeTime,
+                          pieceName,
+                          ap,
+                          monthlyProduction,
+                          current: { toolCostCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrentMin, tcCurrentSec, zCurrent, edgesCurrent },
+                          premium: { toolCostPremium, feedPremium, vcPremium, pcsPremium, zPremium, edgesPremium }
+                      }
+                    };
+
+                    await addDoc(collection(db, "cuttingToolAnalyses"), payload);
+                    
+                    setIsSaveModalOpen(false);
+                    // toast({ title: "Éxito", description: "¡Simulación y PDF guardados en el CRM con éxito!"});
+                    alert("¡Simulación y PDF guardados en el CRM con éxito!");
+                  } catch (error) {
+                    console.error("Error al guardar:", error);
+                    // toast({ variant: "destructive", title: "Error", description: "Hubo un error al guardar el registro."});
+                    alert("Hubo un error al guardar el registro.");
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }} 
+                disabled={isSaving || !saveClientName || !pieceName}
+                className="px-4 py-2 text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {isSaving ? '⏳ Guardando...' : 'Guardar Registro'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
         {/* PLANTILLA OCULTA PARA PDF (Renderizada fuera de pantalla para html2canvas) */}
         <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
           <div id="pdf-taylor-template" className="w-[210mm] min-h-[290mm] bg-white text-black p-10 font-sans box-border flex flex-col">
@@ -529,13 +661,12 @@ export default function TaylorCurvePage() {
             {/* HEADER DEL PDF CON LOGOS */}
             <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
               <div className="flex items-center gap-4">
-                {/* LOGO PRINCIPAL SECOCUT (Reemplazado por div para evitar CORS) */}
                 <div className="h-12 flex items-center justify-center bg-blue-600 text-white font-black px-4 rounded text-lg">
                   SECOCUT
                 </div>
                 
                 <div className="ml-2">
-                  <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Análisis de Curva de Taylor</h1>
+                  <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Análisis: {pieceName || 'Sin Nombre'}</h1>
                   <p className="text-sm font-bold text-blue-600 uppercase tracking-widest">Secocut SRL</p>
                 </div>
               </div>
@@ -590,6 +721,11 @@ export default function TaylorCurvePage() {
                     <td className="p-2 border border-slate-300 font-bold">Rendimiento (Pzas/Filo)</td>
                     <td className="p-2 border border-slate-300">{pcsCurrent} pzs</td>
                     <td className="p-2 border border-slate-300">{pcsPremium} pzs</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold">Potencia (HP)</td>
+                    <td className="p-2 border border-slate-300">{curveDataInfo.hpCurrent.toFixed(1)} HP</td>
+                    <td className="p-2 border border-slate-300">{curveDataInfo.hpPremium.toFixed(1)} HP</td>
                   </tr>
                   <tr className="bg-slate-50">
                     <td className="p-2 border border-slate-300 font-bold text-slate-800">Costo Real por Pieza</td>
