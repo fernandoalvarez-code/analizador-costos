@@ -56,6 +56,7 @@ export default function TaylorCurvePage() {
   const [monthlyProduction, setMonthlyProduction] = useState<number | "">("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [saveCaseName, setSaveCaseName] = useState("");
   const [saveClientName, setSaveClientName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -395,7 +396,7 @@ export default function TaylorCurvePage() {
                   <Input type="number" step="0.1" placeholder="Ej: 2.0" value={ap} onChange={e => setAp(e.target.value === "" ? "" : Number(e.target.value))} />
                 </div>
                 <div>
-                  <Label className="block text-[11px] font-bold text-slate-500 mb-1">Motor Máquina (HP)</Label>
+                  <Label className="block text-[11px] font-bold text-blue-700 mb-1">Motor Máquina (HP)</Label>
                   <Input type="number" step="0.5" className="font-bold text-blue-700" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value === "" ? "" : Number(e.target.value))} />
                 </div>
                 <div>
@@ -642,6 +643,10 @@ export default function TaylorCurvePage() {
                 <Label className="block text-xs font-bold text-slate-700 mb-1">Cliente / Empresa</Label>
                 <Input type="text" placeholder="Ej: John Deere" className="w-full" value={saveClientName} onChange={e => setSaveClientName(e.target.value)} />
               </div>
+              <div>
+                <Label className="block text-xs font-bold text-slate-700 mb-1">Nombre de la Operación</Label>
+                <Input type="text" placeholder="Ej: Torneado Eje Principal" className="w-full" value={saveCaseName} onChange={e => setSaveCaseName(e.target.value)} />
+              </div>
               
               <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
                 <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Ahorro Anual Proyectado (Automático)</p>
@@ -651,8 +656,14 @@ export default function TaylorCurvePage() {
               </div>
             </div>
             <div className="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50">
-              <Button variant="ghost" onClick={() => setIsSaveModalOpen(false)}>Cancelar</Button>
-              <Button 
+              <button 
+                onClick={() => setIsSaveModalOpen(false)} 
+                className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-md transition-colors"
+              >
+                Cancelar
+              </button>
+              
+              <button 
                 onClick={async () => {
                   setIsSaving(true);
                   try {
@@ -668,10 +679,12 @@ export default function TaylorCurvePage() {
                       pdfDownloadUrl = await getDownloadURL(storageRef);
                     }
 
+                    const safeAp = Number(ap) || 0;
+
                     // 3. Guardar en el Historial (No en el CRM principal)
                     const payload = {
                       clientName: saveClientName,
-                      caseName: pieceName || 'Análisis sin nombre',
+                      caseName: saveCaseName || pieceName || 'Análisis sin nombre',
                       status: 'saved', // Estado base
                       annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12,
                       pdfUrl: pdfDownloadUrl,
@@ -679,7 +692,7 @@ export default function TaylorCurvePage() {
                       taylorInputs: { 
                         operationType, 
                         materialId, 
-                        ap, 
+                        ap: safeAp, 
                         machinePowerHP, 
                         machineCostHr, 
                         toolChangeTime,
@@ -700,11 +713,11 @@ export default function TaylorCurvePage() {
                     setIsSaving(false);
                   }
                 }} 
-                disabled={isSaving || !saveClientName}
-                className="flex items-center gap-2"
+                disabled={isSaving || !saveClientName || !saveCaseName}
+                className="px-4 py-2 text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm"
               >
-                {isSaving ? '⏳ Guardando...' : 'Guardar Registro'}
-              </Button>
+                {isSaving ? '⏳ Guardando...' : 'Guardar Análisis'}
+              </button>
             </div>
           </div>
         </div>
