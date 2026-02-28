@@ -156,12 +156,12 @@ export default function TaylorCurvePage() {
     const geoFactorPremium = geometryPremium === 'negative' ? 1.15 : 1.0;
 
     // CÁLCULO DE POTENCIA (kW a HP) CON GEOMETRÍA
-    const kwCurrent = (safeAp * safeFeedCurrent * safeVcCurrent * kc * safeZCurrent * geoFactorCurrent) / 60000;
-    const hpCurrent = kwCurrent * 1.341;
+    const kwCurrent = (safeAp * safeFeedCurrent * safeVcCurrent * kc * safeZCurrent) / 60000;
+    const hpCurrent = kwCurrent * 1.341 * geoFactorCurrent;
     const loadCurrent = (hpCurrent / safeMachinePowerHP) * 100; // Porcentaje de carga
 
-    const kwPremium = (safeAp * safeFeedPremium * safeVcPremium * kc * safeZPremium * geoFactorPremium) / 60000;
-    const hpPremium = kwPremium * 1.341;
+    const kwPremium = (safeAp * safeFeedPremium * safeVcPremium * kc * safeZPremium) / 60000;
+    const hpPremium = kwPremium * 1.341 * geoFactorPremium;
     const loadPremium = (hpPremium / safeMachinePowerHP) * 100; // Porcentaje de carga
 
 
@@ -424,20 +424,21 @@ export default function TaylorCurvePage() {
                 <Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label>
                 <Input type="number" placeholder="Ej: 4" className="border-red-200 placeholder:text-red-200/50" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
-              {operationType === 'milling' && (
-                <div>
-                    <Label className="block text-[10px] font-bold text-red-600 mb-1">Geometría</Label>
-                    <Select value={geometryCurrent} onValueChange={(value) => setGeometryCurrent(value as 'positive' | 'negative')}>
-                        <SelectTrigger className="border-red-200">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="positive">Positiva (1.0x)</SelectItem>
-                            <SelectItem value="negative">Negativa (1.15x)</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-              )}
+              <div>
+                <Label className="block text-[10px] font-bold text-red-600 mb-1 flex items-center gap-1">
+                  Geometría
+                  {geometryCurrent === 'negative' && <span title="Suele tener el doble de filos" className="cursor-help text-red-400">💡</span>}
+                </Label>
+                <Select value={geometryCurrent} onValueChange={(value) => setGeometryCurrent(value as 'positive' | 'negative')}>
+                    <SelectTrigger className="border-red-200 text-red-800 font-medium">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="positive">Positiva (1.0x)</SelectItem>
+                        <SelectItem value="negative">Negativa (+15% HP)</SelectItem>
+                    </SelectContent>
+                </Select>
+              </div>
               {operationType === 'milling' && (
                 <div>
                   <Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Insertos (Z)</Label>
@@ -502,20 +503,21 @@ export default function TaylorCurvePage() {
                 <Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label>
                 <Input type="number" placeholder="Ej: 8" className="border-green-200 placeholder:text-green-200/50" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
-              {operationType === 'milling' && (
-                <div>
-                    <Label className="block text-[10px] font-bold text-green-700 mb-1">Geometría</Label>
-                    <Select value={geometryPremium} onValueChange={(value) => setGeometryPremium(value as 'positive' | 'negative')}>
-                        <SelectTrigger className="border-green-200">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="positive">Positiva (1.0x)</SelectItem>
-                            <SelectItem value="negative">Negativa (1.15x)</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-              )}
+              <div>
+                <Label className="block text-[10px] font-bold text-green-700 mb-1 flex items-center gap-1">
+                  Geometría
+                  {geometryPremium === 'negative' && <span title="Asegúrate de ajustar los filos" className="cursor-help text-green-500">💡</span>}
+                </Label>
+                <Select value={geometryPremium} onValueChange={(value) => setGeometryPremium(value as 'positive' | 'negative')}>
+                    <SelectTrigger className="border-green-200 text-green-800 font-medium">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="positive">Positiva (1.0x)</SelectItem>
+                        <SelectItem value="negative">Negativa (+15% HP)</SelectItem>
+                    </SelectContent>
+                </Select>
+              </div>
               {operationType === 'milling' && (
                 <div>
                   <Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Insertos (Z)</Label>
