@@ -130,7 +130,10 @@ export default function TaylorCurvePage() {
 
     // Variables de Fresado (Z y Filos) controladas por el Toggle
     const safeZCurrent = operationType === 'turning' ? 1 : (Number(zCurrent) || 1);
+    
+    // Regla UX: Si Z Premium está vacío, hereda el Z del competidor para evitar tiempos infinitos o erróneos
     const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || safeZCurrent);
+    
     const safeEdgesCurrent = Number(edgesCurrent) || 1;
     const safeEdgesPremium = Number(edgesPremium) || 1;
 
@@ -340,12 +343,14 @@ export default function TaylorCurvePage() {
             </>}
           </button>
           <button
-            onClick={() => setIsSaveModalOpen(true)}
+            onClick={() => {
+              setSaveCaseName(pieceName);
+              setIsSaveModalOpen(true);
+            }}
             disabled={isSaving}
             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md text-sm font-bold shadow-sm transition-all disabled:opacity-50"
           >
-            <Save size={16} />
-            Guardar Análisis
+            💾 Guardar Análisis
           </button>
         </div>
       </div>
@@ -679,20 +684,18 @@ export default function TaylorCurvePage() {
                       pdfDownloadUrl = await getDownloadURL(storageRef);
                     }
 
-                    const safeAp = Number(ap) || 0;
-
-                    // 3. Guardar en el Historial (No en el CRM principal)
+                    // 3. Guardar en el Historial
                     const payload = {
                       clientName: saveClientName,
                       caseName: saveCaseName || pieceName || 'Análisis sin nombre',
-                      status: 'saved', // Estado base
+                      status: 'saved',
                       annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12,
                       pdfUrl: pdfDownloadUrl,
                       dateCreated: serverTimestamp(),
                       taylorInputs: { 
                         operationType, 
                         materialId, 
-                        ap: safeAp, 
+                        ap: Number(ap) || 2.0, // <-- Corrección de variable para evitar crasheos
                         machinePowerHP, 
                         machineCostHr, 
                         toolChangeTime,
@@ -707,8 +710,9 @@ export default function TaylorCurvePage() {
                     setIsSaveModalOpen(false);
                     alert("¡Análisis guardado en el Historial con éxito!");
                   } catch (error) {
-                    console.error("Error al guardar:", error);
-                    alert("Hubo un error al guardar el registro.");
+                    // Log detallado para ver el origen real del fallo
+                    console.error("Error crítico al guardar:", error);
+                    alert(`Hubo un error al guardar. Revisa la consola (F12). Error: ${error instanceof Error ? error.message : 'Desconocido'}`);
                   } finally {
                     setIsSaving(false);
                   }
