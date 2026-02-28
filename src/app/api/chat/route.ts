@@ -1,6 +1,36 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
+// --- DEFINICIONES DE TIPO PARA ROBUSTEZ ---
+interface ScreenContext {
+  operationType: string;
+  material: string;
+  machine: { powerHP: number | "" };
+  currentProcess: {
+    tool: string;
+    ap: number;
+    vc: number;
+    feed: number;
+    geometry: string;
+    hpLoad: number;
+    costPerPiece: number;
+  };
+  premiumProposal: {
+    tool: string;
+    vc: number;
+    feed: number;
+    geometry: string;
+    hpLoad: number;
+    costPerPiece: number;
+  };
+}
+
+interface ChatRequestBody {
+  userMessage: string;
+  screenContext: ScreenContext;
+}
+
+
 // Inicializar el cliente de OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -8,7 +38,7 @@ const openai = new OpenAI({
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const body: ChatRequestBody = await req.json();
     const { userMessage, screenContext } = body;
 
     // EL CEREBRO DEL COPILOTO (System Prompt Maestro)
@@ -69,7 +99,7 @@ Si calculas que una nueva Velocidad de Corte (Vc) o Avance (f) es ideal, INCLUYE
 [SET_PREMIUM_FEED: valor]
 Ejemplo: "Te sugiero subir la velocidad a 250 m/min. [SET_PREMIUM_VC: 250]"
 
-=== CONTEXTO ACTUAL DE LA PANTALLA ===
+=== CONTEXTO ACTUAL DE LA PANTALLA (VISIÓN DE LA IA) ===
 ${JSON.stringify(screenContext, null, 2)}
 `;
 

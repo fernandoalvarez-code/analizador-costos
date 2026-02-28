@@ -1,2 +1,1 @@
-// This Genkit flow has been replaced by the Next.js API Route at /api/chat/route.ts
-// This file can be removed.
+// DEPRECATED: This file is no longer in use. The Copilot logic has been migrated to /src/app/api/chat/route.ts.
