@@ -9,7 +9,7 @@ import { TrendingUp, Info, Share2, FileText } from 'lucide-react';
 import { formatCurrency, formatNumber } from '@/lib/formatters';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { addDoc, collection, serverTimestamp, doc, getDoc } from "firebase/firestore";
+import { doc, addDoc, collection, serverTimestamp, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, useUser } from "@/firebase";
 
@@ -69,6 +69,7 @@ export default function TaylorCurvePage() {
   const [geometryCurrent, setGeometryCurrent] = useState<'positive' | 'negative'>('positive');
   
   // Premium
+  const [toolNamePremium, setToolNamePremium] = useState<string>("");
   const [toolCostPremium, setToolCostPremium] = useState<number | "">("");
   const [feedPremium, setFeedPremium] = useState<number | "">("");
   const [vcPremium, setVcPremium] = useState<number | "">("");
@@ -526,6 +527,11 @@ export default function TaylorCurvePage() {
           <div className="bg-green-50/50 p-4 rounded-xl border border-green-100 flex flex-col justify-between">
             <h2 className="font-bold text-green-700 text-xs uppercase mb-3 flex items-center gap-1">🟢 Propuesta Premium</h2>
             <div className="grid grid-cols-2 gap-3">
+               {/* NUEVO CAMPO: NOMBRE DE HERRAMIENTA SECO */}
+               <div className="col-span-2">
+                <Label className="block text-[10px] font-bold text-green-800 mb-1">Nombre / Código Herramienta Seco</Label>
+                <Input type="text" placeholder="Ej: CNMG 120408-M3 TP2501" className="border-green-300 bg-white" value={toolNamePremium} onChange={e => setToolNamePremium(e.target.value)} />
+              </div>
               <div>
                 <Label className="block text-[10px] font-bold text-green-700 mb-1">
                     Inserto {operationType === 'turning' ? 'Torno' : 'Fresa'} ($)
@@ -741,7 +747,8 @@ export default function TaylorCurvePage() {
                       taylorInputs: { 
                         operationType, 
                         materialId, 
-                        ap: Number(ap) || 2.0 
+                        ap: Number(ap) || 2.0,
+                        toolNamePremium
                       }
                     };
 
@@ -823,6 +830,12 @@ export default function TaylorCurvePage() {
                   </tr>
                 </thead>
                 <tbody>
+                  {/* NUEVA FILA EN EL PDF: NOMBRE HERRAMIENTA */}
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold bg-slate-50">Herramienta Propuesta</td>
+                    <td className="p-2 border border-slate-300 text-slate-400 italic">Actual del cliente</td>
+                    <td className="p-2 border border-slate-300 font-bold text-green-700 bg-green-50">{toolNamePremium || 'No especificada'}</td>
+                  </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Precio Inserto</td>
                     <td className="p-2 border border-slate-300">{formatCurrency(Number(toolCostCurrent))}</td>
