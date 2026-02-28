@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, addDoc, doc, updateDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
 import { db } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/formatters";
@@ -69,6 +69,20 @@ export default function HistoryPage() {
     }
   };
 
+  const handleDeleteAnalysis = async (id: string, clientName: string) => {
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar el análisis de "${clientName}"? Esta acción no se puede deshacer.`)) return;
+
+    try {
+      await deleteDoc(doc(db, "simulaciones_historial", id));
+      
+      setSimulations(prevSims => prevSims.filter(sim => sim.id !== id));
+      alert("Análisis eliminado correctamente.");
+    } catch (error) {
+      console.error("Error al eliminar el análisis:", error);
+      alert("Hubo un error al eliminar el registro. Revisa los permisos.");
+    }
+  };
+
   return (
     <div className="container mx-auto space-y-6">
       <div className="flex justify-between items-center">
@@ -121,6 +135,13 @@ export default function HistoryPage() {
                           ✅ Promovido
                         </span>
                       )}
+                       <button 
+                        onClick={() => handleDeleteAnalysis(sim.id, sim.clientName)} 
+                        className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded text-xs font-bold transition-colors flex items-center gap-1 shadow-sm ml-1"
+                        title="Eliminar este análisis"
+                      >
+                        🗑️
+                      </button>
                     </td>
                   </tr>
                 ))
