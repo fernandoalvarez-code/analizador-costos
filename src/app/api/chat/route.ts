@@ -141,8 +141,13 @@ ${JSON.stringify(screenContext, null, 2)}
     return NextResponse.json({ reply });
   } catch (error) {
     console.error("Error en el Copiloto API:", error);
+    // Improve error message for the frontend
+    let errorMessage = "Error procesando la solicitud del Copiloto.";
+    if (error instanceof Error) {
+        errorMessage = error.message;
+    }
     return NextResponse.json(
-      { error: 'Error procesando la solicitud del Copiloto.' }, 
+      { error: errorMessage }, 
       { status: 500 }
     );
   }
