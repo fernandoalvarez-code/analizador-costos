@@ -672,12 +672,12 @@ export default function TaylorCurvePage() {
               
               <button 
                 onClick={async () => {
-                  setIsSaving(true);
                   if (!user) {
-                      alert("Debes iniciar sesión para guardar este análisis.");
-                      setIsSaving(false);
-                      return;
+                    alert("Debes iniciar sesión para guardar este análisis.");
+                    setIsSaving(false);
+                    return;
                   }
+                  setIsSaving(true);
                   try {
                     // 1. Generar el PDF en segundo plano
                     const pdfBlob = await generatePdfBlob();
@@ -708,8 +708,8 @@ export default function TaylorCurvePage() {
                       }
                     };
 
-                    // CREA Y GUARDA EN LA NUEVA COLECCIÓN "analisis_costos"
-                    await addDoc(collection(db, "analisis_costos"), payload);
+                    // CREA Y GUARDA EN LA NUEVA COLECCIÓN "simulaciones_historial"
+                    await addDoc(collection(db, "simulaciones_historial"), payload);
                     
                     setIsSaveModalOpen(false);
                     alert("¡Análisis guardado exitosamente en la nueva colección!");

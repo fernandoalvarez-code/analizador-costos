@@ -55,7 +55,7 @@ const menuItems = [
     },
     {
       href: '/history',
-      label: 'Historial',
+      label: 'Historial de Análisis',
       icon: History,
     },
      {
