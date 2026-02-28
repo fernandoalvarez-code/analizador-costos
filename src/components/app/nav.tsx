@@ -49,7 +49,7 @@ export default function AppNav() {
     },
      {
       href: '/taylor-curve',
-      label: 'Curva de Taylor',
+      label: 'Curva de Costos',
       icon: TrendingUp,
     },
     // {

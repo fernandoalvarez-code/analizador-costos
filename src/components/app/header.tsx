@@ -60,7 +60,7 @@ const menuItems = [
     },
      {
       href: '/taylor-curve',
-      label: 'Curva de Taylor',
+      label: 'Curva de Costos',
       icon: TrendingUp,
     },
 ];
@@ -116,7 +116,7 @@ export default function AppHeader() {
                 pathname.startsWith(item.href) && "bg-white text-blue-700 shadow-sm border border-slate-200"
               )}
             >
-              {item.label === 'Curva de Taylor' ? 'Curva Taylor' : item.label.split(' ')[0]}
+              {item.label === 'Curva de Costos' ? 'Curva Costos' : item.label.split(' ')[0]}
             </Link>
           ))}
         </nav>

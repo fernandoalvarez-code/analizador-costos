@@ -310,7 +310,7 @@ export default function TaylorCurvePage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2">
             <TrendingUp className="text-blue-600 h-7 w-7" />
-            Análisis de Curva de Taylor
+            Análisis de Curva de Costos
           </h1>
           <p className="text-slate-500 text-sm mt-1">Compara la Vc actual vs. la propuesta para demostrar el ahorro real.</p>
         </div>
@@ -812,7 +812,7 @@ export default function TaylorCurvePage() {
             </div>
 
             <div>
-              <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">2. Análisis de Optimización (Curva Vc vs Costo)</h2>
+              <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">2. Análisis de Curva de Costos</h2>
               <div className="w-[180mm] h-[300px] mx-auto border border-slate-200 p-2 bg-white">
                 <LineChart width={650} height={280} data={curveDataInfo.data}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
