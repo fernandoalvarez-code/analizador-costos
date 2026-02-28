@@ -28,26 +28,6 @@ export default function TaylorCurvePage() {
   // --- ESTADO PARA LOGOS DEL PDF ---
   const [logos, setLogos] = useState({ company: '', brand: '' });
 
-  React.useEffect(() => {
-    const fetchLogos = async () => {
-      try {
-        const docRef = doc(db, "settings", "general"); 
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setLogos({
-            company: data.companyLogoUrl || '',
-            brand: data.secoLogoUrl || ''
-          });
-        }
-      } catch (error) {
-        console.error("Error cargando logos para el PDF:", error);
-      }
-    };
-    if (user) fetchLogos();
-  }, [user]);
-
   // --- ESTADOS DEL FORMULARIO (Inician vacíos por requerimiento de UX) ---
   const [operationType, setOperationType] = useState<'turning' | 'milling'>('turning');
   const [materialId, setMaterialId] = useState('med_c'); // El select sí tiene default
@@ -86,6 +66,34 @@ export default function TaylorCurvePage() {
   const [saveCaseName, setSaveCaseName] = useState("");
   const [saveClientName, setSaveClientName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  // --- ESTADOS DEL COPILOTO ---
+  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([
+    { role: 'assistant', content: 'Hola, soy tu Copiloto Seco. Estoy analizando los parámetros de esta máquina. ¿En qué te ayudo?' }
+  ]);
+  const [isChatLoading, setIsChatLoading] = useState(false);
+
+  React.useEffect(() => {
+    const fetchLogos = async () => {
+      try {
+        const docRef = doc(db, "settings", "general"); 
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setLogos({
+            company: data.companyLogoUrl || '',
+            brand: data.secoLogoUrl || ''
+          });
+        }
+      } catch (error) {
+        console.error("Error cargando logos para el PDF:", error);
+      }
+    };
+    if (user) fetchLogos();
+  }, [user]);
 
   const generatePdfBlob = async (): Promise<Blob | null> => {
     try {
@@ -139,6 +147,98 @@ export default function TaylorCurvePage() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userMessage = chatInput;
+    setChatInput("");
+    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setIsChatLoading(true);
+
+    // 1. Snapshot del estado actual (El "Ojo" del Copiloto)
+    const chatPayload = {
+      userMessage: userMessage,
+      screenContext: {
+        operationType,
+        material: MATERIALS.find(m => m.id === materialId)?.name || materialId,
+        machine: { powerHP: machinePowerHP },
+        currentProcess: {
+          tool: toolNameCurrent,
+          ap: Number(ap) || 2.0,
+          vc: Number(vcCurrent) || 0,
+          feed: Number(feedCurrent) || 0,
+          geometry: geometryCurrent,
+          hpLoad: curveDataInfo.loadCurrent,
+          costPerPiece: curveDataInfo.actualCostCurrent
+        },
+        premiumProposal: {
+          tool: toolNamePremium,
+          vc: Number(vcPremium) || 0,
+          feed: Number(feedPremium) || 0,
+          geometry: geometryPremium,
+          hpLoad: curveDataInfo.loadPremium,
+          costPerPiece: curveDataInfo.actualCostPremium
+        }
+      }
+    };
+
+    try {
+      console.log("Enviando a la IA:", chatPayload);
+      // TODO: Aquí irá el fetch a tu API Route (ej. /api/chat)
+      // const response = await fetch('/api/chat', { method: 'POST', body: JSON.stringify(chatPayload) });
+      
+      // SIMULACIÓN DE RESPUESTA INTELIGENTE (Para probar la UI)
+      setTimeout(() => {
+        const dummyResponse = `Noté que tu carga de husillo es baja (${curveDataInfo.loadPremium.toFixed(1)}%). Podemos ser más agresivos. Te sugiero subir la Vc a 250 m/min para este material. [SET_PREMIUM_VC: 250]`;
+        setChatMessages(prev => [...prev, { role: 'assistant', content: dummyResponse }]);
+        setIsChatLoading(false);
+      }, 1500);
+
+    } catch (error) {
+      console.error(error);
+      setIsChatLoading(false);
+    }
+  };
+
+  const renderChatMessage = (content: string) => {
+    // Buscar tags con formato [ACCION: VALOR]
+    const tagRegex = /\[(SET_PREMIUM_VC|SET_PREMIUM_FEED):?\s*([^\]]+)\]/g;
+    
+    // Si no hay tags, retornamos el texto normal
+    if (!tagRegex.test(content)) return <p className="text-sm whitespace-pre-wrap">{content}</p>;
+
+    // Separar el texto de las acciones
+    const parts = content.split(tagRegex);
+    const actions = Array.from(content.matchAll(tagRegex));
+    const cleanText = content.replace(tagRegex, '');
+
+    return (
+      <div className="space-y-2">
+        <p className="text-sm whitespace-pre-wrap">{cleanText}</p>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {actions.map((match, i) => {
+            const actionType = match[1];
+            const actionValue = match[2];
+            
+            return (
+              <button
+                key={i}
+                onClick={() => {
+                  if (actionType === 'SET_PREMIUM_VC') setVcPremium(Number(actionValue));
+                  if (actionType === 'SET_PREMIUM_FEED') setFeedPremium(Number(actionValue));
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
+              >
+                ✨ Aplicar {actionType === 'SET_PREMIUM_VC' ? 'Vc' : 'Avance'}: {actionValue}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
   
   const curveDataInfo = useMemo(() => {
@@ -335,7 +435,8 @@ export default function TaylorCurvePage() {
     };
 
   return (
-    <div className="container mx-auto space-y-8 pb-16">
+    <>
+      <div className={`container mx-auto space-y-8 pb-16 transition-all duration-300 ${isCopilotOpen ? 'pr-[320px]' : ''}`}>
       {/* HEADER Y BOTONES DE ACCIÓN */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
@@ -588,6 +689,64 @@ export default function TaylorCurvePage() {
                 </ul>
             </div>
         </div>
+      </div>
+
+      {/* BOTÓN FLOTANTE DEL COPILOTO */}
+      <button
+        onClick={() => setIsCopilotOpen(!isCopilotOpen)}
+        className="fixed bottom-6 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 transition-transform z-50 border-2 border-slate-700"
+      >
+        <span className="text-2xl">🤖</span>
+      </button>
+
+      {/* DRAWER DEL COPILOTO */}
+      <div className={`fixed top-0 right-0 h-full w-[320px] bg-white border-l border-slate-200 shadow-2xl transform transition-transform duration-300 ease-in-out z-40 flex flex-col ${isCopilotOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        {/* Header Drawer */}
+        <div className="h-16 border-b border-slate-200 flex items-center justify-between px-4 bg-slate-50">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🤖</span>
+            <h3 className="font-black text-slate-800 tracking-tight">Copiloto Seco</h3>
+          </div>
+          <button onClick={() => setIsCopilotOpen(false)} className="text-slate-400 hover:text-slate-600">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        {/* Zona de Mensajes */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
+          {chatMessages.map((msg, idx) => (
+            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] rounded-xl p-3 shadow-sm border ${msg.role === 'user' ? 'bg-blue-600 text-white border-blue-700 rounded-tr-none' : 'bg-white text-slate-700 border-slate-200 rounded-tl-none'}`}>
+                {msg.role === 'assistant' ? renderChatMessage(msg.content) : <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
+              </div>
+            </div>
+          ))}
+          {isChatLoading && (
+            <div className="flex justify-start">
+              <div className="bg-white border border-slate-200 rounded-xl rounded-tl-none p-3 shadow-sm text-slate-400 text-sm flex gap-1">
+                <span className="animate-bounce">●</span><span className="animate-bounce delay-100">●</span><span className="animate-bounce delay-200">●</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Input Footer */}
+        <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-slate-200">
+          <div className="relative">
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder="Pregúntale al Copiloto..."
+              className="w-full pl-4 pr-10 py-2.5 bg-slate-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm transition-all"
+            />
+            <button type="submit" disabled={!chatInput.trim() || isChatLoading} className="absolute right-2 top-2 text-blue-600 hover:text-blue-800 disabled:opacity-50">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+          </div>
+          <p className="text-[9px] text-center text-slate-400 mt-2">El Copiloto lee automáticamente tus parámetros.</p>
+        </form>
+      </div>
 
         {/* MODAL DE GUARDADO EN CRM */}
       {isSaveModalOpen && (
@@ -834,6 +993,6 @@ export default function TaylorCurvePage() {
             </div>
           </div>
         </div>
-    </div>
+    </>
   );
 }
