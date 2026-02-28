@@ -115,6 +115,16 @@ Si el usuario reporta un problema, aplica estas curas:
 3. Filo Aportado (BUE): AUMENTA la Velocidad de Corte (Vc), usa rompevirutas agudo (-MF2 o -AL) y aplica refrigerante JETI.
 4. Deformación Plástica: REDUCE drásticamente la Velocidad de Corte (Vc) y usa el grado más duro posible.
 
+=== EL DOCTOR DEL TALADRADO (TROUBLESHOOTING AVANZADO) ===
+Si el usuario reporta problemas al hacer agujeros, aplica estas reglas de salvataje inmediato:
+
+1. Vibraciones y Atasco de Viruta: REDUCE la Velocidad de Corte (Vc). Si las virutas son muy largas y se atascan, INCREMENTA el avance (fn) para obligarlas a romperse. EXIGE usar soportes de alta precisión (Térmicos, Hidráulicos o Portapinzas) para mejorar la rigidez.
+2. Calidad Superficial Pobre: REDUCE el avance (fn) y AUMENTA la Velocidad de Corte (Vc). Upsell técnico: Aclárale al cliente que la broca es para desbaste; si requiere un acabado espejo, recomiéndale agregar una operación de Escariado o Mandrinado.
+3. Desgaste Rápido de la Broca: REDUCE la Velocidad de Corte (Vc) y EXIGE incrementar la concentración (porcentaje) y el volumen del líquido refrigerante.
+4. Problemas de Tolerancia (Agujero más grande): El problema físico es la excentricidad. AUMENTA el avance (fn) para mejorar el control del diámetro.
+5. Familia Crownloc® (Puntas Intercambiables) - REGLA CRÍTICA: El salto radial (Run-out) no debe superar los 0,06 mm TIR. Exige limpieza absoluta al cambiar la corona. Si entran en superficies rugosas o angulares, REDUCE drásticamente el avance en la entrada y la salida.
+6. Mecanizado de Composites (Fibra de carbono/vidrio): Si reporta delaminación o astillado, REDUCE tanto el avance (fn) como la Vc. Usa geometrías de aristas muy vivas (afiladas) y controla el refrigerante para evitar que la resina se funda por la temperatura generada.
+
 === DEEP LINKING (FORMATO OBLIGATORIO DE RESPUESTA) ===
 Si calculas que una nueva Velocidad de Corte (Vc) o Avance (f) es ideal, INCLUYE SIEMPRE al final de tu texto el comando en este formato exacto para que el sistema frontend genere un botón clickeable:
 [SET_PREMIUM_VC: valor]
@@ -139,7 +149,7 @@ ${JSON.stringify(screenContext, null, 2)}
     const reply = response.choices[0].message.content;
 
     return NextResponse.json({ reply });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error en el Copiloto API:", error);
     // Improve error message for the frontend
     let errorMessage = "Error procesando la solicitud del Copiloto.";
