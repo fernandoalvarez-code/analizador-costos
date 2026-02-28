@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, Info, Share2, FileText, Save } from 'lucide-react';
+import { TrendingUp, Info, Share2, FileText } from 'lucide-react';
 import { formatCurrency, formatNumber } from '@/lib/formatters';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -699,7 +699,8 @@ export default function TaylorCurvePage() {
                       annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12,
                       pdfUrl: pdfDownloadUrl || "",
                       dateCreated: serverTimestamp(),
-                      userId: user.uid, // <-- IDENTIFICACIÓN OBLIGATORIA PARA FIREBASE
+                      // Usamos encadenamiento opcional para evitar que explote si 'user' tarda en cargar
+                      userId: user?.uid || "usuario_desconocido", 
                       taylorInputs: { 
                         operationType, 
                         materialId, 
@@ -713,8 +714,9 @@ export default function TaylorCurvePage() {
                     setIsSaveModalOpen(false);
                     alert("¡Análisis guardado exitosamente en la nueva colección!");
                   } catch (error) {
-                    console.error("Error al guardar en analisis_costos:", error);
-                    alert("Error de permisos. Revisa las reglas de Firestore.");
+                    console.error("Error DETALLADO al guardar:", error);
+                    // Mostrar el error real que devuelve Firebase
+                    alert(`Fallo al guardar. El sistema dice: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
                   } finally {
                     setIsSaving(false);
                   }
