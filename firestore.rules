@@ -69,13 +69,14 @@ service cloud.firestore {
     }
 
     /**
-     * COLECCIÓN DE SIMULACIONES (HISTORIAL)
+     * COLECCIÓN DE ANÁLISIS DE COSTOS (HISTORIAL)
+     * Reglas para la colección donde se guardan las simulaciones de la Curva de Costos.
      */
-    match /simulaciones_historial/{historialId} {
-      allow get, list: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update: if request.auth != null && (isOwner(resource.data.userId) || isRequestingUserAdmin());
-      allow delete: if request.auth != null && (isOwner(resource.data.userId) || isRequestingUserAdmin());
+     match /analisis_costos/{analisisId} {
+        allow get, list: if request.auth != null;
+        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+        allow update: if request.auth != null && (isOwner(resource.data.userId) || isRequestingUserAdmin());
+        allow delete: if request.auth != null && (isOwner(resource.data.userId) || isRequestingUserAdmin());
     }
 
     /**
