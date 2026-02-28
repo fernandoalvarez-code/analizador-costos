@@ -43,8 +43,8 @@ export default function AppNav() {
       icon: Calculator,
     },
     {
-      href: '/simulator/history',
-      label: 'Historial Simulador',
+      href: '/history',
+      label: 'Historial de Análisis',
       icon: History,
     },
      {

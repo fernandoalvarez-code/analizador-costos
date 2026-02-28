@@ -344,7 +344,7 @@ export default function TaylorCurvePage() {
             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md text-sm font-bold shadow-sm transition-all disabled:opacity-50"
           >
             <Save size={16} />
-            Guardar en CRM
+            Guardar Análisis
           </button>
         </div>
       </div>
@@ -459,6 +459,7 @@ export default function TaylorCurvePage() {
                 <Label className="block text-[10px] font-bold text-red-600 mb-1">Pzas / filo</Label>
                 <Input type="number" className="border-red-200" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
+              
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-red-700 mb-1">Tiempo Actual (Corte)</Label>
                 <div className="flex gap-2">
@@ -632,18 +633,14 @@ export default function TaylorCurvePage() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="bg-slate-50 border-b border-slate-200 p-4">
               <h3 className="font-black text-slate-800 text-lg flex items-center gap-2">
-                💾 Guardar Simulación
+                💾 Guardar Análisis
               </h3>
-              <p className="text-xs text-slate-500 mt-1">Este análisis se guardará en la tabla de Gestión de Casos como "Simulación" (Pendiente).</p>
+              <p className="text-xs text-slate-500 mt-1">Este análisis se guardará en la tabla de Historial.</p>
             </div>
             <div className="p-5 space-y-4">
               <div>
                 <Label className="block text-xs font-bold text-slate-700 mb-1">Cliente / Empresa</Label>
                 <Input type="text" placeholder="Ej: John Deere" className="w-full" value={saveClientName} onChange={e => setSaveClientName(e.target.value)} />
-              </div>
-              <div>
-                <Label className="block text-xs font-bold text-slate-700 mb-1">Nombre de la Operación</Label>
-                <Input type="text" placeholder="Ej: Torneado Eje Principal" className="w-full" value={pieceName} disabled />
               </div>
               
               <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
@@ -671,42 +668,39 @@ export default function TaylorCurvePage() {
                       pdfDownloadUrl = await getDownloadURL(storageRef);
                     }
 
-                    // 3. Guardar en Firestore (CRM)
+                    // 3. Guardar en el Historial (No en el CRM principal)
                     const payload = {
-                      cliente: saveClientName,
-                      name: pieceName || 'Simulación sin nombre',
-                      recordType: 'simulation', 
-                      status: 'Pendiente',
+                      clientName: saveClientName,
+                      caseName: pieceName || 'Análisis sin nombre',
+                      status: 'saved', // Estado base
                       annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12,
                       pdfUrl: pdfDownloadUrl,
                       dateCreated: serverTimestamp(),
-                      taylorInputs: {
-                          operationType,
-                          materialId,
-                          machineCostHr,
-                          toolChangeTime,
-                          pieceName,
-                          ap,
-                          monthlyProduction,
-                          current: { toolCostCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrentMin, tcCurrentSec, zCurrent, edgesCurrent },
-                          premium: { toolCostPremium, feedPremium, vcPremium, pcsPremium, zPremium, edgesPremium }
+                      taylorInputs: { 
+                        operationType, 
+                        materialId, 
+                        ap, 
+                        machinePowerHP, 
+                        machineCostHr, 
+                        toolChangeTime,
+                        monthlyProduction,
+                        current: { toolCostCurrent, edgesCurrent, geometryCurrent, zCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrentMin, tcCurrentSec },
+                        premium: { toolCostPremium, edgesPremium, geometryPremium, zPremium, feedPremium, vcPremium, pcsPremium }
                       }
                     };
 
-                    await addDoc(collection(db, "cuttingToolAnalyses"), payload);
+                    await addDoc(collection(db, "simulaciones_historial"), payload);
                     
                     setIsSaveModalOpen(false);
-                    // toast({ title: "Éxito", description: "¡Simulación y PDF guardados en el CRM con éxito!"});
-                    alert("¡Simulación y PDF guardados en el CRM con éxito!");
+                    alert("¡Análisis guardado en el Historial con éxito!");
                   } catch (error) {
                     console.error("Error al guardar:", error);
-                    // toast({ variant: "destructive", title: "Error", description: "Hubo un error al guardar el registro."});
                     alert("Hubo un error al guardar el registro.");
                   } finally {
                     setIsSaving(false);
                   }
                 }} 
-                disabled={isSaving || !saveClientName || !pieceName}
+                disabled={isSaving || !saveClientName}
                 className="flex items-center gap-2"
               >
                 {isSaving ? '⏳ Guardando...' : 'Guardar Registro'}
@@ -728,7 +722,7 @@ export default function TaylorCurvePage() {
                 </div>
                 
                 <div className="ml-2">
-                  <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Análisis: {pieceName || 'Sin Nombre'}</h1>
+                  <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Análisis de Curva de Costos: {pieceName || 'Sin Nombre'}</h1>
                   <p className="text-sm font-bold text-blue-600 uppercase tracking-widest">Secocut SRL</p>
                 </div>
               </div>

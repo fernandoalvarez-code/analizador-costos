@@ -54,7 +54,7 @@ const menuItems = [
       icon: Calculator,
     },
     {
-      href: '/simulator/history',
+      href: '/history',
       label: 'Historial',
       icon: History,
     },
@@ -113,10 +113,10 @@ export default function AppHeader() {
               href={item.href} 
               className={cn(
                 "px-4 py-2 text-sm font-bold text-slate-700 hover:text-blue-600 rounded-md transition-colors",
-                pathname.startsWith(item.href) && "bg-white text-blue-700 shadow-sm border border-slate-200"
+                (pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))) && "bg-white text-blue-700 shadow-sm border border-slate-200"
               )}
             >
-              {item.label === 'Curva de Costos' ? 'Curva Costos' : item.label.split(' ')[0]}
+              {item.label}
             </Link>
           ))}
         </nav>
