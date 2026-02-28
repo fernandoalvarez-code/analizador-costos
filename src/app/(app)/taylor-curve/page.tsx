@@ -350,7 +350,8 @@ export default function TaylorCurvePage() {
             disabled={isSaving}
             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md text-sm font-bold shadow-sm transition-all disabled:opacity-50"
           >
-            💾 Guardar Análisis
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            Guardar Análisis
           </button>
         </div>
       </div>
@@ -639,7 +640,7 @@ export default function TaylorCurvePage() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="bg-slate-50 border-b border-slate-200 p-4">
               <h3 className="font-black text-slate-800 text-lg flex items-center gap-2">
-                💾 Guardar Análisis
+                💾 Guardar Simulación
               </h3>
               <p className="text-xs text-slate-500 mt-1">Este análisis se guardará en la tabla de Historial.</p>
             </div>
@@ -684,35 +685,29 @@ export default function TaylorCurvePage() {
                       pdfDownloadUrl = await getDownloadURL(storageRef);
                     }
 
-                    // 3. Guardar en el Historial
+                    // Guardar en la nueva colección dedicada
                     const payload = {
                       clientName: saveClientName,
                       caseName: saveCaseName || pieceName || 'Análisis sin nombre',
                       status: 'saved',
                       annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12,
-                      pdfUrl: pdfDownloadUrl,
+                      pdfUrl: pdfDownloadUrl || "",
                       dateCreated: serverTimestamp(),
                       taylorInputs: { 
                         operationType, 
                         materialId, 
-                        ap: Number(ap) || 2.0, // <-- Corrección de variable para evitar crasheos
-                        machinePowerHP, 
-                        machineCostHr, 
-                        toolChangeTime,
-                        monthlyProduction,
-                        current: { toolCostCurrent, edgesCurrent, geometryCurrent, zCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrentMin, tcCurrentSec },
-                        premium: { toolCostPremium, edgesPremium, geometryPremium, zPremium, feedPremium, vcPremium, pcsPremium }
+                        ap: Number(ap) || 2.0 
                       }
                     };
 
-                    await addDoc(collection(db, "simulaciones_historial"), payload);
+                    // CREA Y GUARDA EN LA NUEVA COLECCIÓN "analisis_costos"
+                    await addDoc(collection(db, "analisis_costos"), payload);
                     
                     setIsSaveModalOpen(false);
-                    alert("¡Análisis guardado en el Historial con éxito!");
+                    alert("¡Análisis guardado exitosamente en la nueva colección!");
                   } catch (error) {
-                    // Log detallado para ver el origen real del fallo
-                    console.error("Error crítico al guardar:", error);
-                    alert(`Hubo un error al guardar. Revisa la consola (F12). Error: ${error instanceof Error ? error.message : 'Desconocido'}`);
+                    console.error("Error al guardar en analisis_costos:", error);
+                    alert("Error de permisos. Revisa las reglas de Firestore.");
                   } finally {
                     setIsSaving(false);
                   }
