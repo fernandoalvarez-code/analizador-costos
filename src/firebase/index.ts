@@ -16,7 +16,8 @@ import {
   SetOptions,
   QuerySnapshot,
   FirestoreError,
-  DocumentSnapshot
+  DocumentSnapshot,
+  serverTimestamp
 } from "firebase/firestore";
 import { getStorage } from "firebase/storage"; 
 import { getAuth, onAuthStateChanged, User, createUserWithEmailAndPassword, signInWithEmailAndPassword, Auth, updateProfile } from "firebase/auth";
@@ -24,14 +25,12 @@ import { useState, useEffect, useMemo, DependencyList } from "react";
 
 // --- 1. CONFIGURACIÓN ---
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  
+  apiKey: "AIzaSyCHUJ52y_kSw7urqOxuj7aC-dhusJ6xas4",
+  authDomain: "studio-1546170521-5d9b0.firebaseapp.com",
+  projectId: "studio-1546170521-5d9b0",
   storageBucket: "studio-1546170521-5d9b0.firebasestorage.app",
-  
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  messagingSenderId: "390176636803",
+  appId: "1:390176636803:web:ea4652902e1c246092c0b6"
 };
 
 // --- 2. INICIALIZACIÓN SINGLETON ---
