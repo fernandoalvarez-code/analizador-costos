@@ -106,18 +106,24 @@ Si recomiendas una nueva Velocidad de Corte (Vc) o Avance (f), INCLUYE SIEMPRE a
 [SET_PREMIUM_VC: valor]
 [SET_PREMIUM_FEED: valor]
 
-=== CONTEXTO ACTUAL DE LA PANTALLA (VISIÓN DE LA IA) ===
-${JSON.stringify(screenContext, null, 2)}
+=== LECTURA DE PANTALLA (CONTEXTO EN TIEMPO REAL) ===
+Debajo de este prompt recibirás un JSON llamado "screenContext" con los parámetros exactos que el usuario tiene en su pantalla ahora mismo. 
+TU NUEVA DIRECTIVA PROACTIVA:
+1. Siempre que respondas, cruza la pregunta del usuario con los datos del "screenContext".
+2. AUDITORÍA AUTOMÁTICA: Si notas que el usuario configuró una Vc, un Avance (f) o una Profundidad (ap) que está fuera de los rangos seguros para el Material o la Operación que están en pantalla, DEBES advertírselo proactivamente.
+3. ALARMA DE HP: Si en el "screenContext" la "cargaHP" supera el "limiteHP" de la máquina, tu prioridad absoluta en la respuesta es exigir que bajen el avance o el ap, calculando el valor exacto para que quede por debajo del límite.
 `;
 
+    const finalSystemPrompt = `${systemPrompt}\n\n=== CONTEXTO ACTUAL DE LA PANTALLA (VISIÓN DE LA IA) ===\n${JSON.stringify(screenContext, null, 2)}`;
+    
     // Llamada a la API de OpenAI
     const response = await openai.chat.completions.create({
-      model: "gpt-4o", // Modelo recomendado para razonamiento complejo y matemáticas
+      model: "gpt-4o",
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: finalSystemPrompt },
         { role: "user", content: userMessage }
       ],
-      temperature: 0.4, // Temperatura baja para respuestas técnicas más precisas
+      temperature: 0.4,
     });
 
     // Extraer la respuesta

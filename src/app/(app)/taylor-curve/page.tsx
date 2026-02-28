@@ -158,13 +158,14 @@ export default function TaylorCurvePage() {
     setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsChatLoading(true);
 
-    // 1. Snapshot del estado actual (El "Ojo" del Copiloto)
     const chatPayload = {
       userMessage: userMessage,
       screenContext: {
-        operationType,
+        operationType: operationType,
         material: MATERIALS.find(m => m.id === materialId)?.name || materialId,
-        machine: { powerHP: Number(machinePowerHP) || 0 },
+        machine: {
+          powerHP: Number(machinePowerHP) || 0,
+        },
         currentProcess: {
           tool: toolNameCurrent,
           ap: Number(ap) || 0,
