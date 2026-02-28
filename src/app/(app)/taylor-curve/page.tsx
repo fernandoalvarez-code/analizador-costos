@@ -672,35 +672,48 @@ export default function TaylorCurvePage() {
               
               <button 
                 onClick={async () => {
-                  if (!user) {
-                    alert("Debes iniciar sesión para guardar este análisis.");
-                    setIsSaving(false);
+                  // 1. Validación clara para el usuario
+                  if (!saveClientName.trim() || !saveCaseName.trim()) {
+                    alert("⚠️ Por favor, completa el nombre del Cliente y de la Operación para poder guardar.");
                     return;
                   }
+
+                  if (!user) {
+                      alert("Debes iniciar sesión para guardar este análisis.");
+                      return;
+                  }
+                  
                   setIsSaving(true);
                   try {
-                    // 1. Generar el PDF en segundo plano
-                    const pdfBlob = await generatePdfBlob();
+                    console.log("1. Iniciando proceso de guardado...");
                     let pdfDownloadUrl = "";
 
-                    // 2. Subir a Firebase Storage si se generó correctamente
-                    if (pdfBlob && storage) {
-                      const fileName = `taylor_reports/Simulacion_${pieceName.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
-                      const storageRef = ref(storage, fileName);
-                      await uploadBytes(storageRef, pdfBlob);
-                      pdfDownloadUrl = await getDownloadURL(storageRef);
+                    // BLOQUE AISLADO PARA EL PDF (Si falla, no bloquea el guardado en BD)
+                    try {
+                      console.log("2. Generando PDF...");
+                      const pdfBlob = await generatePdfBlob();
+                      
+                      if (pdfBlob && storage) {
+                        console.log("3. Subiendo PDF a Storage...");
+                        const safeFileName = (pieceName || 'Sin_Nombre').replace(/\s+/g, '_');
+                        const fileName = `taylor_reports/Simulacion_${safeFileName}_${Date.now()}.pdf`;
+                        const storageRef = ref(storage, fileName);
+                        await uploadBytes(storageRef, pdfBlob);
+                        pdfDownloadUrl = await getDownloadURL(storageRef);
+                      }
+                    } catch (pdfError) {
+                      console.warn("⚠️ Advertencia: No se pudo generar o subir el PDF. Guardando solo los datos. Error:", pdfError);
                     }
 
-                    // Guardar en la nueva colección dedicada
+                    console.log("4. Guardando en Firestore...");
                     const payload = {
                       clientName: saveClientName,
                       caseName: saveCaseName || pieceName || 'Análisis sin nombre',
-                      status: 'saved',
+                      status: 'pending', // <-- AHORA NACE COMO 'PENDING' PARA LA NUEVA TABLA
                       annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12,
-                      pdfUrl: pdfDownloadUrl || "",
+                      pdfUrl: pdfDownloadUrl || "", // Puede estar vacío si el PDF falló
                       dateCreated: serverTimestamp(),
-                      // Usamos encadenamiento opcional para evitar que explote si 'user' tarda en cargar
-                      userId: user?.uid || "usuario_desconocido", 
+                      userId: user.uid, 
                       taylorInputs: { 
                         operationType, 
                         materialId, 
@@ -708,20 +721,19 @@ export default function TaylorCurvePage() {
                       }
                     };
 
-                    // CREA Y GUARDA EN LA NUEVA COLECCIÓN "simulaciones_historial"
-                    await addDoc(collection(db, "simulaciones_historial"), payload);
+                    await addDoc(collection(db, "analisis_costos"), payload);
                     
+                    console.log("5. ¡Proceso completado con éxito!");
                     setIsSaveModalOpen(false);
-                    alert("¡Análisis guardado exitosamente en la nueva colección!");
+                    alert("¡Análisis guardado exitosamente en el Historial!");
                   } catch (error) {
-                    console.error("Error DETALLADO al guardar:", error);
-                    // Mostrar el error real que devuelve Firebase
-                    alert(`Fallo al guardar. El sistema dice: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
+                    console.error("Error CRÍTICO al guardar en BD:", error);
+                    alert(`Fallo al guardar en la base de datos. El sistema dice: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
                   } finally {
                     setIsSaving(false);
                   }
                 }} 
-                disabled={isSaving || !saveClientName || !saveCaseName}
+                disabled={isSaving}
                 className="px-4 py-2 text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm"
               >
                 {isSaving ? '⏳ Guardando...' : 'Guardar Análisis'}
