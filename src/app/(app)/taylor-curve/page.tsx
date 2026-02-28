@@ -11,7 +11,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage } from "@/firebase";
+import { db, storage, useUser } from "@/firebase";
 
 const MATERIALS = [
   { id: 'alu', name: 'Aluminio (Ej: 6061)', n: 0.35, C: 900, kc: 700 },
@@ -23,6 +23,7 @@ const MATERIALS = [
 
 
 export default function TaylorCurvePage() {
+  const { user } = useUser();
   // --- ESTADOS DEL FORMULARIO (Inician vacíos por requerimiento de UX) ---
   const [operationType, setOperationType] = useState<'turning' | 'milling'>('turning');
   const [materialId, setMaterialId] = useState('med_c'); // El select sí tiene default
@@ -672,6 +673,11 @@ export default function TaylorCurvePage() {
               <button 
                 onClick={async () => {
                   setIsSaving(true);
+                  if (!user) {
+                      alert("Debes iniciar sesión para guardar este análisis.");
+                      setIsSaving(false);
+                      return;
+                  }
                   try {
                     // 1. Generar el PDF en segundo plano
                     const pdfBlob = await generatePdfBlob();
@@ -693,6 +699,7 @@ export default function TaylorCurvePage() {
                       annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12,
                       pdfUrl: pdfDownloadUrl || "",
                       dateCreated: serverTimestamp(),
+                      userId: user.uid, // <-- IDENTIFICACIÓN OBLIGATORIA PARA FIREBASE
                       taylorInputs: { 
                         operationType, 
                         materialId, 
