@@ -12,6 +12,7 @@ import html2canvas from 'html2canvas';
 import { addDoc, collection, serverTimestamp, getDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, useUser } from "@/firebase";
+import { askCopilot, type CopilotInput } from '@/ai/flows/copilot';
 
 const MATERIALS = [
   { id: 'alu', name: 'Aluminio (Ej: 6061)', n: 0.35, C: 900, kc: 700 },
@@ -159,15 +160,15 @@ export default function TaylorCurvePage() {
     setIsChatLoading(true);
 
     // 1. Snapshot del estado actual (El "Ojo" del Copiloto)
-    const chatPayload = {
+    const chatPayload: CopilotInput = {
       userMessage: userMessage,
       screenContext: {
         operationType,
         material: MATERIALS.find(m => m.id === materialId)?.name || materialId,
-        machine: { powerHP: machinePowerHP },
+        machine: { powerHP: Number(machinePowerHP) || 0 },
         currentProcess: {
           tool: toolNameCurrent,
-          ap: Number(ap) || 2.0,
+          ap: Number(ap) || 0,
           vc: Number(vcCurrent) || 0,
           feed: Number(feedCurrent) || 0,
           geometry: geometryCurrent,
@@ -187,18 +188,12 @@ export default function TaylorCurvePage() {
 
     try {
       console.log("Enviando a la IA:", chatPayload);
-      // TODO: Aquí irá el fetch a tu API Route (ej. /api/chat)
-      // const response = await fetch('/api/chat', { method: 'POST', body: JSON.stringify(chatPayload) });
-      
-      // SIMULACIÓN DE RESPUESTA INTELIGENTE (Para probar la UI)
-      setTimeout(() => {
-        const dummyResponse = `Noté que tu carga de husillo es baja (${curveDataInfo.loadPremium.toFixed(1)}%). Podemos ser más agresivos. Te sugiero subir la Vc a 250 m/min para este material. [SET_PREMIUM_VC: 250]`;
-        setChatMessages(prev => [...prev, { role: 'assistant', content: dummyResponse }]);
-        setIsChatLoading(false);
-      }, 1500);
-
+      const result = await askCopilot(chatPayload);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: result.response }]);
     } catch (error) {
       console.error(error);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: "Lo siento, tuve un problema al conectar con mis sistemas. Por favor, intenta de nuevo." }]);
+    } finally {
       setIsChatLoading(false);
     }
   };
