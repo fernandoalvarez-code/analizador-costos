@@ -14,7 +14,7 @@ export default function HistoryPage() {
   const fetchSimulations = async () => {
     setIsLoading(true);
     try {
-      const q = query(collection(db, "simulaciones_historial"), orderBy("dateCreated", "desc"));
+      const q = query(collection(db, "analisis_costos"), orderBy("dateCreated", "desc"));
       const querySnapshot = await getDocs(q);
       const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setSimulations(data);
@@ -29,37 +29,21 @@ export default function HistoryPage() {
     fetchSimulations();
   }, []);
 
-  const handlePromoteToCRM = async (sim: any) => {
-    if (!window.confirm(`¿Estás seguro de promover el análisis de "${sim.caseName}" para el cliente "${sim.clientName}" a un Caso de Éxito en el CRM?`)) return;
-    
+  const handleToggleStatus = async (sim: any) => {
     try {
-      // 1. Clonar a la colección oficial del CRM (cuttingToolAnalyses)
-      const crmPayload = {
-        cliente: sim.clientName,
-        name: sim.caseName,
-        recordType: 'success_case',
-        status: 'Pendiente', // Pendiente de prueba física/confirmación
-        annualSavings: sim.annualSavings,
-        pdfUrl: sim.pdfUrl,
-        dateCreated: serverTimestamp(),
-        dateModified: serverTimestamp(),
-        promotedFromId: sim.id,
-        userId: sim.userId, // <-- REQUISITO DE SEGURIDAD AÑADIDO
-        ...(sim.taylorInputs || {}),
-      };
-
-      const newCaseRef = await addDoc(collection(db, "cuttingToolAnalyses"), crmPayload);
-
-      // 2. Marcar como promovido en el historial
-      await updateDoc(doc(db, "simulaciones_historial", sim.id), { status: 'promoted' });
+      // Alternamos entre 'ok' y 'pending' (por defecto si no tiene, asume 'pending')
+      const newStatus = sim.status === 'ok' ? 'pending' : 'ok';
       
-      alert("¡Promovido exitosamente! El caso ahora está en el CRM principal.");
-      router.push(`/cases/${newCaseRef.id}/edit`); // Redirigir a la página de edición del nuevo caso
+      // Actualizamos solo en la colección actual del historial
+      await updateDoc(doc(db, "analisis_costos", sim.id), { status: newStatus });
       
+      // Actualizamos el estado de la UI al instante sin tener que recargar toda la página
+      setSimulations(prevSims => 
+        prevSims.map(s => s.id === sim.id ? { ...s, status: newStatus } : s)
+      );
     } catch (error) {
-      console.error("Error DETALLADO al promover:", error);
-      // Mostrar el error real que devuelve Firebase
-      alert(`Fallo al promover. El sistema dice: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
+      console.error("Error al cambiar el estado:", error);
+      alert(`Hubo un error al actualizar. El sistema dice: ${error instanceof Error ? error.message : 'Desconocido'}`);
     }
   };
 
@@ -67,8 +51,10 @@ export default function HistoryPage() {
     if (!window.confirm(`¿Estás seguro de que deseas eliminar el análisis de "${clientName}"? Esta acción no se puede deshacer.`)) return;
 
     try {
-      await deleteDoc(doc(db, "simulaciones_historial", id));
+      // Usamos el nombre de la colección correcta: analisis_costos
+      await deleteDoc(doc(db, "analisis_costos", id));
       
+      // Actualizamos el estado visualmente sin tener que recargar toda la página
       setSimulations(prevSims => prevSims.filter(sim => sim.id !== id));
       alert("Análisis eliminado correctamente.");
     } catch (error) {
@@ -120,16 +106,22 @@ export default function HistoryPage() {
                           📄 PDF
                         </a>
                       )}
-                      {sim.status !== 'promoted' ? (
-                        <button onClick={() => handlePromoteToCRM(sim)} className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-xs font-bold transition-colors flex items-center gap-1 shadow-sm">
-                          🚀 Promover a CRM
-                        </button>
-                      ) : (
-                        <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-xs font-bold flex items-center gap-1">
-                          ✅ Promovido
-                        </span>
-                      )}
-                       <button 
+                      
+                      {/* BOTÓN DINÁMICO DE ESTADO (PENDIENTE / OK) */}
+                      <button 
+                        onClick={() => handleToggleStatus(sim)} 
+                        className={`px-3 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1 shadow-sm border ${
+                          sim.status === 'ok' 
+                            ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200' 
+                            : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'
+                        }`}
+                        title="Haz clic para cambiar el estado"
+                      >
+                        {sim.status === 'ok' ? '✅ Análisis OK' : '⏳ Pendiente'}
+                      </button>
+
+                      {/* NUEVO BOTÓN DE ELIMINAR */}
+                      <button 
                         onClick={() => handleDeleteAnalysis(sim.id, sim.clientName)} 
                         className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded text-xs font-bold transition-colors flex items-center gap-1 shadow-sm ml-1"
                         title="Eliminar este análisis"
