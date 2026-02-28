@@ -9,7 +9,7 @@ import { TrendingUp, Info, Share2, FileText } from 'lucide-react';
 import { formatCurrency, formatNumber } from '@/lib/formatters';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, useUser } from "@/firebase";
 
@@ -24,6 +24,30 @@ const MATERIALS = [
 
 export default function TaylorCurvePage() {
   const { user } = useUser();
+
+  // --- ESTADO PARA LOGOS DEL PDF ---
+  const [logos, setLogos] = useState({ company: '', brand: '' });
+
+  React.useEffect(() => {
+    const fetchLogos = async () => {
+      try {
+        const docRef = doc(db, "settings", "general"); 
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setLogos({
+            company: data.companyLogoUrl || '',
+            brand: data.secoLogoUrl || ''
+          });
+        }
+      } catch (error) {
+        console.error("Error cargando logos para el PDF:", error);
+      }
+    };
+    if (user) fetchLogos();
+  }, [user]);
+
   // --- ESTADOS DEL FORMULARIO (Inician vacíos por requerimiento de UX) ---
   const [operationType, setOperationType] = useState<'turning' | 'milling'>('turning');
   const [materialId, setMaterialId] = useState('med_c'); // El select sí tiene default
@@ -747,22 +771,35 @@ export default function TaylorCurvePage() {
         <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
           <div id="pdf-taylor-template" className="w-[210mm] min-h-[290mm] bg-white text-black p-10 font-sans box-border flex flex-col">
             
-            {/* HEADER DEL PDF CON LOGOS */}
-            <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
-              <div className="flex items-center gap-4">
-                <div className="h-12 flex items-center justify-center bg-blue-600 text-white font-black px-4 rounded text-lg">
-                  SECOCUT
-                </div>
+            {/* HEADER DEL PDF CON LOGOS UNIFICADO */}
+            <div className="relative mb-8 pb-4 border-b-2 border-slate-800">
+              {/* Fila superior: Logos */}
+              <div className="flex justify-between items-start mb-8 h-16">
+                {logos.company ? (
+                  <img src={logos.company} alt="Logo Empresa" crossOrigin="anonymous" className="h-full object-contain max-w-[250px] object-left" />
+                ) : (
+                  <div className="h-12 flex items-center justify-center bg-blue-600 text-white font-black px-4 rounded text-lg">SECOCUT</div>
+                )}
                 
-                <div className="ml-2">
-                  <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Análisis de Curva de Costos: {pieceName || 'Sin Nombre'}</h1>
-                  <p className="text-sm font-bold text-blue-600 uppercase tracking-widest">Secocut SRL</p>
-                </div>
+                {logos.brand ? (
+                  <img src={logos.brand} alt="Logo Marca" crossOrigin="anonymous" className="h-full object-contain max-w-[200px] object-right" />
+                ) : (
+                  <div className="h-12 flex items-center justify-center text-slate-800 font-black text-3xl">Seco</div>
+                )}
               </div>
-              
-              <div className="text-right">
-                <p className="text-xs font-bold text-slate-500 uppercase">FECHA</p>
-                <p className="text-base font-semibold text-slate-800">{new Date().toLocaleDateString('es-ES')}</p>
+
+              {/* Título Central */}
+              <div className="text-center mb-10 mt-4">
+                <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tight">Análisis de Curva de Costos</h1>
+              </div>
+
+              {/* Fila inferior: Cliente y Fecha */}
+              <div className="flex justify-between items-end">
+                <h2 className="text-2xl font-bold text-blue-600">{saveClientName || pieceName || 'Reporte de Análisis'}</h2>
+                <div className="text-right">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Informe Técnico</p>
+                  <p className="text-lg font-black text-slate-800">{new Date().toLocaleDateString('es-ES')}</p>
+                </div>
               </div>
             </div>
 
