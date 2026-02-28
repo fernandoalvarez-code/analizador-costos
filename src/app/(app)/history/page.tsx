@@ -33,7 +33,7 @@ export default function HistoryPage() {
     if (!window.confirm(`¿Estás seguro de promover el análisis de "${sim.caseName}" para el cliente "${sim.clientName}" a un Caso de Éxito en el CRM?`)) return;
     
     try {
-      // 1. Clonar a la colección cuttingToolAnalyses
+      // 1. Clonar a la colección oficial del CRM (cuttingToolAnalyses)
       const crmPayload = {
         cliente: sim.clientName,
         name: sim.caseName,
@@ -44,16 +44,9 @@ export default function HistoryPage() {
         dateCreated: serverTimestamp(),
         dateModified: serverTimestamp(),
         promotedFromId: sim.id,
-        ...sim.taylorInputs,
-        ...sim.taylorInputs.current,
-        ...sim.taylorInputs.premium,
-        // TODO: Map fields from taylorInputs to the main document structure if needed
+        userId: sim.userId, // <-- REQUISITO DE SEGURIDAD AÑADIDO
+        ...(sim.taylorInputs || {}),
       };
-
-      // Limpiar el payload de objetos anidados que no queremos en el nivel superior
-      delete crmPayload.taylorInputs;
-      delete crmPayload.current;
-      delete crmPayload.premium;
 
       const newCaseRef = await addDoc(collection(db, "cuttingToolAnalyses"), crmPayload);
 
@@ -64,8 +57,9 @@ export default function HistoryPage() {
       router.push(`/cases/${newCaseRef.id}/edit`); // Redirigir a la página de edición del nuevo caso
       
     } catch (error) {
-      console.error("Error al promover:", error);
-      alert("Hubo un error al promover el caso.");
+      console.error("Error DETALLADO al promover:", error);
+      // Mostrar el error real que devuelve Firebase
+      alert(`Fallo al promover. El sistema dice: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
     }
   };
 
