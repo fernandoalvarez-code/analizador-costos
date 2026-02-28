@@ -12,7 +12,6 @@ import html2canvas from 'html2canvas';
 import { addDoc, collection, serverTimestamp, getDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, useUser } from "@/firebase";
-import { askCopilot, type CopilotInput } from '@/ai/flows/copilot';
 
 const MATERIALS = [
   { id: 'alu', name: 'Aluminio (Ej: 6061)', n: 0.35, C: 900, kc: 700 },
@@ -160,7 +159,7 @@ export default function TaylorCurvePage() {
     setIsChatLoading(true);
 
     // 1. Snapshot del estado actual (El "Ojo" del Copiloto)
-    const chatPayload: CopilotInput = {
+    const chatPayload = {
       userMessage: userMessage,
       screenContext: {
         operationType,
@@ -187,12 +186,23 @@ export default function TaylorCurvePage() {
     };
 
     try {
-      console.log("Enviando a la IA:", chatPayload);
-      const result = await askCopilot(chatPayload);
-      setChatMessages(prev => [...prev, { role: 'assistant', content: result.response }]);
+      // Llamada real a tu nueva API Route
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(chatPayload)
+      });
+
+      if (!response.ok) throw new Error("Fallo al conectar con el Copiloto");
+
+      const data = await response.json();
+      
+      // Mostrar la respuesta de GPT-4o en el chat
+      setChatMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+      
     } catch (error) {
       console.error(error);
-      setChatMessages(prev => [...prev, { role: 'assistant', content: "Lo siento, tuve un problema al conectar con mis sistemas. Por favor, intenta de nuevo." }]);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: '❌ Hubo un error de conexión con los servidores de Seco. Revisa tu internet o la API Key.' }]);
     } finally {
       setIsChatLoading(false);
     }
@@ -780,7 +790,6 @@ export default function TaylorCurvePage() {
               
               <button 
                 onClick={async () => {
-                  // 1. Validación clara para el usuario
                   if (!saveClientName.trim() || !saveCaseName.trim()) {
                     alert("⚠️ Por favor, completa el nombre del Cliente y de la Operación para poder guardar.");
                     return;
@@ -826,8 +835,8 @@ export default function TaylorCurvePage() {
                         operationType, 
                         materialId, 
                         ap: Number(ap) || 2.0,
-                        toolNameCurrent,
-                        toolNamePremium
+                        toolNamePremium,
+                        toolNameCurrent
                       }
                     };
 
