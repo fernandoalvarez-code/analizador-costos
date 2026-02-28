@@ -186,23 +186,34 @@ export default function TaylorCurvePage() {
     };
 
     try {
-      // Llamada real a tu nueva API Route
+      console.log("Enviando petición a /api/chat...", chatPayload);
+      
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(chatPayload)
       });
 
-      if (!response.ok) throw new Error("Fallo al conectar con el Copiloto");
+      // Si la respuesta no es OK, forzamos a leer el error real
+      if (!response.ok) {
+        let errorMsg = `Error HTTP: ${response.status}`;
+        try {
+           const errData = await response.json();
+           errorMsg = errData.error || errData.message || errorMsg;
+        } catch(e) { /* ignorar si no es json */ }
+        throw new Error(errorMsg);
+      }
 
       const data = await response.json();
-      
-      // Mostrar la respuesta de GPT-4o en el chat
       setChatMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
       
     } catch (error) {
-      console.error(error);
-      setChatMessages(prev => [...prev, { role: 'assistant', content: '❌ Hubo un error de conexión con los servidores de Seco. Revisa tu internet o la API Key.' }]);
+      console.error("Error capturado en frontend:", error);
+      // AHORA IMPRIMIMOS EL ERROR REAL EN PANTALLA
+      setChatMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: `❌ Error de conexión: ${error instanceof Error ? error.message : 'Desconocido'}. (Dile al programador que revise la consola F12 o la terminal)` 
+      }]);
     } finally {
       setIsChatLoading(false);
     }
