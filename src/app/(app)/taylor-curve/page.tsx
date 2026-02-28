@@ -9,7 +9,7 @@ import { TrendingUp, Info, Share2, FileText } from 'lucide-react';
 import { formatCurrency, formatNumber } from '@/lib/formatters';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { doc, addDoc, collection, serverTimestamp, getDoc } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, getDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, useUser } from "@/firebase";
 
@@ -58,6 +58,7 @@ export default function TaylorCurvePage() {
   const [machinePowerHP, setMachinePowerHP] = useState<number | "">(15); // Potencia del motor
   
   // Competidor
+  const [toolNameCurrent, setToolNameCurrent] = useState<string>("");
   const [toolCostCurrent, setToolCostCurrent] = useState<number | "">("");
   const [feedCurrent, setFeedCurrent] = useState<number | "">("");
   const [vcCurrent, setVcCurrent] = useState<number | "">("");
@@ -385,231 +386,154 @@ export default function TaylorCurvePage() {
       {/* LAYOUT PRINCIPAL: INPUTS ARRIBA, GRÁFICO ABAJO */}
       <div className="space-y-6">
         
-        {/* PANEL DE INPUTS (Horizontal 4 Columnas) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {/* PANEL DE INPUTS (Horizontal 3 Columnas Simétricas) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
           
-          {/* 1. PARÁMETROS GENERALES */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <h2 className="font-bold text-slate-700 text-xs uppercase border-b border-slate-200 pb-2 mb-3">1. Parámetros del Taller</h2>
-            {/* TOGGLE SWITCH: TORNEADO / FRESADO */}
-            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 mb-4 mt-2">
-              <button
-                onClick={() => setOperationType('turning')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'turning' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                🔄 Torneado
-              </button>
-              <button
-                onClick={() => setOperationType('milling')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'milling' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                ⚙️ Fresado
-              </button>
+          {/* 1. PARÁMETROS GENERALES (Ahora incluye Producción Mensual) */}
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
+            <h2 className="font-black text-slate-800 text-sm uppercase border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
+              🏭 1. Parámetros del Taller
+            </h2>
+            
+            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 mb-5">
+              <button onClick={() => setOperationType('turning')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'turning' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>🔄 Torneado</button>
+              <button onClick={() => setOperationType('milling')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'milling' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>⚙️ Fresado</button>
             </div>
-            <div className="space-y-3">
+            
+            <div className="space-y-4 flex-grow">
               <div>
-                <Label className="block text-[11px] font-bold text-slate-500 mb-1">Pieza / Operación</Label>
-                <Input type="text" placeholder="Ej: Eje principal" className="w-full" value={pieceName} onChange={e => setPieceName(e.target.value)} />
+                <Label className="block text-xs font-bold text-slate-500 mb-1">Pieza / Operación</Label>
+                <Input type="text" placeholder="Ej: Eje principal" className="w-full bg-slate-50" value={pieceName} onChange={e => setPieceName(e.target.value)} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <Label className="block text-[11px] font-bold text-slate-500 mb-1">Material</Label>
+                  <Label className="block text-xs font-bold text-slate-500 mb-1">Material</Label>
                   <Select value={materialId} onValueChange={setMaterialId}>
-                    <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Selecciona un material" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {MATERIALS.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-                    </SelectContent>
+                    <SelectTrigger className="w-full bg-slate-50"><SelectValue placeholder="Selecciona un material" /></SelectTrigger>
+                    <SelectContent>{MATERIALS.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="block text-[11px] font-bold text-slate-500 mb-1">Prof. Corte (ap) mm</Label>
+                  <Label className="block text-xs font-bold text-slate-500 mb-1">Prof. Corte (ap) mm</Label>
                   <Input type="number" step="0.1" placeholder="Ej: 2.0" value={ap} onChange={e => setAp(e.target.value === "" ? "" : Number(e.target.value))} />
                 </div>
                 <div>
-                  <Label className="block text-[11px] font-bold text-blue-700 mb-1">Motor Máquina (HP)</Label>
-                  <Input type="number" step="0.5" className="font-bold text-blue-700" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value === "" ? "" : Number(e.target.value))} />
+                  <Label className="block text-xs font-bold text-blue-700 mb-1">Motor (HP)</Label>
+                  <Input type="number" step="0.5" className="font-bold text-blue-700 bg-blue-50/50" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value === "" ? "" : Number(e.target.value))} />
                 </div>
                 <div>
-                  <Label htmlFor="machine-cost" className="block text-[11px] font-bold text-slate-500 mb-1">Costo Máquina ($/hr)</Label>
-                  <Input id="machine-cost" type="number" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value === "" ? "" : Number(e.target.value))} />
+                  <Label className="block text-xs font-bold text-slate-500 mb-1">Costo Máq. ($/hr)</Label>
+                  <Input type="number" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value === "" ? "" : Number(e.target.value))} />
                 </div>
                 <div>
-                  <Label htmlFor="tool-change-time" className="block text-[11px] font-bold text-slate-500 mb-1">Cambio Herram. (min)</Label>
-                  <Input id="tool-change-time" type="number" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value === "" ? "" : Number(e.target.value))} />
+                  <Label className="block text-xs font-bold text-slate-500 mb-1">Cambio (min)</Label>
+                  <Input type="number" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value === "" ? "" : Number(e.target.value))} />
                 </div>
+              </div>
+            </div>
+
+            {/* Escala Comercial integrada al fondo de esta tarjeta */}
+            <div className="mt-6 pt-5 border-t border-slate-100">
+              <Label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wide">📦 Escala Comercial</Label>
+              <div className="relative">
+                <Input type="number" placeholder="Ej: 1000" className="w-full text-lg font-black text-blue-700 pl-4 pr-16 h-12 bg-slate-50" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value === "" ? "" : Number(e.target.value))} />
+                <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400">pzs/mes</span>
               </div>
             </div>
           </div>
 
           {/* 2. SITUACIÓN ACTUAL (COMPETIDOR) */}
-          <div className="bg-red-50/50 p-4 rounded-xl border border-red-100 flex flex-col justify-between">
-            <h2 className="font-bold text-red-700 text-xs uppercase mb-3 flex items-center gap-1">🔴 Condición Actual</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="block text-[10px] font-bold text-red-600 mb-1">
-                  Inserto {operationType === 'turning' ? 'Torno' : 'Fresa'} ($)
-                </Label>
-                <Input type="number" className="border-red-200" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+          <div className="bg-red-50/30 p-5 rounded-xl border border-red-100 flex flex-col h-full relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-red-500"></div>
+            <h2 className="font-black text-red-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🔴 Condición Actual</h2>
+            
+            <div className="grid grid-cols-2 gap-4 flex-grow">
+              <div className="col-span-2">
+                <Label className="block text-[10px] font-bold text-red-800 mb-1 uppercase tracking-wider">Herramienta / Inserto Competencia</Label>
+                <Input type="text" placeholder="Ej: CNMG 120408" className="border-red-200 bg-white" value={toolNameCurrent} onChange={e => setToolNameCurrent(e.target.value)} />
               </div>
+              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-red-200 bg-white" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 4" className="border-red-200 bg-white" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               <div>
-                <Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label>
-                <Input type="number" placeholder="Ej: 4" className="border-red-200 placeholder:text-red-200/50" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
-              </div>
-              <div>
-                <Label className="block text-[10px] font-bold text-red-600 mb-1 flex items-center gap-1">
-                  Geometría
-                  {geometryCurrent === 'negative' && <span title="Suele tener el doble de filos" className="cursor-help text-red-400">💡</span>}
-                </Label>
+                <Label className="block text-[10px] font-bold text-red-600 mb-1">Geometría</Label>
                 <Select value={geometryCurrent} onValueChange={(value) => setGeometryCurrent(value as 'positive' | 'negative')}>
-                    <SelectTrigger className="border-red-200 text-red-800 font-medium">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="positive">Positiva (1.0x)</SelectItem>
-                        <SelectItem value="negative">Negativa (+15% HP)</SelectItem>
-                    </SelectContent>
+                  <SelectTrigger className="border-red-200 bg-white text-red-800 font-medium"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="positive">Positiva (1.0x)</SelectItem><SelectItem value="negative">Negativa (+15% HP)</SelectItem></SelectContent>
                 </Select>
               </div>
-              {operationType === 'milling' && (
-                <div>
-                  <Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Insertos (Z)</Label>
-                  <Input type="number" placeholder="Ej: 6" className="border-red-200 placeholder:text-red-200/50" value={zCurrent} onChange={e => setZCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
-                </div>
+              {operationType === 'milling' ? (
+                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Insertos (Z)</Label><Input type="number" className="border-red-200 bg-white" value={zCurrent} onChange={e => setZCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              ) : (
+                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Avance (mm/rev)</Label><Input type="number" step="0.01" className="border-red-200 bg-white" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               )}
-              <div>
-                <Label className="block text-[10px] font-bold text-red-600 mb-1">
-                  Avance {operationType === 'turning' ? '(mm/rev)' : '(mm/z)'}
-                </Label>
-                <Input type="number" step="0.01" className="border-red-200" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
-              </div>
-              <div>
-                <Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label>
-                <Input type="number" className="border-red-200" value={vcCurrent} onChange={e => setVcCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
-              </div>
-              <div className="col-span-2">
-                <Label className="block text-[10px] font-bold text-red-600 mb-1">Pzas / filo</Label>
-                <Input type="number" className="border-red-200" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
-              </div>
+              {operationType === 'milling' && (
+                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Avance (mm/z)</Label><Input type="number" step="0.01" className="border-red-200 bg-white" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              )}
+              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label><Input type="number" className="border-red-200 bg-white" value={vcCurrent} onChange={e => setVcCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              <div className={operationType === 'milling' ? "col-span-2" : ""}><Label className="block text-[10px] font-bold text-red-600 mb-1">Pzas / filo</Label><Input type="number" className="border-red-200 bg-white" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-red-700 mb-1">Tiempo Actual (Corte)</Label>
                 <div className="flex gap-2">
-                  <div className="relative w-1/2">
-                    <Input type="number" className="pr-7 border-red-300 font-bold" value={tcCurrentMin} onChange={e => setTcCurrentMin(e.target.value === "" ? "" : Number(e.target.value))} />
-                    <span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">min</span>
-                  </div>
-                  <div className="relative w-1/2">
-                    <Input type="number" className="pr-7 border-red-300 font-bold" value={tcCurrentSec} onChange={e => setTcCurrentSec(e.target.value === "" ? "" : Number(e.target.value))} />
-                    <span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">seg</span>
-                  </div>
+                  <div className="relative w-1/2"><Input type="number" className="pr-7 border-red-300 font-bold bg-white" value={tcCurrentMin} onChange={e => setTcCurrentMin(e.target.value === "" ? "" : Number(e.target.value))} /><span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">min</span></div>
+                  <div className="relative w-1/2"><Input type="number" className="pr-7 border-red-300 font-bold bg-white" value={tcCurrentSec} onChange={e => setTcCurrentSec(e.target.value === "" ? "" : Number(e.target.value))} /><span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">seg</span></div>
                 </div>
               </div>
-              <div className="col-span-2 mt-3 bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
-                <div className="flex justify-between items-end mb-1">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Carga de Husillo (HP)</span>
-                  <span className={`text-xs font-black ${getLoadColor(curveDataInfo.loadCurrent).text}`}>
-                    ⚡ {curveDataInfo.hpCurrent.toFixed(1)} HP ({curveDataInfo.loadCurrent.toFixed(1)}%)
-                  </span>
-                </div>
-                <div className="w-full bg-slate-100 rounded-full h-2.5 mb-1 overflow-hidden border border-slate-200">
-                  <div className={`h-2.5 rounded-full transition-all duration-500 ${getLoadColor(curveDataInfo.loadCurrent).bar}`} style={{ width: `${Math.min(curveDataInfo.loadCurrent, 100)}%` }}></div>
-                </div>
-                <p className={`text-[9px] font-bold text-right uppercase ${getLoadColor(curveDataInfo.loadCurrent).text}`}>
-                  {getLoadColor(curveDataInfo.loadCurrent).label}
-                </p>
-              </div>
+            </div>
+
+            {/* Progress Bar alineada al fondo */}
+            <div className="mt-6 bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
+              <div className="flex justify-between items-end mb-1"><span className="text-[10px] font-bold text-slate-500 uppercase">Carga Husillo</span><span className={`text-xs font-black ${getLoadColor(curveDataInfo.loadCurrent).text}`}>⚡ {curveDataInfo.hpCurrent.toFixed(1)} HP</span></div>
+              <div className="w-full bg-slate-100 rounded-full h-2 mb-1 overflow-hidden"><div className={`h-2 rounded-full transition-all duration-500 ${getLoadColor(curveDataInfo.loadCurrent).bar}`} style={{ width: `${Math.min(curveDataInfo.loadCurrent, 100)}%` }}></div></div>
+              <p className={`text-[9px] font-bold text-right uppercase ${getLoadColor(curveDataInfo.loadCurrent).text}`}>{getLoadColor(curveDataInfo.loadCurrent).label}</p>
             </div>
           </div>
 
           {/* 3. PROPUESTA PREMIUM */}
-          <div className="bg-green-50/50 p-4 rounded-xl border border-green-100 flex flex-col justify-between">
-            <h2 className="font-bold text-green-700 text-xs uppercase mb-3 flex items-center gap-1">🟢 Propuesta Premium</h2>
-            <div className="grid grid-cols-2 gap-3">
-               {/* NUEVO CAMPO: NOMBRE DE HERRAMIENTA SECO */}
-               <div className="col-span-2">
-                <Label className="block text-[10px] font-bold text-green-800 mb-1">Nombre / Código Herramienta Seco</Label>
-                <Input type="text" placeholder="Ej: CNMG 120408-M3 TP2501" className="border-green-300 bg-white" value={toolNamePremium} onChange={e => setToolNamePremium(e.target.value)} />
+          <div className="bg-green-50/30 p-5 rounded-xl border border-green-200 flex flex-col h-full relative overflow-hidden shadow-[0_0_15px_rgba(34,197,94,0.1)]">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-green-500"></div>
+            <h2 className="font-black text-green-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🟢 Propuesta Premium</h2>
+            
+            <div className="grid grid-cols-2 gap-4 flex-grow">
+              <div className="col-span-2">
+                <Label className="block text-[10px] font-bold text-green-800 mb-1 uppercase tracking-wider">Herramienta / Inserto Seco</Label>
+                <Input type="text" placeholder="Ej: CNMG 120408-M3 TP2501" className="border-green-300 bg-white shadow-inner font-bold text-green-900" value={toolNamePremium} onChange={e => setToolNamePremium(e.target.value)} />
               </div>
+              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-green-200 bg-white" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 8" className="border-green-200 bg-white" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               <div>
-                <Label className="block text-[10px] font-bold text-green-700 mb-1">
-                    Inserto {operationType === 'turning' ? 'Torno' : 'Fresa'} ($)
-                </Label>
-                <Input type="number" className="border-green-200" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value === "" ? "" : Number(e.target.value))} />
-              </div>
-              <div>
-                <Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label>
-                <Input type="number" placeholder="Ej: 8" className="border-green-200 placeholder:text-green-200/50" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value === "" ? "" : Number(e.target.value))} />
-              </div>
-              <div>
-                <Label className="block text-[10px] font-bold text-green-700 mb-1 flex items-center gap-1">
-                  Geometría
-                  {geometryPremium === 'negative' && <span title="Asegúrate de ajustar los filos" className="cursor-help text-green-500">💡</span>}
-                </Label>
+                <Label className="block text-[10px] font-bold text-green-700 mb-1">Geometría</Label>
                 <Select value={geometryPremium} onValueChange={(value) => setGeometryPremium(value as 'positive' | 'negative')}>
-                    <SelectTrigger className="border-green-200 text-green-800 font-medium">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="positive">Positiva (1.0x)</SelectItem>
-                        <SelectItem value="negative">Negativa (+15% HP)</SelectItem>
-                    </SelectContent>
+                  <SelectTrigger className="border-green-200 bg-white text-green-800 font-medium"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="positive">Positiva (1.0x)</SelectItem><SelectItem value="negative">Negativa (+15% HP)</SelectItem></SelectContent>
                 </Select>
               </div>
-              {operationType === 'milling' && (
-                <div>
-                  <Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Insertos (Z)</Label>
-                  <Input type="number" placeholder="Ej: 5" className="border-green-200 placeholder:text-green-200/50" value={zPremium} onChange={e => setZPremium(e.target.value === "" ? "" : Number(e.target.value))} />
-                </div>
+              {operationType === 'milling' ? (
+                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Insertos (Z)</Label><Input type="number" className="border-green-200 bg-white" value={zPremium} onChange={e => setZPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              ) : (
+                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Avance (mm/rev)</Label><Input type="number" step="0.01" className="border-green-200 bg-white" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               )}
-              <div>
-                <Label className="block text-[10px] font-bold text-green-700 mb-1">
-                  Avance {operationType === 'turning' ? '(mm/rev)' : '(mm/z)'}
-                </Label>
-                <Input type="number" step="0.01" className="border-green-200" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} />
-              </div>
-              <div>
-                <Label className="block text-[10px] font-bold text-green-700 mb-1">Vc Propuesta (m/min)</Label>
-                <Input type="number" className="border-green-200" value={vcPremium} onChange={e => setVcPremium(e.target.value === "" ? "" : Number(e.target.value))} />
-              </div>
-              <div className="col-span-2">
-                <Label className="block text-[10px] font-bold text-green-700 mb-1">Pzas / filo</Label>
-                <Input type="number" className="border-green-200" value={pcsPremium} onChange={e => setPcsPremium(e.target.value === "" ? "" : Number(e.target.value))} />
-              </div>
+              {operationType === 'milling' && (
+                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Avance (mm/z)</Label><Input type="number" step="0.01" className="border-green-200 bg-white" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              )}
+              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Vc Propuesta</Label><Input type="number" className="border-green-200 bg-white" value={vcPremium} onChange={e => setVcPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              <div className={operationType === 'milling' ? "col-span-2" : ""}><Label className="block text-[10px] font-bold text-green-700 mb-1">Pzas / filo</Label><Input type="number" className="border-green-200 bg-white" value={pcsPremium} onChange={e => setPcsPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-green-800 mb-1">Tiempo Deducido (Corte)</Label>
-                <div className="w-full p-2 border-2 border-green-300 bg-green-100 text-green-800 rounded-md text-sm font-bold flex items-center justify-center shadow-inner h-10">
+                <div className="w-full p-2 border-2 border-green-300 bg-green-100 text-green-800 rounded-md text-sm font-black flex items-center justify-center shadow-inner h-10">
                   {premiumMins} min {premiumSecs} seg
                 </div>
               </div>
-              <div className="col-span-2 mt-3 bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
-                <div className="flex justify-between items-end mb-1">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Carga de Husillo (HP)</span>
-                  <span className={`text-xs font-black ${getLoadColor(curveDataInfo.loadPremium).text}`}>
-                    ⚡ {curveDataInfo.hpPremium.toFixed(1)} HP ({curveDataInfo.loadPremium.toFixed(1)}%)
-                  </span>
-                </div>
-                <div className="w-full bg-slate-100 rounded-full h-2.5 mb-1 overflow-hidden border border-slate-200">
-                  <div className={`h-2.5 rounded-full transition-all duration-500 ${getLoadColor(curveDataInfo.loadPremium).bar}`} style={{ width: `${Math.min(curveDataInfo.loadPremium, 100)}%` }}></div>
-                </div>
-                <p className={`text-[9px] font-bold text-right uppercase ${getLoadColor(curveDataInfo.loadPremium).text}`}>
-                  {getLoadColor(curveDataInfo.loadPremium).label}
-                </p>
-              </div>
+            </div>
+
+            {/* Progress Bar alineada al fondo */}
+            <div className="mt-6 bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
+              <div className="flex justify-between items-end mb-1"><span className="text-[10px] font-bold text-slate-500 uppercase">Carga Husillo</span><span className={`text-xs font-black ${getLoadColor(curveDataInfo.loadPremium).text}`}>⚡ {curveDataInfo.hpPremium.toFixed(1)} HP</span></div>
+              <div className="w-full bg-slate-100 rounded-full h-2 mb-1 overflow-hidden"><div className={`h-2 rounded-full transition-all duration-500 ${getLoadColor(curveDataInfo.loadPremium).bar}`} style={{ width: `${Math.min(curveDataInfo.loadPremium, 100)}%` }}></div></div>
+              <p className={`text-[9px] font-bold text-right uppercase ${getLoadColor(curveDataInfo.loadPremium).text}`}>{getLoadColor(curveDataInfo.loadPremium).label}</p>
             </div>
           </div>
-
-          {/* 4. VOLUMEN DE PRODUCCIÓN */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-            <h2 className="font-bold text-slate-700 text-xs uppercase border-b border-slate-200 pb-2 mb-3">4. Escala Comercial</h2>
-            <div>
-              <Label htmlFor="monthly-prod-input" className="block text-[11px] font-bold text-slate-500 mb-1">Prod. Mensual (Piezas)</Label>
-              <Input id="monthly-prod-input" type="number" className="w-full text-2xl bg-slate-50 font-black text-blue-700 text-center" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value === "" ? "" : Number(e.target.value))} />
-            </div>
-          </div>
-
         </div>
 
         {/* GRAFICO (Ancho Completo Abajo) */}
@@ -748,6 +672,7 @@ export default function TaylorCurvePage() {
                         operationType, 
                         materialId, 
                         ap: Number(ap) || 2.0,
+                        toolNameCurrent,
                         toolNamePremium
                       }
                     };
