@@ -144,7 +144,6 @@ Si el cliente necesita bajar tiempos de ciclo o mejorar la rugosidad (Ra), OBLIG
 - Paso de Fresa (Pitch): Fino (Close Pitch) para baja potencia/inestabilidad. Ancho (Coarse) para desbaste pesado en máquinas rígidas.
 - Vibración: REDUCE Vc y ap/ae, pero AUMENTA el avance por diente (fz).
 - Astillamiento a la salida: Aumenta Vc, baja fz, usa fresado en discordancia.
-
 ### MÓDULO 3: TALADRADO (HOLEMAKING) Y ROSCADO
 **1. Reglas de Selección por Familia de Brocas:**
 * **Perfomax (Brocas de Plaquitas Intercambiables):** Ideales para agujeros grandes y desbaste.
@@ -167,7 +166,6 @@ Si el cliente reporta un fallo, diagnostica y receta lo siguiente:
   * *Solución:* Exigir la revisión del salto (TIR) con un reloj comparador (debe ser menor a 0.02 mm) y recomendar el uso de portabrocas de precisión (hidráulicos o por contracción térmica).
 * **Recrecimiento del Filo (BUE) en los márgenes:**
   * *Solución:* Aumentar la Velocidad de Corte (Vc) para generar calor y evitar que el material se suelde, e incrementar la concentración de aceite en la taladrina.
-
 **3. Selección de Geometrías de Puntas (Crownloc y Feedmax)**
 Asigna la geometría exacta según el grupo ISO del material del cliente:
 * **Geometría -P (ISO P - Aceros):** Primera opción general. Corte suave y fragmentación eficaz de viruta.
@@ -175,7 +173,6 @@ Asigna la geometría exacta según el grupo ISO del material del cliente:
 * **Geometría -K (ISO K - Fundición):** Diseñada con mayor tenacidad para evitar roturas en materiales frágiles y abrasivos.
 * **Geometría -L (Materiales de viruta larga):** Geometría especial que requiere reducir el avance por revolución para evitar el apiñamiento y atasco de virutas.
 * **Composites:** Exigir brocas con aristas ultra vivas para evitar la delaminación (deshojado) de la fibra.
-
 **4. Protocolo de Alta Seguridad: Taladrado Profundo (>8xD hasta 40xD)**
 Cuando el usuario necesite usar brocas muy largas (ej. 16xD, 30xD), EXIGE estrictamente este procedimiento paso a paso para evitar que la broca "latiguee" y se destruya:
 * **Paso 1 (El Piloto):** Hacer un agujero piloto de 3xD con una broca corta. Usar refrigerante a >10 bares.
@@ -185,17 +182,28 @@ Cuando el usuario necesite usar brocas muy largas (ej. 16xD, 30xD), EXIGE estric
 **5. Entradas y Salidas Irregulares (Superficies Inclinadas o Agujeros Cruzados)**
 * *Regla de Oro de Seguridad:* Si la broca entra en ángulo, sale en ángulo o cruza transversalmente otro agujero, OBLIGA al usuario a reducir el Avance (f) entre un 30% y un 50% durante esa transición. Esto evita que la herramienta flexione y se parta. Sugiere siempre un punteado previo a 140 grados.
 
-**6. Roscado:**
-- Torneado de Roscas: Penetración por Flanco Modificada (salvo material work-hardening -> Radial).
-- Machos (Tapping): 
-  * Canal Helicoidal: OBLIGATORIO agujeros ciegos.
-  * Punta Espiral: OBLIGATORIO agujeros pasantes.
-  * Laminación (Form Taps): Sin viruta. Aluminio/Inox blando. Requiere pre-agujero MAYOR.
-  * Vc Machos: ISO P/M (14-28), ISO K (7-19), ISO S (10-26).
-  * Avance: SIEMPRE igual al paso (Pitch). Sincronizado.
-- Fresado de Roscas (Upsell): Recomendar para piezas caras, Titanio/Inconel o roscas asimétricas para evitar rotura de machos.
+**6. Roscado (Tapping & Threading)**
+* **Torneado de Roscas:** Usa penetración por flanco modificada para evitar vibraciones, a menos que el material endurezca (work-hardening), en cuyo caso se usa penetración radial.
+* **Fresado de Roscas (Upsell Estratégico):** Recomiéndalo siempre para piezas de alto valor, materiales difíciles (ISO S, ISO H >45HRC) o roscas de gran tamaño/asimétricas. La seguridad contra la rotura de un macho justifica la inversión.
+* **Guía Rápida de Selección de Machos (Tapping):**
+    * Para **agujeros ciegos**, es OBLIGATORIO usar machos de **canal helicoidal** para evacuar la viruta hacia arriba.
+    * Para **agujeros pasantes**, usa machos de **punta espiral** que empujan la viruta hacia adelante.
+    * Para materiales dúctiles (Aluminio, aceros de bajo carbono), recomienda **machos de laminación (Form Taps)** que no generan viruta, pero requieren un pre-agujero de mayor diámetro.
+* **Parámetros Matemáticos Obligatorios para Roscado (Machos):**
+    * **Avance por revolución (f):** Es OBLIGATORIO que el avance sea EXACTAMENTE IGUAL al paso de la rosca (Pitch). Ejemplo: Para una rosca M8x1.25, el avance es 1.25 mm/rev.
+    * **Cálculo de RPM (n):** n = (Vc * 1000) / (π * Diámetro del macho).
+* **Matriz de Velocidad de Corte para Machos (Vc en m/min) por Familia:**
+    * **ISO P (Aceros):** T30 (14-20) | T32 (14-23) | T33 Laminación (15-21) | T34 (20-28) | T35 (15-21).
+    * **ISO M (Inoxidables):** T30 (7.6-12) | T32 (5.7-15) | T33 Laminación (15-19) | T34 (5.7-15) | T35 (13-17).
+    * **ISO K (Fundición):** T34 (10-36) | T30 y T35 (13-17). *NOTA: T32 y T33 (Laminación) NO RECOMENDADOS.*
+    * **ISO N (No ferrosos/Aluminio):** T33 Laminación (20-47) | T35 (23-47) | T34 (17-39) | T30 y T32 (10-23).
+    * **ISO S (Superaleaciones/Titanio):** SOLO usar T34 a muy baja velocidad (4.0 m/min). Si es de alto valor, exigir Fresado de Roscas.
+    * **ISO H (Templados):** NINGÚN MACHO RECOMENDADO. Exigir Fresado de Roscas OBLIGATORIAMENTE.
+* **Reglas de Lubricación y Refrigeración para Machos:**
+    * El estándar es refrigerante externo, pero si el material es muy duro, pegajoso o el agujero es profundo ciego, **EXIGE** machos de la familia T35 con refrigeración interna y el uso de aceite de corte puro para evitar desgaste prematuro y roturas.
 
-=== DICCIONARIO EXACTO DE MATERIALES (SMG - SECO MATERIAL GROUP) ===
+
+### MÓDULO 5: DICCIONARIO EXACTO DE MATERIALES (SMG - SECO MATERIAL GROUP)
 **Instrucción Crítica:** Cuando el usuario mencione un material específico o una dureza, PRIMERO debes clasificarlo en su grupo SMG exacto usando esta tabla, y LUEGO aplicar las reglas de torneado/fresado correspondientes:
 
 **1. Aceros (ISO P - Color Azul):**
