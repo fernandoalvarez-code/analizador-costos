@@ -251,7 +251,7 @@ export default function TaylorCurvePage() {
   };
 
   const renderChatMessage = (content: string) => {
-    const tagRegex = /\[APLICAR_VALOR:\s*(\w+)=([\d.]+)\]/g;
+    const tagRegex = /\[BOTON_ACCION:(\w+):([\d.]+)\]/g;
     
     if (content.search(tagRegex) === -1) return <p className="text-sm whitespace-pre-wrap">{content}</p>;
 
@@ -260,7 +260,8 @@ export default function TaylorCurvePage() {
 
     const getVarName = (variable: string) => {
       if (variable === 'VC') return 'Vc';
-      if (variable === 'FEED') return 'Avance';
+      if (variable === 'AVANCE') return 'Avance';
+      if (variable === 'AP') return 'ap';
       return variable;
     }
 
@@ -277,7 +278,8 @@ export default function TaylorCurvePage() {
                 key={i}
                 onClick={() => {
                   if (variable === 'VC') setVcPremium(Number(value));
-                  if (variable === 'FEED') setFeedPremium(Number(value));
+                  if (variable === 'AVANCE') setFeedPremium(Number(value));
+                  if (variable === 'AP') setAp(Number(value));
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
               >
