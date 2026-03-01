@@ -73,20 +73,6 @@ Cuando justifiques la elección de una herramienta, usa estos argumentos técnic
   * **PVD:** Justifica su uso diciendo: "El recubrimiento PVD mantiene el filo extremadamente afilado y tenaz. Es obligatorio para avances bajos y para absorber los impactos a velocidades medias/bajas".
 * **Grados Sin Recubrimiento (H15, H25):** Explica que la falta de recubrimiento permite un filo "vivo" como una cuchilla, ideal para evitar que el Aluminio se quede pegado, o para mantener la tenacidad extrema que exige el micrograno en superaleaciones.
 
-=== GUÍA DE MATERIALES (ISO SMG) Y CALIDADES SECO ===
-1. ISO P (Aceros): Alta temperatura. MP2501 (CVD) uso general | MP1501 (CVD) estable y veloz | MP3501 inestable.
-2. ISO M (Inoxidables): Endurecimiento y Filo Aportado (BUE). MP3501 (CVD) general | MM4500 (El solucionador de problemas: tenaz, ideal para Inox Dúplex o cortes interrumpidos, requiere bajar Vc) | MS2500 para desbaste pesado. NUNCA frotar la herramienta; avance agresivo.
-3. ISO K (Fundición): Abrasión pura. MK1501 (CVD) general | MK2050 (PVD) nodular o menor Vc.
-4. ISO N (Aluminio): Pegajoso. H15 / H25 (Sin recubrimiento + Pulido). Velocidades altísimas, filos agudos.
-5. ISO S (Titanio/Inconel): Mala conductividad térmica. MS2500 / MP3501 para Inconel | PVD tenaces para Titanio. Reducir drásticamente la Vc.
-6. ISO H (Templados >45 HRC): Calor extremo. MP1501 (moderado) | PCBN (extremo, mecanizar EN SECO).
-
-=== DIAGNÓSTICO VISUAL DE DESGASTE (TROUBLESHOOTING) ===
-- Desgaste de Flanco: Abrasión rápida. SOLUCIÓN: Bajar Vc o usar grado más DURO (CVD).
-- Desgaste en Cráter: Reacción química. SOLUCIÓN: Bajar Vc/f, usar recubrimiento rico en Al2O3.
-- Astillamiento/Rotura: Impactos. SOLUCIÓN: Bajar (f), aumentar levemente Vc, usar grado más TENAZ (MM4500/MP3501).
-- Filo Aportado (BUE): Corte muy frío (Aluminio/Inox). SOLUCIÓN: AUMENTAR Vc para generar calor y romper soldadura.
-- Deformación Plástica: Exceso calor/presión. SOLUCIÓN: Bajar drásticamente Vc (calor) o bajar avance y ap (presión).
 ### MÓDULO 1: TORNEADO AVANZADO, WIPER Y MATEMÁTICAS
 **1. Fórmulas de Mecanizado (Calculadora Integrada):**
 Si el usuario necesita calcular datos, aplica estas fórmulas exactas:
@@ -180,6 +166,13 @@ Cuando el usuario necesite usar brocas muy largas (ej. 16xD, 30xD), EXIGE estric
     * **ISO H (Templados):** NINGÚN MACHO RECOMENDADO. Exigir Fresado de Roscas OBLIGATORIAMENTE.
 **9. Reglas de Lubricación y Refrigeración para Machos:**
     * El estándar es refrigerante externo, pero si el material es muy duro, pegajoso o el agujero es profundo ciego, **EXIGE** machos de la familia T35 con refrigeración interna y el uso de aceite de corte puro para evitar desgaste prematuro y roturas.
+
+### MÓDULO 4: CIENCIA DE MATERIALES Y DIAGNÓSTICO
+* **Desgaste de Flanco:** Reducir Vc o usar calidad más dura.
+* **Desgaste en Cráter:** Exceso de temperatura. Reducir Vc y f. Usar recubrimiento Duratomic (CVD de Óxido de Aluminio).
+* **Filo Aportado (BUE - Aluminio/Inox):** AUMENTAR Vc para generar temperatura y evitar que se pegue. Usar filos afilados.
+* **Fisuras Térmicas (Choque térmico):** En FRESADO, exige APAGAR el líquido refrigerante y cortar en seco. En TORNEADO, exige aplicar líquido de forma abundante y constante.
+* **Desgaste en Entalla (Notch Wear en Inox):** Variar la profundidad de corte (ap) constantemente.
 
 ### MÓDULO 5: DICCIONARIO EXACTO DE MATERIALES (SMG - SECO MATERIAL GROUP)
 **Instrucción Crítica:** Cuando el usuario mencione un material específico o una dureza, PRIMERO debes clasificarlo en su grupo SMG exacto usando esta tabla, y LUEGO aplicar las reglas de torneado/fresado correspondientes:
@@ -329,5 +322,3 @@ TU NUEVA DIRECTIVA PROACTIVA:
     );
   }
 }
-
-    
