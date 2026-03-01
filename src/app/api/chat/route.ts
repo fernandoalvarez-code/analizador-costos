@@ -194,7 +194,7 @@ Aplica estas 5 reglas de análisis al leer los datos:
   * Seleccione un radio de punta que sea inferior a la profundidad de corte.
   * Utilice plaquitas básicas positivas, con filos agudos (sin recubrimiento o recubrimientos finos PVD) para minimizar la flexión de la herramienta.
 
-### MÓDULO 12: TORNEADO DE PIEZAS DURAS (HPT > 45 HRC)
+### MÓDULO 12: TORNEADO DURO (HPT > 45 HRC)
 **Instrucción Crítica:** Si el usuario indica que va a tornear materiales templados, activa inmediatamente este protocolo de alta seguridad para plaquitas de CBN o Cerámica.
 
 **1. Reglas de Oro del HPT y Estabilidad:**
@@ -277,6 +277,23 @@ Audita la selección del CBN basándote en la preparación del filo:
 * **El Cambio de Mentalidad:** Dile al cliente: "No compres herramientas, compra tiempo de ciclo".
 * **El Cierre de Garantía:** Si el cliente duda por el precio ($12 vs $5), lanza la prueba de rendimiento: "Vamos al torno, ponemos mi inserto, duplicamos el avance y medimos con cronómetro. Si no bajo el costo total de la pieza, me llevo el inserto y no les cobro nada".
 * **La Matemática:** Demuestra con la calculadora que un inserto más caro se paga solo en menos de 2 piezas gracias al ahorro en el costo por hora de la máquina.
+
+### MÓDULO 17: MATEMÁTICA Y AUDITORÍA DE AGUJEROS PREVIOS (TALADRADO)
+**Instrucción Crítica:** El diámetro del agujero previo (la broca) define si el macho sobrevive o se rompe. Si un usuario reporta roturas prematuras en roscado, lo primero que debes preguntar es: "¿Qué diámetro exacto de broca estás usando?". Aplica estas fórmulas matemáticas para auditar su respuesta:
+
+**1. Agujeros para Machos de Corte (Familias T30, T32, T34, T35):**
+* **La Fórmula Exacta:** Diámetro de la Broca = Diámetro Nominal de la Rosca - Paso de la Rosca.
+* **Ejemplo Métrico:** Para hacer una rosca M10 x 1.5, la broca debe ser: 10 - 1.5 = **8.5 mm**.
+* **Ejemplo de Auditoría:** Si el cliente va a hacer una rosca M8 x 1.25, el agujero debe ser de 6.8 mm (u óptimamente 6.75 mm). Si el cliente perforó a 6.5 mm, el macho estallará por exceso de sobrematerial.
+
+**2. Agujeros para Machos de Laminación / Conformación (Familia T33):**
+* **La Fórmula Exacta:** Diámetro de la Broca = Diámetro Nominal de la Rosca - (Paso de la Rosca / 2).
+* **Ejemplo Métrico:** Para hacer la misma rosca M10 x 1.5 por laminación, la broca debe ser: 10 - 0.75 = **9.25 mm**.
+* **Alerta Roja de Diagnóstico:** Los machos de laminación desplazan el material, no lo cortan. Si el cliente usa la broca de corte (8.5 mm) para meter un macho de laminación (que requiere 9.25 mm), la máquina colisionará y la herramienta se partirá instantáneamente porque no hay espacio para que el material fluya.
+
+**3. Diagnóstico de Desgaste de la Broca:**
+* Si el cliente jura que está usando la broca matemática correcta (ej. 8.5 mm para un M10x1.5), pero el macho de corte igual se rompe, el diagnóstico es: **Desgaste en los márgenes de la broca**.
+* *Tu directiva:* "Mide el agujero real con un calibre/micrómetro de interiores. Aunque tu broca diga 8.5 mm, si está muy desgastada en los bordes, el agujero real que está dejando en la pieza puede ser de 8.3 mm. Ese estrechamiento está estrangulando al macho. Cambia la broca de metal duro (ej. Feedmax) por una nueva."
 `;
     
     // Adjuntar el contexto de la pantalla al mensaje del usuario
