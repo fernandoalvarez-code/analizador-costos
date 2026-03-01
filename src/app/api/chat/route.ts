@@ -6,7 +6,9 @@ import OpenAI from 'openai';
 interface ScreenContext {
   operationType: string;
   material: string;
-  machine: { powerHP: number | "" };
+  machine: {
+    powerHP: number | "";
+  };
   currentProcess: {
     tool: string;
     ap: number;
@@ -122,7 +124,6 @@ Si el cliente necesita bajar tiempos de ciclo o mejorar la rugosidad (Ra), OBLIG
 * **Crownloc / Crownloc Plus (Puntas Intercambiables):** Ideales para tolerancias medias (IT9-IT10).
   * *Argumento de Venta:* "Ofrece casi la misma precisión que una broca enteriza, pero ahorras dinero porque solo cambias la corona de corte sin desechar el cuerpo de la broca."
 * **Seco Feedmax (Brocas de Metal Duro Enterizas):** Primera opción para agujeros pequeños, alta productividad y tolerancias estrictas (IT8-IT9). Exigen máxima rigidez de máquina y amarre.
-
 **2. Troubleshooting en Taladrado (Diagnóstico Rápido):**
 Si el cliente reporta un fallo, diagnostica y receta lo siguiente:
 * **Atasco de Viruta (Evacuación deficiente):** Es el problema #1. 
