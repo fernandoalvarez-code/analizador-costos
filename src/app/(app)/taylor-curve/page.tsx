@@ -20,6 +20,7 @@ const MATERIALS = [
   { id: 'med_c', name: 'Acero Medio Carbono', n: 0.25, C: 200, kc: 1500 },
   { id: 'cast', name: 'Fundición de Hierro', n: 0.25, C: 200, kc: 1200 },
   { id: 'inox', name: 'Acero Inoxidable', n: 0.20, C: 150, kc: 2500 },
+  { id: 'hrc', name: 'Templados > 45 HRC', n: 0.15, C: 120, kc: 3000 },
 ];
 
 
