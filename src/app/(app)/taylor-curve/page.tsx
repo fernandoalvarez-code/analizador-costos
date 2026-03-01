@@ -194,7 +194,7 @@ export default function TaylorCurvePage() {
         operationType: operationType,
         material: materialId,
         machine: {
-          powerHP: Number(machinePowerHP) || 0,
+          potencia_motor_hp: Number(machinePowerHP) || 0,
         },
         currentProcess: {
           tool: toolNameCurrent,
@@ -202,7 +202,7 @@ export default function TaylorCurvePage() {
           vc: Number(vcCurrent) || 0,
           feed: Number(feedCurrent) || 0,
           geometry: geometryCurrent,
-          hpLoad: curveDataInfo.loadCurrent,
+          carga_husillo_hp: curveDataInfo.hpCurrent,
           costPerPiece: curveDataInfo.actualCostCurrent
         },
         premiumProposal: {
@@ -210,7 +210,7 @@ export default function TaylorCurvePage() {
           vc: Number(vcPremium) || 0,
           feed: Number(feedPremium) || 0,
           geometry: geometryPremium,
-          hpLoad: curveDataInfo.loadPremium,
+          carga_husillo_hp: curveDataInfo.hpPremium,
           costPerPiece: curveDataInfo.actualCostPremium
         }
       }
@@ -1057,4 +1057,3 @@ export default function TaylorCurvePage() {
     </>
   );
 }
-
