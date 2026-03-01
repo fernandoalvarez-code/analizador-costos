@@ -222,35 +222,37 @@ export default function TaylorCurvePage() {
   };
 
   const renderChatMessage = (content: string) => {
-    // Buscar tags con formato [ACCION: VALOR]
-    const tagRegex = /\[(SET_PREMIUM_VC|SET_PREMIUM_FEED):?\s*([^\]]+)\]/g;
+    const tagRegex = /\[APLICAR_VALOR:\s*(\w+)=([\d.]+)\]/g;
     
-    // Si no hay tags, retornamos el texto normal
-    if (!tagRegex.test(content)) return <p className="text-sm whitespace-pre-wrap">{content}</p>;
+    if (content.search(tagRegex) === -1) return <p className="text-sm whitespace-pre-wrap">{content}</p>;
 
-    // Separar el texto de las acciones
-    const parts = content.split(tagRegex);
     const actions = Array.from(content.matchAll(tagRegex));
-    const cleanText = content.replace(tagRegex, '');
+    const cleanText = content.replace(tagRegex, '').trim();
+
+    const getVarName = (variable: string) => {
+      if (variable === 'VC') return 'Vc';
+      if (variable === 'FEED') return 'Avance';
+      return variable;
+    }
 
     return (
       <div className="space-y-2">
-        <p className="text-sm whitespace-pre-wrap">{cleanText}</p>
+        {cleanText && <p className="text-sm whitespace-pre-wrap">{cleanText}</p>}
         <div className="flex flex-wrap gap-2 mt-2">
           {actions.map((match, i) => {
-            const actionType = match[1];
-            const actionValue = match[2];
+            const variable = match[1];
+            const value = match[2];
             
             return (
               <button
                 key={i}
                 onClick={() => {
-                  if (actionType === 'SET_PREMIUM_VC') setVcPremium(Number(actionValue));
-                  if (actionType === 'SET_PREMIUM_FEED') setFeedPremium(Number(actionValue));
+                  if (variable === 'VC') setVcPremium(Number(value));
+                  if (variable === 'FEED') setFeedPremium(Number(value));
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
               >
-                ✨ Aplicar {actionType === 'SET_PREMIUM_VC' ? 'Vc' : 'Avance'}: {actionValue}
+                ✨ Aplicar {getVarName(variable)}: {value}
               </button>
             );
           })}
