@@ -5,7 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectLabel, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TrendingUp, Info, Share2, FileText } from 'lucide-react';
 import { formatCurrency, formatNumber } from '@/lib/formatters';
 import jsPDF from 'jspdf';
@@ -15,13 +15,41 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, useUser } from "@/firebase";
 
 const MATERIALS = [
-  { id: 'alu', name: 'Aluminio (Ej: 6061)', n: 0.35, C: 900, kc: 700 },
-  { id: 'low_c', name: 'Acero Bajo Carbono', n: 0.30, C: 350, kc: 1500 },
-  { id: 'med_c', name: 'Acero Medio Carbono', n: 0.25, C: 200, kc: 1500 },
-  { id: 'cast', name: 'Fundición de Hierro', n: 0.25, C: 200, kc: 1200 },
-  { id: 'inox', name: 'Acero Inoxidable', n: 0.20, C: 150, kc: 2500 },
-  { id: 'hrc', name: 'Templados > 45 HRC', n: 0.15, C: 120, kc: 3000 },
+  // --- GRUPO ISO P (Aceros) 🟦 ---
+  { grupo: "ISO P", nombre: "Acero Bajo Carbono (Ej: 1010, 1020)", kc: 1500, dureza: "150 HB" },
+  { grupo: "ISO P", nombre: "Acero Medio Carbono (Ej: 1045, 4140)", kc: 1800, dureza: "200 HB" },
+  { grupo: "ISO P", nombre: "Acero Aleado / Cementación (Ej: 8620, 16MnCr5)", kc: 1700, dureza: "180 HB" },
+  { grupo: "ISO P", nombre: "Acero Alta Aleación / Herramienta", kc: 2100, dureza: "300 HB" },
+
+  // --- GRUPO ISO M (Inoxidables) 🟨 ---
+  { grupo: "ISO M", nombre: "Acero Inoxidable Austenítico (304, 316)", kc: 2200, dureza: "200 HB" },
+  { grupo: "ISO M", nombre: "Acero Inox. Dúplex / Súper Dúplex", kc: 2600, dureza: "260 HB" },
+
+  // --- GRUPO ISO K (Fundiciones) 🟥 ---
+  { grupo: "ISO K", nombre: "Fundición Gris (GG)", kc: 1200, dureza: "200 HB" },
+  { grupo: "ISO K", nombre: "Fundición Nodular / Dúctil (GGG)", kc: 1500, dureza: "250 HB" },
+
+  // --- GRUPO ISO N (No Ferrosos y Plásticos) 🟩 ---
+  { grupo: "ISO N", nombre: "Aluminio / Aleaciones de Aluminio", kc: 700, dureza: "60 HB" },
+  { grupo: "ISO N", nombre: "Latón / Bronce / Cobre", kc: 900, dureza: "100 HB" },
+  { grupo: "ISO N", nombre: "Plásticos de Ingeniería (Nylon, Delrin)", kc: 300, dureza: "N/A" },
+
+  // --- GRUPO ISO S (Superaleaciones y Titanio) 🟧 ---
+  { grupo: "ISO S", nombre: "Aleaciones de Titanio (Ej: Ti-6Al-4V)", kc: 2000, dureza: "350 HB" },
+  { grupo: "ISO S", nombre: "Súper Aleaciones Base Níquel (Inconel)", kc: 2800, dureza: "400 HB" },
+
+  // --- GRUPO ISO H (Materiales Templados) ⬜ ---
+  { grupo: "ISO H", nombre: "Aceros Templados (> 45 HRC)", kc: 3500, dureza: "50+ HRC" }
 ];
+
+const TAYLOR_CONSTANTS: Record<string, {n: number, C: number}> = {
+  "ISO P": { n: 0.25, C: 250 },
+  "ISO M": { n: 0.20, C: 150 },
+  "ISO K": { n: 0.25, C: 200 },
+  "ISO N": { n: 0.35, C: 900 },
+  "ISO S": { n: 0.18, C: 130 },
+  "ISO H": { n: 0.15, C: 120 },
+};
 
 
 export default function TaylorCurvePage() {
@@ -32,7 +60,7 @@ export default function TaylorCurvePage() {
 
   // --- ESTADOS DEL FORMULARIO (Inician vacíos por requerimiento de UX) ---
   const [operationType, setOperationType] = useState<'turning' | 'milling'>('turning');
-  const [materialId, setMaterialId] = useState('med_c'); // El select sí tiene default
+  const [materialId, setMaterialId] = useState('Acero Medio Carbono (Ej: 1045, 4140)'); // El select sí tiene default
   const [machineCostHr, setMachineCostHr] = useState<number | "">("");
   const [toolChangeTime, setToolChangeTime] = useState<number | "">("");
   const [pieceName, setPieceName] = useState<string>("");
@@ -164,7 +192,7 @@ export default function TaylorCurvePage() {
       userMessage: userMessage,
       screenContext: {
         operationType: operationType,
-        material: MATERIALS.find(m => m.id === materialId)?.name || materialId,
+        material: materialId,
         machine: {
           powerHP: Number(machinePowerHP) || 0,
         },
@@ -289,8 +317,9 @@ export default function TaylorCurvePage() {
     const safePcsPremium = Number(pcsPremium) || 1;
     const safeMonthlyProduction = Number(monthlyProduction) || 0;
 
-    const mat = MATERIALS.find(m => m.id === materialId) || MATERIALS[2];
-    const premiumC = mat.C * 1.25;
+    const mat = MATERIALS.find(m => m.nombre === materialId) || MATERIALS[1];
+    const taylorProps = TAYLOR_CONSTANTS[mat.grupo as keyof typeof TAYLOR_CONSTANTS] || { n: 0.25, C: 200 };
+    const premiumC = taylorProps.C * 1.25;
 
     // EL CORAZÓN DE LA AUTOMATIZACIÓN: Constante de proporción incluyendo Z
     const constantDistance = safeTcCurrent * safeVcCurrent * safeFeedCurrent * safeZCurrent;
@@ -319,13 +348,13 @@ export default function TaylorCurvePage() {
 
     // 1. Función Teórica
     const calcCost = (v: number, isPremium: boolean, feed: number) => {
-      const C = isPremium ? premiumC : mat.C;
+      const C = isPremium ? premiumC : taylorProps.C;
       const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
       const z = isPremium ? safeZPremium : safeZCurrent;
       const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
       
       const tc = constantDistance / (v * feed * z); 
-      const lifeMins = Math.pow((C / v), (1 / mat.n));
+      const lifeMins = Math.pow((C / v), (1 / taylorProps.n));
       
       const costPorPunta = toolPrice / edges;
       const costJuego = costPorPunta * z;
@@ -345,7 +374,7 @@ export default function TaylorCurvePage() {
 
     // Crear Set para forzar las Vc en el eje X
     const speedsSet = new Set<number>();
-    for (let v = 50; v <= mat.C * 1.3; v += 10) {
+    for (let v = 50; v <= taylorProps.C * 1.3; v += 10) {
       speedsSet.add(v);
     }
     if (safeVcCurrent > 0) speedsSet.add(safeVcCurrent);
@@ -454,6 +483,11 @@ export default function TaylorCurvePage() {
         if (load <= 95) return { bar: 'bg-amber-500', text: 'text-amber-700', label: 'Desbaste Pesado' };
         return { bar: 'bg-red-600 animate-pulse', text: 'text-red-800 font-black', label: '¡PELIGRO: Sobrecarga!' };
     };
+    
+    const materialGroups = MATERIALS.reduce((acc, mat) => {
+        (acc[mat.grupo] = acc[mat.grupo] || []).push(mat);
+        return acc;
+    }, {} as Record<string, typeof MATERIALS>);
 
   return (
     <>
@@ -532,7 +566,14 @@ export default function TaylorCurvePage() {
                   <Label className="block text-xs font-bold text-slate-500 mb-1">Material</Label>
                   <Select value={materialId} onValueChange={setMaterialId}>
                     <SelectTrigger className="w-full bg-slate-50"><SelectValue placeholder="Selecciona un material" /></SelectTrigger>
-                    <SelectContent>{MATERIALS.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
+                    <SelectContent>
+                        {Object.entries(materialGroups).map(([groupName, materials]) => (
+                            <SelectGroup key={groupName}>
+                                <SelectLabel>{groupName}</SelectLabel>
+                                {materials.map(m => <SelectItem key={m.nombre} value={m.nombre}>{m.nombre}</SelectItem>)}
+                            </SelectGroup>
+                        ))}
+                    </SelectContent>
                   </Select>
                 </div>
                 <div>
@@ -917,7 +958,7 @@ export default function TaylorCurvePage() {
             <div className="mb-6">
               <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">1. Condiciones de Trabajo Evaluadas</h2>
               <div className="grid grid-cols-4 gap-4 text-xs">
-                <div><p className="text-slate-500">Material:</p><p className="font-bold">{MATERIALS.find(m => m.id === materialId)?.name}</p></div>
+                <div><p className="text-slate-500">Material:</p><p className="font-bold">{materialId}</p></div>
                 <div><p className="text-slate-500">Costo Máquina:</p><p className="font-bold">{formatCurrency(Number(machineCostHr))}</p></div>
                 <div><p className="text-slate-500">Tiempo Cambio Herr.:</p><p className="font-bold">{toolChangeTime} min</p></div>
                 <div><p className="text-slate-500">Producción Mensual:</p><p className="font-bold">{formatNumber(Number(monthlyProduction))} pzs/mes</p></div>
@@ -1016,3 +1057,4 @@ export default function TaylorCurvePage() {
     </>
   );
 }
+
