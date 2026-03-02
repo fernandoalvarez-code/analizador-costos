@@ -125,54 +125,56 @@ export default function TaylorCurvePage() {
     if (user) fetchLogos();
   }, [user]);
 
-  const handleGeneratePDF = async (action: 'download' | 'share') => {
+  const handleGeneratePDF = async (action: 'download' | 'share' | 'blob') => {
     setIsGenerating(true);
     try {
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const a4Width = 210;
-  
-      // 1. CAPTURAR PÁGINA 1 (Tablas de Datos y Ahorros)
-      const elementoPagina1 = document.getElementById('pdf-pagina-1');
-      if (!elementoPagina1) throw new Error("Elemento 'pdf-pagina-1' no encontrado.");
-      
-      const canvas1 = await html2canvas(elementoPagina1, { scale: 2, useCORS: true, allowTaint: true });
-      const imgData1 = canvas1.toDataURL('image/png');
-      const imgHeight1 = (canvas1.height * a4Width) / canvas1.width;
-      pdf.addImage(imgData1, 'PNG', 0, 0, a4Width, imgHeight1);
-  
-      // 2. CREAR SALTO DE PÁGINA
-      pdf.addPage();
-  
-      // 3. CAPTURAR PÁGINA 2 (Gráfica de Curva de Costos)
-      const elementoPagina2 = document.getElementById('pdf-pagina-2');
-      if (!elementoPagina2) throw new Error("Elemento 'pdf-pagina-2' no encontrado.");
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const a4Width = 210;
 
-      const canvas2 = await html2canvas(elementoPagina2, { scale: 2, useCORS: true, allowTaint: true });
-      const imgData2 = canvas2.toDataURL('image/png');
-      const imgHeight2 = (canvas2.height * a4Width) / canvas2.width;
-      pdf.addImage(imgData2, 'PNG', 0, 0, a4Width, imgHeight2);
-  
-      // 4. DESCARGAR O COMPARTIR
-      const fileName = `Reporte_Secocut_Analisis.pdf`;
-      if (action === 'download') {
-        pdf.save(fileName);
-      } else {
-        const pdfBlob = pdf.output('blob');
-        const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ title: 'Reporte Secocut', files: [file] });
-        } else {
-          alert("Tu navegador no soporta la función de compartir. El archivo se descargará.");
-          pdf.save(fileName);
+        // 1. CAPTURAR PÁGINA 1 (Tablas de Datos y Ahorros)
+        const elementoPagina1 = document.getElementById('pdf-pagina-1');
+        if (!elementoPagina1) throw new Error("Elemento 'pdf-pagina-1' no encontrado.");
+        
+        const canvas1 = await html2canvas(elementoPagina1, { scale: 2, useCORS: true, allowTaint: true });
+        const imgData1 = canvas1.toDataURL('image/png');
+        const imgHeight1 = (canvas1.height * a4Width) / canvas1.width;
+        pdf.addImage(imgData1, 'PNG', 0, 0, a4Width, imgHeight1);
+
+        // 2. CREAR SALTO DE PÁGINA
+        pdf.addPage();
+
+        // 3. CAPTURAR PÁGINA 2 (Gráfica de Curva de Costos)
+        const elementoPagina2 = document.getElementById('pdf-pagina-2');
+        if (!elementoPagina2) throw new Error("Elemento 'pdf-pagina-2' no encontrado.");
+
+        const canvas2 = await html2canvas(elementoPagina2, { scale: 2, useCORS: true, allowTaint: true });
+        const imgData2 = canvas2.toDataURL('image/png');
+        const imgHeight2 = (canvas2.height * a4Width) / canvas2.width;
+        pdf.addImage(imgData2, 'PNG', 0, 0, a4Width, imgHeight2);
+
+        // 4. DEVOLVER EL TIPO CORRECTO
+        const fileName = `Reporte_Secocut_Analisis.pdf`;
+        if (action === 'blob') {
+          return pdf.output('blob');
+        } else if (action === 'download') {
+            pdf.save(fileName);
+        } else { // share
+            const pdfBlob = pdf.output('blob');
+            const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({ title: 'Reporte Secocut', files: [file] });
+            } else {
+                alert("Tu navegador no soporta la función de compartir. El archivo se descargará.");
+                pdf.save(fileName);
+            }
         }
-      }
     } catch (error) {
-      console.error("Error:", error);
-      alert("Error al procesar el PDF.");
+        console.error("Error:", error);
+        alert("Error al procesar el PDF.");
     } finally {
-      setIsGenerating(false);
+        setIsGenerating(false);
     }
-  };
+};
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -652,7 +654,7 @@ export default function TaylorCurvePage() {
           {/* 3. PROPUESTA PREMIUM */}
           <div className="bg-green-50/30 p-5 rounded-xl border border-green-200 flex flex-col h-full relative overflow-hidden shadow-[0_0_15px_rgba(34,197,94,0.1)]">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-green-500"></div>
-            <h2 className="font-black text-green-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🟢 Propuesta Premium</h2>
+            <h2 className="font-black text-green-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🟢 Propuesta (Secocut)</h2>
             
             <div className="grid grid-cols-2 gap-4 flex-grow">
               <div className="col-span-2">
@@ -712,7 +714,7 @@ export default function TaylorCurvePage() {
                         <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 2, strokeDasharray: '5 5' }} />
                         <Legend verticalAlign="top" height={36} />
                         <Line type="monotone" dataKey="costoActual" name="Inserto Competidor" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#ef4444' }} />
-                        <Line type="monotone" dataKey="costoPremium" name="Inserto Premium" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#22c55e' }} />
+                        <Line type="monotone" dataKey="costoPremium" name="Propuesta (Secocut)" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#22c55e' }} />
 
                         {isFinite(curveDataInfo.actualCostCurrent) && <ReferenceDot x={Number(vcCurrent)} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />}
                         {isFinite(curveDataInfo.actualCostPremium) && <ReferenceDot x={Number(vcPremium)} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
@@ -965,7 +967,7 @@ export default function TaylorCurvePage() {
                   <tr className="bg-slate-800 text-white">
                     <th className="p-2 border border-slate-700">Parámetro</th>
                     <th className="p-2 border border-slate-700 text-center">Condición Actual (Competidor)</th>
-                    <th className="p-2 border border-slate-700 text-center">Propuesta Premium (Secocut)</th>
+                    <th className="p-2 border border-slate-700 text-center">Propuesta (Secocut)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1053,8 +1055,8 @@ export default function TaylorCurvePage() {
                   <XAxis dataKey="speed" label={{ value: 'Vc (m/min)', position: 'bottom', offset: -5 }} />
                   <YAxis label={{ value: 'Costo USD', angle: -90, position: 'insideLeft' }} />
                   <Legend verticalAlign="top" height={36} />
-                  <Line type="monotone" dataKey="costoActual" stroke="#ef4444" strokeWidth={3} dot={false} />
-                  <Line type="monotone" dataKey="costoPremium" stroke="#22c55e" strokeWidth={3} dot={false} />
+                  <Line type="monotone" dataKey="costoActual" name="Inserto Competidor" stroke="#ef4444" strokeWidth={3} dot={false} />
+                  <Line type="monotone" dataKey="costoPremium" name="Propuesta (Secocut)" stroke="#22c55e" strokeWidth={3} dot={false} />
                   {isFinite(curveDataInfo.actualCostCurrent) && <ReferenceDot x={Number(vcCurrent)} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />}
                   {isFinite(curveDataInfo.actualCostPremium) && <ReferenceDot x={Number(vcPremium)} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
                 </LineChart>
@@ -1069,3 +1071,5 @@ export default function TaylorCurvePage() {
     </>
   );
 }
+
+    
