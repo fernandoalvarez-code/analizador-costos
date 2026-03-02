@@ -73,7 +73,7 @@ Si el usuario usa estos rompevirutas, exige estos límites:
 * Torneado Roscas - Vibración: Usa penetración por "Flanco Modificado" (NUNCA radial pura).
 * Roscado con Machos (Tapping) - Rotura / Astillamiento: Verifica que el macho no esté chocando contra el fondo del agujero ciego. Si la broca previa estaba desgastada, pudo causar "endurecimiento superficial" en el agujero, lo que rompe el macho; cambia la broca. Usa portamachos con control de torque.
 * Roscado con Machos - Rosca Sobredimensionada (Grande): El avance axial es incorrecto. Exige usar un portamachos sincronizado o elige un macho con menor tolerancia.
-* Roscado con Machos - Rosca Subdimensionada (Pequeña): El material se está "cerrando" después de pasar el macho, o la broca previa era muy pequeña. Solución: Aumentar el diámetro de la broca o elige un macho con mayor tolerancia.
+* Roscado con Machos - Rosca Subdimensionada (Pequeña): El material se está "cerrando" después de pasar el macho, o la broca previa era muy pequeña. Solución: Aumentar el diámetro de la broca o elegir un macho con mayor tolerancia.
 * Roscado con Machos - Filo aportado o Desgaste rápido: Falta de lubricación o uso de emulsión incorrecta. Verifica la velocidad de corte.
 
 ### 5. ESPECIALISTA EN ROSCADO Y TALADRADO
