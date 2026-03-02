@@ -125,51 +125,46 @@ export default function TaylorCurvePage() {
     if (user) fetchLogos();
   }, [user]);
 
-  const generatePdfBlob = async (): Promise<Blob | null> => {
-    try {
-      const element = document.getElementById('pdf-taylor-template');
-      if (!element) throw new Error("No se encontró la plantilla del PDF.");
-
-      element.style.position = 'absolute';
-      element.style.top = '0px';
-      element.style.left = '0px';
-      element.style.zIndex = '-9999';
-
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true, allowTaint: true });
-      element.style.top = '-9999px';
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      return pdf.output('blob');
-    } catch (error) {
-      console.error("Error generando Blob del PDF:", error);
-      return null;
-    }
-  };
-
   const handleGeneratePDF = async (action: 'download' | 'share') => {
     setIsGenerating(true);
     try {
-      const pdfBlob = await generatePdfBlob();
-      if (!pdfBlob) throw new Error("Fallo al crear el documento.");
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const a4Width = 210;
+  
+      // 1. CAPTURAR PÁGINA 1 (Tablas de Datos y Ahorros)
+      const elementoPagina1 = document.getElementById('pdf-pagina-1');
+      if (!elementoPagina1) throw new Error("Elemento 'pdf-pagina-1' no encontrado.");
+      
+      const canvas1 = await html2canvas(elementoPagina1, { scale: 2, useCORS: true, allowTaint: true });
+      const imgData1 = canvas1.toDataURL('image/png');
+      const imgHeight1 = (canvas1.height * a4Width) / canvas1.width;
+      pdf.addImage(imgData1, 'PNG', 0, 0, a4Width, imgHeight1);
+  
+      // 2. CREAR SALTO DE PÁGINA
+      pdf.addPage();
+  
+      // 3. CAPTURAR PÁGINA 2 (Gráfica de Curva de Costos)
+      const elementoPagina2 = document.getElementById('pdf-pagina-2');
+      if (!elementoPagina2) throw new Error("Elemento 'pdf-pagina-2' no encontrado.");
 
-      const fileName = `Reporte_Secocut_${new Date().getTime()}.pdf`;
-      const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
-
-      if (action === 'share' && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ title: 'Reporte Secocut', files: [file] });
+      const canvas2 = await html2canvas(elementoPagina2, { scale: 2, useCORS: true, allowTaint: true });
+      const imgData2 = canvas2.toDataURL('image/png');
+      const imgHeight2 = (canvas2.height * a4Width) / canvas2.width;
+      pdf.addImage(imgData2, 'PNG', 0, 0, a4Width, imgHeight2);
+  
+      // 4. DESCARGAR O COMPARTIR
+      const fileName = `Reporte_Secocut_Analisis.pdf`;
+      if (action === 'download') {
+        pdf.save(fileName);
       } else {
-        // Fallback a descarga si falla el share o si es acción download
-        const url = URL.createObjectURL(pdfBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        link.click();
-        URL.revokeObjectURL(url);
+        const pdfBlob = pdf.output('blob');
+        const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ title: 'Reporte Secocut', files: [file] });
+        } else {
+          alert("Tu navegador no soporta la función de compartir. El archivo se descargará.");
+          pdf.save(fileName);
+        }
       }
     } catch (error) {
       console.error("Error:", error);
@@ -867,7 +862,7 @@ export default function TaylorCurvePage() {
                     // BLOQUE AISLADO PARA EL PDF (Si falla, no bloquea el guardado en BD)
                     try {
                       console.log("2. Generando PDF...");
-                      const pdfBlob = await generatePdfBlob();
+                      const pdfBlob = await handleGeneratePDF('blob'); // Changed this
                       
                       if (pdfBlob && storage) {
                         console.log("3. Subiendo PDF a Storage...");
@@ -922,12 +917,11 @@ export default function TaylorCurvePage() {
       )}
 
         {/* PLANTILLA OCULTA PARA PDF (Renderizada fuera de pantalla para html2canvas) */}
-        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
-          <div id="pdf-taylor-template" className="w-[210mm] min-h-[290mm] bg-white text-black p-10 font-sans box-border flex flex-col">
+        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', zIndex: -1 }}>
+          <div id="pdf-pagina-1" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
             
             {/* HEADER DEL PDF CON LOGOS UNIFICADO */}
             <div className="relative mb-8 pb-4 border-b-2 border-slate-800">
-              {/* Fila superior: Logos */}
               <div className="flex justify-between items-start mb-8 h-16">
                 {logos.company ? (
                   <img src={logos.company} alt="Logo Empresa" crossOrigin="anonymous" className="h-full object-contain max-w-[250px] object-left" />
@@ -942,12 +936,10 @@ export default function TaylorCurvePage() {
                 )}
               </div>
 
-              {/* Título Central */}
               <div className="text-center mb-10 mt-4">
                 <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tight">Análisis de Curva de Costos</h1>
               </div>
 
-              {/* Fila inferior: Cliente y Fecha */}
               <div className="flex justify-between items-end">
                 <h2 className="text-2xl font-bold text-blue-600">{saveClientName || pieceName || 'Reporte de Análisis'}</h2>
                 <div className="text-right">
@@ -972,51 +964,59 @@ export default function TaylorCurvePage() {
                 <thead>
                   <tr className="bg-slate-800 text-white">
                     <th className="p-2 border border-slate-700">Parámetro</th>
-                    <th className="p-2 border border-slate-700">Condición Actual (Competidor)</th>
-                    <th className="p-2 border border-slate-700">Propuesta Premium (Secocut)</th>
+                    <th className="p-2 border border-slate-700 text-center">Condición Actual (Competidor)</th>
+                    <th className="p-2 border border-slate-700 text-center">Propuesta Premium (Secocut)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {/* NUEVA FILA EN EL PDF: NOMBRE HERRAMIENTA */}
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold bg-slate-50">Herramienta Propuesta</td>
-                    <td className="p-2 border border-slate-300 text-slate-400 italic">Actual del cliente</td>
-                    <td className="p-2 border border-slate-300 font-bold text-green-700 bg-green-50">{toolNamePremium || 'No especificada'}</td>
+                    <td className="p-2 border border-slate-300 text-slate-400 italic text-center">Actual del cliente</td>
+                    <td className="p-2 border border-slate-300 font-bold text-green-700 bg-green-50 text-center">{toolNamePremium || 'No especificada'}</td>
                   </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Precio Inserto</td>
-                    <td className="p-2 border border-slate-300">{formatCurrency(Number(toolCostCurrent))}</td>
-                    <td className="p-2 border border-slate-300">{formatCurrency(Number(toolCostPremium))}</td>
+                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(Number(toolCostCurrent))}</td>
+                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(Number(toolCostPremium))}</td>
                   </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Tiempo de Corte (min)</td>
-                    <td className="p-2 border border-slate-300">{`${tcCurrentMin || 0}m ${tcCurrentSec || 0}s`}</td>
-                    <td className="p-2 border border-slate-300">{`${premiumMins}m ${premiumSecs}s`}</td>
+                    <td className="p-2 border border-slate-300 text-center">{`${tcCurrentMin || 0}m ${tcCurrentSec || 0}s`}</td>
+                    <td className="p-2 border border-slate-300 text-center">{`${premiumMins}m ${premiumSecs}s`}</td>
                   </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Velocidad de Corte (Vc)</td>
-                    <td className="p-2 border border-slate-300">{vcCurrent} m/min</td>
-                    <td className="p-2 border border-slate-300">{vcPremium} m/min</td>
+                    <td className="p-2 border border-slate-300 text-center">{vcCurrent} m/min</td>
+                    <td className="p-2 border border-slate-300 text-center">{vcPremium} m/min</td>
                   </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Avance (f)</td>
-                    <td className="p-2 border border-slate-300">{feedCurrent} mm/rev</td>
-                    <td className="p-2 border border-slate-300">{feedPremium} mm/rev</td>
+                    <td className="p-2 border border-slate-300 text-center">{feedCurrent} mm/rev</td>
+                    <td className="p-2 border border-slate-300 text-center">{feedPremium} mm/rev</td>
                   </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Rendimiento (Pzas/Filo)</td>
-                    <td className="p-2 border border-slate-300">{pcsCurrent} pzs</td>
-                    <td className="p-2 border border-slate-300">{pcsPremium} pzs</td>
+                    <td className="p-2 border border-slate-300 text-center">{pcsCurrent} pzs</td>
+                    <td className="p-2 border border-slate-300 text-center">{pcsPremium} pzs</td>
                   </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Consumo de Motor</td>
-                    <td className="p-2 border border-slate-300">{curveDataInfo.hpCurrent.toFixed(1)} HP ({curveDataInfo.loadCurrent.toFixed(1)}%)</td>
-                    <td className="p-2 border border-slate-300">{curveDataInfo.hpPremium.toFixed(1)} HP ({curveDataInfo.loadPremium.toFixed(1)}%)</td>
+                    <td className="p-2 border border-slate-300 text-center">{curveDataInfo.hpCurrent.toFixed(1)} HP ({curveDataInfo.loadCurrent.toFixed(1)}%)</td>
+                    <td className="p-2 border border-slate-300 text-center">{curveDataInfo.hpPremium.toFixed(1)} HP ({curveDataInfo.loadPremium.toFixed(1)}%)</td>
                   </tr>
                   <tr className="bg-slate-50">
                     <td className="p-2 border border-slate-300 font-bold text-slate-800">Costo Real por Pieza</td>
-                    <td className="p-2 border border-slate-300 font-bold text-red-600">{isFinite(curveDataInfo.actualCostCurrent) ? formatCurrency(curveDataInfo.actualCostCurrent) : 'N/A'}</td>
-                    <td className="p-2 border border-slate-300 font-bold text-green-600">{isFinite(curveDataInfo.actualCostPremium) ? formatCurrency(curveDataInfo.actualCostPremium) : 'N/A'}</td>
+                    <td className="p-2 border border-slate-300 font-bold text-red-600 text-center">{isFinite(curveDataInfo.actualCostCurrent) ? formatCurrency(curveDataInfo.actualCostCurrent) : 'N/A'}</td>
+                    <td className="p-2 border border-slate-300 text-center">
+                      <div className="flex items-center gap-2 justify-center">
+                        <span className="font-bold text-green-600">{isFinite(curveDataInfo.actualCostPremium) ? formatCurrency(curveDataInfo.actualCostPremium) : 'N/A'}</span>
+                        {curveDataInfo.realSavingsPercentage > 0.1 && (
+                            <span className="bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded-full text-[10px]">
+                                ↓ {curveDataInfo.realSavingsPercentage.toFixed(1)}%
+                            </span>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -1035,9 +1035,19 @@ export default function TaylorCurvePage() {
               </div>
             </div>
 
+            <div className="mt-auto pt-4 border-t border-slate-300 text-center text-[10px] text-slate-500">
+              Reporte de Análisis de Costos • Página 1 de 2
+            </div>
+          </div>
+
+          <div id="pdf-pagina-2" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
+              <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-xl font-black text-slate-800 uppercase">Análisis Gráfico</h2>
+                  <p className="text-sm font-bold text-slate-500">Página 2 de 2</p>
+              </div>
             <div>
               <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">2. Análisis de Curva de Costos</h2>
-              <div className="w-[180mm] h-[300px] mx-auto border border-slate-200 p-2 bg-white">
+              <div className="w-full h-[300px] border border-slate-200 p-2 bg-white">
                 <LineChart width={650} height={280} data={curveDataInfo.data}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="speed" label={{ value: 'Vc (m/min)', position: 'bottom', offset: -5 }} />
