@@ -64,12 +64,12 @@ export default function TaylorCurvePage() {
   const [machineCostHr, setMachineCostHr] = useState<number | "">("");
   const [toolChangeTime, setToolChangeTime] = useState<number | "">("");
   const [pieceName, setPieceName] = useState<string>("");
-  const [ap, setAp] = useState<number | "">(""); // Profundidad de corte
   const [machinePowerHP, setMachinePowerHP] = useState<number | "">(15); // Potencia del motor
   
   // Competidor
   const [toolNameCurrent, setToolNameCurrent] = useState<string>("");
   const [toolCostCurrent, setToolCostCurrent] = useState<number | "">("");
+  const [apCurrent, setApCurrent] = useState<number | "">("");
   const [feedCurrent, setFeedCurrent] = useState<number | "">("");
   const [vcCurrent, setVcCurrent] = useState<number | "">("");
   const [pcsCurrent, setPcsCurrent] = useState<number | "">("");
@@ -81,6 +81,7 @@ export default function TaylorCurvePage() {
   // Premium
   const [toolNamePremium, setToolNamePremium] = useState<string>("");
   const [toolCostPremium, setToolCostPremium] = useState<number | "">("");
+  const [apPremium, setApPremium] = useState<number | "">("");
   const [feedPremium, setFeedPremium] = useState<number | "">("");
   const [vcPremium, setVcPremium] = useState<number | "">("");
   const [pcsPremium, setPcsPremium] = useState<number | "">("");
@@ -216,7 +217,7 @@ export default function TaylorCurvePage() {
         condicion_actual_competencia: {
           herramienta: toolNameCurrent,
           angulo_incidencia_iso: obtenerAnguloTexto(toolNameCurrent),
-          ap: Number(ap) || 0,
+          profundidad_ap_mm: Number(apCurrent) || 0,
           vc: Number(vcCurrent) || 0,
           feed: Number(feedCurrent) || 0,
           carga_husillo_hp: curveDataInfo.hpCurrent,
@@ -225,6 +226,7 @@ export default function TaylorCurvePage() {
         propuesta_seco: {
           herramienta: toolNamePremium,
           angulo_incidencia_iso: obtenerAnguloTexto(toolNamePremium),
+          profundidad_ap_mm: Number(apPremium) || 0,
           vc: Number(vcPremium) || 0,
           feed: Number(feedPremium) || 0,
           carga_husillo_hp: curveDataInfo.hpPremium,
@@ -296,7 +298,7 @@ export default function TaylorCurvePage() {
                 onClick={() => {
                   if (variable === 'VC') setVcPremium(Number(value));
                   if (variable === 'AVANCE') setFeedPremium(Number(value));
-                  if (variable === 'AP') setAp(Number(value));
+                  if (variable === 'AP') setApPremium(Number(value));
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
               >
@@ -320,13 +322,14 @@ export default function TaylorCurvePage() {
     const safeTcCurrent = (Number(tcCurrentMin) || 0) + ((Number(tcCurrentSec) || 0) / 60);
     const safeVcCurrent = Number(vcCurrent) || 0.0001;
     const safeFeedCurrent = Number(feedCurrent) || 0.0001;
+    const safeApCurrent = Number(apCurrent) || 0.0001;
+
     const safeVcPremium = Number(vcPremium) || 0.0001;
     const safeFeedPremium = Number(feedPremium) || 0.0001;
+    const safeApPremium = Number(apPremium) || 0.0001;
 
     // Variables de Fresado (Z y Filos) controladas por el Toggle
     const safeZCurrent = operationType === 'turning' ? 1 : (Number(zCurrent) || 1);
-    
-    // Regla UX: Si Z Premium está vacío, hereda el Z del competidor para evitar tiempos infinitos o erróneos
     const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || safeZCurrent);
     
     const safeEdgesCurrent = Number(edgesCurrent) || 1;
@@ -340,25 +343,23 @@ export default function TaylorCurvePage() {
     const taylorProps = TAYLOR_CONSTANTS[mat.grupo as keyof typeof TAYLOR_CONSTANTS] || { n: 0.25, C: 200 };
     const premiumC = taylorProps.C * 1.25;
 
-    // EL CORAZÓN DE LA AUTOMATIZACIÓN: Constante de proporción incluyendo Z
-    const constantDistance = safeTcCurrent * safeVcCurrent * safeFeedCurrent * safeZCurrent;
+    const factorVelocidad = safeVcCurrent / safeVcPremium;
+    const factorAvance = safeFeedCurrent / safeFeedPremium;
+    const factorZ = safeZCurrent / safeZPremium;
+    const factorPasadas = safeApCurrent / safeApPremium;
     
-    // CÁLCULO REACTIVO DEL TIEMPO PREMIUM (Se reduce automáticamente si sube Z, Vc o Avance)
-    const tcPremium = constantDistance / (safeVcPremium * safeFeedPremium * safeZPremium);
+    const tcPremium = safeTcCurrent * factorVelocidad * factorAvance * factorZ * factorPasadas;
 
-    // Constante kc del material (Fallback a 1500 si no existe)
     const kc = mat.kc || 1500;
-    const safeAp = Number(ap) || 2.0; // Profundidad por defecto: 2mm para evitar potencia 0
-    const safeMachinePowerHP = Number(machinePowerHP) || 15; // Evitar división por cero
+    const safeMachinePowerHP = Number(machinePowerHP) || 15;
 
-    // CÁLCULO DE POTENCIA (kW a HP) CON GEOMETRÍA
     const factorIncidenciaCurrent = obtenerFactorIncidencia(toolNameCurrent);
-    const kwCurrent = (safeAp * safeFeedCurrent * safeVcCurrent * kc * safeZCurrent) / 60000;
+    const kwCurrent = (safeApCurrent * safeFeedCurrent * safeVcCurrent * kc * safeZCurrent) / 60000;
     const hpCurrent = kwCurrent * 1.341 * factorIncidenciaCurrent;
     const loadCurrent = (hpCurrent / safeMachinePowerHP) * 100;
 
     const factorIncidenciaPremium = obtenerFactorIncidencia(toolNamePremium);
-    const kwPremium = (safeAp * safeFeedPremium * safeVcPremium * kc * safeZPremium) / 60000;
+    const kwPremium = (safeApPremium * safeFeedPremium * safeVcPremium * kc * safeZPremium) / 60000;
     const hpPremium = kwPremium * 1.341 * factorIncidenciaPremium;
     const loadPremium = (hpPremium / safeMachinePowerHP) * 100;
 
@@ -369,8 +370,9 @@ export default function TaylorCurvePage() {
       const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
       const z = isPremium ? safeZPremium : safeZCurrent;
       const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
-      
-      const tc = constantDistance / (v * feed * z); 
+      const ap = isPremium ? safeApPremium : safeApCurrent; // This is a simplification for the theoretical curve
+
+      const tc = (safeTcCurrent * (safeVcCurrent / v) * (safeFeedCurrent / feed) * (safeApCurrent / ap));
       const lifeMins = Math.pow((C / v), (1 / taylorProps.n));
       
       const costPorPunta = toolPrice / edges;
@@ -389,7 +391,6 @@ export default function TaylorCurvePage() {
       return costCorte + costHerr + costCambio;
     };
 
-    // Crear Set para forzar las Vc en el eje X
     const speedsSet = new Set<number>();
     for (let v = 50; v <= taylorProps.C * 1.3; v += 10) {
       speedsSet.add(v);
@@ -414,7 +415,6 @@ export default function TaylorCurvePage() {
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
     const realSavingsPercentage = actualCostCurrent > 0 ? (realAbsoluteSavings / actualCostCurrent) * 100 : 0;
     
-    // CÁLCULO DEL AHORRO MENSUAL PARA EL BANNER
     const monthlySavings = isFinite(realAbsoluteSavings) ? realAbsoluteSavings * safeMonthlyProduction : 0;
 
     return { 
@@ -430,23 +430,21 @@ export default function TaylorCurvePage() {
       loadCurrent,
       loadPremium,
     };
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, ap, machinePowerHP, toolNameCurrent, toolNamePremium]);
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium]);
 
   const premiumMins = Math.floor(curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0);
   const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
+  const porcentajeAhorro = curveDataInfo.realSavingsPercentage.toFixed(1);
 
   // --- CUSTOM TOOLTIP PARA RECHARTS (Con % de Ahorro) ---
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      // 1. Detectar si estamos en los puntos reales del usuario
       const isUserCurrentVc = label === (Number(vcCurrent) || 0);
       const isUserPremiumVc = label === (Number(vcPremium) || 0);
 
-      // 2. Obtener los costos a mostrar
       const displayCostCurrent = isUserCurrentVc ? curveDataInfo.actualCostCurrent : payload[0]?.value;
       const displayCostPremium = isUserPremiumVc ? curveDataInfo.actualCostPremium : payload[1]?.value;
 
-      // 3. Calcular el Porcentaje de Ahorro Real
       const currentCost = curveDataInfo.actualCostCurrent;
       const premiumCost = curveDataInfo.actualCostPremium;
       const savingsPercentage = currentCost > 0 ? ((currentCost - premiumCost) / currentCost) * 100 : 0;
@@ -456,7 +454,6 @@ export default function TaylorCurvePage() {
           <p className="font-black text-slate-700 mb-3 border-b pb-1">Vc: {label} m/min</p>
           
           <div className="space-y-3">
-            {/* COMPETIDOR */}
             <div>
               <p className="text-[10px] font-bold text-red-500 uppercase">
                 {isUserCurrentVc ? '🔴 COSTO REAL (Tu Parámetro)' : 'Costo Teórico (Competidor)'}
@@ -464,7 +461,6 @@ export default function TaylorCurvePage() {
               <p className="font-bold text-red-700">USD {Number(displayCostCurrent).toFixed(2)}</p>
             </div>
             
-            {/* PREMIUM + BADGE DE AHORRO */}
             <div>
               <p className="text-[10px] font-bold text-green-600 uppercase">
                 {isUserPremiumVc ? '🟢 COSTO REAL (Nuestra Propuesta)' : 'Costo Teórico (Premium)'}
@@ -472,7 +468,6 @@ export default function TaylorCurvePage() {
               <div className="flex items-center gap-2 mt-0.5">
                 <p className="font-bold text-green-700">USD {Number(displayCostPremium).toFixed(2)}</p>
                 
-                {/* Lógica Condicional: Mostrar etiqueta solo en puntos reales y si hay ahorro */}
                 {(isUserCurrentVc || isUserPremiumVc) && savingsPercentage > 0.1 && (
                   <span className="bg-green-100 text-green-800 border border-green-200 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center shadow-sm">
                     ↓ {savingsPercentage.toFixed(1)}%
@@ -482,7 +477,6 @@ export default function TaylorCurvePage() {
             </div>
           </div>
           
-          {/* Nota al pie condicional */}
           {(isUserCurrentVc || isUserPremiumVc) && (
             <p className="mt-3 pt-2 border-t text-[9px] text-slate-400 italic leading-tight">
               *Los puntos marcados usan el cálculo empírico exacto ingresado en el formulario (rendimiento y tiempos reales).
@@ -560,7 +554,7 @@ export default function TaylorCurvePage() {
       <div className="space-y-6">
         
         {/* PANEL DE INPUTS (Horizontal 3 Columnas Simétricas) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           
           {/* 1. PARÁMETROS GENERALES (Ahora incluye Producción Mensual) */}
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
@@ -594,14 +588,10 @@ export default function TaylorCurvePage() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="block text-xs font-bold text-slate-500 mb-1">Prof. Corte (ap) mm</Label>
-                  <Input type="number" step="0.1" placeholder="Ej: 2.0" value={ap} onChange={e => setAp(e.target.value === "" ? "" : Number(e.target.value))} />
-                </div>
-                <div>
                   <Label className="block text-xs font-bold text-blue-700 mb-1">Motor (HP)</Label>
                   <Input type="number" step="0.5" className="font-bold text-blue-700 bg-blue-50/50" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value === "" ? "" : Number(e.target.value))} />
                 </div>
-                <div>
+                 <div>
                   <Label className="block text-xs font-bold text-slate-500 mb-1">Costo Máq. ($/hr)</Label>
                   <Input type="number" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value === "" ? "" : Number(e.target.value))} />
                 </div>
@@ -634,6 +624,7 @@ export default function TaylorCurvePage() {
               </div>
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-red-200 bg-white" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 4" className="border-red-200 bg-white" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white" value={apCurrent} onChange={e => setApCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               
               {operationType === 'milling' ? (
                 <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Insertos (Z)</Label><Input type="number" className="border-red-200 bg-white" value={zCurrent} onChange={e => setZCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
@@ -675,6 +666,7 @@ export default function TaylorCurvePage() {
               </div>
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-green-200 bg-white" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 8" className="border-green-200 bg-white" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white" value={apPremium} onChange={e => setApPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               
               {operationType === 'milling' ? (
                 <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Insertos (Z)</Label><Input type="number" className="border-green-200 bg-white" value={zPremium} onChange={e => setZPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
@@ -896,7 +888,7 @@ export default function TaylorCurvePage() {
                       taylorInputs: { 
                         operationType, 
                         materialId, 
-                        ap: Number(ap) || 2.0,
+                        ap: Number(apCurrent) || 2.0,
                         toolNamePremium,
                         toolNameCurrent
                       }
@@ -992,6 +984,11 @@ export default function TaylorCurvePage() {
                     <td className="p-2 border border-slate-300 text-center">{formatCurrency(Number(toolCostCurrent))}</td>
                     <td className="p-2 border border-slate-300 text-center">{formatCurrency(Number(toolCostPremium))}</td>
                   </tr>
+                   <tr>
+                    <td className="p-2 border border-slate-300 font-bold">Profundidad de Corte (ap)</td>
+                    <td className="p-2 border border-slate-300 text-center">{apCurrent} mm</td>
+                    <td className="p-2 border border-slate-300 text-center">{apPremium} mm</td>
+                  </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Tiempo de Corte (min)</td>
                     <td className="p-2 border border-slate-300 text-center">{`${tcCurrentMin || 0}m ${tcCurrentSec || 0}s`}</td>
@@ -1025,7 +1022,7 @@ export default function TaylorCurvePage() {
                         <span className="font-bold text-green-600">{isFinite(curveDataInfo.actualCostPremium) ? formatCurrency(curveDataInfo.actualCostPremium) : 'N/A'}</span>
                         {curveDataInfo.realSavingsPercentage > 0.1 && (
                             <span className="bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded-full text-[10px]">
-                                ↓ {curveDataInfo.realSavingsPercentage.toFixed(1)}%
+                                ↓ {porcentajeAhorro}%
                             </span>
                         )}
                       </div>
