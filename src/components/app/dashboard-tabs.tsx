@@ -127,7 +127,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     }, 
   });
 
-  const detailedForm = useForm<z.infer<typeof DetailedReportSchema>>({ resolver: zodResolver(DetailedReportSchema), defaultValues: initialData || { cliente: "", fecha: new Date().toISOString().split('T')[0], contacto: "", operacion: "", pieza: "", material: "", status: "Pendiente", machineHourlyRate: 35, piezasAlMes: 2000, tiempoParada: 2, costoImplementacion: 0, descA: "Herramienta Actual", precioA: '' as any, insertosPorHerramientaA: 1, filosA: '' as any, cicloMinA: '' as any, cicloSegA: '' as any, vcA: '' as any, modoVidaA: 'piezas', piezasFiloA: '' as any, minutosFiloA: 0, tiempoCorteA: 0, notasA: "", descB: "Herramienta Propuesta", precioB: '' as any, insertosPorHerramientaB: 1, filosB: '' as any, cicloMinB: '' as any, cicloSegB: '' as any, vcB: '' as any, modoVidaB: 'piezas', piezasFiloB: '' as any, minutosFiloB: 0, tiempoCorteB: 0, notasB: "", technicalConclusion: "" }, });
+  const detailedForm = useForm<z.infer<typeof DetailedReportSchema>>({ resolver: zodResolver(DetailedReportSchema), defaultValues: initialData || { cliente: "", fecha: new Date().toISOString().split('T')[0], contacto: "", operacion: "", pieza: "", material: "", status: "Pendiente", machineHourlyRate: 35, eficienciaOEE: 80, piezasAlMes: 2000, tiempoParada: 2, costoImplementacion: 0, descA: "Herramienta Actual", precioA: '' as any, insertosPorHerramientaA: 1, filosA: '' as any, cicloMinA: '' as any, cicloSegA: '' as any, vcA: '' as any, modoVidaA: 'piezas', piezasFiloA: '' as any, minutosFiloA: 0, tiempoCorteA: 0, notasA: "", descB: "Herramienta Propuesta", precioB: '' as any, insertosPorHerramientaB: 1, filosB: '' as any, cicloMinB: '' as any, cicloSegB: '' as any, vcB: '' as any, modoVidaB: 'piezas', piezasFiloB: '' as any, minutosFiloB: 0, tiempoCorteB: 0, notasB: "", technicalConclusion: "" }, });
   const saveCaseForm = useForm<z.infer<typeof SaveCaseSchema>>({ resolver: zodResolver(SaveCaseSchema), defaultValues: { caseName: initialData?.name || "", }, });
 
   const parseTimeToMinutes = (min: number | undefined, sec: number | undefined) => { const minVal = safeNumber(min); const secVal = safeNumber(sec); return minVal + (secVal / 60); }
@@ -250,10 +250,13 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     const data = detailValues;
     if (!data.machineHourlyRate || !data.piezasAlMes) return;
 
-    const machineHourlyRate = safeNumber(data.machineHourlyRate);
+    const machineHourlyRateTeorico = safeNumber(data.machineHourlyRate);
     const piezasAlMes = safeNumber(data.piezasAlMes);
     const tiempoParada = safeNumber(data.tiempoParada);
-    const costoMin = machineHourlyRate / 60;
+    const eficienciaOEE = safeNumber(data.eficienciaOEE) || 100;
+
+    const machineHourlyRateReal = machineHourlyRateTeorico / (eficienciaOEE / 100);
+    const costoMin = machineHourlyRateReal / 60;
     
     const tcA = parseTimeToMinutes(data.cicloMinA, data.cicloSegA);
     const tcB = parseTimeToMinutes(data.cicloMinB, data.cicloSegB);
@@ -305,7 +308,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     const annualParts = piezasAlMes * 12; 
     const tiempoAhorradoPorPiezaMin = tcA - tcB; 
     const machineHoursFreedAnnual = (annualParts * tiempoAhorradoPorPiezaMin) / 60; 
-    const machineHoursFreedValueAnnual = machineHoursFreedAnnual * machineHourlyRate; 
+    const machineHoursFreedValueAnnual = machineHoursFreedAnnual * machineHourlyRateReal; 
     const piezasAdicionalesAnual = tcB > 0 ? (machineHoursFreedAnnual * 60) / tcB : 0; 
     const diasLaboralesAhorradosAnual = machineHoursFreedAnnual / 8; 
     const semanasLaboralesAhorradasAnual = diasLaboralesAhorradosAnual / 5;
@@ -321,8 +324,8 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     const tiempoMaquinaMensualHorasA = (tcA * piezasAlMes) / 60; 
     const tiempoMaquinaMensualHorasB = (tcB * piezasAlMes) / 60; 
     const machineHoursFreedMonthly = tiempoMaquinaMensualHorasA - tiempoMaquinaMensualHorasB; 
-    const tiempoMaquinaMensualValorA = tiempoMaquinaMensualHorasA * machineHourlyRate; 
-    const tiempoMaquinaMensualValorB = tiempoMaquinaMensualHorasB * machineHourlyRate; 
+    const tiempoMaquinaMensualValorA = tiempoMaquinaMensualHorasA * machineHourlyRateReal; 
+    const tiempoMaquinaMensualValorB = tiempoMaquinaMensualHorasB * machineHourlyRateReal; 
     const turnosMensualesA = tiempoMaquinaMensualHorasA / 8; 
     const turnosMensualesB = tiempoMaquinaMensualHorasB / 8; 
     const timeReductionPercent = tcA > 0 ? ((tcA - tcB) / tcA) * 100 : 0;
@@ -580,11 +583,27 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                               <FormField control={detailedForm.control} name="material" render={({ field }) => (<FormItem><FormLabel>Tipo de Material</FormLabel><FormControl><Input placeholder="Ej: Acero Inoxidable 304" {...field} /></FormControl></FormItem>)}/>
                           </div>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-blue-50 border border-blue-200 rounded-lg mb-6">
-                          <FormField control={detailedForm.control} name="machineHourlyRate" render={({ field }) => (<FormItem><FormLabel>⚙️ Costo de Hora-Máquina (USD)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl></FormItem>)}/>
-                          <FormField control={detailedForm.control} name="piezasAlMes" render={({ field }) => (<FormItem><FormLabel>🏭 Piezas/Mes</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl></FormItem>)}/>
-                          <FormField control={detailedForm.control} name="tiempoParada" render={({ field }) => (<FormItem><FormLabel>⏱️ Parada por Cambio (min)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl></FormItem>)}/>
-                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 p-6 bg-blue-50 border border-blue-200 rounded-lg mb-6">
+                        <FormField control={detailedForm.control} name="machineHourlyRate" render={({ field }) => (
+                            <FormItem><FormLabel>⚙️ Costo Máquina (USD/hr)</FormLabel>
+                            <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl></FormItem>
+                        )}/>
+                        
+                        <FormField control={detailedForm.control} name="eficienciaOEE" render={({ field }) => (
+                            <FormItem><FormLabel>📊 Eficiencia OEE (%)</FormLabel>
+                            <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} className="border-blue-300 focus-visible:ring-blue-500" /></FormControl>
+                            <p className="text-[10px] text-slate-500">Ej: 80%. Descuenta set-ups.</p></FormItem>
+                        )}/>
+
+                        <FormField control={detailedForm.control} name="piezasAlMes" render={({ field }) => (
+                            <FormItem><FormLabel>🏭 Piezas/Mes</FormLabel>
+                            <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl></FormItem>
+                        )}/>
+                        <FormField control={detailedForm.control} name="tiempoParada" render={({ field }) => (
+                            <FormItem><FormLabel>⏱️ Parada Cambio (min)</FormLabel>
+                            <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl></FormItem>
+                        )}/>
+                    </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <Card className="overflow-hidden">
                               <CardHeader className="bg-destructive/80 text-destructive-foreground p-4"><CardTitle>Inserto A (Actual)</CardTitle></CardHeader>
@@ -750,5 +769,3 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     </>
   );
 }
-
-    

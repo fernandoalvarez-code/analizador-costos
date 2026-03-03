@@ -65,7 +65,11 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
   const r = data.results || {}; 
 
   // Cálculos
-  const costoMinuto = (data.machineHourlyRate || 0) / 60;
+  const oee = data.eficienciaOEE || 100;
+  const costoHoraTeorico = data.machineHourlyRate || 0;
+  const costoHoraReal = costoHoraTeorico / (oee / 100);
+  const costoMinuto = costoHoraReal / 60;
+  
   const tcA = (data.cicloMinA || 0) + ((data.cicloSegA || 0) / 60);
   const tcB = (data.cicloMinB || 0) + ((data.cicloSegB || 0) / 60);
   const timeInCutA = (data.tiempoCorteA && data.tiempoCorteA > 0) ? data.tiempoCorteA : tcA;
@@ -80,7 +84,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
   
   // Variables para el desglose (y para actualizar la conclusión)
   const piezasAlMes = data.piezasAlMes || 0;
-  const costoHora = data.machineHourlyRate || 0;
+  const costoHora = costoHoraReal;
   const horasA = (tcA * piezasAlMes) / 60;
   const horasB = (tcB * piezasAlMes) / 60;
   const horasLiberadas = horasA - horasB;
@@ -271,7 +275,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                     {settings?.companyLogoUrl && /* eslint-disable-next-line @next/next/no-img-element */<img src={settings.companyLogoUrl} alt="Logo" className="h-6 object-contain opacity-50 grayscale" />}
                     <div className="border-l border-slate-300 pl-4">
                         <span className="block text-lg font-bold text-slate-700 uppercase leading-none">Análisis Detallado</span>
-                        <span className="block text-[9px] text-slate-400 mt-1 uppercase tracking-wider">Basado en {formatNumber(data.piezasAlMes)} pzs/mes @ {formatCurrency(data.machineHourlyRate)}/hr</span>
+                        <span className="block text-[9px] text-slate-400 mt-1 uppercase tracking-wider">Basado en {formatNumber(data.piezasAlMes)} pzs/mes @ {formatCurrency(data.machineHourlyRate)}/hr (OEE: {data.eficienciaOEE || 100}%)</span>
                     </div>
                 </div>
                 <div className="text-right"><span className="text-[10px] text-slate-400 font-medium">Página {hasThirdPage ? '2/3' : '2/2'}</span></div>

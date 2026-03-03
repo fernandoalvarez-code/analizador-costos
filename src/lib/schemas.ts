@@ -69,8 +69,9 @@ export const DetailedReportSchema = z.object({
   pieza: z.string().optional(),
   material: z.string().min(1, "El material es requerido"),
   status: z.enum(["Pendiente", "Exitoso", "No Exitoso"]),
-  machineHourlyRate: z.number().positive(),
-  piezasAlMes: z.number().int().positive(),
+  machineHourlyRate: z.number().min(0),
+  eficienciaOEE: z.number().min(1).max(100).default(80),
+  piezasAlMes: z.number().int().min(0),
   tiempoParada: z.number().nonnegative(),
   costoImplementacion: z.number().nonnegative().optional(),
 
