@@ -77,7 +77,6 @@ export default function TaylorCurvePage() {
   const [tcCurrentSec, setTcCurrentSec] = useState<number | "">("");
   const [zCurrent, setZCurrent] = useState<number | "">("");
   const [edgesCurrent, setEdgesCurrent] = useState<number | "">("");
-  const [geometryCurrent, setGeometryCurrent] = useState<'positive' | 'negative'>('positive');
   
   // Premium
   const [toolNamePremium, setToolNamePremium] = useState<string>("");
@@ -87,7 +86,6 @@ export default function TaylorCurvePage() {
   const [pcsPremium, setPcsPremium] = useState<number | "">("");
   const [zPremium, setZPremium] = useState<number | "">("");
   const [edgesPremium, setEdgesPremium] = useState<number | "">("");
-  const [geometryPremium, setGeometryPremium] = useState<'positive' | 'negative'>('positive');
   
   // Volumen
   const [monthlyProduction, setMonthlyProduction] = useState<number | "">("");
@@ -104,6 +102,28 @@ export default function TaylorCurvePage() {
     { role: 'assistant', content: 'Hola, soy tu Copiloto Seco. Estoy analizando los parámetros de esta máquina. ¿En qué te ayudo?' }
   ]);
   const [isChatLoading, setIsChatLoading] = useState(false);
+
+  // --- Funciones de Cálculo ---
+  const obtenerFactorIncidencia = (codigoInserto: string): number => {
+    if (!codigoInserto || codigoInserto.length < 2) return 1.0;
+    const segundaLetra = codigoInserto.charAt(1).toUpperCase();
+    switch (segundaLetra) {
+      case 'N': case 'O': return 1.00;
+      case 'A': case 'B': case 'C': return 0.92;
+      case 'P': case 'D': return 0.88;
+      case 'E': case 'F': case 'G': return 0.85;
+      default: return 1.00;
+    }
+  };
+
+  const obtenerAnguloTexto = (codigoInserto: string): string => {
+    if (!codigoInserto || codigoInserto.length < 2) return 'N/A';
+    const segundaLetra = codigoInserto.charAt(1).toUpperCase();
+    const angulos: Record<string, string> = {
+      'N': '0° (Negativo)', 'A': '3°', 'B': '5°', 'C': '7°', 'P': '11°', 'D': '15°', 'E': '20°', 'F': '25°', 'G': '30°'
+    };
+    return angulos[segundaLetra] || 'Desconocido';
+  };
 
   React.useEffect(() => {
     const fetchLogos = async () => {
@@ -193,20 +213,20 @@ export default function TaylorCurvePage() {
         machine: {
           potencia_motor_hp: Number(machinePowerHP) || 0,
         },
-        currentProcess: {
-          tool: toolNameCurrent,
+        condicion_actual_competencia: {
+          herramienta: toolNameCurrent,
+          angulo_incidencia_iso: obtenerAnguloTexto(toolNameCurrent),
           ap: Number(ap) || 0,
           vc: Number(vcCurrent) || 0,
           feed: Number(feedCurrent) || 0,
-          geometry: geometryCurrent,
           carga_husillo_hp: curveDataInfo.hpCurrent,
           costPerPiece: curveDataInfo.actualCostCurrent
         },
-        premiumProposal: {
-          tool: toolNamePremium,
+        propuesta_seco: {
+          herramienta: toolNamePremium,
+          angulo_incidencia_iso: obtenerAnguloTexto(toolNamePremium),
           vc: Number(vcPremium) || 0,
           feed: Number(feedPremium) || 0,
-          geometry: geometryPremium,
           carga_husillo_hp: curveDataInfo.hpPremium,
           costPerPiece: curveDataInfo.actualCostPremium
         }
@@ -331,18 +351,16 @@ export default function TaylorCurvePage() {
     const safeAp = Number(ap) || 2.0; // Profundidad por defecto: 2mm para evitar potencia 0
     const safeMachinePowerHP = Number(machinePowerHP) || 15; // Evitar división por cero
 
-    // Multiplicadores de Geometría
-    const geoFactorCurrent = geometryCurrent === 'negative' ? 1.15 : 1.0;
-    const geoFactorPremium = geometryPremium === 'negative' ? 1.15 : 1.0;
-
     // CÁLCULO DE POTENCIA (kW a HP) CON GEOMETRÍA
+    const factorIncidenciaCurrent = obtenerFactorIncidencia(toolNameCurrent);
     const kwCurrent = (safeAp * safeFeedCurrent * safeVcCurrent * kc * safeZCurrent) / 60000;
-    const hpCurrent = kwCurrent * 1.341 * geoFactorCurrent;
-    const loadCurrent = (hpCurrent / safeMachinePowerHP) * 100; // Porcentaje de carga
+    const hpCurrent = kwCurrent * 1.341 * factorIncidenciaCurrent;
+    const loadCurrent = (hpCurrent / safeMachinePowerHP) * 100;
 
+    const factorIncidenciaPremium = obtenerFactorIncidencia(toolNamePremium);
     const kwPremium = (safeAp * safeFeedPremium * safeVcPremium * kc * safeZPremium) / 60000;
-    const hpPremium = kwPremium * 1.341 * geoFactorPremium;
-    const loadPremium = (hpPremium / safeMachinePowerHP) * 100; // Porcentaje de carga
+    const hpPremium = kwPremium * 1.341 * factorIncidenciaPremium;
+    const loadPremium = (hpPremium / safeMachinePowerHP) * 100;
 
 
     // 1. Función Teórica
@@ -412,7 +430,7 @@ export default function TaylorCurvePage() {
       loadCurrent,
       loadPremium,
     };
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, ap, machinePowerHP, geometryCurrent, geometryPremium]);
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, ap, machinePowerHP, toolNameCurrent, toolNamePremium]);
 
   const premiumMins = Math.floor(curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0);
   const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
@@ -616,13 +634,7 @@ export default function TaylorCurvePage() {
               </div>
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-red-200 bg-white" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 4" className="border-red-200 bg-white" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
-              <div>
-                <Label className="block text-[10px] font-bold text-red-600 mb-1">Geometría</Label>
-                <Select value={geometryCurrent} onValueChange={(value) => setGeometryCurrent(value as 'positive' | 'negative')}>
-                  <SelectTrigger className="border-red-200 bg-white text-red-800 font-medium"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="positive">Positiva (1.0x)</SelectItem><SelectItem value="negative">Negativa (+15% HP)</SelectItem></SelectContent>
-                </Select>
-              </div>
+              
               {operationType === 'milling' ? (
                 <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Insertos (Z)</Label><Input type="number" className="border-red-200 bg-white" value={zCurrent} onChange={e => setZCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               ) : (
@@ -632,7 +644,7 @@ export default function TaylorCurvePage() {
                 <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Avance (mm/z)</Label><Input type="number" step="0.01" className="border-red-200 bg-white" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               )}
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label><Input type="number" className="border-red-200 bg-white" value={vcCurrent} onChange={e => setVcCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
-              <div className={operationType === 'milling' ? "col-span-2" : ""}><Label className="block text-[10px] font-bold text-red-600 mb-1">Pzas / filo</Label><Input type="number" className="border-red-200 bg-white" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              <div className="col-span-2"><Label className="block text-[10px] font-bold text-red-600 mb-1">Pzas / filo</Label><Input type="number" className="border-red-200 bg-white" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-red-700 mb-1">Tiempo Actual (Corte)</Label>
@@ -663,13 +675,7 @@ export default function TaylorCurvePage() {
               </div>
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-green-200 bg-white" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 8" className="border-green-200 bg-white" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
-              <div>
-                <Label className="block text-[10px] font-bold text-green-700 mb-1">Geometría</Label>
-                <Select value={geometryPremium} onValueChange={(value) => setGeometryPremium(value as 'positive' | 'negative')}>
-                  <SelectTrigger className="border-green-200 bg-white text-green-800 font-medium"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="positive">Positiva (1.0x)</SelectItem><SelectItem value="negative">Negativa (+15% HP)</SelectItem></SelectContent>
-                </Select>
-              </div>
+              
               {operationType === 'milling' ? (
                 <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Insertos (Z)</Label><Input type="number" className="border-green-200 bg-white" value={zPremium} onChange={e => setZPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               ) : (
@@ -679,7 +685,7 @@ export default function TaylorCurvePage() {
                 <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Avance (mm/z)</Label><Input type="number" step="0.01" className="border-green-200 bg-white" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               )}
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Vc Propuesta</Label><Input type="number" className="border-green-200 bg-white" value={vcPremium} onChange={e => setVcPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
-              <div className={operationType === 'milling' ? "col-span-2" : ""}><Label className="block text-[10px] font-bold text-green-700 mb-1">Pzas / filo</Label><Input type="number" className="border-green-200 bg-white" value={pcsPremium} onChange={e => setPcsPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              <div className="col-span-2"><Label className="block text-[10px] font-bold text-green-700 mb-1">Pzas / filo</Label><Input type="number" className="border-green-200 bg-white" value={pcsPremium} onChange={e => setPcsPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-green-800 mb-1">Tiempo Deducido (Corte)</Label>
@@ -972,9 +978,14 @@ export default function TaylorCurvePage() {
                 </thead>
                 <tbody>
                   <tr>
-                    <td className="p-2 border border-slate-300 font-bold bg-slate-50">Herramienta Propuesta</td>
-                    <td className="p-2 border border-slate-300 text-slate-400 italic text-center">Actual del cliente</td>
+                    <td className="p-2 border border-slate-300 font-bold bg-slate-50">Herramienta</td>
+                    <td className="p-2 border border-slate-300 text-center">{toolNameCurrent || 'No especificada'}</td>
                     <td className="p-2 border border-slate-300 font-bold text-green-700 bg-green-50 text-center">{toolNamePremium || 'No especificada'}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold">Incidencia (Holgura)</td>
+                    <td className="p-2 border border-slate-300 text-center">{obtenerAnguloTexto(toolNameCurrent)}</td>
+                    <td className="p-2 border border-slate-300 text-center bg-green-50 font-medium">{obtenerAnguloTexto(toolNamePremium)}</td>
                   </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Precio Inserto</td>
@@ -1071,5 +1082,3 @@ export default function TaylorCurvePage() {
     </>
   );
 }
-
-    
