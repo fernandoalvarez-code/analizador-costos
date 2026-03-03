@@ -1,18 +1,22 @@
 
 "use client";
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectGroup, SelectLabel, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, Info, Share2, FileText } from 'lucide-react';
-import { formatCurrency, formatNumber } from '@/lib/formatters';
+import { TrendingUp, Info, Share2, FileText, Wand2 } from 'lucide-react';
+import { formatCurrency, formatNumber, formatoMinutosYSegundos } from '@/lib/formatters';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { addDoc, collection, serverTimestamp, getDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, useUser } from "@/firebase";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Slider } from '@/components/ui/slider';
+import { Button } from '@/components/ui/button';
+
 
 const MATERIALS = [
   // --- GRUPO ISO P (Aceros) 🟦 ---
@@ -103,6 +107,14 @@ export default function TaylorCurvePage() {
     { role: 'assistant', content: 'Hola, soy tu Copiloto Seco. Estoy analizando los parámetros de esta máquina. ¿En qué te ayudo?' }
   ]);
   const [isChatLoading, setIsChatLoading] = useState(false);
+
+  // --- ESTADOS PARA SIMULADOR TAYLOR ---
+  const [isTaylorModalOpen, setIsTaylorModalOpen] = useState(false);
+  const [taylorBase, setTaylorBase] = useState({ vc: 0, feed: 0, pcs: 0, time: 0 });
+  const [simulatedVc, setSimulatedVc] = useState(0);
+  const [simulatedFeed, setSimulatedFeed] = useState(0);
+  const [simulationResult, setSimulationResult] = useState<{ newPcs: number, newTime: number, newCost: number } | null>(null);
+
 
   // --- Funciones de Cálculo ---
   const obtenerFactorIncidencia = (codigoInserto: string): number => {
@@ -432,6 +444,47 @@ export default function TaylorCurvePage() {
     };
   }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium]);
 
+    // --- EFECTO PARA SIMULADOR DE TAYLOR ---
+    useEffect(() => {
+        if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
+            setSimulationResult(null);
+            return;
+        }
+
+        // --- Lógica de Recálculo ---
+        const safeMachineCostMin = (Number(machineCostHr) || 0) / 60;
+        const safeToolCostPremium = Number(toolCostPremium) || 0;
+        const safeToolChangeTime = Number(toolChangeTime) || 0;
+        const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1);
+        const safeEdgesPremium = Number(edgesPremium) || 1;
+
+        // 1. LA FÍSICA DE TAYLOR (Desgaste)
+        const factorVelocidad = Math.pow((taylorBase.vc / simulatedVc), 3.0);
+        const factorAvance = Math.pow((taylorBase.feed / simulatedFeed), 1.5);
+        const nuevasPzas = Math.round(taylorBase.pcs * factorVelocidad * factorAvance);
+
+        // 2. EL TIEMPO DE CICLO (Productividad)
+        const factorTiempoVc = taylorBase.vc / simulatedVc;
+        const factorTiempoAvance = taylorBase.feed / simulatedFeed;
+        const nuevoTiempoMin = taylorBase.time * factorTiempoVc * factorTiempoAvance;
+
+        // 3. EL COSTO (Finanzas)
+        const costCorte = safeMachineCostMin * nuevoTiempoMin;
+        const costPorPunta = nuevasPzas > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
+        const costJuego = costPorPunta * safeZPremium;
+        const costHerr = nuevasPzas > 0 ? costJuego / nuevasPzas : 0;
+        const costCambio = nuevasPzas > 0 ? (safeMachineCostMin * safeToolChangeTime) / nuevasPzas : 0;
+        const nuevoCosto = costCorte + costHerr + costCambio;
+
+        setSimulationResult({
+            newPcs: nuevasPzas,
+            newTime: nuevoTiempoMin,
+            newCost: nuevoCosto,
+        });
+
+    }, [simulatedVc, simulatedFeed, taylorBase, isTaylorModalOpen, machineCostHr, toolCostPremium, toolChangeTime, operationType, zPremium, edgesPremium]);
+
+
   const premiumMins = Math.floor(curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0);
   const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
   const porcentajeAhorro = curveDataInfo.realSavingsPercentage.toFixed(1);
@@ -693,6 +746,31 @@ export default function TaylorCurvePage() {
               <div className="w-full bg-slate-100 rounded-full h-2 mb-1 overflow-hidden"><div className={`h-2 rounded-full transition-all duration-500 ${getLoadColor(curveDataInfo.loadPremium).bar}`} style={{ width: `${Math.min(curveDataInfo.loadPremium, 100)}%` }}></div></div>
               <p className={`text-[9px] font-bold text-right uppercase ${getLoadColor(curveDataInfo.loadPremium).text}`}>{getLoadColor(curveDataInfo.loadPremium).label}</p>
             </div>
+             <div className="mt-4 pt-4 border-t border-green-200/50">
+                <Button
+                    onClick={() => {
+                        const base = {
+                            vc: Number(vcPremium) || 0,
+                            feed: Number(feedPremium) || 0,
+                            pcs: Number(pcsPremium) || 0,
+                            time: curveDataInfo.tcPremium || 0,
+                        };
+                        if (base.vc > 0 && base.feed > 0 && base.pcs > 0 && base.time > 0) {
+                            setTaylorBase(base);
+                            setSimulatedVc(base.vc);
+                            setSimulatedFeed(base.feed);
+                            setIsTaylorModalOpen(true);
+                        } else {
+                            alert("Por favor, completa todos los datos de la propuesta (Vc, Avance, Pzas/filo) antes de simular.");
+                        }
+                    }}
+                    variant="outline"
+                    className="w-full bg-green-100 border-green-200 text-green-800 hover:bg-green-200 hover:text-green-900"
+                >
+                    <Wand2 className="mr-2 h-4 w-4" />
+                    Simular Escenarios (Taylor)
+                </Button>
+            </div>
           </div>
         </div>
 
@@ -916,6 +994,93 @@ export default function TaylorCurvePage() {
         </div>
       )}
 
+      {/* MODAL SIMULADOR TAYLOR */}
+        <Dialog open={isTaylorModalOpen} onOpenChange={setIsTaylorModalOpen}>
+            <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-xl">
+                        <Wand2 className="text-purple-500" />
+                        Simulador Interactivo (Ecuación de Taylor)
+                    </DialogTitle>
+                    <DialogDescription>
+                        Mueve los controles para encontrar el punto óptimo entre productividad y vida útil.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+                    {/* Controles */}
+                    <div className="space-y-6">
+                        <div>
+                            <Label className="font-bold">Velocidad de Corte (Vc)</Label>
+                            <div className="flex items-center gap-4">
+                                <Slider
+                                    min={taylorBase.vc * 0.7}
+                                    max={taylorBase.vc * 1.5}
+                                    step={1}
+                                    value={[simulatedVc]}
+                                    onValueChange={(val) => setSimulatedVc(val[0])}
+                                />
+                                <span className="font-bold text-blue-600 w-24 text-center border rounded-md p-2">{simulatedVc.toFixed(0)} m/min</span>
+                            </div>
+                        </div>
+                        <div>
+                            <Label className="font-bold">Avance (f)</Label>
+                             <div className="flex items-center gap-4">
+                                <Slider
+                                    min={taylorBase.feed * 0.7}
+                                    max={taylorBase.feed * 1.5}
+                                    step={0.01}
+                                    value={[simulatedFeed]}
+                                    onValueChange={(val) => setSimulatedFeed(val[0])}
+                                />
+                                <span className="font-bold text-blue-600 w-24 text-center border rounded-md p-2">{simulatedFeed.toFixed(2)} mm/rev</span>
+                            </div>
+                        </div>
+                    </div>
+                    {/* Resultados */}
+                    <div className="space-y-4 bg-slate-50 p-4 rounded-lg border">
+                        <div className="text-center p-3 border rounded-lg bg-white">
+                            <p className="text-xs font-bold text-slate-500 uppercase">⏱️ Nuevo Tiempo de Ciclo</p>
+                            <p className="text-2xl font-black text-slate-800">{simulationResult ? formatoMinutosYSegundos(simulationResult.newTime) : '-'}</p>
+                        </div>
+                         <div className="text-center p-3 border rounded-lg bg-white">
+                            <p className="text-xs font-bold text-slate-500 uppercase">⚙️ Nueva Vida Útil</p>
+                            <p className="text-2xl font-black text-slate-800">{simulationResult ? formatNumber(simulationResult.newPcs) : '-'} pzas/filo</p>
+                        </div>
+                         <div className="text-center p-3 border rounded-lg bg-white shadow-inner border-green-200">
+                            <p className="text-xs font-bold text-green-700 uppercase">💰 Nuevo Costo por Pieza</p>
+                            <p className="text-2xl font-black text-green-600">{simulationResult ? formatCurrency(simulationResult.newCost) : '-'}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => setIsTaylorModalOpen(false)}>Cancelar</Button>
+                    <Button className="bg-green-600 hover:bg-green-700" onClick={() => {
+                        if (simulationResult) {
+                            const newTime = simulationResult.newTime;
+                            const newTimeMin = Math.floor(newTime);
+                            const newTimeSec = Math.round((newTime - newTimeMin) * 60);
+
+                            setVcPremium(simulatedVc);
+                            setFeedPremium(simulatedFeed);
+                            setPcsPremium(simulationResult.newPcs);
+                            // Este es el único lugar donde necesitamos escribir al form directamente
+                            // ya que el estado local es la fuente de verdad.
+                            // Para el resto de los campos usamos el estado local.
+                            // Aquí usamos los equivalentes de la propuesta
+                            // setTcPremiumMin(newTimeMin);
+                            // setTcPremiumSec(newTimeSec);
+                        }
+                        setIsTaylorModalOpen(false);
+                    }}>
+                        Aplicar estos parámetros
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+
         {/* PLANTILLA OCULTA PARA PDF (Renderizada fuera de pantalla para html2canvas) */}
         <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', zIndex: -1 }}>
           <div id="pdf-pagina-1" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
@@ -1079,3 +1244,4 @@ export default function TaylorCurvePage() {
     </>
   );
 }
+
