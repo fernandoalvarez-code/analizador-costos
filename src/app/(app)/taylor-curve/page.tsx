@@ -114,6 +114,8 @@ export default function TaylorCurvePage() {
   const [simulatedVc, setSimulatedVc] = useState(0);
   const [simulatedFeed, setSimulatedFeed] = useState(0);
   const [simulationResult, setSimulationResult] = useState<{ newPcs: number, newTime: number, newCost: number } | null>(null);
+  const [taylorBaseCost, setTaylorBaseCost] = useState(0);
+  const [targetSavings, setTargetSavings] = useState<number | ''>('');
 
 
   // --- Funciones de Cálculo ---
@@ -484,6 +486,64 @@ export default function TaylorCurvePage() {
 
     }, [simulatedVc, simulatedFeed, taylorBase, isTaylorModalOpen, machineCostHr, toolCostPremium, toolChangeTime, operationType, zPremium, edgesPremium]);
 
+    // --- EFECTO PARA AUTO-SUGERIR VC POR OBJETIVO ---
+    useEffect(() => {
+        const percentage = Number(targetSavings);
+        // No correr si el input está vacío, es cero, la modal está cerrada, o el costo base no está calculado
+        if (!percentage || percentage <= 0 || !isTaylorModalOpen || taylorBaseCost <= 0) return;
+
+        const autoCalcularPorObjetivo = () => {
+            const costoObjetivo = taylorBaseCost * (1 - (percentage / 100));
+            
+            let vcSimulada = taylorBase.vc;
+            let costoIterativo = taylorBaseCost;
+            const limiteSeguridadVc = taylorBase.vc * 2; // Límite para evitar bucles infinitos
+
+            const safeMachineCostMin = (Number(machineCostHr) || 0) / 60;
+            const safeToolCostPremium = Number(toolCostPremium) || 0;
+            const safeToolChangeTime = Number(toolChangeTime) || 0;
+            const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1);
+            const safeEdgesPremium = Number(edgesPremium) || 1;
+            const costPorPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
+            const costJuego = costPorPunta * safeZPremium;
+
+            // Búsqueda iterativa subiendo la Vc de a 1 m/min
+            while (costoIterativo > costoObjetivo && vcSimulada < limiteSeguridadVc) {
+                vcSimulada++;
+                
+                // Recalcular piezas y tiempo con la nueva Vc (Taylor)
+                const factorVelocidad = Math.pow((taylorBase.vc / vcSimulada), 3.0);
+                // El avance se mantiene fijo en esta simulación
+                const piezasTemp = taylorBase.pcs * factorVelocidad;
+                const tiempoTemp = taylorBase.time * (taylorBase.vc / vcSimulada);
+                
+                // Recalcular el costo con los nuevos valores temporales
+                const costCorte = safeMachineCostMin * tiempoTemp;
+                const costHerr = piezasTemp > 0 ? costJuego / piezasTemp : 0;
+                const costCambio = piezasTemp > 0 ? (safeMachineCostMin * safeToolChangeTime) / piezasTemp : 0;
+                costoIterativo = costCorte + costHerr + costCambio;
+            }
+
+            // Si se encuentra una Vc válida, actualizar el slider
+            if (vcSimulada < limiteSeguridadVc) {
+                setSimulatedVc(vcSimulada);
+                // Opcional: fijar el avance al base para que el usuario entienda que solo se movió Vc
+                setSimulatedFeed(taylorBase.feed);
+            } else {
+                alert("El porcentaje de ahorro deseado es físicamente imposible solo aumentando la velocidad. Intenta un objetivo más bajo o ajusta también el avance.");
+            }
+        };
+        
+        // Usamos un debounce para no ejecutar la búsqueda en cada tecleo
+        const debounceTimer = setTimeout(() => {
+            autoCalcularPorObjetivo();
+        }, 500);
+
+        return () => clearTimeout(debounceTimer);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [targetSavings, isTaylorModalOpen]);
+
 
   const premiumMins = Math.floor(curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0);
   const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
@@ -552,6 +612,8 @@ export default function TaylorCurvePage() {
         (acc[mat.grupo] = acc[mat.grupo] || []).push(mat);
         return acc;
     }, {} as Record<string, typeof MATERIALS>);
+
+    const porcentajeAhorroSimulado = taylorBaseCost > 0 && simulationResult ? (((taylorBaseCost - simulationResult.newCost) / taylorBaseCost) * 100).toFixed(1) : "0.0";
 
   return (
     <>
@@ -759,6 +821,23 @@ export default function TaylorCurvePage() {
                             setTaylorBase(base);
                             setSimulatedVc(base.vc);
                             setSimulatedFeed(base.feed);
+                            setTargetSavings(''); // Reset target savings
+
+                            // Calculate and set base cost
+                            const safeMachineCostMin = (Number(machineCostHr) || 0) / 60;
+                            const safeToolCostPremium = Number(toolCostPremium) || 0;
+                            const safeToolChangeTime = Number(toolChangeTime) || 0;
+                            const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1);
+                            const safeEdgesPremium = Number(edgesPremium) || 1;
+                            
+                            const costCorte = safeMachineCostMin * base.time;
+                            const costPorPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
+                            const costJuego = costPorPunta * safeZPremium;
+                            const costHerr = base.pcs > 0 ? costJuego / base.pcs : 0;
+                            const costCambio = base.pcs > 0 ? (safeMachineCostMin * safeToolChangeTime) / base.pcs : 0;
+                            const baseCost = costCorte + costHerr + costCambio;
+                            setTaylorBaseCost(baseCost);
+
                             setIsTaylorModalOpen(true);
                         } else {
                             alert("Por favor, completa todos los datos de la propuesta (Vc, Avance, Pzas/filo) antes de simular.");
@@ -995,7 +1074,7 @@ export default function TaylorCurvePage() {
       )}
 
       {/* MODAL SIMULADOR TAYLOR */}
-        <Dialog open={isTaylorModalOpen} onOpenChange={setIsTaylorModalOpen}>
+        <Dialog open={isTaylorModalOpen} onOpenChange={(isOpen) => { setIsTaylorModalOpen(isOpen); if (!isOpen) setTargetSavings(''); }}>
             <DialogContent className="max-w-3xl">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-xl">
@@ -1003,9 +1082,22 @@ export default function TaylorCurvePage() {
                         Simulador Interactivo (Ecuación de Taylor)
                     </DialogTitle>
                     <DialogDescription>
-                        Mueve los controles para encontrar el punto óptimo entre productividad y vida útil.
+                        Mueve los controles para encontrar el punto óptimo entre productividad y vida útil, o ingresa un % de ahorro objetivo.
                     </DialogDescription>
                 </DialogHeader>
+
+                <div className="py-4 space-y-2">
+                    <Label htmlFor="target-savings" className="font-bold">🎯 Ahorro Objetivo (%)</Label>
+                    <Input
+                        id="target-savings"
+                        type="number"
+                        placeholder="Ej: 15"
+                        value={targetSavings}
+                        onChange={(e) => setTargetSavings(e.target.value === '' ? '' : Number(e.target.value))}
+                        className="w-full md:w-1/2 border-purple-300 focus-visible:ring-purple-500"
+                    />
+                    <p className="text-xs text-muted-foreground">Ingresa un % de ahorro y el simulador encontrará la Vc necesaria.</p>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                     {/* Controles */}
@@ -1049,7 +1141,18 @@ export default function TaylorCurvePage() {
                         </div>
                          <div className="text-center p-3 border rounded-lg bg-white shadow-inner border-green-200">
                             <p className="text-xs font-bold text-green-700 uppercase">💰 Nuevo Costo por Pieza</p>
-                            <p className="text-2xl font-black text-green-600">{simulationResult ? formatCurrency(simulationResult.newCost) : '-'}</p>
+                            {simulationResult ? (
+                                <div className="flex justify-center items-center gap-2 mt-1">
+                                    <span className="font-black text-green-600 text-2xl">{formatCurrency(simulationResult.newCost)}</span>
+                                    {taylorBaseCost > 0 && simulationResult.newCost < taylorBaseCost && parseFloat(porcentajeAhorroSimulado) > 0 && (
+                                        <span className="bg-green-100 text-green-800 font-bold px-2 py-1 rounded-full text-sm">
+                                            ↓ {porcentajeAhorroSimulado}%
+                                        </span>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="text-2xl font-black text-green-600">-</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -1245,3 +1348,6 @@ export default function TaylorCurvePage() {
   );
 }
 
+
+
+    
