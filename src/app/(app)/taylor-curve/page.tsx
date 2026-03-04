@@ -58,23 +58,20 @@ const TAYLOR_CONSTANTS: Record<string, {n: number, C: number}> = {
 const extraerRadioISO = (codigoInserto: string): number | null => {
   if (!codigoInserto) return null;
 
-  // 1. Limpiamos espacios y guiones para estandarizar
-  const textoLimpio = codigoInserto.replace(/\s|-/g, '').toUpperCase();
+  // 1. Trabajar con la parte ANTES del rompevirutas/sufijo
+  const partePrincipal = codigoInserto.split('-')[0];
 
-  // 2. Buscamos el bloque de 6 números típicos (Ej: 160408)
-  const regexNumeros = /\d{6}/;
-  const match = textoLimpio.match(regexNumeros);
+  // 2. Quitar todos los caracteres no numéricos
+  const soloNumeros = partePrincipal.replace(/\D/g, '');
 
-  if (match) {
-    const bloqueNumerico = match[0];
-    // Los últimos dos dígitos del bloque de 6 son el radio
-    const radioString = bloqueNumerico.substring(4, 6); 
-    
-    // Ej: "08" -> 0.8 mm, "12" -> 1.2 mm, "04" -> 0.4 mm
-    return parseInt(radioString, 10) / 10; 
+  // 3. Necesitamos al menos 2 dígitos para el radio (ej: 04, 08, 12)
+  if (soloNumeros.length >= 2) {
+    // 4. Tomar los ÚLTIMOS dos dígitos
+    const radioString = soloNumeros.slice(-2);
+    return parseInt(radioString, 10) / 10;
   }
   
-  return null; // Si el usuario no escribió un código estándar
+  return null;
 };
 
 // Analizador del Rompevirutas (Basado en nomenclatura Seco Tools)
@@ -91,9 +88,13 @@ const analizarRompevirutas = (codigoInserto: string): { esWiper: boolean; tipoCo
 
   // 2. Clasificación de Aplicación (Seco Tools)
   let tipoCorte = 'Medio'; // Por defecto
-  if (sufijo.includes('F') || sufijo.includes('FF')) tipoCorte = 'Terminacion'; // Ej: -MF2, -FF2
-  if (sufijo.includes('M')) tipoCorte = 'Medio'; // Ej: -M3, -M5
-  if (sufijo.includes('R') || sufijo.includes('RR')) tipoCorte = 'Desbaste'; // Ej: -MR7, -RR9
+  if (sufijo.includes('F') || sufijo.includes('FF')) {
+    tipoCorte = 'Terminacion';
+  } else if (sufijo.includes('M')) {
+    tipoCorte = 'Medio';
+  } else if (sufijo.includes('R') || sufijo.includes('RR')) {
+    tipoCorte = 'Desbaste';
+  }
 
   return { esWiper, tipoCorte, sufijo };
 };
