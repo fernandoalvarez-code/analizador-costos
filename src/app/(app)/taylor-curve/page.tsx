@@ -54,6 +54,49 @@ const TAYLOR_CONSTANTS: Record<string, {n: number, C: number}> = {
   "ISO H": { n: 0.15, C: 120 },
 };
 
+// Función para extraer el radio del código ISO (Ej: "TNMG 160408-M5" -> 0.8)
+const extraerRadioISO = (codigoInserto: string): number | null => {
+  if (!codigoInserto) return null;
+
+  // 1. Limpiamos espacios y guiones para estandarizar
+  const textoLimpio = codigoInserto.replace(/\s|-/g, '').toUpperCase();
+
+  // 2. Buscamos el bloque de 6 números típicos (Ej: 160408)
+  const regexNumeros = /\d{6}/;
+  const match = textoLimpio.match(regexNumeros);
+
+  if (match) {
+    const bloqueNumerico = match[0];
+    // Los últimos dos dígitos del bloque de 6 son el radio
+    const radioString = bloqueNumerico.substring(4, 6); 
+    
+    // Ej: "08" -> 0.8 mm, "12" -> 1.2 mm, "04" -> 0.4 mm
+    return parseInt(radioString, 10) / 10; 
+  }
+  
+  return null; // Si el usuario no escribió un código estándar
+};
+
+// Función para generar advertencias técnicas
+const auditarParametros = (ap: number | "", avance: number | "", codigoInserto: string): string | null => {
+  const radio = extraerRadioISO(codigoInserto);
+  let advertencia = null;
+
+  if (radio && ap && avance) {
+    const apNum = Number(ap);
+    const avanceNum = Number(avance);
+    // 1. Auditoría de Vibración / Rotura de Viruta
+    if (apNum < radio) {
+      advertencia = `⚠️ Riesgo de Vibración: Tu ap (${apNum}mm) es menor al radio del inserto (${radio}mm). Las fuerzas radiales empujarán la pieza.`;
+    }
+    // 2. Auditoría de Acabado Superficial y Rotura
+    else if (avanceNum > (radio * 0.6)) {
+      advertencia = `⚠️ Avance Excesivo: Un avance de ${avanceNum} mm/rev es muy alto para un radio de ${radio}mm. Generará mal acabado superficial o romperá el filo.`;
+    }
+  }
+
+  return advertencia; // Si devuelve un string, mostrarlo en rojo en la pantalla
+};
 
 export default function TaylorCurvePage() {
   const { user } = useUser();
@@ -115,6 +158,9 @@ export default function TaylorCurvePage() {
   const [simulationResult, setSimulationResult] = useState<{ newPcs: number, newTime: number, newCost: number } | null>(null);
   const [taylorBaseCost, setTaylorBaseCost] = useState(0);
   const [targetSavings, setTargetSavings] = useState<number | ''>('');
+
+  const warningCurrent = auditarParametros(apCurrent, feedCurrent, toolNameCurrent);
+  const warningPremium = auditarParametros(apPremium, feedPremium, toolNamePremium);
 
 
   // --- Funciones de Cálculo ---
@@ -234,6 +280,9 @@ export default function TaylorCurvePage() {
     setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsChatLoading(true);
 
+    const radioCurrent = extraerRadioISO(toolNameCurrent);
+    const radioPremium = extraerRadioISO(toolNamePremium);
+
     const chatPayload = {
       userMessage: userMessage,
       screenContext: {
@@ -244,6 +293,8 @@ export default function TaylorCurvePage() {
         },
         condicion_actual_competencia: {
           herramienta: toolNameCurrent,
+          radio_punta_mm: radioCurrent,
+          advertencia_fisica: warningCurrent,
           angulo_incidencia_iso: obtenerAnguloTexto(toolNameCurrent),
           profundidad_ap_mm: Number(apCurrent) || 0,
           vc: Number(vcCurrent) || 0,
@@ -253,6 +304,8 @@ export default function TaylorCurvePage() {
         },
         propuesta_seco: {
           herramienta: toolNamePremium,
+          radio_punta_mm: radioPremium,
+          advertencia_fisica: warningPremium,
           angulo_incidencia_iso: obtenerAnguloTexto(toolNamePremium),
           profundidad_ap_mm: Number(apPremium) || 0,
           vc: Number(vcPremium) || 0,
@@ -592,7 +645,7 @@ export default function TaylorCurvePage() {
             
             <div>
               <p className="text-[10px] font-bold text-green-600 uppercase">
-                {isUserPremiumVc ? '🟢 COSTO REAL (Nuestra Propuesta)' : 'Costo Teórico (Premium)'}
+                {isUserPremiumVc ? '🟢 COSTO REAL (Nuestra Propuesta)' : 'Costo Teórico (Propuesta (Secocut))'}
               </p>
               <div className="flex items-center gap-2 mt-0.5">
                 <p className="font-bold text-green-700">USD {Number(displayCostPremium).toFixed(2)}</p>
@@ -776,7 +829,11 @@ export default function TaylorCurvePage() {
                 </div>
               </div>
             </div>
-
+            {warningCurrent && (
+              <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-800 p-3 text-xs font-medium rounded-r-lg">
+                {warningCurrent}
+              </div>
+            )}
             {/* Progress Bar alineada al fondo */}
             <div className="mt-6 bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
               <div className="flex justify-between items-end mb-1"><span className="text-[10px] font-bold text-slate-500 uppercase">Carga Husillo</span><span className={`text-xs font-black ${getLoadColor(curveDataInfo.loadCurrent).text}`}>⚡ {curveDataInfo.hpCurrent.toFixed(1)} HP</span></div>
@@ -817,7 +874,11 @@ export default function TaylorCurvePage() {
                 </div>
               </div>
             </div>
-
+            {warningPremium && (
+              <div className="mt-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 text-xs font-medium rounded-r-lg">
+                {warningPremium}
+              </div>
+            )}
             {/* Progress Bar alineada al fondo */}
             <div className="mt-6 bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
               <div className="flex justify-between items-end mb-1"><span className="text-[10px] font-bold text-slate-500 uppercase">Carga Husillo</span><span className={`text-xs font-black ${getLoadColor(curveDataInfo.loadPremium).text}`}>⚡ {curveDataInfo.hpPremium.toFixed(1)} HP</span></div>
@@ -906,7 +967,7 @@ export default function TaylorCurvePage() {
           {formatCurrency(curveDataInfo.monthlySavings)}
         </h2>
         <p className="relative z-10 text-lg text-green-50 font-medium">
-          Ahorro mensual neto al fabricar <span className="font-bold text-white bg-green-700 px-2 py-1 rounded">{formatNumber(Number(monthlyProduction))} piezas</span> con tecnología Secocut Premium.
+          Ahorro mensual neto al fabricar <span className="font-bold text-white bg-green-700 px-2 py-1 rounded">{formatNumber(Number(monthlyProduction))} piezas</span> con tecnología Secocut.
         </p>
       </div>
       
@@ -1305,9 +1366,14 @@ export default function TaylorCurvePage() {
                       <div className="flex items-center gap-2 justify-center">
                         <span className="font-bold text-green-600">{isFinite(curveDataInfo.actualCostPremium) ? formatCurrency(curveDataInfo.actualCostPremium) : 'N/A'}</span>
                         {curveDataInfo.realSavingsPercentage > 0.1 && (
-                            <span className="bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded-full text-[10px]">
-                                ↓ {porcentajeAhorro}%
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-green-700 font-bold text-xl">
+                                    {isFinite(curveDataInfo.actualCostPremium) ? formatCurrency(curveDataInfo.actualCostPremium) : 'N/A'}
+                                </span>
+                                <span className="bg-green-100 text-green-800 font-bold px-2 py-1 rounded-full text-sm">
+                                    ↓ {porcentajeAhorro}%
+                                </span>
+                            </div>
                         )}
                       </div>
                     </td>
