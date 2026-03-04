@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot } from 'recharts';
@@ -138,6 +137,21 @@ export default function TaylorCurvePage() {
       'N': '0° (Negativo)', 'A': '3°', 'B': '5°', 'C': '7°', 'P': '11°', 'D': '15°', 'E': '20°', 'F': '25°', 'G': '30°'
     };
     return angulos[segundaLetra] || 'Desconocido';
+  };
+
+  const obtenerFactorForma = (codigoInserto: string): number => {
+    if (!codigoInserto || codigoInserto.length < 1) return 1.0;
+    const primeraLetra = codigoInserto.charAt(0).toUpperCase();
+    switch (primeraLetra) {
+      case 'V': return 0.85;
+      case 'D': return 0.90;
+      case 'T': return 0.92;
+      case 'E': case 'M': return 0.98;
+      case 'C': case 'W': return 1.00;
+      case 'S': case 'P': return 1.05;
+      case 'R': return 1.10;
+      default: return 1.00;
+    }
   };
 
   React.useEffect(() => {
@@ -367,14 +381,16 @@ export default function TaylorCurvePage() {
     const kc = mat.kc || 1500;
     const safeMachinePowerHP = Number(machinePowerHP) || 15;
 
+    const kwCurrent_base = (safeApCurrent * safeFeedCurrent * safeVcCurrent * kc * safeZCurrent) / 60000;
+    const factorFormaCurrent = obtenerFactorForma(toolNameCurrent);
     const factorIncidenciaCurrent = obtenerFactorIncidencia(toolNameCurrent);
-    const kwCurrent = (safeApCurrent * safeFeedCurrent * safeVcCurrent * kc * safeZCurrent) / 60000;
-    const hpCurrent = kwCurrent * 1.341 * factorIncidenciaCurrent;
+    const hpCurrent = kwCurrent_base * 1.341 * factorFormaCurrent * factorIncidenciaCurrent;
     const loadCurrent = (hpCurrent / safeMachinePowerHP) * 100;
-
+    
+    const kwPremium_base = (safeApPremium * safeFeedPremium * safeVcPremium * kc * safeZPremium) / 60000;
+    const factorFormaPremium = obtenerFactorForma(toolNamePremium);
     const factorIncidenciaPremium = obtenerFactorIncidencia(toolNamePremium);
-    const kwPremium = (safeApPremium * safeFeedPremium * safeVcPremium * kc * safeZPremium) / 60000;
-    const hpPremium = kwPremium * 1.341 * factorIncidenciaPremium;
+    const hpPremium = kwPremium_base * 1.341 * factorFormaPremium * factorIncidenciaPremium;
     const loadPremium = (hpPremium / safeMachinePowerHP) * 100;
 
 
@@ -1347,7 +1363,3 @@ export default function TaylorCurvePage() {
     </>
   );
 }
-
-
-
-    
