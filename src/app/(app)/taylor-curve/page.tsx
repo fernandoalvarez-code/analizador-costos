@@ -98,6 +98,15 @@ const auditarParametros = (ap: number | "", avance: number | "", codigoInserto: 
   return advertencia; // Si devuelve un string, mostrarlo en rojo en la pantalla
 };
 
+const calcularRaTeorico = (avance: number | "", radioInserto_mm: number | null): string | null => {
+  const avanceNum = Number(avance);
+  if (!avanceNum || !radioInserto_mm || radioInserto_mm <= 0) return null;
+
+  const ra_micrones = (Math.pow(avanceNum, 2) / (32 * radioInserto_mm)) * 1000;
+  
+  return ra_micrones.toFixed(2);
+};
+
 export default function TaylorCurvePage() {
   const { user } = useUser();
 
@@ -155,7 +164,7 @@ export default function TaylorCurvePage() {
   const [taylorBase, setTaylorBase] = useState({ vc: 0, feed: 0, pcs: 0, time: 0 });
   const [simulatedVc, setSimulatedVc] = useState(0);
   const [simulatedFeed, setSimulatedFeed] = useState(0);
-  const [simulationResult, setSimulationResult] = useState<{ newPcs: number, newTime: number, newCost: number } | null>(null);
+  const [simulationResult, setSimulationResult] = useState<{ newPcs: number, newTime: number, newCost: number, newRa: string | null } | null>(null);
   const [taylorBaseCost, setTaylorBaseCost] = useState(0);
   const [targetSavings, setTargetSavings] = useState<number | ''>('');
 
@@ -547,13 +556,17 @@ export default function TaylorCurvePage() {
         const costCambio = nuevasPzas > 0 ? (safeMachineCostMin * safeToolChangeTime) / nuevasPzas : 0;
         const nuevoCosto = costCorte + costHerr + costCambio;
 
+        const radioPremium = extraerRadioISO(toolNamePremium);
+        const nuevoRa = calcularRaTeorico(simulatedFeed, radioPremium);
+
         setSimulationResult({
             newPcs: nuevasPzas,
             newTime: nuevoTiempoMin,
             newCost: nuevoCosto,
+            newRa: nuevoRa
         });
 
-    }, [simulatedVc, simulatedFeed, taylorBase, isTaylorModalOpen, machineCostHr, toolCostPremium, toolChangeTime, operationType, zPremium, edgesPremium]);
+    }, [simulatedVc, simulatedFeed, taylorBase, isTaylorModalOpen, machineCostHr, toolCostPremium, toolChangeTime, operationType, zPremium, edgesPremium, toolNamePremium]);
 
     // --- EFECTO PARA AUTO-SUGERIR VC POR OBJETIVO ---
     useEffect(() => {
@@ -1216,6 +1229,12 @@ export default function TaylorCurvePage() {
                             <p className="text-xs font-bold text-slate-500 uppercase">⚙️ Nueva Vida Útil</p>
                             <p className="text-2xl font-black text-slate-800">{simulationResult ? formatNumber(simulationResult.newPcs) : '-'} pzas/filo</p>
                         </div>
+                         <div className="text-center p-3 border rounded-lg bg-white">
+                            <p className="text-xs font-bold text-slate-500 uppercase">Acabado Teórico (Ra)</p>
+                            <p className={`text-2xl font-black ${simulationResult && simulationResult.newRa && Number(simulationResult.newRa) > 3.2 ? 'text-red-500' : 'text-slate-800'}`}>
+                                {simulationResult?.newRa ? `${simulationResult.newRa} µm` : '-'}
+                            </p>
+                        </div>
                          <div className="text-center p-3 border rounded-lg bg-white shadow-inner border-green-200">
                             <p className="text-xs font-bold text-green-700 uppercase">💰 Nuevo Costo por Pieza</p>
                             {simulationResult ? (
@@ -1353,6 +1372,15 @@ export default function TaylorCurvePage() {
                     <td className="p-2 border border-slate-300 font-bold">Rendimiento (Pzas/Filo)</td>
                     <td className="p-2 border border-slate-300 text-center">{pcsCurrent} pzs</td>
                     <td className="p-2 border border-slate-300 text-center">{pcsPremium} pzs</td>
+                  </tr>
+                   <tr className="bg-slate-100">
+                    <td className="p-2 border border-slate-300 font-bold">Rugosidad Teórica (Ra)</td>
+                    <td className="p-2 border border-slate-300 text-center">
+                        {`${calcularRaTeorico(feedCurrent, extraerRadioISO(toolNameCurrent)) ?? 'N/A'} µm`}
+                    </td>
+                    <td className="p-2 border border-slate-300 text-center bg-slate-50 font-medium">
+                        {`${calcularRaTeorico(feedPremium, extraerRadioISO(toolNamePremium)) ?? 'N/A'} µm`}
+                    </td>
                   </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Consumo de Motor</td>
