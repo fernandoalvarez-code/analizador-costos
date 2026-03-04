@@ -90,11 +90,12 @@ const analizarRompevirutas = (codigoInserto: string): { esWiper: boolean; tipoCo
   let tipoCorte = 'Medio'; // Por defecto
   if (sufijo.includes('F') || sufijo.includes('FF')) {
     tipoCorte = 'Terminacion';
-  } else if (sufijo.includes('M')) {
-    tipoCorte = 'Medio';
   } else if (sufijo.includes('R') || sufijo.includes('RR')) {
     tipoCorte = 'Desbaste';
+  } else if (sufijo.includes('M')) {
+    tipoCorte = 'Medio';
   }
+
 
   return { esWiper, tipoCorte, sufijo };
 };
@@ -215,6 +216,9 @@ export default function TaylorCurvePage() {
   const [simulationResult, setSimulationResult] = useState<{ newPcs: number, newTime: number, newCost: number, newRa: string | null } | null>(null);
   const [taylorBaseCost, setTaylorBaseCost] = useState(0);
   const [targetSavings, setTargetSavings] = useState<number | ''>('');
+
+  const raActual = calcularRaTeorico(feedCurrent, toolNameCurrent);
+  const raPropuesta = calcularRaTeorico(feedPremium, toolNamePremium);
 
   const warningParamCurrent = auditarParametros(apCurrent, feedCurrent, toolNameCurrent);
   const warningAppCurrent = auditarAplicacion(apCurrent, toolNameCurrent);
@@ -878,10 +882,26 @@ export default function TaylorCurvePage() {
               {operationType === 'milling' ? (
                 <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Insertos (Z)</Label><Input type="number" className="border-red-200 bg-white" value={zCurrent} onChange={e => setZCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               ) : (
-                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Avance (mm/rev)</Label><Input type="number" step="0.01" className="border-red-200 bg-white" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+                <div>
+                  <Label className="block text-[10px] font-bold text-red-600 mb-1">Avance (mm/rev)</Label>
+                  <Input type="number" step="0.01" className="border-red-200 bg-white" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+                  {raActual && (
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                          Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
+                      </p>
+                  )}
+                </div>
               )}
               {operationType === 'milling' && (
-                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Avance (mm/z)</Label><Input type="number" step="0.01" className="border-red-200 bg-white" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+                <div>
+                  <Label className="block text-[10px] font-bold text-red-600 mb-1">Avance (mm/z)</Label>
+                  <Input type="number" step="0.01" className="border-red-200 bg-white" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+                  {raActual && (
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                          Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
+                      </p>
+                  )}
+                </div>
               )}
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label><Input type="number" className="border-red-200 bg-white" value={vcCurrent} onChange={e => setVcCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               <div className="col-span-2"><Label className="block text-[10px] font-bold text-red-600 mb-1">Pzas / filo</Label><Input type="number" className="border-red-200 bg-white" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
@@ -934,10 +954,26 @@ export default function TaylorCurvePage() {
               {operationType === 'milling' ? (
                 <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Insertos (Z)</Label><Input type="number" className="border-green-200 bg-white" value={zPremium} onChange={e => setZPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               ) : (
-                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Avance (mm/rev)</Label><Input type="number" step="0.01" className="border-green-200 bg-white" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+                <div>
+                  <Label className="block text-[10px] font-bold text-green-700 mb-1">Avance (mm/rev)</Label>
+                  <Input type="number" step="0.01" className="border-green-200 bg-white" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} />
+                  {raPropuesta && (
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                          Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
+                      </p>
+                  )}
+                </div>
               )}
               {operationType === 'milling' && (
-                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Avance (mm/z)</Label><Input type="number" step="0.01" className="border-green-200 bg-white" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+                <div>
+                  <Label className="block text-[10px] font-bold text-green-700 mb-1">Avance (mm/z)</Label>
+                  <Input type="number" step="0.01" className="border-green-200 bg-white" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} />
+                  {raPropuesta && (
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                          Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
+                      </p>
+                  )}
+                </div>
               )}
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Vc Propuesta</Label><Input type="number" className="border-green-200 bg-white" value={vcPremium} onChange={e => setVcPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               <div className="col-span-2"><Label className="block text-[10px] font-bold text-green-700 mb-1">Pzas / filo</Label><Input type="number" className="border-green-200 bg-white" value={pcsPremium} onChange={e => setPcsPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
@@ -1448,10 +1484,10 @@ export default function TaylorCurvePage() {
                    <tr className="bg-slate-100">
                     <td className="p-2 border border-slate-300 font-bold">Rugosidad Teórica (Ra)</td>
                     <td className="p-2 border border-slate-300 text-center">
-                        {`${calcularRaTeorico(feedCurrent, toolNameCurrent) ?? 'N/A'} µm`}
+                        {`${raActual ?? 'N/A'} µm`}
                     </td>
                     <td className="p-2 border border-slate-300 text-center bg-slate-50 font-medium">
-                        {`${calcularRaTeorico(feedPremium, toolNamePremium) ?? 'N/A'} µm`}
+                        {`${raPropuesta ?? 'N/A'} µm`}
                     </td>
                   </tr>
                   <tr>
