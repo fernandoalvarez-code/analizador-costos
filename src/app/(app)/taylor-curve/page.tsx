@@ -77,6 +77,27 @@ const extraerRadioISO = (codigoInserto: string): number | null => {
   return null; // Si el usuario no escribió un código estándar
 };
 
+// Analizador del Rompevirutas (Basado en nomenclatura Seco Tools)
+const analizarRompevirutas = (codigoInserto: string): { esWiper: boolean; tipoCorte: string; sufijo: string } => {
+  if (!codigoInserto || !codigoInserto.includes('-')) {
+    return { esWiper: false, tipoCorte: 'Desconocido', sufijo: '' };
+  }
+
+  // Extraemos lo que está después del guion (Ej: de "CNMG 120408-M3W" sacamos "M3W")
+  const sufijo = codigoInserto.split('-')[1]?.toUpperCase().trim() || '';
+  
+  // 1. Detección de Tecnología Wiper (Suele contener la 'W' en Seco, ej: -TW, -M3W, -W)
+  const esWiper = sufijo.includes('W');
+
+  // 2. Clasificación de Aplicación (Seco Tools)
+  let tipoCorte = 'Medio'; // Por defecto
+  if (sufijo.includes('F') || sufijo.includes('FF')) tipoCorte = 'Terminacion'; // Ej: -MF2, -FF2
+  if (sufijo.includes('M')) tipoCorte = 'Medio'; // Ej: -M3, -M5
+  if (sufijo.includes('R') || sufijo.includes('RR')) tipoCorte = 'Desbaste'; // Ej: -MR7, -RR9
+
+  return { esWiper, tipoCorte, sufijo };
+};
+
 // Función para generar advertencias técnicas
 const auditarParametros = (ap: number | "", avance: number | "", codigoInserto: string): string | null => {
   const radio = extraerRadioISO(codigoInserto);
@@ -98,12 +119,38 @@ const auditarParametros = (ap: number | "", avance: number | "", codigoInserto: 
   return advertencia; // Si devuelve un string, mostrarlo en rojo en la pantalla
 };
 
-const calcularRaTeorico = (avance: number | "", radioInserto_mm: number | null): string | null => {
-  const avanceNum = Number(avance);
-  if (!avanceNum || !radioInserto_mm || radioInserto_mm <= 0) return null;
-
-  const ra_micrones = (Math.pow(avanceNum, 2) / (32 * radioInserto_mm)) * 1000;
+const auditarAplicacion = (ap: number | "", codigoInserto: string): string | null => {
+  if (!ap || !codigoInserto) return null;
+  const { tipoCorte } = analizarRompevirutas(codigoInserto);
+  const apNum = Number(ap);
   
+  if (tipoCorte === 'Terminacion' && apNum > 1.5) {
+    return `⚠️ Cuidado: Estás usando un rompevirutas de Terminación con un ap de ${apNum}mm. La viruta se va a atascar y romperá el filo.`;
+  }
+  
+  if (tipoCorte === 'Desbaste' && apNum < 1.0) {
+    return `⚠️ Cuidado: Estás usando un rompevirutas de Desbaste Pesado para un corte muy fino (${apNum}mm). La viruta no va a romper y saldrá en hilos largos.`;
+  }
+  
+  return null;
+};
+
+const calcularRaTeorico = (avance: number | "", codigoInserto: string): string | null => {
+  const radio = extraerRadioISO(codigoInserto);
+  const avanceNum = Number(avance);
+  if (!avanceNum || !radio || radio <= 0) return null;
+
+  // Fórmula estándar ISO
+  let ra_micrones = (Math.pow(avanceNum, 2) / (32 * radio)) * 1000;
+
+  // Analizamos el rompevirutas
+  const { esWiper } = analizarRompevirutas(codigoInserto);
+  
+  // LA MAGIA DEL WIPER: Si es Wiper, el acabado mejora drásticamente (dividimos el Ra aprox a la mitad)
+  if (esWiper) {
+    ra_micrones = ra_micrones / 2; 
+  }
+
   return ra_micrones.toFixed(2);
 };
 
@@ -168,8 +215,13 @@ export default function TaylorCurvePage() {
   const [taylorBaseCost, setTaylorBaseCost] = useState(0);
   const [targetSavings, setTargetSavings] = useState<number | ''>('');
 
-  const warningCurrent = auditarParametros(apCurrent, feedCurrent, toolNameCurrent);
-  const warningPremium = auditarParametros(apPremium, feedPremium, toolNamePremium);
+  const warningParamCurrent = auditarParametros(apCurrent, feedCurrent, toolNameCurrent);
+  const warningAppCurrent = auditarAplicacion(apCurrent, toolNameCurrent);
+  const warningCurrent = warningParamCurrent || warningAppCurrent;
+
+  const warningParamPremium = auditarParametros(apPremium, feedPremium, toolNamePremium);
+  const warningAppPremium = auditarAplicacion(apPremium, toolNamePremium);
+  const warningPremium = warningParamPremium || warningAppPremium;
 
 
   // --- Funciones de Cálculo ---
@@ -556,8 +608,7 @@ export default function TaylorCurvePage() {
         const costCambio = nuevasPzas > 0 ? (safeMachineCostMin * safeToolChangeTime) / nuevasPzas : 0;
         const nuevoCosto = costCorte + costHerr + costCambio;
 
-        const radioPremium = extraerRadioISO(toolNamePremium);
-        const nuevoRa = calcularRaTeorico(simulatedFeed, radioPremium);
+        const nuevoRa = calcularRaTeorico(simulatedFeed, toolNamePremium);
 
         setSimulationResult({
             newPcs: nuevasPzas,
@@ -863,7 +914,7 @@ export default function TaylorCurvePage() {
             <div className="grid grid-cols-2 gap-4 flex-grow">
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-green-800 mb-1 uppercase tracking-wider">Herramienta / Inserto Seco</Label>
-                <Input type="text" placeholder="Ej: CNMG 120408-M3 TP2501" className="border-green-300 bg-white shadow-inner font-bold text-green-900" value={toolNamePremium} onChange={e => setToolNamePremium(e.target.value)} />
+                <Input type="text" placeholder="Ej: CNMG 120408-M3W TP2501" className="border-green-300 bg-white shadow-inner font-bold text-green-900" value={toolNamePremium} onChange={e => setToolNamePremium(e.target.value)} />
               </div>
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-green-200 bg-white" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 8" className="border-green-200 bg-white" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
@@ -1376,10 +1427,10 @@ export default function TaylorCurvePage() {
                    <tr className="bg-slate-100">
                     <td className="p-2 border border-slate-300 font-bold">Rugosidad Teórica (Ra)</td>
                     <td className="p-2 border border-slate-300 text-center">
-                        {`${calcularRaTeorico(feedCurrent, extraerRadioISO(toolNameCurrent)) ?? 'N/A'} µm`}
+                        {`${calcularRaTeorico(feedCurrent, toolNameCurrent) ?? 'N/A'} µm`}
                     </td>
                     <td className="p-2 border border-slate-300 text-center bg-slate-50 font-medium">
-                        {`${calcularRaTeorico(feedPremium, extraerRadioISO(toolNamePremium)) ?? 'N/A'} µm`}
+                        {`${calcularRaTeorico(feedPremium, toolNamePremium) ?? 'N/A'} µm`}
                     </td>
                   </tr>
                   <tr>
