@@ -5,6 +5,8 @@ import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, serverTimestamp
 import { db } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/formatters";
+import { Button } from "@/components/ui/button";
+import { Edit } from "lucide-react";
 
 export default function HistoryPage() {
   const [simulations, setSimulations] = useState<any[]>([]);
@@ -95,19 +97,35 @@ export default function HistoryPage() {
                     <td className="p-4 text-slate-600">
                       {sim.dateCreated ? new Date(sim.dateCreated.toDate()).toLocaleDateString('es-ES') : 'N/A'}
                     </td>
-                    <td className="p-4 font-bold text-slate-800">{sim.clientName}</td>
+                    <td className="p-4 font-bold">
+                      <span 
+                        onClick={() => router.push(`/taylor-curve/${sim.id}/edit`)} 
+                        className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+                        title="Clic para abrir y editar este informe"
+                      >
+                        {sim.clientName}
+                      </span>
+                    </td>
                     <td className="p-4 text-slate-600">{sim.caseName}</td>
                     <td className="p-4 font-black text-emerald-600">
                       {formatCurrency(sim.annualSavings)}
                     </td>
                     <td className="p-4 flex items-center justify-end gap-2">
+                       <Button 
+                        onClick={() => router.push(`/taylor-curve/${sim.id}/edit`)} 
+                        variant="outline" 
+                        size="sm"
+                        className="flex items-center gap-1"
+                      >
+                        <Edit className="h-3 w-3" /> Editar
+                      </Button>
+                      
                       {sim.pdfUrl && (
                         <a href={sim.pdfUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-bold transition-colors flex items-center gap-1">
                           📄 PDF
                         </a>
                       )}
                       
-                      {/* BOTÓN DINÁMICO DE ESTADO (PENDIENTE / OK) */}
                       <button 
                         onClick={() => handleToggleStatus(sim)} 
                         className={`px-3 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1 shadow-sm border ${
@@ -120,7 +138,6 @@ export default function HistoryPage() {
                         {sim.status === 'ok' ? '✅ Análisis OK' : '⏳ Pendiente'}
                       </button>
 
-                      {/* NUEVO BOTÓN DE ELIMINAR */}
                       <button 
                         onClick={() => handleDeleteAnalysis(sim.id, sim.clientName)} 
                         className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded text-xs font-bold transition-colors flex items-center gap-1 shadow-sm ml-1"

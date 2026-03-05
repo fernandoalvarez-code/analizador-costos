@@ -1458,11 +1458,38 @@ export default function TaylorCurvePage() {
                       dateCreated: serverTimestamp(),
                       userId: user.uid, 
                       taylorInputs: { 
-                        operationType, 
-                        materialId, 
-                        ap: Number(apCurrent) || 2.0,
+                        operationType,
+                        materialId,
+                        machineCostHr,
+                        toolChangeTime,
+                        pieceName,
+                        machinePowerHP,
+                        profundidadAgujero,
+                        monthlyProduction,
+                        // Current
+                        toolNameCurrent,
+                        toolCostCurrent,
+                        apCurrent,
+                        feedCurrent,
+                        vcCurrent,
+                        pcsCurrent,
+                        tcCurrentMin,
+                        tcCurrentSec,
+                        zCurrent,
+                        edgesCurrent,
+                        dcCurrent,
+                        aeCurrent,
+                        // Premium
                         toolNamePremium,
-                        toolNameCurrent
+                        toolCostPremium,
+                        apPremium,
+                        feedPremium,
+                        vcPremium,
+                        pcsPremium,
+                        zPremium,
+                        edgesPremium,
+                        dcPremium,
+                        aePremium,
                       }
                     };
 
