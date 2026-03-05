@@ -54,6 +54,27 @@ const TAYLOR_CONSTANTS: Record<string, {n: number, C: number}> = {
   "ISO H": { n: 0.15, C: 120 },
 };
 
+const MATRIZ_ROMPEVIRUTAS: Record<string, {min_f: number, max_f: number, min_ap?: number, max_ap?: number, desc: string}> = {
+  // Plaquitas Positivas
+  "AL":  { min_f: 0.15, max_f: 0.60, min_ap: 0.5, max_ap: 4.0, desc: "Aluminio" },
+  "FF1": { min_f: 0.05, max_f: 0.30, min_ap: 0.2, max_ap: 3.0, desc: "Súper Acabado" },
+  "F1":  { min_f: 0.10, max_f: 0.50, min_ap: 0.2, max_ap: 3.0, desc: "Fundiciones/Forjados Finos" },
+  "MF2": { min_f: 0.08, max_f: 0.50, min_ap: 0.15, max_ap: 3.0, desc: "Acabado Versátil" },
+  "M3":  { min_f: 0.12, max_f: 0.60, min_ap: 0.2, max_ap: 5.0, desc: "Semidesbaste" },
+  "M5":  { min_f: 0.15, max_f: 0.70, min_ap: 1.0, max_ap: 6.0, desc: "Desbaste" },
+  "RR96": { min_f: 0.50, max_f: 2.20, min_ap: 5.0, max_ap: 24.0, desc: "Desbaste Pesado Ferrocarril" },
+  "RR97": { min_f: 0.50, max_f: 2.20, min_ap: 5.0, max_ap: 24.0, desc: "Desbaste Pesado Ferrocarril" },
+  "UX":  { min_f: 0.05, max_f: 0.40, min_ap: 0.5, max_ap: 4.0, desc: "Piezas Delgadas" },
+  
+  // Plaquitas Negativas
+  "FF2": { min_f: 0.08, max_f: 0.30, min_ap: 0.2, max_ap: 1.5, desc: "Acabado" },
+  "MF1": { min_f: 0.08, max_f: 0.30, min_ap: 0.2, max_ap: 3.5, desc: "Acabado Inox/Titanio" },
+  "MF4": { min_f: 0.15, max_f: 0.50, desc: "Inox/Superaleaciones" },
+  "MF5": { min_f: 0.20, max_f: 0.80, desc: "Inox/Superaleaciones (Altos Avances)" },
+  "M1":  { min_f: 0.20, max_f: 0.40, min_ap: 1.5, max_ap: 5.0, desc: "Titanio/Inox" },
+  "M4":  { min_f: 0.10, max_f: 0.70, min_ap: 0.2, max_ap: 5.0, desc: "Fundición" },
+};
+
 // Función para extraer el radio del código ISO (Ej: "TNMG 160408-M5" -> 0.8)
 const extraerRadioISO = (codigoInserto: string): number | null => {
   if (!codigoInserto) return null;
@@ -92,13 +113,38 @@ const analizarRompevirutas = (codigoInserto: string): { esWiper: boolean; tipoCo
     let tipoCorte = 'Medio';
     if (sufijo.includes('F') || sufijo.includes('FF')) {
         tipoCorte = 'Terminacion';
-    } else if (sufijo.includes('M')) {
-        tipoCorte = 'Medio';
     } else if (sufijo.includes('R') || sufijo.includes('RR')) {
         tipoCorte = 'Desbaste';
     }
 
     return { esWiper, tipoCorte, sufijo };
+};
+
+const auditarLimitesRompevirutas = (codigoInserto: string | undefined, avance_f: number | string, ap_mm: number | string): string | null => {
+  if (!codigoInserto || !avance_f || !ap_mm) return null;
+
+  const { sufijo } = analizarRompevirutas(codigoInserto);
+  if (!sufijo) return null;
+
+  // Prioriza llaves más largas para evitar falsos positivos (ej: "MF2" antes que "M" o "F")
+  const chipbreakerKey = Object.keys(MATRIZ_ROMPEVIRUTAS)
+                               .sort((a, b) => b.length - a.length)
+                               .find(key => sufijo.includes(key));
+
+  if (!chipbreakerKey) return null;
+
+  const limites = MATRIZ_ROMPEVIRUTAS[chipbreakerKey];
+  const numAvance = Number(avance_f);
+  const numAp = Number(ap_mm);
+
+  if (numAvance < limites.min_f || numAvance > limites.max_f) {
+    return `⚠️ Avance (${numAvance}) fuera de rango para ${chipbreakerKey} (${limites.desc}). Rango ideal: ${limites.min_f}-${limites.max_f} mm/rev.`;
+  }
+  if (limites.min_ap !== undefined && limites.max_ap !== undefined && (numAp < limites.min_ap || numAp > limites.max_ap)) {
+    return `⚠️ Profundidad (${numAp}mm) fuera de rango para ${chipbreakerKey} (${limites.desc}). Rango ideal: ${limites.min_ap}-${limites.max_ap} mm.`;
+  }
+  
+  return `✅ Parámetros en rango para rompevirutas ${chipbreakerKey} (${limites.desc}).`;
 };
 
 
@@ -271,10 +317,12 @@ export default function TaylorCurvePage() {
 
   const warningParamCurrent = auditarParametros(apCurrent, feedCurrent, toolNameCurrent);
   const warningAppCurrent = auditarAplicacion(apCurrent, toolNameCurrent);
+  const chipbreakerAuditCurrent = useMemo(() => auditarLimitesRompevirutas(toolNameCurrent, feedCurrent, apCurrent), [toolNameCurrent, feedCurrent, apCurrent]);
   const warningCurrent = warningParamCurrent || warningAppCurrent;
 
   const warningParamPremium = auditarParametros(apPremium, feedPremium, toolNamePremium);
   const warningAppPremium = auditarAplicacion(apPremium, toolNamePremium);
+  const chipbreakerAuditPremium = useMemo(() => auditarLimitesRompevirutas(toolNamePremium, feedPremium, apPremium), [toolNamePremium, feedPremium, apPremium]);
   const warningPremium = warningParamPremium || warningAppPremium;
 
   const analisisFresaCurrent = useMemo(() => analizarInsertoFresado(toolNameCurrent), [toolNameCurrent]);
@@ -524,7 +572,7 @@ export default function TaylorCurvePage() {
     const safeTcCurrent = (Number(tcCurrentMin) || 0) + ((Number(tcCurrentSec) || 0) / 60);
 
     const mat = MATERIALS.find(m => m.nombre === materialId) || MATERIALS[1];
-    const taylorProps = TAYLOR_CONSTANTS[mat.grupo as keyof typeof TAYLOR_CONSTANTS] || { n: 0.25, C: 200 };
+    const taylorProps = TAYLOR_CONSTANTS[mat.grupo as keyof typeof TAYLOR_CONSTANTS] || { n: 0.25, C: 250 };
     const premiumC = taylorProps.C * 1.25;
     const kc = mat.kc || 1500;
     const safeMachinePowerHP = Number(machinePowerHP) || 15;
@@ -1009,6 +1057,11 @@ export default function TaylorCurvePage() {
                 {warningCurrent}
               </div>
             )}
+            {chipbreakerAuditCurrent && (
+              <div className={`mt-4 p-3 text-xs font-medium rounded-lg ${chipbreakerAuditCurrent.includes('✅') ? 'bg-green-100 border-l-4 border-green-500 text-green-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}>
+                {chipbreakerAuditCurrent}
+              </div>
+            )}
             {/* Progress Bar alineada al fondo */}
             <div className="mt-6 bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
               <div className="flex justify-between items-center mb-1">
@@ -1084,6 +1137,11 @@ export default function TaylorCurvePage() {
             {warningPremium && (
               <div className="mt-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 text-xs font-medium rounded-r-lg">
                 {warningPremium}
+              </div>
+            )}
+            {chipbreakerAuditPremium && (
+              <div className={`mt-4 p-3 text-xs font-medium rounded-lg ${chipbreakerAuditPremium.includes('✅') ? 'bg-green-100 border-l-4 border-green-500 text-green-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}>
+                {chipbreakerAuditPremium}
               </div>
             )}
             {/* Progress Bar alineada al fondo */}
