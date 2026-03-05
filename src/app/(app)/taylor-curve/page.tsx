@@ -74,7 +74,7 @@ const extraerRadioISO = (codigoInserto: string): number | null => {
   return null;
 };
 
-// Analizador del Rompevirutas (Basado en nomenclatura Seco Tools)
+// Analizador del Rompevirutas a prueba de errores de tipeo
 const analizarRompevirutas = (codigoInserto: string): { esWiper: boolean; tipoCorte: string; sufijo: string } => {
     if (!codigoInserto) {
         return { esWiper: false, tipoCorte: 'Desconocido', sufijo: '' };
@@ -92,10 +92,10 @@ const analizarRompevirutas = (codigoInserto: string): { esWiper: boolean; tipoCo
     let tipoCorte = 'Medio';
     if (sufijo.includes('F') || sufijo.includes('FF')) {
         tipoCorte = 'Terminacion';
-    } else if (sufijo.includes('R') || sufijo.includes('RR')) {
-        tipoCorte = 'Desbaste';
     } else if (sufijo.includes('M')) {
         tipoCorte = 'Medio';
+    } else if (sufijo.includes('R') || sufijo.includes('RR')) {
+        tipoCorte = 'Desbaste';
     }
 
     return { esWiper, tipoCorte, sufijo };
@@ -156,6 +156,49 @@ const calcularRaTeorico = (avance: number | "", codigoInserto: string): string |
   }
 
   return ra_micrones.toFixed(2);
+};
+
+// Analizador Inteligente para Plaquitas de Fresado
+const analizarInsertoFresado = (codigoInserto: string): { formaPlaquita: string, incidenciaPlaquita: string, geometriaFilo: string, alertaGeometria: string | null } | null => {
+  if (!codigoInserto) return null;
+
+  const textoLimpio = codigoInserto.toUpperCase().trim();
+  
+  const formaPlaquita = textoLimpio.charAt(0); 
+  const incidenciaPlaquita = textoLimpio.charAt(1);
+
+  let geometriaFilo = 'Media';
+  let alertaGeometria = null;
+
+  if (textoLimpio.includes('-D') || textoLimpio.includes('TN')) {
+    geometriaFilo = 'Robusta / Negativa';
+    alertaGeometria = '💡 Filo robusto detectado. Ideal para desbaste pesado o cortes interrumpidos. Consumirá más HP de la máquina.';
+  } else if (textoLimpio.includes('-E') || textoLimpio.includes('-F')) {
+    geometriaFilo = 'Viva / Positiva';
+    alertaGeometria = '⚠️ Filo muy vivo y positivo. Excelente para acabados y bajo consumo de HP, pero frágil ante cortes interrumpidos.';
+  }
+
+  return { formaPlaquita, incidenciaPlaquita, geometriaFilo, alertaGeometria };
+};
+
+const auditarMaterialFresado = (codigoGrado: string, materialSeleccionado: string): string | null => {
+  if (!codigoGrado || !materialSeleccionado) return null;
+  const grado = codigoGrado.toUpperCase();
+  const material = materialSeleccionado.toLowerCase();
+
+  if (grado.includes('PCD') && (material.includes('acero') || material.includes('fundicion'))) {
+    return '❌ ERROR CRÍTICO: El PCD (Diamante) reacciona químicamente con el hierro a altas temperaturas. Solo usar en Aluminio, Plásticos o Titanio.';
+  }
+
+  if (grado.includes('PCBN') && material.includes('aluminio')) {
+    return '⚠️ ALERTA DE COSTO: El PCBN es extremadamente caro y está diseñado para aceros templados >45HRC o fundición gris. Para aluminio, usa plaquitas no recubiertas (Ej: H15) o PCD.';
+  }
+
+  if ((grado.includes('MP15') || grado.includes('MK15')) && (material.includes('titanio') || material.includes('inconel'))) {
+     return '💡 SUGERENCIA: Para Titanio se recomiendan calidades PVD (Ej: MS2050) por su tenacidad de filo, no CVD.';
+  }
+
+  return null;
 };
 
 export default function TaylorCurvePage() {
@@ -233,6 +276,14 @@ export default function TaylorCurvePage() {
   const warningParamPremium = auditarParametros(apPremium, feedPremium, toolNamePremium);
   const warningAppPremium = auditarAplicacion(apPremium, toolNamePremium);
   const warningPremium = warningParamPremium || warningAppPremium;
+
+  const analisisFresaCurrent = useMemo(() => analizarInsertoFresado(toolNameCurrent), [toolNameCurrent]);
+  const alertaMaterialCurrent = useMemo(() => auditarMaterialFresado(toolNameCurrent, materialId), [toolNameCurrent, materialId]);
+  const warningFresaCurrent = alertaMaterialCurrent || analisisFresaCurrent?.alertaGeometria;
+
+  const analisisFresaPremium = useMemo(() => analizarInsertoFresado(toolNamePremium), [toolNamePremium]);
+  const alertaMaterialPremium = useMemo(() => auditarMaterialFresado(toolNamePremium, materialId), [toolNamePremium, materialId]);
+  const warningFresaPremium = alertaMaterialPremium || analisisFresaPremium?.alertaGeometria;
 
 
   // --- Funciones de Cálculo ---
@@ -907,6 +958,11 @@ export default function TaylorCurvePage() {
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-red-800 mb-1 uppercase tracking-wider">Herramienta / Inserto Competencia</Label>
                 <Input type="text" placeholder="Ej: CNMG 120408" className="border-red-200 bg-white" value={toolNameCurrent} onChange={e => setToolNameCurrent(e.target.value)} />
+                {operationType === 'milling' && warningFresaCurrent && (
+                    <div className={`mt-2 p-2 text-xs font-medium rounded-r-lg ${warningFresaCurrent.includes('ERROR') ? 'bg-red-100 border-l-4 border-red-500 text-red-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}>
+                        {warningFresaCurrent}
+                    </div>
+                )}
               </div>
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-red-200 bg-white" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 4" className="border-red-200 bg-white" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
@@ -980,6 +1036,11 @@ export default function TaylorCurvePage() {
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-green-800 mb-1 uppercase tracking-wider">Herramienta / Inserto Seco</Label>
                 <Input type="text" placeholder="Ej: CNMG 120408-M3W TP2501" className="border-green-300 bg-white shadow-inner font-bold text-green-900" value={toolNamePremium} onChange={e => setToolNamePremium(e.target.value)} />
+                 {operationType === 'milling' && warningFresaPremium && (
+                    <div className={`mt-2 p-2 text-xs font-medium rounded-r-lg ${warningFresaPremium.includes('ERROR') ? 'bg-red-100 border-l-4 border-red-500 text-red-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}>
+                        {warningFresaPremium}
+                    </div>
+                )}
               </div>
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-green-200 bg-white" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 8" className="border-green-200 bg-white" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
