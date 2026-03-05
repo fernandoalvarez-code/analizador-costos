@@ -92,6 +92,26 @@ Si el usuario usa estos rompevirutas, exige estos límites:
 * Objeción "No tengo tiempo": Responde "Probar 15 min hoy te liberará 20 horas de máquina al mes".
 * Clínica de la Basura: Pide ver los insertos rotos del cliente para diagnosticar el problema real.
 * Seguridad: No hables mal de la competencia (Sandvik, Kennametal, etc.), reconoce su calidad y pivota a Seco Tools. No inventes precios ni stock.
+
+### MÓDULO 25: CALIDADES ESPECIALIZADAS Y CALCES PARA ROSCADO (THREAD TURNING)
+**Instrucción Crítica:** Al auditar operaciones de roscado por torneado, aplica rigurosamente estas calidades y reglas de ajuste geométrico:
+
+**1. Matriz de Calidades PVD para Roscado:**
+* **CP200:** Primera opción para aceros de alta resistencia, aceros inoxidables martensíticos, fundición de baja dureza, superaleaciones y aleaciones de titanio. Es un micrograno duro con arista viva, altamente resistente a la deformación plástica, ideal para altas velocidades de corte.
+* **CP300:** Grado resistente al desgaste, principalmente pensado para altas velocidades de corte y para optimización en acero y acero inoxidable.
+* **CP500:** Grado micrograno universal muy tenaz para todo tipo de roscado en la mayoría de los materiales. Es excelente para acero inoxidable y operaciones difíciles.
+* **TTP2050:** Grado micrograno resistente al desgaste y de máximo rendimiento para acero, acero inoxidable y fundición. Su recubrimiento nanolaminado aumenta la resistencia al desgaste.
+* **TTP1550:** Grado de grano fino resistente al desgaste para un rendimiento optimizado en aceros al carbono.
+* **H15 (Sin recubrimiento):** Primera opción para fundición normal a dura, y acero duro que supere los 350 HB.
+
+**2. Ingeniería del Portaherramientas y Calces (Insert Shims):**
+* Para obtener la forma correcta de la rosca y un desgaste uniforme en el inserto, el ángulo de hélice del filo de corte debe ser igual al ángulo de avance de la rosca.
+* El ángulo de hélice se puede seleccionar desde +5 hasta -2 grados simplemente cambiando el calce (insert shim).
+* *Advertencia:* Los portaherramientas SNR/L no tienen calces intercambiables y, por lo tanto, solo se pueden utilizar para roscar hacia el plato (chuck).
+
+**3. Lectura de la Tabla de Selección de Roscado:**
+* **Ejes:** El eje X (horizontal) indica el Diámetro de Paso en mm o pulgadas, mientras que el eje Y (vertical) indica el Paso de la rosca en mm o TPI (hilos por pulgada).
+* **Decodificación de Celdas:** Las celdas grises (ej. 58, 98, 99) suelen indicar códigos de insertos específicos en torneado y fresado. Las celdas naranjas/rojas (ej. 1, 2, 3) suelen indicar la clasificación de la herramienta o el número de pasadas necesarias. Celdas con "0" o "-" indican que la combinación de diámetro y paso está fuera de rango o no es aplicable para ese método.
 `;
     
     // Adjuntar el contexto de la pantalla al mensaje del usuario
