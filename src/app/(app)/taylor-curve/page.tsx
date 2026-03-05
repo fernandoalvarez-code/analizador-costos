@@ -76,39 +76,31 @@ const extraerRadioISO = (codigoInserto: string): number | null => {
 
 // Analizador del Rompevirutas (Basado en nomenclatura Seco Tools)
 const analizarRompevirutas = (codigoInserto: string): { esWiper: boolean; tipoCorte: string; sufijo: string } => {
-  if (!codigoInserto) {
-    return { esWiper: false, tipoCorte: 'Desconocido', sufijo: '' };
-  }
+    if (!codigoInserto) {
+        return { esWiper: false, tipoCorte: 'Desconocido', sufijo: '' };
+    }
+    const textoLimpio = codigoInserto.replace(/\s|-/g, '').toUpperCase();
+    const match = textoLimpio.match(/\d{6}(.*)/);
 
-  // 1. Limpiamos espacios y guiones y pasamos a mayúsculas
-  const textoLimpio = codigoInserto.replace(/\s|-/g, '').toUpperCase();
+    if (!match || !match[1]) {
+        return { esWiper: false, tipoCorte: 'Desconocido', sufijo: '' };
+    }
 
-  // 2. Buscamos el bloque de 6 números y capturamos todo lo que le sigue
-  // (Ej: de "CNMG120408M3W" captura "M3W")
-  const match = textoLimpio.match(/\d{6}(.*)/);
-  
-  // Si no encuentra números, asumimos que no es wiper y no podemos analizar el sufijo.
-  if (!match || !match[1]) {
-    return { esWiper: false, tipoCorte: 'Desconocido', sufijo: '' };
-  }
+    const sufijo = match[1];
+    const esWiper = sufijo.includes('W');
 
-  const sufijo = match[1]; // Esto contiene las letras finales, ej: "M3W"
+    let tipoCorte = 'Medio';
+    if (sufijo.includes('F') || sufijo.includes('FF')) {
+        tipoCorte = 'Terminacion';
+    } else if (sufijo.includes('R') || sufijo.includes('RR')) {
+        tipoCorte = 'Desbaste';
+    } else if (sufijo.includes('M')) {
+        tipoCorte = 'Medio';
+    }
 
-  // 3. Detección de Tecnología Wiper (Suele contener la 'W' en Seco, ej: -TW, -M3W, -W)
-  const esWiper = sufijo.includes('W');
-
-  // 4. Clasificación de Aplicación (Seco Tools)
-  let tipoCorte = 'Medio'; // Por defecto
-  if (sufijo.includes('F') || sufijo.includes('FF')) {
-    tipoCorte = 'Terminacion';
-  } else if (sufijo.includes('R') || sufijo.includes('RR')) {
-    tipoCorte = 'Desbaste';
-  } else if (sufijo.includes('M')) {
-    tipoCorte = 'Medio';
-  }
-
-  return { esWiper, tipoCorte, sufijo };
+    return { esWiper, tipoCorte, sufijo };
 };
+
 
 // Función para generar advertencias técnicas
 const auditarParametros = (ap: number | "", avance: number | "", codigoInserto: string): string | null => {
@@ -191,6 +183,8 @@ export default function TaylorCurvePage() {
   const [tcCurrentSec, setTcCurrentSec] = useState<number | "">("");
   const [zCurrent, setZCurrent] = useState<number | "">("");
   const [edgesCurrent, setEdgesCurrent] = useState<number | "">("");
+  const [dcCurrent, setDcCurrent] = useState<number | "">("");
+  const [aeCurrent, setAeCurrent] = useState<number | "">("");
   
   // Premium
   const [toolNamePremium, setToolNamePremium] = useState<string>("");
@@ -201,7 +195,9 @@ export default function TaylorCurvePage() {
   const [pcsPremium, setPcsPremium] = useState<number | "">("");
   const [zPremium, setZPremium] = useState<number | "">("");
   const [edgesPremium, setEdgesPremium] = useState<number | "">("");
-  
+  const [dcPremium, setDcPremium] = useState<number | "">("");
+  const [aePremium, setAePremium] = useState<number | "">("");
+
   // Volumen
   const [monthlyProduction, setMonthlyProduction] = useState<number | "">("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -474,64 +470,100 @@ export default function TaylorCurvePage() {
     const safeToolCostCurrent = Number(toolCostCurrent) || 0;
     const safeToolCostPremium = Number(toolCostPremium) || 0;
     const safeToolChangeTime = Number(toolChangeTime) || 0;
-    
-    // Tiempos y parámetros
     const safeTcCurrent = (Number(tcCurrentMin) || 0) + ((Number(tcCurrentSec) || 0) / 60);
-    const safeVcCurrent = Number(vcCurrent) || 0.0001;
-    const safeFeedCurrent = Number(feedCurrent) || 0.0001;
-    const safeApCurrent = Number(apCurrent) || 0.0001;
-
-    const safeVcPremium = Number(vcPremium) || 0.0001;
-    const safeFeedPremium = Number(feedPremium) || 0.0001;
-    const safeApPremium = Number(apPremium) || 0.0001;
-
-    // Variables de Fresado (Z y Filos) controladas por el Toggle
-    const safeZCurrent = operationType === 'turning' ? 1 : (Number(zCurrent) || 1);
-    const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || safeZCurrent);
-    
-    const safeEdgesCurrent = Number(edgesCurrent) || 1;
-    const safeEdgesPremium = Number(edgesPremium) || 1;
-
-    const safePcsCurrent = Number(pcsCurrent) || 1;
-    const safePcsPremium = Number(pcsPremium) || 1;
-    const safeMonthlyProduction = Number(monthlyProduction) || 0;
 
     const mat = MATERIALS.find(m => m.nombre === materialId) || MATERIALS[1];
     const taylorProps = TAYLOR_CONSTANTS[mat.grupo as keyof typeof TAYLOR_CONSTANTS] || { n: 0.25, C: 200 };
     const premiumC = taylorProps.C * 1.25;
-
-    const factorVelocidad = safeVcCurrent / safeVcPremium;
-    const factorAvance = safeFeedCurrent / safeFeedPremium;
-    const factorZ = safeZCurrent / safeZPremium;
-    const factorPasadas = safeApCurrent / safeApPremium;
-    
-    const tcPremium = safeTcCurrent * factorVelocidad * factorAvance * factorZ * factorPasadas;
-
     const kc = mat.kc || 1500;
     const safeMachinePowerHP = Number(machinePowerHP) || 15;
 
-    const kwCurrent_base = (safeApCurrent * safeFeedCurrent * safeVcCurrent * kc * safeZCurrent) / 60000;
-    const factorFormaCurrent = obtenerFactorForma(toolNameCurrent);
-    const factorIncidenciaCurrent = obtenerFactorIncidencia(toolNameCurrent);
-    const hpCurrent = kwCurrent_base * 1.341 * factorFormaCurrent * factorIncidenciaCurrent;
-    const loadCurrent = (hpCurrent / safeMachinePowerHP) * 100;
+    let tcPremium = 0;
+    let hpCurrent = 0;
+    let hpPremium = 0;
+
+    const safePcsCurrent = Number(pcsCurrent) || 1;
+    const safePcsPremium = Number(pcsPremium) || 1;
+    const safeMonthlyProduction = Number(monthlyProduction) || 0;
+    const safeEdgesCurrent = Number(edgesCurrent) || 1;
+    const safeEdgesPremium = Number(edgesPremium) || 1;
     
-    const kwPremium_base = (safeApPremium * safeFeedPremium * safeVcPremium * kc * safeZPremium) / 60000;
-    const factorFormaPremium = obtenerFactorForma(toolNamePremium);
-    const factorIncidenciaPremium = obtenerFactorIncidencia(toolNamePremium);
-    const hpPremium = kwPremium_base * 1.341 * factorFormaPremium * factorIncidenciaPremium;
+    if (operationType === 'turning') {
+        const safeVcCurrent = Number(vcCurrent) || 0.0001;
+        const safeFeedCurrent = Number(feedCurrent) || 0.0001;
+        const safeApCurrent = Number(apCurrent) || 0.0001;
+        const safeZCurrent = 1;
+
+        const safeVcPremium = Number(vcPremium) || 0.0001;
+        const safeFeedPremium = Number(feedPremium) || 0.0001;
+        const safeApPremium = Number(apPremium) || 0.0001;
+        const safeZPremium = 1;
+
+        const factorVelocidad = safeVcCurrent / safeVcPremium;
+        const factorAvance = safeFeedCurrent / safeFeedPremium;
+        const factorPasadas = safeApCurrent / safeApPremium;
+        
+        tcPremium = safeTcCurrent * factorVelocidad * factorAvance * factorPasadas;
+
+        const kwCurrent_base = (safeApCurrent * safeFeedCurrent * safeVcCurrent * kc * safeZCurrent) / 60000;
+        const factorFormaCurrent = obtenerFactorForma(toolNameCurrent);
+        const factorIncidenciaCurrent = obtenerFactorIncidencia(toolNameCurrent);
+        hpCurrent = kwCurrent_base * 1.341 * factorFormaCurrent * factorIncidenciaCurrent;
+        
+        const kwPremium_base = (safeApPremium * safeFeedPremium * safeVcPremium * kc * safeZPremium) / 60000;
+        const factorFormaPremium = obtenerFactorForma(toolNamePremium);
+        const factorIncidenciaPremium = obtenerFactorIncidencia(toolNamePremium);
+        hpPremium = kwPremium_base * 1.341 * factorFormaPremium * factorIncidenciaPremium;
+
+    } else { // Milling logic
+        const safeVcCurrent = Number(vcCurrent) || 0;
+        const safeDcCurrent = Number(dcCurrent) || 0.0001;
+        const safeFzCurrent = Number(feedCurrent) || 0; // fz
+        const safeZCurrentMilling = Number(zCurrent) || 1;
+        const safeApCurrent = Number(apCurrent) || 0;
+        const safeAeCurrent = Number(aeCurrent) || 0;
+
+        const safeVcPremium = Number(vcPremium) || 0;
+        const safeDcPremium = Number(dcPremium) || 0.0001;
+        const safeFzPremium = Number(feedPremium) || 0; // fz
+        const safeZPremiumMilling = Number(zPremium) || 1;
+        const safeApPremium = Number(apPremium) || 0;
+        const safeAePremium = Number(aePremium) || 0;
+
+        // Vf Current
+        const rpmCurrent = (safeVcCurrent * 1000) / (Math.PI * safeDcCurrent);
+        const vfCurrent = safeFzCurrent * safeZCurrentMilling * rpmCurrent;
+        
+        // Vf Premium
+        const rpmPremium = (safeVcPremium * 1000) / (Math.PI * safeDcPremium);
+        const vfPremium = safeFzPremium * safeZPremiumMilling * rpmPremium;
+        
+        // Deduce premium time
+        tcPremium = vfPremium > 0 ? safeTcCurrent * (vfCurrent / vfPremium) : safeTcCurrent;
+        
+        // HP Current
+        const qCurrent = (safeApCurrent * safeAeCurrent * vfCurrent) / 1000;
+        const kwCurrent = (qCurrent * kc) / 60000;
+        hpCurrent = (kwCurrent * 1.341) / 0.8;
+        
+        // HP Premium
+        const qPremium = (safeApPremium * safeAePremium * vfPremium) / 1000;
+        const kwPremium = (qPremium * kc) / 60000;
+        hpPremium = (kwPremium * 1.341) / 0.8;
+    }
+
+    const loadCurrent = (hpCurrent / safeMachinePowerHP) * 100;
     const loadPremium = (hpPremium / safeMachinePowerHP) * 100;
-
-
-    // 1. Función Teórica
+    
+    // 1. Función Teórica (Curva General)
     const calcCost = (v: number, isPremium: boolean, feed: number) => {
       const C = isPremium ? premiumC : taylorProps.C;
       const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
-      const z = isPremium ? safeZPremium : safeZCurrent;
+      const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
       const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
-      const ap = isPremium ? safeApPremium : safeApCurrent; // This is a simplification for the theoretical curve
+      const ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
 
-      const tc = (safeTcCurrent * (safeVcCurrent / v) * (safeFeedCurrent / feed) * (safeApCurrent / ap));
+      const tc = (safeTcCurrent * ( (Number(vcCurrent) || 0.0001) / v) * ((Number(feedCurrent) || 0.0001) / feed) * ((Number(apCurrent) || 0.0001) / ap));
       const lifeMins = Math.pow((C / v), (1 / taylorProps.n));
       
       const costPorPunta = toolPrice / edges;
@@ -540,7 +572,7 @@ export default function TaylorCurvePage() {
       return (safeMachineCostMin * tc) + ((safeMachineCostMin * safeToolChangeTime + costJuego) * (tc / lifeMins));
     };
 
-    // 2. Función Empírica
+    // 2. Función Empírica (Puntos Reales en el Gráfico)
     const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
       const costCorte = safeMachineCostMin * tc;
       const costPorPunta = toolPrice / edges;
@@ -551,45 +583,26 @@ export default function TaylorCurvePage() {
     };
 
     const speedsSet = new Set<number>();
-    for (let v = 50; v <= taylorProps.C * 1.3; v += 10) {
-      speedsSet.add(v);
-    }
-    if (safeVcCurrent > 0) speedsSet.add(safeVcCurrent);
-    if (safeVcPremium > 0) speedsSet.add(safeVcPremium);
-
+    for (let v = 50; v <= taylorProps.C * 1.3; v += 10) { speedsSet.add(v); }
+    if (Number(vcCurrent) > 0) speedsSet.add(Number(vcCurrent));
+    if (Number(vcPremium) > 0) speedsSet.add(Number(vcPremium));
     const sortedSpeeds = Array.from(speedsSet).sort((a, b) => a - b);
-    const data = [];
-    sortedSpeeds.forEach(v => {
-      data.push({
+    const data = sortedSpeeds.map(v => ({
         speed: v,
-        costoActual: Number(calcCost(v, false, safeFeedCurrent).toFixed(2)),
-        costoPremium: Number(calcCost(v, true, safeFeedPremium).toFixed(2)),
-      });
-    });
+        costoActual: Number(calcCost(v, false, Number(feedCurrent) || 0.0001).toFixed(2)),
+        costoPremium: Number(calcCost(v, true, Number(feedPremium) || 0.0001).toFixed(2)),
+    }));
     
     // 3. Puntos Reales
-    const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, safePcsCurrent, safeZCurrent, safeEdgesCurrent);
-    const actualCostPremium = calcEmpiricalCost(tcPremium, safeToolCostPremium, safePcsPremium, safeZPremium, safeEdgesPremium);
+    const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, safePcsCurrent, (Number(zCurrent) || 1), safeEdgesCurrent);
+    const actualCostPremium = calcEmpiricalCost(tcPremium, safeToolCostPremium, safePcsPremium, (Number(zPremium) || 1), safeEdgesPremium);
     
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
     const realSavingsPercentage = actualCostCurrent > 0 ? (realAbsoluteSavings / actualCostCurrent) * 100 : 0;
-    
     const monthlySavings = isFinite(realAbsoluteSavings) ? realAbsoluteSavings * safeMonthlyProduction : 0;
 
-    return { 
-      data, 
-      actualCostCurrent, 
-      actualCostPremium, 
-      realAbsoluteSavings, 
-      realSavingsPercentage,
-      tcPremium,
-      monthlySavings,
-      hpCurrent,
-      hpPremium,
-      loadCurrent,
-      loadPremium,
-    };
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium]);
+    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium };
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium]);
 
     // --- EFECTO PARA SIMULADOR DE TAYLOR ---
     useEffect(() => {
@@ -887,32 +900,30 @@ export default function TaylorCurvePage() {
               </div>
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-red-200 bg-white" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 4" className="border-red-200 bg-white" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              {operationType === 'milling' && (
+                <>
+                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Diámetro Fresa (Dc) mm</Label><Input type="number" className="border-red-200 bg-white" value={dcCurrent} onChange={e => setDcCurrent(e.target.value === '' ? '' : Number(e.target.value))} /></div>
+                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Ancho Corte (ae) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white" value={aeCurrent} onChange={e => setAeCurrent(e.target.value === '' ? '' : Number(e.target.value))} /></div>
+                </>
+              )}
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white" value={apCurrent} onChange={e => setApCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               
               {operationType === 'milling' ? (
-                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Insertos (Z)</Label><Input type="number" className="border-red-200 bg-white" value={zCurrent} onChange={e => setZCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-red-200 bg-white" value={zCurrent} onChange={e => setZCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               ) : (
-                <div>
-                  <Label className="block text-[10px] font-bold text-red-600 mb-1">Avance (mm/rev)</Label>
+                 <div></div>
+              )}
+              
+              <div>
+                  <Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : 'Avance (mm/z)'}</Label>
                   <Input type="number" step="0.01" className="border-red-200 bg-white" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
                   {raActual && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
                           Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
                       </p>
                   )}
-                </div>
-              )}
-              {operationType === 'milling' && (
-                <div>
-                  <Label className="block text-[10px] font-bold text-red-600 mb-1">Avance (mm/z)</Label>
-                  <Input type="number" step="0.01" className="border-red-200 bg-white" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
-                  {raActual && (
-                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
-                      </p>
-                  )}
-                </div>
-              )}
+              </div>
+              
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label><Input type="number" className="border-red-200 bg-white" value={vcCurrent} onChange={e => setVcCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               <div className="col-span-2"><Label className="block text-[10px] font-bold text-red-600 mb-1">Pzas / filo</Label><Input type="number" className="border-red-200 bg-white" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               
@@ -959,32 +970,30 @@ export default function TaylorCurvePage() {
               </div>
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-green-200 bg-white" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 8" className="border-green-200 bg-white" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              {operationType === 'milling' && (
+                <>
+                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Diámetro Fresa (Dc) mm</Label><Input type="number" className="border-green-200 bg-white" value={dcPremium} onChange={e => setDcPremium(e.target.value === '' ? '' : Number(e.target.value))} /></div>
+                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Ancho Corte (ae) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white" value={aePremium} onChange={e => setAePremium(e.target.value === '' ? '' : Number(e.target.value))} /></div>
+                </>
+              )}
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white" value={apPremium} onChange={e => setApPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               
               {operationType === 'milling' ? (
-                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Insertos (Z)</Label><Input type="number" className="border-green-200 bg-white" value={zPremium} onChange={e => setZPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-green-200 bg-white" value={zPremium} onChange={e => setZPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               ) : (
-                <div>
-                  <Label className="block text-[10px] font-bold text-green-700 mb-1">Avance (mm/rev)</Label>
+                <div></div>
+              )}
+
+              <div>
+                  <Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : 'Avance (mm/z)'}</Label>
                   <Input type="number" step="0.01" className="border-green-200 bg-white" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} />
                   {raPropuesta && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
                           Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
                       </p>
                   )}
-                </div>
-              )}
-              {operationType === 'milling' && (
-                <div>
-                  <Label className="block text-[10px] font-bold text-green-700 mb-1">Avance (mm/z)</Label>
-                  <Input type="number" step="0.01" className="border-green-200 bg-white" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} />
-                  {raPropuesta && (
-                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
-                      </p>
-                  )}
-                </div>
-              )}
+              </div>
+
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Vc Propuesta</Label><Input type="number" className="border-green-200 bg-white" value={vcPremium} onChange={e => setVcPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               <div className="col-span-2"><Label className="block text-[10px] font-bold text-green-700 mb-1">Pzas / filo</Label><Input type="number" className="border-green-200 bg-white" value={pcsPremium} onChange={e => setPcsPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               
@@ -1483,8 +1492,8 @@ export default function TaylorCurvePage() {
                   </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Avance (f)</td>
-                    <td className="p-2 border border-slate-300 text-center">{feedCurrent} mm/rev</td>
-                    <td className="p-2 border border-slate-300 text-center">{feedPremium} mm/rev</td>
+                    <td className="p-2 border border-slate-300 text-center">{feedCurrent} {operationType === 'turning' ? 'mm/rev' : 'mm/z'}</td>
+                    <td className="p-2 border border-slate-300 text-center">{feedPremium} {operationType === 'turning' ? 'mm/rev' : 'mm/z'}</td>
                   </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Rendimiento (Pzas/Filo)</td>
