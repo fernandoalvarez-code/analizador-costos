@@ -666,27 +666,23 @@ export default function TaylorCurvePage() {
         const kwPremium = (qPremium * kc) / 60000;
         hpPremium = (kwPremium * 1.341) / 0.8;
     } else if (operationType === 'drilling') {
-        const safeDcCurrent = Number(dcCurrent) || 0.0001;
-        const safeFnCurrent = Number(feedCurrent) || 0; // fn
+        const safeDcCurrent = Number(dcCurrent) || 0.0001, safeFnCurrent = Number(feedCurrent) || 0; // fn
 
         const safeVcPremium = Number(vcPremium) || 0.0001;
-        const safeDcPremium = Number(dcPremium) || 0.0001;
-        const safeFnPremium = Number(feedPremium) || 0; // fn
+        const safeDcPremium = Number(dcPremium) || 0.0001, safeFnPremium = Number(feedPremium) || 0; // fn
 
         const rpmCurrent = (safeVcCurrent * 1000) / (Math.PI * safeDcCurrent);
         const vfCurrent = safeFnCurrent * rpmCurrent;
         
         const rpmPremium = (safeVcPremium * 1000) / (Math.PI * safeDcPremium);
         const vfPremium = safeFnPremium * rpmPremium;
-
+        
         tcPremium = vfPremium > 0 ? safeTcCurrent * (vfCurrent / vfPremium) : safeTcCurrent;
         
-        const qCurrent = (Math.PI * Math.pow(safeDcCurrent, 2) / 4) * vfCurrent / 1000;
-        const kwCurrent = (qCurrent * kc) / 60000;
+        const qCurrent = (Math.PI * Math.pow(safeDcCurrent, 2) / 4) * vfCurrent / 1000, kwCurrent = (qCurrent * kc) / 60000;
         hpCurrent = (kwCurrent * 1.341) / 0.8;
 
-        const qPremium = (Math.PI * Math.pow(safeDcPremium, 2) / 4) * vfPremium / 1000;
-        const kwPremium = (qPremium * kc) / 60000;
+        const qPremium = (Math.PI * Math.pow(safeDcPremium, 2) / 4) * vfPremium / 1000, kwPremium = (qPremium * kc) / 60000;
         hpPremium = (kwPremium * 1.341) / 0.8;
     }
 
