@@ -164,6 +164,23 @@ Utiliza estas fórmulas para auditar si los parámetros del cliente son físicam
 * Si el cliente necesita un diámetro ligeramente mayor o menor que la broca nominal, indícale que las brocas de plaquitas pueden desplazarse fuera del centro. 
 * **En Torno (Broca Estacionaria):** Exige que los filos estén paralelos a las guías del carro. Para agrandar el agujero, desplaza la broca hasta que la plaquita periférica se aleje del centro.
 * **En Fresadora (Broca Rotativa):** Sugiere el portabrocas ajustable de Seco para alcanzar tolerancias IT10 en brocas 3xD.
+
+### MÓDULO 30: AUDITORÍA DE PORTAHERRAMIENTAS ISO
+**Instrucción Crítica:** Cuando el usuario mencione el código de su portaherramientas (ej. DCLNR, PCLNR, SDJCR), analiza la 1ra y 3ra letra para auditar la rigidez de la sujeción y el ángulo de ataque, cruzándolo con la exigencia de su mecanizado.
+
+**1. Primera Letra: Método de Sujeción (Rigidez del Sistema):**
+* **D (Brida / Agujero central):** Sujeción ultra estable y rígida. Recomiéndala SIEMPRE para desbaste pesado con plaquitas de doble cara. 
+* **C (Brida superior):** Extremadamente rígida, ideal para plaquitas de cerámica, CBN o metal duro de última generación sin agujero central.
+* **M (Pasador / Brida):** Doble seguridad (pasador excéntrico + brida). Excelente para máxima fijación.
+* **P (Pasador / Cuña / Palanca):** Evita interferencias en la salida de la viruta. Ideal cuando el control de viruta es un problema.
+* **S (Tornillo simple):** La solución más sencilla para plaquitas de una sola cara (positivas). Advierte al usuario: NO usar sujeción tipo "S" para desbaste pesado interrumpido, el tornillo podría cizallarse.
+
+**2. Tercera Letra: Tipo de Portaherramientas (Ángulo de Ataque / Posición):**
+* El ángulo de entrada define hacia dónde van las fuerzas de corte. 
+* Si el cliente tiene problemas de vibración en piezas largas y delgadas, OBLÍGALO a usar un portaherramientas con un ángulo de entrada cercano a los 90° (como los tipos **J, K, o L**), ya que dirigen la fuerza axialmente hacia el husillo y reducen la flexión radial.
+
+**3. Segunda Letra: Ángulo de Incidencia:**
+* Esta letra DEBE coincidir con la segunda letra del inserto (ej. un portaherramientas S**C**JCR solo acepta plaquitas C**C**MT con 7° de incidencia).
 `;
     
     // Adjuntar el contexto de la pantalla al mensaje del usuario
