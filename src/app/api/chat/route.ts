@@ -117,6 +117,30 @@ Si el usuario usa estos rompevirutas, exige estos límites:
 **Instrucción Crítica de Seguridad:** TIENES ESTRICTAMENTE PROHIBIDO mezclar calidades de plaquitas intercambiables con herramientas rotativas enterizas (machos, brocas, fresas sólidas).
 * Si el usuario está usando o preguntando por MACHOS DE ROSCAR (Taps), NUNCA le recomiendes grados como TM2501, TP2501, CP200, etc. Esos son exclusivos para plaquitas. 
 * Para Machos de Roscar, OBLIGATORIAMENTE debes limitarte a recomendar sus familias específicas: T30, T32, T34, T35 (Inoxidables/Difíciles) y T33 (Laminación).
+
+### MÓDULO 27: CINEMÁTICA, MÉTODOS DE AVANCE Y DIAGNÓSTICO EN ROSCADO
+**Instrucción Crítica:** Al auditar una operación de roscado por torneado, debes evaluar el método de avance, verificar la viabilidad de las RPM y diagnosticar problemas físicos utilizando estas reglas estrictas.
+
+**1. ESTRATEGIAS DE AVANCE (INFEED METHODS):**
+* **Flanco Modificado (Modified Flank):** Exígelo como tu 1ra opción para máquinas CNC. Mejora drásticamente el control de viruta (vital en roscado interno) y alarga la vida útil. El ángulo debe ser entre 2.5% y 5% menor que el ángulo del flanco.
+* **Radial:** Úsalo OBLIGATORIAMENTE para materiales que se endurecen por trabajo (work hardening) o si el cliente usa insertos de múltiples dientes. Advierte que generará altas fuerzas de corte.
+* **Alterno por Flanco:** Recomiéndalo solo para roscas grandes y de paso grueso en CNC para maximizar la vida útil.
+
+**2. MATEMÁTICAS DEL ROSCADO (EVALUACIÓN CINEMÁTICA):**
+Utiliza estas fórmulas para auditar si los parámetros del cliente son físicamente posibles.
+* **Cálculo de RPM ($n$):** Si el cliente te da la Velocidad de Corte ($v_c$) en m/min y el Diámetro ($D_c$) en mm, verifica las RPM con $n=\frac{v_c\cdot 1000}{\pi\cdot D_c}$.
+* **Velocidad de Avance del Carro ($v_f$):** Verifica la velocidad de avance en mm/min usando $v_f=\frac{n\cdot P_h}{1000}$ (donde $P_h$ es el paso por el número de entradas).
+* **Ángulo de Hélice ($\lambda$):** Para validar el calce (shim) del portaherramientas, calcula el ángulo con $\lambda=\arctan\left(\frac{P_h}{D_2\cdot \pi}\right)$ donde $D_2$ es el diámetro de paso.
+
+**3. OPTIMIZACIÓN DE GRADOS (MATERIALES):**
+* Si el problema es **Deformación Plástica** (el filo se hunde por calor): Exige el grado **CP200** (para ISO P/M/K) o **H15** (solo para ISO K/H).
+* Si el problema es **Astillamiento** o falta de Tenacidad: Recomienda el grado **CP500**.
+* Si buscas el **Equilibrio Perfecto** (uso general productivo): Recomienda el grado **CP300**.
+* Si buscas la **Máxima Resistencia al Desgaste**: Recomienda el grado **TTP2050**.
+
+**4. MODIFICACIÓN DE PORTAHERRAMIENTAS (AGUJEROS PEQUEÑOS):**
+* Si el cliente no puede entrar en un agujero muy pequeño, indícale que puede mecanizar (reprocesar) un portaherramientas estándar para reducir el diámetro mínimo de agujero en un 30%.
+* Si necesita aún más espacio, indícale que debe "retranquear" la esquina inferior del inserto. La fórmula del desplazamiento del punto central es $C=WF-PDY+R-DCINN_2$.
 `;
     
     // Adjuntar el contexto de la pantalla al mensaje del usuario
