@@ -73,6 +73,30 @@ const safeNumber = (val: any) => {
     return isFinite(num) ? num : 0;
 };
 
+const validarAplicacion = (calidad?: string, material?: string): string | null => {
+  if (!calidad || !material) return null;
+  
+  const grado = calidad.toUpperCase();
+  const mat = material.toLowerCase();
+
+  // 1. Regla del Diamante (PCD)
+  if (grado.includes('PCD') && (mat.includes('acero') || mat.includes('fundicion'))) {
+    return '❌ El PCD reacciona con metales férricos. Úsalo solo en Aluminio, Plásticos o Titanio.';
+  }
+
+  // 2. Regla del Boro (PCBN)
+  if (grado.includes('PCBN') && mat.includes('aluminio')) {
+    return '⚠️ El PCBN es para aceros templados duros. Para aluminio, usa plaquitas H15, H25 o PCD.';
+  }
+
+  // 3. Regla del Titanio (PVD vs CVD)
+  if ((grado.includes('MP') || grado.includes('MK')) && mat.includes('titanio')) {
+    return '💡 Para Titanio es mejor usar calidades PVD (Ej: MS2050 o F15M) por su tenacidad.';
+  }
+
+  return null; // Aplicación correcta
+};
+
 // Tipos
 type QuickDiagnosisResult = { breakEvenSeconds: number; breakEvenPieces: number; deltaP: number; tcA: number; vcBTarget: number; newCycleTimeTarget: number; };
 type NetSavingsResult = { netAnnualSavings: number; cppA: number; cppB: number; savingsPerPiece: number; improvementPercentage: number; newCycleTime: number; newToolLife: number; };
@@ -127,7 +151,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     }, 
   });
 
-  const detailedForm = useForm<z.infer<typeof DetailedReportSchema>>({ resolver: zodResolver(DetailedReportSchema), defaultValues: initialData || { cliente: "", fecha: new Date().toISOString().split('T')[0], contacto: "", operacion: "Torneado", pieza: "", material: "", status: "Pendiente", machineHourlyRate: 35, eficienciaOEE: 80, piezasAlMes: 2000, tiempoParada: 2, costoImplementacion: 0, descA: "Herramienta Actual", precioA: '' as any, insertosPorHerramientaA: 1, filosA: '' as any, cicloMinA: '' as any, cicloSegA: '' as any, vcA: '' as any, modoVidaA: 'piezas', piezasFiloA: '' as any, minutosFiloA: 0, tiempoCorteA: 0, notasA: "", descB: "Herramienta Propuesta", precioB: '' as any, insertosPorHerramientaB: 1, filosB: '' as any, cicloMinB: '' as any, cicloSegB: '' as any, vcB: '' as any, modoVidaB: 'piezas', piezasFiloB: '' as any, minutosFiloB: 0, tiempoCorteB: 0, notasB: "", technicalConclusion: "" }, });
+  const detailedForm = useForm<z.infer<typeof DetailedReportSchema>>({ resolver: zodResolver(DetailedReportSchema), defaultValues: initialData || { cliente: "", fecha: new Date().toISOString().split('T')[0], contacto: "", operacion: "Torneado", pieza: "", material: "", status: "Pendiente", machineHourlyRate: 35, eficienciaOEE: 80, piezasAlMes: 2000, tiempoParada: 2, costoImplementacion: 0, descA: "Herramienta Actual", precioA: '' as any, insertosPorHerramientaA: 1, filosA: '' as any, cicloMinA: '' as any, cicloSegA: '' as any, vcA: '' as any, modoVidaA: 'piezas', piezasFiloA: '' as any, minutosFiloA: 0, tiempoCorteA: 0, notasA: "", descB: "Herramienta Propuesta", calidadB: "", precioB: '' as any, insertosPorHerramientaB: 1, filosB: '' as any, cicloMinB: '' as any, cicloSegB: '' as any, vcB: '' as any, modoVidaB: 'piezas', piezasFiloB: '' as any, minutosFiloB: 0, tiempoCorteB: 0, notasB: "", technicalConclusion: "" }, });
   const saveCaseForm = useForm<z.infer<typeof SaveCaseSchema>>({ resolver: zodResolver(SaveCaseSchema), defaultValues: { caseName: initialData?.name || "", }, });
 
   const parseTimeToMinutes = (min: number | undefined, sec: number | undefined) => { const minVal = safeNumber(min); const secVal = safeNumber(sec); return minVal + (secVal / 60); }
@@ -138,6 +162,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   const watchedSimTimeMode = useWatch({ control: diagnosisForm.control, name: 'modoSimulacionTiempo' });
   const watchedModoVidaA = useWatch({ control: detailedForm.control, name: 'modoVidaA' });
   const watchedModoVidaB = useWatch({ control: detailedForm.control, name: 'modoVidaB' });
+  const alertaCalidad = validarAplicacion(detailValues.calidadB, detailValues.material);
 
   // --- EFECTO 1: Sincronización Pestaña 1 -> Pestaña 2 ---
   useEffect(() => {
@@ -662,6 +687,23 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                               <CardHeader className="bg-primary/90 text-primary-foreground p-4"><CardTitle>Inserto B (Propuesta)</CardTitle></CardHeader>
                               <CardContent className="p-6 space-y-4 pt-6">
                                   <FormField control={detailedForm.control} name="descB" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Ej: Inserto de alta vel..." {...field} /></FormControl></FormItem>)}/>
+                                  <FormField 
+                                      control={detailedForm.control} 
+                                      name="calidadB" 
+                                      render={({ field }) => (
+                                      <FormItem>
+                                          <FormLabel>Calidad / Grado</FormLabel>
+                                          <FormControl>
+                                              <Input placeholder="Ej: MP2501, MS2050, PCD..." {...field} />
+                                          </FormControl>
+                                          {alertaCalidad && (
+                                              <p className={`text-xs font-bold mt-2 p-2 rounded-md ${alertaCalidad.includes('❌') ? 'text-red-800 bg-red-100 border border-red-200' : 'text-yellow-800 bg-yellow-100 border border-yellow-200'}`}>
+                                                  {alertaCalidad}
+                                              </p>
+                                          )}
+                                      </FormItem>
+                                      )}
+                                  />
                                   <FormField control={detailedForm.control} name="precioB" render={({ field }) => (<FormItem><FormLabel>Precio de Compra (USD)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} /></FormControl></FormItem>)}/>
                                   <FormField 
                                     control={detailedForm.control} 
@@ -802,5 +844,3 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     </>
   );
 }
-
-    

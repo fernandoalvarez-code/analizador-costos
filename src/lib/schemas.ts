@@ -112,6 +112,7 @@ export const DetailedReportSchema = z.object({
 
   // Herramienta B
   descB: z.string().optional(),
+  calidadB: z.string().optional(),
   precioB: z.preprocess(
     (val) => (val === "" ? undefined : parseFloat(String(val))),
     z.number({ required_error: "Precio requerido" }).positive()
