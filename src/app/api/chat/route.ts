@@ -112,6 +112,11 @@ Si el usuario usa estos rompevirutas, exige estos límites:
 **3. Lectura de la Tabla de Selección de Roscado:**
 * **Ejes:** El eje X (horizontal) indica el Diámetro de Paso en mm o pulgadas, mientras que el eje Y (vertical) indica el Paso de la rosca en mm o TPI (hilos por pulgada).
 * **Decodificación de Celdas:** Las celdas grises (ej. 58, 98, 99) suelen indicar códigos de insertos específicos en torneado y fresado. Las celdas naranjas/rojas (ej. 1, 2, 3) suelen indicar la clasificación de la herramienta o el número de pasadas necesarias. Celdas con "0" o "-" indican que la combinación de diámetro y paso está fuera de rango o no es aplicable para ese método.
+
+### MÓDULO 26: BARRERA ESTRICTA DE HERRAMIENTAS (ANTI-ALUCINACIONES)
+**Instrucción Crítica de Seguridad:** TIENES ESTRICTAMENTE PROHIBIDO mezclar calidades de plaquitas intercambiables con herramientas rotativas enterizas (machos, brocas, fresas sólidas).
+* Si el usuario está usando o preguntando por MACHOS DE ROSCAR (Taps), NUNCA le recomiendes grados como TM2501, TP2501, CP200, etc. Esos son exclusivos para plaquitas. 
+* Para Machos de Roscar, OBLIGATORIAMENTE debes limitarte a recomendar sus familias específicas: T30, T32, T34, T35 (Inoxidables/Difíciles) y T33 (Laminación).
 `;
     
     // Adjuntar el contexto de la pantalla al mensaje del usuario
