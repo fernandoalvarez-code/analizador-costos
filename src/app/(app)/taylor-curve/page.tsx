@@ -76,17 +76,28 @@ const extraerRadioISO = (codigoInserto: string): number | null => {
 
 // Analizador del Rompevirutas (Basado en nomenclatura Seco Tools)
 const analizarRompevirutas = (codigoInserto: string): { esWiper: boolean; tipoCorte: string; sufijo: string } => {
-  if (!codigoInserto || !codigoInserto.includes('-')) {
+  if (!codigoInserto) {
     return { esWiper: false, tipoCorte: 'Desconocido', sufijo: '' };
   }
 
-  // Extraemos lo que está después del guion (Ej: de "CNMG 120408-M3W" sacamos "M3W")
-  const sufijo = codigoInserto.split('-')[1]?.toUpperCase().trim() || '';
+  // 1. Limpiamos espacios y guiones y pasamos a mayúsculas
+  const textoLimpio = codigoInserto.replace(/\s|-/g, '').toUpperCase();
+
+  // 2. Buscamos el bloque de 6 números y capturamos todo lo que le sigue
+  // (Ej: de "CNMG120408M3W" captura "M3W")
+  const match = textoLimpio.match(/\d{6}(.*)/);
   
-  // 1. Detección de Tecnología Wiper (Suele contener la 'W' en Seco, ej: -TW, -M3W, -W)
+  // Si no encuentra números, asumimos que no es wiper y no podemos analizar el sufijo.
+  if (!match || !match[1]) {
+    return { esWiper: false, tipoCorte: 'Desconocido', sufijo: '' };
+  }
+
+  const sufijo = match[1]; // Esto contiene las letras finales, ej: "M3W"
+
+  // 3. Detección de Tecnología Wiper (Suele contener la 'W' en Seco, ej: -TW, -M3W, -W)
   const esWiper = sufijo.includes('W');
 
-  // 2. Clasificación de Aplicación (Seco Tools)
+  // 4. Clasificación de Aplicación (Seco Tools)
   let tipoCorte = 'Medio'; // Por defecto
   if (sufijo.includes('F') || sufijo.includes('FF')) {
     tipoCorte = 'Terminacion';
@@ -95,7 +106,6 @@ const analizarRompevirutas = (codigoInserto: string): { esWiper: boolean; tipoCo
   } else if (sufijo.includes('M')) {
     tipoCorte = 'Medio';
   }
-
 
   return { esWiper, tipoCorte, sufijo };
 };
