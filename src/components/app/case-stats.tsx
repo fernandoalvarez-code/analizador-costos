@@ -2,29 +2,40 @@
 'use client';
 
 import React from 'react';
-import { BarChart, BadgeCheck, XCircle, Clock } from 'lucide-react';
+import { DollarSign, BarChart, BadgeCheck, Clock, Zap } from 'lucide-react';
 
 import { useCollection, useFirestore, useMemoFirebase, collection } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatCurrency, formatNumber } from '@/lib/formatters';
 
 type CaseData = {
   id: string;
   status: 'Pendiente' | 'Exitoso' | 'No Exitoso';
+  annualSavings: number;
+  results?: {
+    machineHoursFreedAnnual?: number;
+  };
 };
 
-const StatCard = ({ title, value, percentage, icon, isLoading }: { title: string, value: number, percentage?: string, icon: React.ReactNode, isLoading: boolean }) => {
+const StatCard = ({ title, value, icon, isLoading, isCurrency = false, isHours = false }: { title: string, value: number, icon: React.ReactNode, isLoading: boolean, isCurrency?: boolean, isHours?: boolean }) => {
     if (isLoading) {
-        return <Skeleton className="h-[48px] w-full" />
+        return <Skeleton className="h-24 w-full" />
     }
+
+    const formattedValue = isCurrency ? formatCurrency(value) : isHours ? `${formatNumber(value)} hs` : formatNumber(value);
+
     return (
-        <div className="flex items-center p-2 border rounded-lg">
-            {icon}
-            <div className="ml-3">
-                <p className="text-xs text-muted-foreground">{title}</p>
-                <div className="flex items-baseline gap-2">
-                    <p className="text-base font-bold">{value}</p>
-                    {percentage && <span className="text-xs font-semibold text-muted-foreground">{percentage}</span>}
-                </div>
+        <div className={`p-4 rounded-xl shadow-sm flex flex-col justify-between h-full ${
+            isCurrency ? 'bg-green-50 border border-green-200' : 'bg-slate-50 border border-slate-200'
+        }`}>
+            <div className="flex items-center justify-between text-slate-500">
+                <p className="font-bold text-sm uppercase tracking-wide">{title}</p>
+                {icon}
+            </div>
+            <div>
+                <p className={`text-4xl font-black ${isCurrency ? 'text-green-600' : 'text-slate-800'}`}>
+                    {formattedValue}
+                </p>
             </div>
         </div>
     )
@@ -41,57 +52,58 @@ export default function CaseStats() {
   const { data: casesData, isLoading } = useCollection<CaseData>(casesCollectionRef);
 
   const stats = React.useMemo(() => {
-    if (!casesData) {
-      return { total: 0, successful: 0, unsuccessful: 0, pending: 0, successRate: 0, failRate: 0, pendingRate: 0 };
-    }
-    const total = casesData.length;
-    const successful = casesData.filter((c) => c.status === 'Exitoso').length;
-    const unsuccessful = casesData.filter((c) => c.status === 'No Exitoso').length;
-    const pending = casesData.filter((c) => c.status === 'Pendiente').length;
+    const initialStats = {
+      total: 0,
+      successful: 0,
+      totalSavings: 0,
+      totalHoursFreed: 0,
+      successRate: 0,
+    };
+    
+    if (!casesData) return initialStats;
 
+    const successfulCases = casesData.filter((c) => c.status === 'Exitoso');
+    
+    const totalSavings = successfulCases.reduce((sum, current) => sum + (current.annualSavings || 0), 0);
+    const totalHoursFreed = successfulCases.reduce((sum, current) => sum + (current.results?.machineHoursFreedAnnual || 0), 0);
+    
     return {
-      total,
-      successful,
-      unsuccessful,
-      pending,
-      successRate: total > 0 ? (successful / total) * 100 : 0,
-      failRate: total > 0 ? (unsuccessful / total) * 100 : 0,
-      pendingRate: total > 0 ? (pending / total) * 100 : 0,
+      total: casesData.length,
+      successful: successfulCases.length,
+      totalSavings,
+      totalHoursFreed,
+      successRate: casesData.length > 0 ? (successfulCases.length / casesData.length) * 100 : 0,
     };
   }, [casesData]);
 
   return (
     <div>
-        <h2 className="text-2xl font-bold tracking-tight font-headline mb-4">
-            Estadísticas de Casos
-        </h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard 
-                title="Total de Casos"
-                value={stats.total}
+                title="Ahorro Total Generado"
+                value={stats.totalSavings}
                 isLoading={isLoading}
-                icon={<BarChart className="h-5 w-5 text-muted-foreground" />}
+                icon={<DollarSign className="h-6 w-6 text-green-500" />}
+                isCurrency
             />
             <StatCard 
                 title="Casos Exitosos"
                 value={stats.successful}
-                percentage={stats.total > 0 ? `(${stats.successRate.toFixed(0)}%)` : undefined}
                 isLoading={isLoading}
-                icon={<BadgeCheck className="h-5 w-5 text-green-500" />}
+                icon={<BadgeCheck className="h-6 w-6 text-slate-400" />}
             />
             <StatCard 
-                title="Casos No Exitosos"
-                value={stats.unsuccessful}
-                percentage={stats.total > 0 ? `(${stats.failRate.toFixed(0)}%)` : undefined}
+                title="Horas Máquina Liberadas"
+                value={stats.totalHoursFreed}
                 isLoading={isLoading}
-                icon={<XCircle className="h-5 w-5 text-red-500" />}
+                icon={<Clock className="h-6 w-6 text-slate-400" />}
+                isHours
             />
-            <StatCard 
-                title="Casos Pendientes"
-                value={stats.pending}
-                percentage={stats.total > 0 ? `(${stats.pendingRate.toFixed(0)}%)` : undefined}
+             <StatCard 
+                title="Tasa de Éxito"
+                value={stats.successRate}
                 isLoading={isLoading}
-                icon={<Clock className="h-5 w-5 text-yellow-500" />}
+                icon={<Zap className="h-6 w-6 text-slate-400" />}
             />
         </div>
     </div>

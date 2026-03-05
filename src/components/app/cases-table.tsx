@@ -15,7 +15,7 @@ import {
   Row,
   getFilteredRowModel,
 } from "@tanstack/react-table";
-import { MoreHorizontal, PlusCircle, Search, Trash2, Eye, ChevronDown, ChevronRight, GripVertical, Edit, Printer } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Search, Trash2, Eye, ChevronDown, ChevronRight, GripVertical, Edit, Share2 } from "lucide-react";
 import Link from "next/link";
 import { Firestore } from "firebase/firestore";
 
@@ -55,7 +55,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatoMinutosYSegundos } from "@/lib/formatters";
 
 
 export type CaseData = {
@@ -68,7 +68,11 @@ export type CaseData = {
   cliente: string;
   operacion: string;
   material: string;
+  pieza?: string;
   status: 'Pendiente' | 'Exitoso' | 'No Exitoso';
+  results?: {
+    tiempoCicloB?: number;
+  }
 };
 
 export type UserProfile = {
@@ -86,6 +90,19 @@ function getStatusVariant(status: string) {
     }
 }
 
+const compartirPorWhatsApp = (caseData: CaseData) => {
+  const ahorro = formatCurrency(caseData.annualSavings);
+  const tiempoCiclo = caseData.results?.tiempoCicloB ? formatoMinutosYSegundos(caseData.results.tiempoCicloB) : 'un valor optimizado';
+  
+  const mensaje = `Hola! 👋 Te comparto el estudio técnico de Secocut para la pieza ${caseData.pieza || caseData.name}.
+Logramos proyectar un ahorro anual de *${ahorro}* bajando el tiempo de ciclo a ${tiempoCiclo}. 
+¡Avísame y revisamos el PDF juntos! 🚀`;
+
+  const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+  window.open(url, '_blank');
+};
+
+
 const ActionCell = ({ caseData, user, isAdmin, onDeleteClick }: { caseData: CaseData; user: User | null; isAdmin: boolean; onDeleteClick: (caseData: CaseData) => void; }) => {
     const isOwner = user?.uid === caseData.userId;
 
@@ -102,7 +119,7 @@ const ActionCell = ({ caseData, user, isAdmin, onDeleteClick }: { caseData: Case
                 <DropdownMenuItem asChild>
                     <Link href={`/cases/${caseData.id}`}>
                         <Eye className="mr-2 h-4 w-4"/>
-                        Ver detalles
+                        Ver / Imprimir PDF
                     </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild disabled={!isAdmin && !isOwner}>
@@ -110,6 +127,10 @@ const ActionCell = ({ caseData, user, isAdmin, onDeleteClick }: { caseData: Case
                         <Edit className="mr-2 h-4 w-4"/>
                         Editar
                     </Link>
+                </DropdownMenuItem>
+                 <DropdownMenuItem onClick={() => compartirPorWhatsApp(caseData)}>
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Compartir por WhatsApp
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                  <DropdownMenuItem 
@@ -267,7 +288,7 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
   });
   
   const handleNewCase = () => {
-    router.push('/dashboard');
+    router.push('/cases/new');
   }
 
   return (
@@ -292,9 +313,9 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
                     <Button variant={grouping.includes('material') ? 'secondary' : 'outline'} size="sm" onClick={() => table.setGrouping(g => g.includes('material') ? g.filter(i => i !== 'material') : [...g, 'material'])}>Material</Button>
                     <Button variant={grouping.includes('status') ? 'secondary' : 'outline'} size="sm" onClick={() => table.setGrouping(g => g.includes('status') ? g.filter(i => i !== 'status') : [...g, 'status'])}>Estado</Button>
                 </div>
-                 <Button onClick={handleNewCase}>
+                 <Button onClick={handleNewCase} className="bg-blue-600 hover:bg-blue-700">
                     <PlusCircle className="mr-2 h-4 w-4"/>
-                    Nuevo Caso
+                    Nuevo Estudio de Costos
                 </Button>
             </div>
             <div className="rounded-md border">
@@ -467,5 +488,3 @@ const CasesTableWrapper = () => {
 };
 
 export default CasesTableWrapper;
-
-    
