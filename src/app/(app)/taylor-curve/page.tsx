@@ -482,8 +482,6 @@ export default function TaylorCurvePage() {
     let hpCurrent = 0;
     let hpPremium = 0;
 
-    const safePcsCurrent = Number(pcsCurrent) || 1;
-    const safePcsPremium = Number(pcsPremium) || 1;
     const safeMonthlyProduction = Number(monthlyProduction) || 0;
     const safeEdgesCurrent = Number(edgesCurrent) || 1;
     const safeEdgesPremium = Number(edgesPremium) || 1;
@@ -555,6 +553,18 @@ export default function TaylorCurvePage() {
     const loadCurrent = (hpCurrent / safeMachinePowerHP) * 100;
     const loadPremium = (hpPremium / safeMachinePowerHP) * 100;
     
+    // CONVERSIÓN DE VIDA ÚTIL (MINUTOS A PIEZAS) PARA FRESADO
+    let effectivePcsCurrent = Number(pcsCurrent) || 1;
+    let effectivePcsPremium = Number(pcsPremium) || 1;
+
+    if (operationType === 'milling') {
+        effectivePcsCurrent = safeTcCurrent > 0 ? (Number(pcsCurrent) || 0) / safeTcCurrent : 0;
+        effectivePcsPremium = tcPremium > 0 ? (Number(pcsPremium) || 0) / tcPremium : 0;
+    }
+
+    if (effectivePcsCurrent <= 0) effectivePcsCurrent = 1; // Fallback para evitar división por cero
+    if (effectivePcsPremium <= 0) effectivePcsPremium = 1; // Fallback
+    
     // 1. Función Teórica (Curva General)
     const calcCost = (v: number, isPremium: boolean, feed: number) => {
       const C = isPremium ? premiumC : taylorProps.C;
@@ -577,8 +587,8 @@ export default function TaylorCurvePage() {
       const costCorte = safeMachineCostMin * tc;
       const costPorPunta = toolPrice / edges;
       const costJuego = costPorPunta * z;
-      const costHerr = costJuego / pcsPerEdge;
-      const costCambio = (safeMachineCostMin * safeToolChangeTime) / pcsPerEdge;
+      const costHerr = pcsPerEdge > 0 ? costJuego / pcsPerEdge : 0;
+      const costCambio = pcsPerEdge > 0 ? (safeMachineCostMin * safeToolChangeTime) / pcsPerEdge : 0;
       return costCorte + costHerr + costCambio;
     };
 
@@ -594,8 +604,8 @@ export default function TaylorCurvePage() {
     }));
     
     // 3. Puntos Reales
-    const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, safePcsCurrent, (Number(zCurrent) || 1), safeEdgesCurrent);
-    const actualCostPremium = calcEmpiricalCost(tcPremium, safeToolCostPremium, safePcsPremium, (Number(zPremium) || 1), safeEdgesPremium);
+    const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, effectivePcsCurrent, (Number(zCurrent) || 1), safeEdgesCurrent);
+    const actualCostPremium = calcEmpiricalCost(tcPremium, safeToolCostPremium, effectivePcsPremium, (Number(zPremium) || 1), safeEdgesPremium);
     
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
     const realSavingsPercentage = actualCostCurrent > 0 ? (realAbsoluteSavings / actualCostCurrent) * 100 : 0;
@@ -917,7 +927,7 @@ export default function TaylorCurvePage() {
               <div>
                   <Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : 'Avance (mm/z)'}</Label>
                   <Input type="number" step="0.01" className="border-red-200 bg-white" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
-                  {raActual && (
+                  {operationType === 'turning' && raActual && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
                           Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
                       </p>
@@ -925,7 +935,10 @@ export default function TaylorCurvePage() {
               </div>
               
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label><Input type="number" className="border-red-200 bg-white" value={vcCurrent} onChange={e => setVcCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
-              <div className="col-span-2"><Label className="block text-[10px] font-bold text-red-600 mb-1">Pzas / filo</Label><Input type="number" className="border-red-200 bg-white" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              <div className="col-span-2">
+                <Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Minutos / filo' : 'Pzas / filo'}</Label>
+                <Input type="number" className="border-red-200 bg-white" placeholder={operationType === 'milling' ? 'Ej: 45' : 'Ej: 120'} value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+              </div>
               
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-red-700 mb-1">Tiempo Actual (Corte)</Label>
@@ -987,7 +1000,7 @@ export default function TaylorCurvePage() {
               <div>
                   <Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : 'Avance (mm/z)'}</Label>
                   <Input type="number" step="0.01" className="border-green-200 bg-white" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} />
-                  {raPropuesta && (
+                  {operationType === 'turning' && raPropuesta && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
                           Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
                       </p>
@@ -995,7 +1008,10 @@ export default function TaylorCurvePage() {
               </div>
 
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Vc Propuesta</Label><Input type="number" className="border-green-200 bg-white" value={vcPremium} onChange={e => setVcPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
-              <div className="col-span-2"><Label className="block text-[10px] font-bold text-green-700 mb-1">Pzas / filo</Label><Input type="number" className="border-green-200 bg-white" value={pcsPremium} onChange={e => setPcsPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              <div className="col-span-2">
+                <Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'milling' ? 'Minutos / filo' : 'Pzas / filo'}</Label>
+                <Input type="number" className="border-green-200 bg-white" placeholder={operationType === 'milling' ? 'Ej: 60' : 'Ej: 250'} value={pcsPremium} onChange={e => setPcsPremium(e.target.value === "" ? "" : Number(e.target.value))} />
+              </div>
               
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-green-800 mb-1">Tiempo Deducido (Corte)</Label>
