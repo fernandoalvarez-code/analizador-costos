@@ -590,7 +590,21 @@ export default function TaylorCurvePage() {
     const safeVcCurrent = Number(vcCurrent) || 0.0001;
     const mat = MATERIALS.find(m => m.nombre === materialId) || MATERIALS[1];
     const taylorProps = TAYLOR_CONSTANTS[mat.grupo as keyof typeof TAYLOR_CONSTANTS] || { n: 0.25, C: 250 };
-    const premiumC = taylorProps.C * 1.25;
+    
+    const n = taylorProps.n;
+
+    // --- ANCLAJE COMPETIDOR (A) ---
+    const T_A = (Number(pcsCurrent) || 1) * safeTcCurrent;
+    const constante_C_Competidor = safeVcCurrent > 0 && T_A > 0 ? safeVcCurrent * Math.pow(T_A, n) : 0;
+    
+    // --- ANCLAJE SECOCUT (B) ---
+    const vcPropuesta = Number(vcPremium) || 0.0001;
+    const tcPremium_at_vcPremium = vcPropuesta > 0 
+        ? safeTcCurrent * (safeVcCurrent / vcPropuesta) * ((Number(feedCurrent) || 0.0001) / (Number(feedPremium) || 0.0001)) * ((Number(apCurrent) || 0.0001) / (Number(apPremium) || 0.0001)) 
+        : 0;
+    const T_B = (Number(pcsPremium) || 1) * tcPremium_at_vcPremium;
+    const constante_C_Seco = vcPropuesta > 0 && T_B > 0 ? vcPropuesta * Math.pow(T_B, n) : 0;
+
     const kc = mat.kc || 1500;
     const safeMachinePowerHP = Number(machinePowerHP) || 15;
     let tcPremium = 0, hpCurrent = 0, hpPremium = 0;
@@ -636,25 +650,42 @@ export default function TaylorCurvePage() {
     if (effectivePcsCurrent <= 0) effectivePcsCurrent = 1; if (effectivePcsPremium <= 0) effectivePcsPremium = 1;
     
     const calcCostWithBreakdown = (v: number, isPremium: boolean, feed: number) => {
-        const C = isPremium ? premiumC : taylorProps.C, toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent, z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1), edges = isPremium ? safeEdgesPremium : safeEdgesCurrent, ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
-        const tc = (safeTcCurrent * (safeVcCurrent / v) * ((Number(feedCurrent) || 0.0001) / feed) * ((Number(apCurrent) || 0.0001) / ap)), lifeMins = Math.pow((C / v), (1 / taylorProps.n));
-        const costPorPunta = toolPrice / edges, costJuego = costPorPunta * z;
+        const C = isPremium ? constante_C_Seco : constante_C_Competidor;
+        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoHerramienta: 0 };
+        
+        const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
+        const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
+        const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
+        const ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
+        
+        const tc = (safeTcCurrent * (safeVcCurrent / v) * ((Number(feedCurrent) || 0.0001) / feed) * ((Number(apCurrent) || 0.0001) / ap));
+        const lifeMins = Math.pow((C / v), (1 / n));
+
+        const costPorPunta = edges > 0 ? toolPrice / edges : 0;
+        const costJuego = costPorPunta * z;
+        
         const costoMaquina = safeMachineCostMin * tc;
-        const costoHerrParte1 = (costJuego * tc);
-        const costoHerrParte2 = (safeMachineCostMin * safeToolChangeTime * tc);
-        const costoTotalHerramienta = lifeMins > 0 ? (costoHerrParte1 / lifeMins) + (costoHerrParte2 / lifeMins) : 0;
+
+        const costoHerrParte1 = costJuego;
+        const costoHerrParte2 = safeMachineCostMin * safeToolChangeTime;
+        const costoTotalHerramienta = lifeMins > 0 ? (costoHerrParte1 + costoHerrParte2) * (tc / lifeMins) : 0;
+
         const costoTotal = costoMaquina + costoTotalHerramienta;
         return { costoTotal, costoMaquina, costoHerramienta: costoTotalHerramienta };
     };
 
     const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
-      const costCorte = safeMachineCostMin * tc, costPorPunta = toolPrice / edges, costJuego = costPorPunta * z;
-      const costHerr = pcsPerEdge > 0 ? costJuego / pcsPerEdge : 0, costCambio = pcsPerEdge > 0 ? (safeMachineCostMin * safeToolChangeTime) / pcsPerEdge : 0;
+      const costCorte = safeMachineCostMin * tc;
+      const costPorPunta = edges > 0 ? toolPrice / edges : 0;
+      const costJuego = costPorPunta * z;
+      const costHerr = pcsPerEdge > 0 ? costJuego / pcsPerEdge : 0;
+      const costCambio = pcsPerEdge > 0 ? (safeMachineCostMin * safeToolChangeTime) / pcsPerEdge : 0;
       return costCorte + costHerr + costCambio;
     };
 
     const speedsSet = new Set<number>();
-    for (let v = 50; v <= taylorProps.C * 1.3; v += 10) { speedsSet.add(v); }
+    const C_for_range = taylorProps.C;
+    for (let v = 50; v <= C_for_range * 1.3; v += 10) { speedsSet.add(v); }
     if (Number(vcCurrent) > 0) speedsSet.add(Number(vcCurrent)); if (Number(vcPremium) > 0) speedsSet.add(Number(vcPremium));
     const sortedSpeeds = Array.from(speedsSet).sort((a, b) => a - b);
     
@@ -664,7 +695,7 @@ export default function TaylorCurvePage() {
     const data = sortedSpeeds.map(v => {
         const resActual = calcCostWithBreakdown(v, false, Number(feedCurrent) || 0.0001);
         const resPremium = calcCostWithBreakdown(v, true, Number(feedPremium) || 0.0001);
-        if (resPremium.costoTotal < minPremiumCost) { minPremiumCost = resPremium.costoTotal; optimalSpeed = v; }
+        if (resPremium.costoTotal < minPremiumCost && resPremium.costoTotal > 0) { minPremiumCost = resPremium.costoTotal; optimalSpeed = v; }
         return { speed: v, costoActual: Number(resActual.costoTotal.toFixed(2)), costoPremium: Number(resPremium.costoTotal.toFixed(2)), costoMaquinaActual: resActual.costoMaquina, costoHerrActual: resActual.costoHerramienta, costoMaquinaPremium: resPremium.costoMaquina, costoHerrPremium: resPremium.costoHerramienta, };
     });
     
@@ -790,10 +821,10 @@ export default function TaylorCurvePage() {
     const porcentajeAhorroSimulado = taylorBaseCost > 0 && simulationResult ? (((taylorBaseCost - simulationResult.newCost) / taylorBaseCost) * 100).toFixed(1) : "0.0";
     
     const insightText = useMemo(() => {
-        const { vcCurrent } = curveDataInfo;
         const { velocidadOptimaSeco, costoOptimoSeco } = curveDataInfo;
-        if (!vcCurrent || !velocidadOptimaSeco || !costoOptimoSeco) return null;
         const numVcCurrent = Number(vcCurrent);
+        if (!numVcCurrent || !velocidadOptimaSeco || !costoOptimoSeco) return null;
+        
         if (numVcCurrent < velocidadOptimaSeco) {
             return `💡 Tu máquina está subutilizada. Si subimos la velocidad de ${numVcCurrent} a ${velocidadOptimaSeco} m/min con el inserto Seco, alcanzarás el costo mínimo absoluto de ${formatCurrency(costoOptimoSeco)} por pieza.`;
         } else if (numVcCurrent > velocidadOptimaSeco + 10) { // Added a small buffer
@@ -801,7 +832,7 @@ export default function TaylorCurvePage() {
         } else {
             return `✅ ¡Estás muy cerca del punto óptimo! Mantener la velocidad alrededor de ${velocidadOptimaSeco} m/min te asegura la máxima eficiencia y rentabilidad.`;
         }
-    }, [curveDataInfo]);
+    }, [curveDataInfo, vcCurrent]);
 
 
   return (
