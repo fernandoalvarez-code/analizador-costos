@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot, ReferenceLine } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -582,273 +582,152 @@ export default function TaylorCurvePage() {
   };
   
   const curveDataInfo = useMemo(() => {
-    // Variables seguras para evitar NaN o Infinity
     const safeMachineCostMin = (Number(machineCostHr) || 0) / 60;
     const safeToolCostCurrent = Number(toolCostCurrent) || 0;
     const safeToolCostPremium = Number(toolCostPremium) || 0;
     const safeToolChangeTime = Number(toolChangeTime) || 0;
     const safeTcCurrent = (Number(tcCurrentMin) || 0) + ((Number(tcCurrentSec) || 0) / 60);
     const safeVcCurrent = Number(vcCurrent) || 0.0001;
-
     const mat = MATERIALS.find(m => m.nombre === materialId) || MATERIALS[1];
     const taylorProps = TAYLOR_CONSTANTS[mat.grupo as keyof typeof TAYLOR_CONSTANTS] || { n: 0.25, C: 250 };
     const premiumC = taylorProps.C * 1.25;
     const kc = mat.kc || 1500;
     const safeMachinePowerHP = Number(machinePowerHP) || 15;
-    const safeProfundidadAgujero = Number(profundidadAgujero) || 0;
-
-    let tcPremium = 0;
-    let hpCurrent = 0;
-    let hpPremium = 0;
-
+    let tcPremium = 0, hpCurrent = 0, hpPremium = 0;
     const safeMonthlyProduction = Number(monthlyProduction) || 0;
     const safeEdgesCurrent = Number(edgesCurrent) || 1;
     const safeEdgesPremium = Number(edgesPremium) || 1;
-    
+
     if (operationType === 'turning') {
-        const safeFeedCurrent = Number(feedCurrent) || 0.0001;
-        const safeApCurrent = Number(apCurrent) || 0.0001;
-        const safeZCurrent = 1;
-
-        const safeVcPremium = Number(vcPremium) || 0.0001;
-        const safeFeedPremium = Number(feedPremium) || 0.0001;
-        const safeApPremium = Number(apPremium) || 0.0001;
-        const safeZPremium = 1;
-
-        const factorVelocidad = safeVcCurrent / safeVcPremium;
-        const factorAvance = safeFeedCurrent / safeFeedPremium;
-        const factorPasadas = safeApCurrent / safeApPremium;
-        
-        tcPremium = safeTcCurrent * factorVelocidad * factorAvance * factorPasadas;
-
-        const kwCurrent_base = (safeApCurrent * safeFeedCurrent * safeVcCurrent * kc * safeZCurrent) / 60000;
-        const factorFormaCurrent = obtenerFactorForma(toolNameCurrent);
-        const factorIncidenciaCurrent = obtenerFactorIncidencia(toolNameCurrent);
-        hpCurrent = kwCurrent_base * 1.341 * factorFormaCurrent * factorIncidenciaCurrent;
-        
-        const kwPremium_base = (safeApPremium * safeFeedPremium * safeVcPremium * kc * safeZPremium) / 60000;
-        const factorFormaPremium = obtenerFactorForma(toolNamePremium);
-        const factorIncidenciaPremium = obtenerFactorIncidencia(toolNamePremium);
-        hpPremium = kwPremium_base * 1.341 * factorFormaPremium * factorIncidenciaPremium;
-
+        const safeFeedCurrent = Number(feedCurrent) || 0.0001, safeApCurrent = Number(apCurrent) || 0.0001;
+        const safeVcPremium = Number(vcPremium) || 0.0001, safeFeedPremium = Number(feedPremium) || 0.0001, safeApPremium = Number(apPremium) || 0.0001;
+        tcPremium = safeTcCurrent * (safeVcCurrent / safeVcPremium) * (safeFeedCurrent / safeFeedPremium) * (safeApCurrent / safeApPremium);
+        const kwCurrent_base = (safeApCurrent * safeFeedCurrent * safeVcCurrent * kc) / 60000;
+        hpCurrent = kwCurrent_base * 1.341 * obtenerFactorForma(toolNameCurrent) * obtenerFactorIncidencia(toolNameCurrent);
+        const kwPremium_base = (safeApPremium * safeFeedPremium * safeVcPremium * kc) / 60000;
+        hpPremium = kwPremium_base * 1.341 * obtenerFactorForma(toolNamePremium) * obtenerFactorIncidencia(toolNamePremium);
     } else if (operationType === 'milling') {
-        const safeDcCurrent = Number(dcCurrent) || 0.0001;
-        const safeFzCurrent = Number(feedCurrent) || 0; // fz
-        const safeZCurrentMilling = Number(zCurrent) || 1;
-        const safeApCurrent = Number(apCurrent) || 0;
-        const safeAeCurrent = Number(aeCurrent) || 0;
-
-        const safeVcPremium = Number(vcPremium) || 0;
-        const safeDcPremium = Number(dcPremium) || 0.0001;
-        const safeFzPremium = Number(feedPremium) || 0; // fz
-        const safeZPremiumMilling = Number(zPremium) || 1;
-        const safeApPremium = Number(apPremium) || 0;
-        const safeAePremium = Number(aePremium) || 0;
-
-        // Vf Current
-        const rpmCurrent = (safeVcCurrent * 1000) / (Math.PI * safeDcCurrent);
-        const vfCurrent = safeFzCurrent * safeZCurrentMilling * rpmCurrent;
-        
-        // Vf Premium
-        const rpmPremium = (safeVcPremium * 1000) / (Math.PI * safeDcPremium);
-        const vfPremium = safeFzPremium * safeZPremiumMilling * rpmPremium;
-        
-        // Deduce premium time
+        const safeDcCurrent = Number(dcCurrent) || 0.0001, safeFzCurrent = Number(feedCurrent) || 0, safeZCurrentMilling = Number(zCurrent) || 1, safeApCurrent = Number(apCurrent) || 0, safeAeCurrent = Number(aeCurrent) || 0;
+        const safeVcPremium = Number(vcPremium) || 0, safeDcPremium = Number(dcPremium) || 0.0001, safeFzPremium = Number(feedPremium) || 0, safeZPremiumMilling = Number(zPremium) || 1, safeApPremium = Number(apPremium) || 0, safeAePremium = Number(aePremium) || 0;
+        const rpmCurrent = (safeVcCurrent * 1000) / (Math.PI * safeDcCurrent), vfCurrent = safeFzCurrent * safeZCurrentMilling * rpmCurrent;
+        const rpmPremium = (safeVcPremium * 1000) / (Math.PI * safeDcPremium), vfPremium = safeFzPremium * safeZPremiumMilling * rpmPremium;
         tcPremium = vfPremium > 0 ? safeTcCurrent * (vfCurrent / vfPremium) : safeTcCurrent;
-        
-        // HP Current
-        const qCurrent = (safeApCurrent * safeAeCurrent * vfCurrent) / 1000;
-        const kwCurrent = (qCurrent * kc) / 60000;
+        const qCurrent = (safeApCurrent * safeAeCurrent * vfCurrent) / 1000, kwCurrent = (qCurrent * kc) / 60000;
         hpCurrent = (kwCurrent * 1.341) / 0.8;
-        
-        // HP Premium
-        const qPremium = (safeApPremium * safeAePremium * vfPremium) / 1000;
-        const kwPremium = (qPremium * kc) / 60000;
+        const qPremium = (safeApPremium * safeAePremium * vfPremium) / 1000, kwPremium = (qPremium * kc) / 60000;
         hpPremium = (kwPremium * 1.341) / 0.8;
     } else if (operationType === 'drilling') {
-        const safeDcCurrent = Number(dcCurrent) || 0.0001, safeFnCurrent = Number(feedCurrent) || 0; // fn
-
-        const safeVcPremium = Number(vcPremium) || 0.0001;
-        const safeDcPremium = Number(dcPremium) || 0.0001, safeFnPremium = Number(feedPremium) || 0; // fn
-
-        const rpmCurrent = (safeVcCurrent * 1000) / (Math.PI * safeDcCurrent);
-        const vfCurrent = safeFnCurrent * rpmCurrent;
-        
-        const rpmPremium = (safeVcPremium * 1000) / (Math.PI * safeDcPremium);
-        const vfPremium = safeFnPremium * rpmPremium;
-        
+        const safeDcCurrent = Number(dcCurrent) || 0.0001, safeFnCurrent = Number(feedCurrent) || 0;
+        const safeVcPremium = Number(vcPremium) || 0.0001, safeDcPremium = Number(dcPremium) || 0.0001, safeFnPremium = Number(feedPremium) || 0;
+        const rpmCurrent = (safeVcCurrent * 1000) / (Math.PI * safeDcCurrent), vfCurrent = safeFnCurrent * rpmCurrent;
+        const rpmPremium = (safeVcPremium * 1000) / (Math.PI * safeDcPremium), vfPremium = safeFnPremium * rpmPremium;
         tcPremium = vfPremium > 0 ? safeTcCurrent * (vfCurrent / vfPremium) : safeTcCurrent;
-        
         const qCurrent = (Math.PI * Math.pow(safeDcCurrent, 2) / 4) * vfCurrent / 1000, kwCurrent = (qCurrent * kc) / 60000;
         hpCurrent = (kwCurrent * 1.341) / 0.8;
-
         const qPremium = (Math.PI * Math.pow(safeDcPremium, 2) / 4) * vfPremium / 1000, kwPremium = (qPremium * kc) / 60000;
         hpPremium = (kwPremium * 1.341) / 0.8;
     }
-
-    const loadCurrent = (hpCurrent / safeMachinePowerHP) * 100;
-    const loadPremium = (hpPremium / safeMachinePowerHP) * 100;
-    
-    // CONVERSIÓN DE VIDA ÚTIL (MINUTOS A PIEZAS) PARA FRESADO
-    let effectivePcsCurrent = Number(pcsCurrent) || 1;
-    let effectivePcsPremium = Number(pcsPremium) || 1;
-
+    const loadCurrent = (hpCurrent / safeMachinePowerHP) * 100, loadPremium = (hpPremium / safeMachinePowerHP) * 100;
+    let effectivePcsCurrent = Number(pcsCurrent) || 1, effectivePcsPremium = Number(pcsPremium) || 1;
     if (operationType === 'milling') {
         effectivePcsCurrent = safeTcCurrent > 0 ? (Number(pcsCurrent) || 0) / safeTcCurrent : 0;
         effectivePcsPremium = tcPremium > 0 ? (Number(pcsPremium) || 0) / tcPremium : 0;
     }
-
-    if (effectivePcsCurrent <= 0) effectivePcsCurrent = 1; // Fallback para evitar división por cero
-    if (effectivePcsPremium <= 0) effectivePcsPremium = 1; // Fallback
+    if (effectivePcsCurrent <= 0) effectivePcsCurrent = 1; if (effectivePcsPremium <= 0) effectivePcsPremium = 1;
     
-    // 1. Función Teórica (Curva General)
-    const calcCost = (v: number, isPremium: boolean, feed: number) => {
-      const C = isPremium ? premiumC : taylorProps.C;
-      const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
-      const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
-      const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
-      const ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
-
-      const tc = (safeTcCurrent * ( safeVcCurrent / v) * ((Number(feedCurrent) || 0.0001) / feed) * ((Number(apCurrent) || 0.0001) / ap));
-      const lifeMins = Math.pow((C / v), (1 / taylorProps.n));
-      
-      const costPorPunta = toolPrice / edges;
-      const costJuego = costPorPunta * z;
-      
-      return (safeMachineCostMin * tc) + ((safeMachineCostMin * safeToolChangeTime + costJuego) * (tc / lifeMins));
+    const calcCostWithBreakdown = (v: number, isPremium: boolean, feed: number) => {
+        const C = isPremium ? premiumC : taylorProps.C, toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent, z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1), edges = isPremium ? safeEdgesPremium : safeEdgesCurrent, ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
+        const tc = (safeTcCurrent * (safeVcCurrent / v) * ((Number(feedCurrent) || 0.0001) / feed) * ((Number(apCurrent) || 0.0001) / ap)), lifeMins = Math.pow((C / v), (1 / taylorProps.n));
+        const costPorPunta = toolPrice / edges, costJuego = costPorPunta * z;
+        const costoMaquina = safeMachineCostMin * tc;
+        const costoHerrParte1 = (costJuego * tc);
+        const costoHerrParte2 = (safeMachineCostMin * safeToolChangeTime * tc);
+        const costoTotalHerramienta = lifeMins > 0 ? (costoHerrParte1 / lifeMins) + (costoHerrParte2 / lifeMins) : 0;
+        const costoTotal = costoMaquina + costoTotalHerramienta;
+        return { costoTotal, costoMaquina, costoHerramienta: costoTotalHerramienta };
     };
 
-    // 2. Función Empírica (Puntos Reales en el Gráfico)
     const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
-      const costCorte = safeMachineCostMin * tc;
-      const costPorPunta = toolPrice / edges;
-      const costJuego = costPorPunta * z;
-      const costHerr = pcsPerEdge > 0 ? costJuego / pcsPerEdge : 0;
-      const costCambio = pcsPerEdge > 0 ? (safeMachineCostMin * safeToolChangeTime) / pcsPerEdge : 0;
+      const costCorte = safeMachineCostMin * tc, costPorPunta = toolPrice / edges, costJuego = costPorPunta * z;
+      const costHerr = pcsPerEdge > 0 ? costJuego / pcsPerEdge : 0, costCambio = pcsPerEdge > 0 ? (safeMachineCostMin * safeToolChangeTime) / pcsPerEdge : 0;
       return costCorte + costHerr + costCambio;
     };
 
     const speedsSet = new Set<number>();
     for (let v = 50; v <= taylorProps.C * 1.3; v += 10) { speedsSet.add(v); }
-    if (Number(vcCurrent) > 0) speedsSet.add(Number(vcCurrent));
-    if (Number(vcPremium) > 0) speedsSet.add(Number(vcPremium));
+    if (Number(vcCurrent) > 0) speedsSet.add(Number(vcCurrent)); if (Number(vcPremium) > 0) speedsSet.add(Number(vcPremium));
     const sortedSpeeds = Array.from(speedsSet).sort((a, b) => a - b);
-    const data = sortedSpeeds.map(v => ({
-        speed: v,
-        costoActual: Number(calcCost(v, false, Number(feedCurrent) || 0.0001).toFixed(2)),
-        costoPremium: Number(calcCost(v, true, Number(feedPremium) || 0.0001).toFixed(2)),
-    }));
     
-    // 3. Puntos Reales
+    let minPremiumCost = Infinity;
+    let optimalSpeed = 0;
+
+    const data = sortedSpeeds.map(v => {
+        const resActual = calcCostWithBreakdown(v, false, Number(feedCurrent) || 0.0001);
+        const resPremium = calcCostWithBreakdown(v, true, Number(feedPremium) || 0.0001);
+        if (resPremium.costoTotal < minPremiumCost) { minPremiumCost = resPremium.costoTotal; optimalSpeed = v; }
+        return { speed: v, costoActual: Number(resActual.costoTotal.toFixed(2)), costoPremium: Number(resPremium.costoTotal.toFixed(2)), costoMaquinaActual: resActual.costoMaquina, costoHerrActual: resActual.costoHerramienta, costoMaquinaPremium: resPremium.costoMaquina, costoHerrPremium: resPremium.costoHerramienta, };
+    });
+    
     const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, effectivePcsCurrent, (Number(zCurrent) || 1), safeEdgesCurrent);
     const actualCostPremium = calcEmpiricalCost(tcPremium, safeToolCostPremium, effectivePcsPremium, (Number(zPremium) || 1), safeEdgesPremium);
-    
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
     const realSavingsPercentage = actualCostCurrent > 0 ? (realAbsoluteSavings / actualCostCurrent) * 100 : 0;
     const monthlySavings = isFinite(realAbsoluteSavings) ? realAbsoluteSavings * safeMonthlyProduction : 0;
 
-    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium };
+    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero]);
 
-    // --- EFECTO PARA SIMULADOR DE TAYLOR ---
     useEffect(() => {
         if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
             setSimulationResult(null);
             return;
         }
 
-        // --- Lógica de Recálculo ---
         const safeMachineCostMin = (Number(machineCostHr) || 0) / 60;
         const safeToolCostPremium = Number(toolCostPremium) || 0;
         const safeToolChangeTime = Number(toolChangeTime) || 0;
         const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1);
         const safeEdgesPremium = Number(edgesPremium) || 1;
-
-        // 1. LA FÍSICA DE TAYLOR (Desgaste)
-        const factorVelocidad = Math.pow((taylorBase.vc / simulatedVc), 3.0);
-        const factorAvance = Math.pow((taylorBase.feed / simulatedFeed), 1.5);
+        const factorVelocidad = Math.pow((taylorBase.vc / simulatedVc), 3.0), factorAvance = Math.pow((taylorBase.feed / simulatedFeed), 1.5);
         const nuevasPzas = Math.round(taylorBase.pcs * factorVelocidad * factorAvance);
-
-        // 2. EL TIEMPO DE CICLO (Productividad)
-        const factorTiempoVc = taylorBase.vc / simulatedVc;
-        const factorTiempoAvance = taylorBase.feed / simulatedFeed;
-        const nuevoTiempoMin = taylorBase.time * factorTiempoVc * factorTiempoAvance;
-
-        // 3. EL COSTO (Finanzas)
-        const costCorte = safeMachineCostMin * nuevoTiempoMin;
-        const costPorPunta = nuevasPzas > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
-        const costJuego = costPorPunta * safeZPremium;
-        const costHerr = nuevasPzas > 0 ? costJuego / nuevasPzas : 0;
-        const costCambio = nuevasPzas > 0 ? (safeMachineCostMin * safeToolChangeTime) / nuevasPzas : 0;
+        const nuevoTiempoMin = taylorBase.time * (taylorBase.vc / simulatedVc) * (taylorBase.feed / simulatedFeed);
+        const costCorte = safeMachineCostMin * nuevoTiempoMin, costPorPunta = nuevasPzas > 0 ? safeToolCostPremium / safeEdgesPremium : 0, costJuego = costPorPunta * safeZPremium;
+        const costHerr = nuevasPzas > 0 ? costJuego / nuevasPzas : 0, costCambio = nuevasPzas > 0 ? (safeMachineCostMin * safeToolChangeTime) / nuevasPzas : 0;
         const nuevoCosto = costCorte + costHerr + costCambio;
-
         const nuevoRa = calcularRaTeorico(simulatedFeed, toolNamePremium);
-
-        setSimulationResult({
-            newPcs: nuevasPzas,
-            newTime: nuevoTiempoMin,
-            newCost: nuevoCosto,
-            newRa: nuevoRa
-        });
-
+        setSimulationResult({ newPcs: nuevasPzas, newTime: nuevoTiempoMin, newCost: nuevoCosto, newRa: nuevoRa });
     }, [simulatedVc, simulatedFeed, taylorBase, isTaylorModalOpen, machineCostHr, toolCostPremium, toolChangeTime, operationType, zPremium, edgesPremium, toolNamePremium]);
 
-    // --- EFECTO PARA AUTO-SUGERIR VC POR OBJETIVO ---
     useEffect(() => {
         const percentage = Number(targetSavings);
-        // No correr si el input está vacío, es cero, la modal está cerrada, o el costo base no está calculado
         if (!percentage || percentage <= 0 || !isTaylorModalOpen || taylorBaseCost <= 0) return;
 
         const autoCalcularPorObjetivo = () => {
             const costoObjetivo = taylorBaseCost * (1 - (percentage / 100));
+            let vcSimulada = taylorBase.vc, costoIterativo = taylorBaseCost;
+            const limiteSeguridadVc = taylorBase.vc * 2;
+            const safeMachineCostMin = (Number(machineCostHr) || 0) / 60, safeToolCostPremium = Number(toolCostPremium) || 0, safeToolChangeTime = Number(toolChangeTime) || 0, safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1), safeEdgesPremium = Number(edgesPremium) || 1;
+            const costPorPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0, costJuego = costPorPunta * safeZPremium;
             
-            let vcSimulada = taylorBase.vc;
-            let costoIterativo = taylorBaseCost;
-            const limiteSeguridadVc = taylorBase.vc * 2; // Límite para evitar bucles infinitos
-
-            const safeMachineCostMin = (Number(machineCostHr) || 0) / 60;
-            const safeToolCostPremium = Number(toolCostPremium) || 0;
-            const safeToolChangeTime = Number(toolChangeTime) || 0;
-            const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1);
-            const safeEdgesPremium = Number(edgesPremium) || 1;
-            const costPorPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
-            const costJuego = costPorPunta * safeZPremium;
-
-            // Búsqueda iterativa subiendo la Vc de a 1 m/min
             while (costoIterativo > costoObjetivo && vcSimulada < limiteSeguridadVc) {
                 vcSimulada++;
-                
-                // Recalcular piezas y tiempo con la nueva Vc (Taylor)
                 const factorVelocidad = Math.pow((taylorBase.vc / vcSimulada), 3.0);
-                // El avance se mantiene fijo en esta simulación
-                const piezasTemp = taylorBase.pcs * factorVelocidad;
-                const tiempoTemp = taylorBase.time * (taylorBase.vc / vcSimulada);
-                
-                // Recalcular el costo con los nuevos valores temporales
-                const costCorte = safeMachineCostMin * tiempoTemp;
-                const costHerr = piezasTemp > 0 ? costJuego / piezasTemp : 0;
-                const costCambio = piezasTemp > 0 ? (safeMachineCostMin * safeToolChangeTime) / piezasTemp : 0;
+                const piezasTemp = taylorBase.pcs * factorVelocidad, tiempoTemp = taylorBase.time * (taylorBase.vc / vcSimulada);
+                const costCorte = safeMachineCostMin * tiempoTemp, costHerr = piezasTemp > 0 ? costJuego / piezasTemp : 0, costCambio = piezasTemp > 0 ? (safeMachineCostMin * safeToolChangeTime) / piezasTemp : 0;
                 costoIterativo = costCorte + costHerr + costCambio;
             }
 
-            // Si se encuentra una Vc válida, actualizar el slider
             if (vcSimulada < limiteSeguridadVc) {
                 setSimulatedVc(vcSimulada);
-                // Opcional: fijar el avance al base para que el usuario entienda que solo se movió Vc
                 setSimulatedFeed(taylorBase.feed);
             } else {
                 alert("El porcentaje de ahorro deseado es físicamente imposible solo aumentando la velocidad. Intenta un objetivo más bajo o ajusta también el avance.");
             }
         };
         
-        // Usamos un debounce para no ejecutar la búsqueda en cada tecleo
-        const debounceTimer = setTimeout(() => {
-            autoCalcularPorObjetivo();
-        }, 500);
-
+        const debounceTimer = setTimeout(() => { autoCalcularPorObjetivo(); }, 500);
         return () => clearTimeout(debounceTimer);
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [targetSavings, isTaylorModalOpen]);
 
@@ -857,54 +736,41 @@ export default function TaylorCurvePage() {
   const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
   const porcentajeAhorro = curveDataInfo.realSavingsPercentage.toFixed(1);
 
-  // --- CUSTOM TOOLTIP PARA RECHARTS (Con % de Ahorro) ---
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      const isUserCurrentVc = label === (Number(vcCurrent) || 0);
-      const isUserPremiumVc = label === (Number(vcPremium) || 0);
-
-      const displayCostCurrent = isUserCurrentVc ? curveDataInfo.actualCostCurrent : payload[0]?.value;
-      const displayCostPremium = isUserPremiumVc ? curveDataInfo.actualCostPremium : payload[1]?.value;
-
-      const currentCost = curveDataInfo.actualCostCurrent;
-      const premiumCost = curveDataInfo.actualCostPremium;
-      const savingsPercentage = currentCost > 0 ? ((currentCost - premiumCost) / currentCost) * 100 : 0;
-
-      return (
-        <div className="bg-white p-4 border border-slate-200 rounded-lg shadow-xl text-sm min-w-[220px]">
-          <p className="font-black text-slate-700 mb-3 border-b pb-1">Vc: {label} m/min</p>
-          
-          <div className="space-y-3">
-            <div>
-              <p className="text-[10px] font-bold text-red-500 uppercase">
-                {isUserCurrentVc ? '🔴 COSTO REAL (Tu Parámetro)' : 'Costo Teórico (Competidor)'}
-              </p>
-              <p className="font-bold text-red-700">USD {Number(displayCostCurrent).toFixed(2)}</p>
-            </div>
-            
-            <div>
-              <p className="text-[10px] font-bold text-green-600 uppercase">
-                {isUserPremiumVc ? '🟢 COSTO REAL (Nuestra Propuesta)' : 'Costo Teórico (Propuesta (Secocut))'}
-              </p>
-              <div className="flex items-center gap-2 mt-0.5">
-                <p className="font-bold text-green-700">USD {Number(displayCostPremium).toFixed(2)}</p>
+        const { speed, costoMaquinaActual, costoHerrActual, costoMaquinaPremium, costoHerrPremium } = payload[0].payload;
+        const costoTotalActual = payload.find(p => p.dataKey === 'costoActual')?.value;
+        const costoTotalPremium = payload.find(p => p.dataKey === 'costoPremium')?.value;
+        
+        return (
+            <div className="bg-white p-3 border shadow-lg rounded-md text-xs min-w-[220px]">
+                <p className="font-bold border-b pb-1 mb-2">Vc: {speed} m/min</p>
                 
-                {(isUserCurrentVc || isUserPremiumVc) && savingsPercentage > 0.1 && (
-                  <span className="bg-green-100 text-green-800 border border-green-200 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center shadow-sm">
-                    ↓ {savingsPercentage.toFixed(1)}%
-                  </span>
+                {costoTotalActual !== undefined && (
+                    <div className="mb-2">
+                        <p className="text-red-700 font-bold">
+                            Competidor: {formatCurrency(costoTotalActual)}
+                        </p>
+                        <p className="text-[10px] text-gray-500 leading-tight">
+                            Máquina: {formatCurrency(costoMaquinaActual)} <br/>
+                            Herramienta: {formatCurrency(costoHerrActual)}
+                        </p>
+                    </div>
                 )}
-              </div>
+
+                {costoTotalPremium !== undefined && (
+                    <div>
+                        <p className="text-green-700 font-bold">
+                            SECOCUT: {formatCurrency(costoTotalPremium)}
+                        </p>
+                        <p className="text-[10px] text-gray-500 leading-tight">
+                            Máquina: {formatCurrency(costoMaquinaPremium)} <br/>
+                            Herramienta: {formatCurrency(costoHerrPremium)}
+                        </p>
+                    </div>
+                )}
             </div>
-          </div>
-          
-          {(isUserCurrentVc || isUserPremiumVc) && (
-            <p className="mt-3 pt-2 border-t text-[9px] text-slate-400 italic leading-tight">
-              *Los puntos marcados usan el cálculo empírico exacto ingresado en el formulario (rendimiento y tiempos reales).
-            </p>
-          )}
-        </div>
-      );
+        );
     }
     return null;
   };
@@ -922,6 +788,21 @@ export default function TaylorCurvePage() {
     }, {} as Record<string, typeof MATERIALS>);
 
     const porcentajeAhorroSimulado = taylorBaseCost > 0 && simulationResult ? (((taylorBaseCost - simulationResult.newCost) / taylorBaseCost) * 100).toFixed(1) : "0.0";
+    
+    const insightText = useMemo(() => {
+        const { vcCurrent } = curveDataInfo;
+        const { velocidadOptimaSeco, costoOptimoSeco } = curveDataInfo;
+        if (!vcCurrent || !velocidadOptimaSeco || !costoOptimoSeco) return null;
+        const numVcCurrent = Number(vcCurrent);
+        if (numVcCurrent < velocidadOptimaSeco) {
+            return `💡 Tu máquina está subutilizada. Si subimos la velocidad de ${numVcCurrent} a ${velocidadOptimaSeco} m/min con el inserto Seco, alcanzarás el costo mínimo absoluto de ${formatCurrency(costoOptimoSeco)} por pieza.`;
+        } else if (numVcCurrent > velocidadOptimaSeco + 10) { // Added a small buffer
+            return `⚠️ Estás quemando insertos. Bajando la velocidad a ${velocidadOptimaSeco} m/min con Seco, extenderás la vida útil drásticamente y bajarás tu costo a ${formatCurrency(costoOptimoSeco)}.`;
+        } else {
+            return `✅ ¡Estás muy cerca del punto óptimo! Mantener la velocidad alrededor de ${velocidadOptimaSeco} m/min te asegura la máxima eficiencia y rentabilidad.`;
+        }
+    }, [curveDataInfo]);
+
 
   return (
     <>
@@ -1284,6 +1165,15 @@ export default function TaylorCurvePage() {
 
                         {isFinite(curveDataInfo.actualCostCurrent) && <ReferenceDot x={Number(vcCurrent)} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />}
                         {isFinite(curveDataInfo.actualCostPremium) && <ReferenceDot x={Number(vcPremium)} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
+                        
+                        {curveDataInfo.velocidadOptimaSeco > 0 &&
+                          <ReferenceLine 
+                            x={curveDataInfo.velocidadOptimaSeco} 
+                            stroke="#10B981" 
+                            strokeDasharray="4 4" 
+                            label={{ position: 'insideTopRight', value: '🔥 Óptimo', fill: '#10B981', fontSize: 10, fontWeight: 'bold' }} 
+                          />
+                        }
                     </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -1305,17 +1195,15 @@ export default function TaylorCurvePage() {
         </p>
       </div>
       
-        <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800/30 flex items-start gap-3">
-            <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-            <div>
-                <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-1">¿Cómo leer este gráfico?</h3>
-                <p className="text-sm text-blue-900 dark:text-blue-300 mb-2">La curva muestra cómo varía el costo de fabricar una pieza a medida que aumentamos la Velocidad de Corte (Vc).</p>
-                <ul className="text-xs text-blue-800 dark:text-blue-400 space-y-1.5 list-disc pl-4">
-                    <li>El <strong>punto rojo</strong> marca tu costo operativo actual, mientras que el <strong>punto verde</strong> marca el costo con la Vc y Avance que proponemos para el inserto premium.</li>
-                    <li>El objetivo es que el punto verde esté por debajo del rojo, lo que significa un ahorro real por cada pieza fabricada.</li>
-                </ul>
-            </div>
-        </div>
+        {insightText && (
+          <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800/30 flex items-start gap-3">
+              <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+              <div>
+                  <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-1">Análisis del Punto Óptimo</h3>
+                  <p className="text-sm text-blue-900 dark:text-blue-300">{insightText}</p>
+              </div>
+          </div>
+        )}
       </div>
 
       {/* BOTÓN FLOTANTE DEL COPILOTO */}
