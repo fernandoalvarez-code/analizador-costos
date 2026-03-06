@@ -327,6 +327,34 @@ export default function TaylorCurvePage() {
   const [taylorBaseCost, setTaylorBaseCost] = useState(0);
   const [targetSavings, setTargetSavings] = useState<number | ''>('');
 
+  // --- Efecto para auto-calcular tiempo de corte en Taladrado ---
+  useEffect(() => {
+    if (operationType === 'drilling') {
+      const vc = Number(vcCurrent);
+      const d = Number(dcCurrent);
+      const f = Number(feedCurrent);
+      const l = Number(profundidadAgujero);
+
+      if (vc > 0 && d > 0 && f > 0 && l > 0) {
+        const rpm = (vc * 1000) / (Math.PI * d);
+        const vf = f * rpm; // Velocidad de penetración (mm/min)
+        const tiempoMinutosDecimal = l / vf;
+
+        if (isFinite(tiempoMinutosDecimal)) {
+          const min = Math.floor(tiempoMinutosDecimal);
+          let seg = Math.round((tiempoMinutosDecimal - min) * 60);
+          if (seg === 60) {
+            setTcCurrentMin(min + 1);
+            setTcCurrentSec(0);
+          } else {
+            setTcCurrentMin(min);
+            setTcCurrentSec(seg);
+          }
+        }
+      }
+    }
+  }, [operationType, vcCurrent, dcCurrent, feedCurrent, profundidadAgujero]);
+
   const raActual = calcularRaTeorico(feedCurrent, toolNameCurrent);
   const raPropuesta = calcularRaTeorico(feedPremium, toolNamePremium);
 
@@ -1006,8 +1034,8 @@ export default function TaylorCurvePage() {
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-red-700 mb-1">Tiempo Actual (Corte)</Label>
                 <div className="flex gap-2">
-                  <div className="relative w-1/2"><Input type="number" className="pr-7 border-red-300 font-bold bg-white" value={tcCurrentMin} onChange={e => setTcCurrentMin(e.target.value === "" ? "" : Number(e.target.value))} /><span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">min</span></div>
-                  <div className="relative w-1/2"><Input type="number" className="pr-7 border-red-300 font-bold bg-white" value={tcCurrentSec} onChange={e => setTcCurrentSec(e.target.value === "" ? "" : Number(e.target.value))} /><span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">seg</span></div>
+                  <div className="relative w-1/2"><Input type="number" className="pr-7 border-red-300 font-bold bg-white disabled:bg-slate-100" value={tcCurrentMin} onChange={e => setTcCurrentMin(e.target.value === "" ? "" : Number(e.target.value))} disabled={operationType === 'drilling'} /><span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">min</span></div>
+                  <div className="relative w-1/2"><Input type="number" className="pr-7 border-red-300 font-bold bg-white disabled:bg-slate-100" value={tcCurrentSec} onChange={e => setTcCurrentSec(e.target.value === "" ? "" : Number(e.target.value))} disabled={operationType === 'drilling'} /><span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">seg</span></div>
                 </div>
               </div>
             </div>
