@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -53,10 +52,10 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
 
   // Estados para el modal y la generación del PDF
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [includeMethodology, setIncludeMethodology] = useState(true);
   const [includeTraining, setIncludeTraining] = useState(true);
-  const [downloadAction, setDownloadAction] = useState<'download' | 'share' | null>(null);
+  const [exportAction, setExportAction] = useState<'download' | 'share' | null>(null);
 
   const docRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -109,8 +108,8 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
   const totalPages = 2 + (hasThirdPage ? 1 : 0) + (includeMethodology ? 1 : 0) + (includeTraining ? 1 : 0);
 
   const openDownloadModal = (action: 'download' | 'share') => {
-    setDownloadAction(action);
-    setIsModalOpen(true);
+    setExportAction(action);
+    setIsExportModalOpen(true);
   };
   
   const generateAndProcessPDF = useCallback(async () => {
@@ -133,9 +132,9 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
 
         const pdfInstance = html2pdf().set(opt).from(element);
 
-        if (downloadAction === 'download') {
+        if (exportAction === 'download') {
             await pdfInstance.save();
-        } else if (downloadAction === 'share') {
+        } else if (exportAction === 'share') {
             const pdfBlob = await pdfInstance.output('blob');
             const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
              if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -154,9 +153,9 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
         alert("Hubo un error al generar el PDF.");
     } finally {
         setIsGenerating(false);
-        setIsModalOpen(false);
+        setIsExportModalOpen(false);
     }
-  }, [rawData, data.name, downloadAction, includeMethodology, includeTraining, data.cliente, data.contacto]);
+  }, [rawData, data.name, exportAction, includeMethodology, includeTraining, data.cliente, data.contacto]);
 
   if (isLoading) return <div className="p-8 space-y-4 container mx-auto"><Skeleton className="h-12 w-1/3" /><Skeleton className="h-96 w-full" /></div>;
   if (!rawData && !isLoading) return <div className="p-8 text-center text-red-500">Error: Caso no encontrado.</div>;
@@ -278,7 +277,7 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
         </div>
       </div>
       
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Dialog open={isExportModalOpen} onOpenChange={setIsExportModalOpen}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Armar Dossier Ejecutivo</DialogTitle>
@@ -307,10 +306,10 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
                 </div>
             </div>
             <DialogFooter>
-                <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
+                <Button variant="outline" onClick={() => setIsExportModalOpen(false)}>Cancelar</Button>
                 <Button onClick={generateAndProcessPDF} disabled={isGenerating}>
-                    {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (downloadAction === 'share' ? <Share2 className="mr-2 h-4 w-4" /> : <Download className="mr-2 h-4 w-4" />)}
-                    {isGenerating ? 'Generando...' : (downloadAction === 'share' ? 'Generar y Compartir' : 'Generar y Descargar')}
+                    {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (exportAction === 'share' ? <Share2 className="mr-2 h-4 w-4" /> : <Download className="mr-2 h-4 w-4" />)}
+                    {isGenerating ? 'Generando...' : (exportAction === 'share' ? 'Generar y Compartir' : 'Generar y Descargar')}
                 </Button>
             </DialogFooter>
         </DialogContent>
