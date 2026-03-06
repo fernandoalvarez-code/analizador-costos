@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot, ReferenceLine } from 'recharts';
@@ -259,6 +260,15 @@ const auditarBroca = (diametro?: number | "", profundidad?: number | ""): string
     return '⚠️ Alerta de Profundidad (>8xD): Broca muy larga. Se requiere agujero piloto y reducir el avance (fn) un 20% al entrar para evitar que la broca flexe o se parta.';
   }
   return null;
+};
+
+const calcularVf = (f: number | "", vc: number | "", d: number | ""): number => {
+    const numF = Number(f);
+    const numVc = Number(vc);
+    const numD = Number(d);
+    if (numF <= 0 || numVc <= 0 || numD <= 0) return 0;
+    const rpm = (numVc * 1000) / (Math.PI * numD);
+    return numF * rpm;
 };
 
 export default function TaylorCurvePage() {
@@ -1610,15 +1620,6 @@ export default function TaylorCurvePage() {
 
             <div className="mb-6">
               <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">1. Condiciones de Trabajo Evaluadas</h2>
-              <div className="grid grid-cols-4 gap-4 text-xs">
-                <div><p className="text-slate-500">Material:</p><p className="font-bold">{materialId}</p></div>
-                <div><p className="text-slate-500">Costo Máquina:</p><p className="font-bold">{formatCurrency(Number(machineCostHr))}</p></div>
-                <div><p className="text-slate-500">Tiempo Cambio Herr.:</p><p className="font-bold">{toolChangeTime} min</p></div>
-                <div><p className="text-slate-500">Producción Mensual:</p><p className="font-bold">{formatNumber(Number(monthlyProduction))} pzs/mes</p></div>
-              </div>
-            </div>
-
-            <div className="mb-6">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-800 text-white">
@@ -1633,20 +1634,31 @@ export default function TaylorCurvePage() {
                     <td className="p-2 border border-slate-300 text-center">{toolNameCurrent || 'No especificada'}</td>
                     <td className="p-2 border border-slate-300 font-bold text-green-700 bg-green-50 text-center">{toolNamePremium || 'No especificada'}</td>
                   </tr>
-                  <tr>
-                    <td className="p-2 border border-slate-300 font-bold">Incidencia (Holgura)</td>
-                    <td className="p-2 border border-slate-300 text-center">{obtenerAnguloTexto(toolNameCurrent)}</td>
-                    <td className="p-2 border border-slate-300 text-center bg-green-50 font-medium">{obtenerAnguloTexto(toolNamePremium)}</td>
-                  </tr>
+                  {(operationType === 'turning' || operationType === 'milling') && (
+                    <tr>
+                      <td className="p-2 border border-slate-300 font-bold">Incidencia (Holgura)</td>
+                      <td className="p-2 border border-slate-300 text-center">{obtenerAnguloTexto(toolNameCurrent)}</td>
+                      <td className="p-2 border border-slate-300 text-center bg-green-50 font-medium">{obtenerAnguloTexto(toolNamePremium)}</td>
+                    </tr>
+                  )}
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Precio Inserto</td>
                     <td className="p-2 border border-slate-300 text-center">{formatCurrency(Number(toolCostCurrent))}</td>
                     <td className="p-2 border border-slate-300 text-center">{formatCurrency(Number(toolCostPremium))}</td>
                   </tr>
-                   <tr>
-                    <td className="p-2 border border-slate-300 font-bold">Profundidad de Corte (ap)</td>
-                    <td className="p-2 border border-slate-300 text-center">{apCurrent} mm</td>
-                    <td className="p-2 border border-slate-300 text-center">{apPremium} mm</td>
+                  {(operationType === 'milling' || operationType === 'drilling') && (
+                    <tr>
+                      <td className="p-2 border border-slate-300 font-bold">{operationType === 'drilling' ? 'Diámetro de Broca (Dc)' : 'Diámetro Fresa (Dc)'}</td>
+                      <td className="p-2 border border-slate-300 text-center">{dcCurrent} mm</td>
+                      <td className="p-2 border border-slate-300 text-center font-bold text-green-700">{dcPremium} mm</td>
+                    </tr>
+                  )}
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold">
+                      {operationType === 'drilling' ? 'Prof. del Agujero (L)' : 'Profundidad de Corte (ap)'}
+                    </td>
+                    <td className="p-2 border border-slate-300 text-center">{operationType === 'drilling' ? profundidadAgujero : apCurrent} mm</td>
+                    <td className="p-2 border border-slate-300 text-center text-green-700">{operationType === 'drilling' ? profundidadAgujero : apPremium} mm</td>
                   </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Tiempo de Corte (min)</td>
@@ -1659,24 +1671,35 @@ export default function TaylorCurvePage() {
                     <td className="p-2 border border-slate-300 text-center">{vcPremium} m/min</td>
                   </tr>
                   <tr>
-                    <td className="p-2 border border-slate-300 font-bold">Avance (f)</td>
-                    <td className="p-2 border border-slate-300 text-center">{feedCurrent} {operationType === 'turning' ? 'mm/rev' : 'mm/z'}</td>
-                    <td className="p-2 border border-slate-300 text-center">{feedPremium} {operationType === 'turning' ? 'mm/rev' : 'mm/z'}</td>
+                    <td className="p-2 border border-slate-300 font-bold">Avance ({operationType === 'milling' ? 'fz' : 'fn'})</td>
+                    <td className="p-2 border border-slate-300 text-center">{feedCurrent} {operationType === 'milling' ? 'mm/z' : 'mm/rev'}</td>
+                    <td className="p-2 border border-slate-300 text-center text-green-700 font-bold">{feedPremium} {operationType === 'milling' ? 'mm/z' : 'mm/rev'}</td>
                   </tr>
+                  {operationType === 'drilling' && (
+                    <tr className="bg-green-50">
+                      <td className="font-bold p-2 text-gray-800 border border-slate-300">Velocidad de Penetración (Vf)</td>
+                      <td className="p-2 text-center border border-slate-300">{calcularVf(feedCurrent, vcCurrent, dcCurrent).toFixed(0)} mm/min</td>
+                      <td className="p-2 text-center text-green-800 font-black border border-slate-300">
+                        {calcularVf(feedPremium, vcPremium, dcPremium).toFixed(0)} mm/min
+                      </td>
+                    </tr>
+                  )}
                   <tr>
-                    <td className="p-2 border border-slate-300 font-bold">Rendimiento (Pzas/Filo)</td>
-                    <td className="p-2 border border-slate-300 text-center">{pcsCurrent} pzs</td>
-                    <td className="p-2 border border-slate-300 text-center">{pcsPremium} pzs</td>
+                    <td className="p-2 border border-slate-300 font-bold">Rendimiento Estimado</td>
+                    <td className="p-2 border border-slate-300 text-center">{pcsCurrent} {operationType === 'drilling' ? 'agujeros' : 'pzs'}/filo</td>
+                    <td className="p-2 border border-slate-300 text-center text-green-700 font-bold">{pcsPremium} {operationType === 'drilling' ? 'agujeros' : 'pzs'}/filo</td>
                   </tr>
-                   <tr className="bg-slate-100">
-                    <td className="p-2 border border-slate-300 font-bold">Rugosidad Teórica (Ra)</td>
-                    <td className="p-2 border border-slate-300 text-center">
-                        {`${raActual ?? 'N/A'} µm`}
-                    </td>
-                    <td className="p-2 border border-slate-300 text-center bg-slate-50 font-medium">
-                        {`${raPropuesta ?? 'N/A'} µm`}
-                    </td>
-                  </tr>
+                   {operationType !== 'drilling' && (
+                    <tr className="bg-slate-100">
+                      <td className="p-2 border border-slate-300 font-bold">Rugosidad Teórica (Ra)</td>
+                      <td className="p-2 border border-slate-300 text-center">
+                          {`${raActual ?? 'N/A'} µm`}
+                      </td>
+                      <td className="p-2 border border-slate-300 text-center bg-slate-50 font-medium">
+                          {`${raPropuesta ?? 'N/A'} µm`}
+                      </td>
+                    </tr>
+                  )}
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Consumo de Motor</td>
                     <td className="p-2 border border-slate-300 text-center">{curveDataInfo.hpCurrent.toFixed(1)} HP ({curveDataInfo.loadCurrent.toFixed(1)}%)</td>
@@ -1752,3 +1775,4 @@ export default function TaylorCurvePage() {
     </>
   );
 }
+
