@@ -54,8 +54,8 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
   // Estados para el modal y la generación del PDF
   const [isGenerating, setIsGenerating] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [includeMethodology, setIncludeMethodology] = useState(false);
-  const [includeTraining, setIncludeTraining] = useState(false);
+  const [includeMethodology, setIncludeMethodology] = useState(true);
+  const [includeTraining, setIncludeTraining] = useState(true);
   const [downloadAction, setDownloadAction] = useState<'download' | 'share' | null>(null);
 
   const docRef = useMemoFirebase(() => {
@@ -229,37 +229,49 @@ export default function CaseDetailsPage({ params }: { params: { id: string } }) 
 
           {includeMethodology && (
             <div className="pdf-page">
-              <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-3 h-14">
-                  <div className="flex items-center gap-4">{settings?.companyLogoUrl && <img src={settings.companyLogoUrl} alt="Logo" className="h-6 object-contain opacity-50 grayscale" />}<div className="border-l border-slate-300 pl-4"><span className="block text-lg font-bold text-slate-700 uppercase leading-none">Anexo A</span><span className="block text-[10px] text-slate-400 mt-1 uppercase tracking-wider">Metodología de Costos</span></div></div>
-                  <div className="text-right"><span className="text-[10px] text-slate-400 font-medium">Página {currentPage++}/{totalPages}</span></div>
-              </div>
-               <h2 className="text-xl font-black uppercase text-slate-800 mb-6">Metodología de Cálculo de Costos</h2>
-               <p className="text-sm leading-relaxed mb-4 text-slate-700">Estimado/a {data.contacto || 'equipo de'} <span className="font-bold">{data.cliente}</span>,</p>
-               <p className="text-sm leading-relaxed mb-6 text-slate-700">Este análisis se fundamenta en el <strong>Modelo de Taylor Extendido</strong>, un estándar de la industria para optimizar procesos de mecanizado. El costo total por pieza no es solo el precio de la herramienta, sino la suma de factores críticos que impactan directamente en su rentabilidad. A continuación, desglosamos los componentes clave:</p>
-                <div className="space-y-6 text-sm">
-                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200"><h3 className="font-bold text-blue-700 mb-2">1. Costo de Máquina ($C_m$)</h3><p className="text-slate-600">Representa el costo de tener la máquina en funcionamiento. Se calcula dividiendo el costo-hora de su máquina por 60 para obtener un costo por minuto, que luego se multiplica por el tiempo de ciclo de la pieza.</p><p className="font-mono text-xs bg-slate-100 p-2 mt-2 rounded">Costo Máquina = (Costo Hora / 60) * Tiempo de Ciclo</p></div>
-                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200"><h3 className="font-bold text-blue-700 mb-2">2. Costo de Herramienta ($C_h$)</h3><p className="text-slate-600">Es el costo del inserto consumido por cada pieza fabricada. Se calcula dividiendo el precio del inserto por la cantidad total de piezas que puede producir durante toda su vida útil (considerando todos sus filos).</p><p className="font-mono text-xs bg-slate-100 p-2 mt-2 rounded">Costo Herramienta = Precio Inserto / (Filos por Inserto * Piezas por Filo)</p></div>
-                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200"><h3 className="font-bold text-blue-700 mb-2">3. La Curva en "U" de Costo vs. Velocidad</h3><p className="text-slate-600">A bajas velocidades, el tiempo de ciclo es alto y el costo de máquina domina. A velocidades excesivas, el filo se desgasta prematuramente y el costo de herramienta se dispara. El <strong>punto óptimo de trabajo</strong> se encuentra en el "valle" de esta curva, donde se logra el costo total más bajo.</p></div>
+              <div className="p-8">
+                <h2 className="text-2xl font-black uppercase mb-6">Anexo A: Transparencia Financiera y Metodología de Cálculo</h2>
+                <p className="mb-4">Estimado/a <strong>{data.contacto}</strong>,</p>
+                <p className="mb-4">En Seco Tools entendemos que las decisiones en <strong>{data.cliente}</strong> se toman basándose en datos precisos, no en estimaciones empíricas. Los resultados proyectados en este informe han sido calculados utilizando el <strong>Modelo de Costos de Taylor</strong>, el estándar de ingeniería de producción más riguroso de la industria.</p>
+                <p className="mb-4">Para asegurar la máxima transparencia, desglosamos cómo se compone el Costo Total por Pieza en su planta:</p>
+                <h3 className="font-bold text-lg mt-6">1. El Costo de Máquina (El factor tiempo)</h3>
+                <p className="mb-2">Representa el valor monetario del tiempo que su máquina invierte en fabricar una sola pieza. Al aumentar los parámetros de corte con tecnología Seco, reducimos drásticamente este rubro.</p>
+                <div className="bg-gray-100 p-3 rounded mb-4 font-mono text-sm">
+                  Fórmula: Costo Máquina = (Costo Hora / 60) * Tiempo de Ciclo (min)
                 </div>
-               <div className="mt-auto pt-4 border-t border-slate-200 text-center"><p className="text-sm font-bold text-slate-500 italic">El objetivo no es vender herramientas más baratas, sino fabricar piezas de forma más rentable.</p></div>
+                <h3 className="font-bold text-lg mt-6">2. El Costo de Herramienta (El factor consumible)</h3>
+                <p className="mb-2">Es la fracción del precio del inserto que se consume por cada pieza mecanizada. Un inserto de menor precio de compra suele tener un costo por pieza más alto debido a fallas prematuras o menor cantidad de filos útiles.</p>
+                <div className="bg-gray-100 p-3 rounded mb-6 font-mono text-sm">
+                  Fórmula: Costo Herramienta = Precio del Inserto / (Cantidad de Filos * Piezas por Filo)
+                </div>
+                <h3 className="font-bold text-lg">La Curva de Optimización:</h3>
+                <p>Nuestro software ha cruzado ambos costos para encontrar su <strong>Punto de Equilibrio Óptimo</strong>. El objetivo de la propuesta técnica adjunta no es vender el consumible más económico, sino llevar a la planta de <strong>{data.cliente}</strong> a la zona de máxima rentabilidad, donde el ahorro de tiempo de máquina supera con creces cualquier inversión en herramientas de alto rendimiento.</p>
+              </div>
             </div>
           )}
 
           {includeTraining && (
             <div className="pdf-page">
-              <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-3 h-14">
-                  <div className="flex items-center gap-4">{settings?.companyLogoUrl && <img src={settings.companyLogoUrl} alt="Logo" className="h-6 object-contain opacity-50 grayscale" />}<div className="border-l border-slate-300 pl-4"><span className="block text-lg font-bold text-slate-700 uppercase leading-none">Anexo B</span><span className="block text-[10px] text-slate-400 mt-1 uppercase tracking-wider">Productividad</span></div></div>
-                  <div className="text-right"><span className="text-[10px] text-slate-400 font-medium">Página {currentPage++}/{totalPages}</span></div>
+              <div className="p-8">
+                <h2 className="text-2xl font-black uppercase mb-6">Anexo B: Productividad, Capacitación y el Factor Humano</h2>
+                <p className="mb-4">La tecnología de corte más avanzada del mundo no genera retorno de inversión si no está acompañada de un equipo humano capacitado y confiado.</p>
+                <p className="mb-6">Entendemos que uno de los mayores desafíos actuales para <strong>{data.cliente}</strong> es la curva de aprendizaje de los operarios, la retención de talento y la estandarización de procesos para evitar roturas o paradas de máquina innecesarias.</p>
+                <h3 className="font-bold text-lg mb-2">Cómo nuestra propuesta aborda el desafío operativo:</h3>
+                <ul className="list-decimal pl-5 mb-6 space-y-3">
+                  <li><strong>Predictibilidad y Seguridad (Cero Sorpresas):</strong> Las geometrías y recubrimientos propuestos en este estudio están diseñados para ofrecer un desgaste predecible. Esto elimina la necesidad de que el operario esté compensando medidas constantemente, reduciendo la fatiga y el estrés en el pie de máquina.</li>
+                  <li><strong>Estandarización de Parámetros:</strong> Al entregar este reporte, establecemos un "Estándar de Trabajo" claro. El operario ya no tiene que "adivinar" el avance o la velocidad; los parámetros óptimos ya han sido validados por nuestra ingeniería.</li>
+                </ul>
+                <h3 className="font-bold text-lg mb-2">Nuestra Promesa de Acompañamiento (Programa STEP):</h3>
+                <p className="mb-4">La implementación de estas herramientas en <strong>{data.cliente}</strong> no termina con la entrega del producto. Como socios estratégicos, nos comprometemos a brindar soporte en planta para:</p>
+                <ul className="list-disc pl-5 mb-6 space-y-2">
+                  <li>Realizar las pruebas de mecanizado junto a su personal.</li>
+                  <li>Capacitar a los operarios en las mejores prácticas de montaje y lectura de desgaste.</li>
+                  <li>Explicar el por qué de los nuevos parámetros para generar confianza en la nueva tecnología.</li>
+                </ul>
+                <p className="font-bold text-gray-800 border-l-4 border-green-600 pl-4 py-2 bg-green-50">
+                  El objetivo es empoderar a su equipo para que sean ellos quienes impulsen la productividad de la planta hacia el futuro.
+                </p>
               </div>
-              <h2 className="text-xl font-black uppercase text-slate-800 mb-6">Productividad y el Factor Humano</h2>
-              <p className="text-sm leading-relaxed mb-6 text-slate-700">Para el equipo de Producción de <span className="font-bold">{data.cliente}</span>,</p>
-              <p className="text-sm leading-relaxed mb-6 text-slate-700">En la industria moderna, la brecha de habilidades de los operarios es un desafío constante. Un operario nuevo a menudo no tiene la experiencia para "sentir el corte", lo que puede llevar a roturas de herramientas, paradas de máquina y piezas descartadas. Nuestras tecnologías están diseñadas pensando en este desafío.</p>
-              <div className="space-y-6 text-sm">
-                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200"><h3 className="font-bold text-blue-700 mb-2">Geometrías de Corte "Permisivas"</h3><p className="text-slate-600">Nuestros insertos cuentan con rompevirutas avanzados que manejan un rango más amplio de parámetros de corte. Esto significa que el proceso es más estable y "perdona" variaciones, protegiendo tanto la pieza de trabajo como el husillo de la máquina de daños costosos.</p></div>
-                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200"><h3 className="font-bold text-blue-700 mb-2">Programa de Capacitación STEP</h3><p className="text-slate-600">Ofrecemos acceso al <strong>Seco Technical Education Programme (STEP)</strong>, una plataforma de e-learning de clase mundial diseñada para nivelar y actualizar las habilidades de su equipo en áreas como la teoría del mecanizado, la selección de herramientas y la optimización de procesos.</p></div>
-              </div>
-              <div className="border-l-4 border-blue-600 pl-4 mt-8 bg-blue-50/50 py-4"><h4 className="font-bold text-blue-800">Nuestra Propuesta de Valor Adicional</h4><p className="text-sm text-slate-700 mt-2">Al implementar esta nueva tecnología, nuestro equipo de ingeniería de aplicaciones se compromete a realizar una <strong>capacitación técnica in-situ</strong> con sus operarios. El objetivo es asegurar una transición fluida, maximizar la vida útil de sus herramientas y husillos, y garantizar que su equipo aproveche al máximo la inversión.</p></div>
-              <div className="mt-auto pt-4 border-t border-slate-200 text-center"><p className="text-sm font-bold text-slate-500 italic">Somos más que un proveedor de herramientas; somos su socio en productividad.</p></div>
             </div>
           )}
 
