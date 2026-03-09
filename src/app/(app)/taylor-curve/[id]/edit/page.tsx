@@ -491,20 +491,27 @@ export default function EditTaylorCurvePage() {
     }
     if (effectivePcsCurrent <= 0) effectivePcsCurrent = 1; if (effectivePcsPremium <= 0) effectivePcsPremium = 1;
 
-    const calcCost = (v: number, isPremium: boolean, feed: number) => {
-        const C = isPremium ? premiumC : taylorProps.C, toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent, z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1), edges = isPremium ? safeEdgesPremium : safeEdgesCurrent, ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
+    const calcCostWithBreakdown = (v: number, isPremium: boolean, feed: number) => {
+        const C = isPremium ? premiumC : taylorProps.C;
+        const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
+        const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
+        const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
+        const ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
+
+        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0 };
+
         const tc = (safeTcCurrent * (safeVcCurrent / v) * ((Number(feedCurrent) || 0.0001) / feed) * ((Number(apCurrent) || 0.0001) / ap));
         const lifeMins = Math.pow((C / v), (1 / taylorProps.n));
-
-        const costoMaquina = safeMachineCostMin * tc;
-
-        const costPerEdge = edges > 0 ? toolPrice / edges : 0;
-        const toolChangePenalty = (costPerEdge * z) + (safeToolChangeTime * safeMachineCostMin);
-        
         const piecesPerToolLife = lifeMins > 0 ? lifeMins / tc : 0;
-        const costoHerramienta = piecesPerToolLife > 0 ? toolChangePenalty / piecesPerToolLife : 0;
         
-        return costoMaquina + costoHerramienta;
+        // Breakdown
+        const costoMaquina = safeMachineCostMin * tc;
+        const costPerEdge = edges > 0 ? toolPrice / edges : 0;
+        const costoInsertoPuro = piecesPerToolLife > 0 ? (costPerEdge * z) / piecesPerToolLife : 0;
+        const costoParada = piecesPerToolLife > 0 ? (safeToolChangeTime * safeMachineCostMin) / piecesPerToolLife : 0;
+        
+        const costoTotal = costoMaquina + costoInsertoPuro + costoParada;
+        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada };
     };
 
     const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
@@ -521,7 +528,25 @@ export default function EditTaylorCurvePage() {
     for (let v = 50; v <= taylorProps.C * 1.3; v += 10) speedsSet.add(v);
     if (Number(vcCurrent) > 0) speedsSet.add(Number(vcCurrent)); if (Number(vcPremium) > 0) speedsSet.add(Number(vcPremium));
     const sortedSpeeds = Array.from(speedsSet).sort((a, b) => a - b);
-    const data = sortedSpeeds.map(v => ({ speed: v, costoActual: Number(calcCost(v, false, Number(feedCurrent) || 0.0001).toFixed(2)), costoPremium: Number(calcCost(v, true, Number(feedPremium) || 0.0001).toFixed(2)), }));
+    const data = sortedSpeeds.map(v => {
+        const resActual = calcCostWithBreakdown(v, false, Number(feedCurrent) || 0.0001);
+        const resPremium = calcCostWithBreakdown(v, true, Number(feedPremium) || 0.0001);
+        return {
+            speed: v,
+            costoActual: resActual.costoTotal,
+            costoPremium: resPremium.costoTotal,
+            desgloseActual: {
+                maquina: resActual.costoMaquina,
+                inserto: resActual.costoInsertoPuro,
+                parada: resActual.costoParada,
+            },
+            desglosePremium: {
+                maquina: resPremium.costoMaquina,
+                inserto: resPremium.costoInsertoPuro,
+                parada: resPremium.costoParada,
+            }
+        };
+    });
     const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, effectivePcsCurrent, (Number(zCurrent) || 1), safeEdgesCurrent);
     const actualCostPremium = calcEmpiricalCost(tcPremium, safeToolCostPremium, effectivePcsPremium, (Number(zPremium) || 1), safeEdgesPremium);
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
@@ -571,12 +596,51 @@ export default function EditTaylorCurvePage() {
   const porcentajeAhorro = curveDataInfo.realSavingsPercentage.toFixed(1);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
-    if (!active || !payload || !payload.length) return null;
-    const isUserCurrentVc = label === (Number(vcCurrent) || 0), isUserPremiumVc = label === (Number(vcPremium) || 0);
-    const displayCostCurrent = isUserCurrentVc ? curveDataInfo.actualCostCurrent : payload[0]?.value;
-    const displayCostPremium = isUserPremiumVc ? curveDataInfo.actualCostPremium : payload[1]?.value;
-    const savingsPercentage = curveDataInfo.actualCostCurrent > 0 ? ((curveDataInfo.actualCostCurrent - curveDataInfo.actualCostPremium) / curveDataInfo.actualCostCurrent) * 100 : 0;
-    return (<div className="bg-white p-4 border border-slate-200 rounded-lg shadow-xl text-sm min-w-[220px]"> <p className="font-black text-slate-700 mb-3 border-b pb-1">Vc: {label} m/min</p> <div className="space-y-3"> <div> <p className="text-[10px] font-bold text-red-500 uppercase">{isUserCurrentVc ? '🔴 COSTO REAL (Tu Parámetro)' : 'Costo Teórico (Competidor)'}</p> <p className="font-bold text-red-700">USD {Number(displayCostCurrent).toFixed(2)}</p> </div> <div> <p className="text-[10px] font-bold text-green-600 uppercase">{isUserPremiumVc ? '🟢 COSTO REAL (Nuestra Propuesta)' : 'Costo Teórico (Propuesta (Secocut))'}</p> <div className="flex items-center gap-2 mt-0.5"> <p className="font-bold text-green-700">USD {Number(displayCostPremium).toFixed(2)}</p> {(isUserCurrentVc || isUserPremiumVc) && savingsPercentage > 0.1 && (<span className="bg-green-100 text-green-800 border border-green-200 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center shadow-sm">↓ {savingsPercentage.toFixed(1)}%</span>)} </div> </div> </div> {(isUserCurrentVc || isUserPremiumVc) && (<p className="mt-3 pt-2 border-t text-[9px] text-slate-400 italic leading-tight">*Los puntos marcados usan el cálculo empírico exacto ingresado en el formulario (rendimiento y tiempos reales).</p>)} </div>);
+    if (active && payload && payload.length) {
+      const dataPoint = payload[0].payload;
+      const { speed, desgloseActual, desglosePremium, costoActual, costoPremium } = dataPoint;
+      
+      return (
+        <div className="bg-white p-3 border shadow-lg rounded-md text-xs min-w-[220px]">
+          <p className="font-bold border-b pb-1 mb-2">Vc: {speed} m/min</p>
+          
+          {costoActual !== undefined && desgloseActual && (
+            <div className="mb-2">
+              <p className="text-red-700 font-bold">
+                Competidor: {formatCurrency(costoActual)}
+              </p>
+              <div className="text-[10px] text-gray-500 leading-tight mt-1">
+                  <p>⚙️ Tiempo de Corte: {formatCurrency(desgloseActual.maquina)}</p>
+                  <p>💎 Inserto Puro: {formatCurrency(desgloseActual.inserto)}</p>
+                  {desgloseActual.parada > 0 && (
+                    <p className="text-red-500 font-semibold">
+                      🛑 Costo Paradas: {formatCurrency(desgloseActual.parada)}
+                    </p>
+                  )}
+              </div>
+            </div>
+          )}
+
+          {costoPremium !== undefined && desglosePremium && (
+            <div>
+              <p className="text-green-700 font-bold">
+                SECOCUT: {formatCurrency(costoPremium)}
+              </p>
+              <div className="text-[10px] text-gray-500 leading-tight mt-1">
+                  <p>⚙️ Tiempo de Corte: {formatCurrency(desglosePremium.maquina)}</p>
+                  <p>💎 Inserto Puro: {formatCurrency(desglosePremium.inserto)}</p>
+                  {desglosePremium.parada > 0 && (
+                    <p className="text-red-500 font-semibold">
+                      🛑 Costo Paradas: {formatCurrency(desglosePremium.parada)}
+                    </p>
+                  )}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+    return null;
   };
 
   const getLoadColor = (load: number) => {
@@ -744,7 +808,7 @@ export default function EditTaylorCurvePage() {
               <div className="w-full bg-slate-100 rounded-full h-2 mb-1 overflow-hidden"><div className={`h-2 rounded-full transition-all duration-500 ${getLoadColor(curveDataInfo.loadPremium).bar}`} style={{ width: `${Math.min(curveDataInfo.loadPremium, 100)}%` }}></div></div>
               <p className={`text-[9px] font-bold text-right uppercase ${getLoadColor(curveDataInfo.loadPremium).text}`}>{getLoadColor(curveDataInfo.loadPremium).label}</p>
             </div>
-             <div className="mt-4 pt-4 border-t border-green-200/50"> <Button onClick={() => { const base = { vc: Number(vcPremium) || 0, feed: Number(feedPremium) || 0, pcs: Number(pcsPremium) || 0, time: curveDataInfo.tcPremium || 0, }; if (base.vc > 0 && base.feed > 0 && base.pcs > 0 && base.time > 0) { setTaylorBase(base); setSimulatedVc(base.vc); setSimulatedFeed(base.feed); setTargetSavings(''); const safeMachineCostMin = (Number(machineCostHr) || 0) / 60; const safeToolCostPremium = Number(toolCostPremium) || 0; const safeToolChangeTime = Number(toolChangeTime) || 0; const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1); const safeEdgesPremium = Number(edgesPremium) || 1; const costCorte = safeMachineCostMin * base.time; const costPorPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0; const costJuego = costPorPunta * safeZPremium; const costHerr = base.pcs > 0 ? costJuego / base.pcs : 0; const costCambio = base.pcs > 0 ? (safeMachineCostMin * safeToolChangeTime) / base.pcs : 0; const baseCost = costCorte + costHerr + costCambio; setTaylorBaseCost(baseCost); setIsTaylorModalOpen(true); } else { alert("Por favor, completa todos los datos de la propuesta (Vc, Avance, Pzas/filo) antes de simular."); } }} variant="outline" className="w-full bg-green-100 border-green-200 text-green-800 hover:bg-green-200 hover:text-green-900" > <Wand2 className="mr-2 h-4 w-4" /> Simular Escenarios (Taylor) </Button> </div>
+             <div className="mt-4 pt-4 border-t border-green-200/50"> <Button onClick={() => { const base = { vc: Number(vcPremium) || 0, feed: Number(feedPremium) || 0, pcs: Number(pcsPremium) || 0, time: curveDataInfo.tcPremium || 0, }; if (base.vc > 0 && base.feed > 0 && base.pcs > 0 && base.time > 0) { setTaylorBase(base); setSimulatedVc(base.vc); setSimulatedFeed(base.feed); setTargetSavings(''); const safeMachineCostMin = (Number(machineCostHr) || 0) / 60; const safeToolCostPremium = Number(toolCostPremium) || 0; const safeToolChangeTime = Number(toolChangeTime) || 0; const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1); const safeEdgesPremium = Number(edgesPremium) || 1; const costCorte = safeMachineCostMin * base.time; const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0; const costJuego = costPorPunta * safeZPremium; const costHerr = base.pcs > 0 ? costJuego / base.pcs : 0; const costCambio = base.pcs > 0 ? (safeMachineCostMin * safeToolChangeTime) / base.pcs : 0; const baseCost = costCorte + costHerr + costCambio; setTaylorBaseCost(baseCost); setIsTaylorModalOpen(true); } else { alert("Por favor, completa todos los datos de la propuesta (Vc, Avance, Pzas/filo) antes de simular."); } }} variant="outline" className="w-full bg-green-100 border-green-200 text-green-800 hover:bg-green-200 hover:text-green-900" > <Wand2 className="mr-2 h-4 w-4" /> Simular Escenarios (Taylor) </Button> </div>
           </div>
         </div>
         <Card>
@@ -774,7 +838,7 @@ export default function EditTaylorCurvePage() {
         <Dialog open={isSaveModalOpen} onOpenChange={setIsSaveModalOpen}>
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-              <div className="bg-slate-50 border-b border-slate-200 p-4"> <h3 className="font-black text-slate-800 text-lg flex items-center gap-2"> 💾 Actualizar Simulación </h3> <p className="text-xs text-slate-500 mt-1">Se sobrescribirán los datos de este análisis en el Historial.</p> </div>
+              <div className="bg-slate-50 border-b border-slate-200 p-4"> <h3 className="font-black text-slate-800 text-lg flex items-center gap-2"> 💾 Guardar Simulación </h3> <p className="text-xs text-slate-500 mt-1">Este análisis se guardará en la tabla de Historial.</p> </div>
               <div className="p-5 space-y-4">
                 <div> <Label className="block text-xs font-bold text-slate-700 mb-1">Cliente / Empresa</Label> <Input type="text" placeholder="Ej: John Deere" className="w-full" value={saveClientName} onChange={e => setSaveClientName(e.target.value)} /> </div>
                 <div> <Label className="block text-xs font-bold text-slate-700 mb-1">Nombre de la Operación</Label> <Input type="text" placeholder="Ej: Torneado Eje Principal" className="w-full" value={saveCaseName} onChange={e => setSaveCaseName(e.target.value)} /> </div>

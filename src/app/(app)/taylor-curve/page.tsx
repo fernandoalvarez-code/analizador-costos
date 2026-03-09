@@ -241,8 +241,8 @@ const auditarMaterialFresado = (codigoGrado: string, materialSeleccionado: strin
     return '⚠️ ALERTA DE COSTO: El PCBN es extremadamente caro y está diseñado para aceros templados >45HRC o fundición gris. Para aluminio, usa plaquitas no recubiertas (Ej: H15) o PCD.';
   }
 
-  if ((grado.includes('MP15') || grado.includes('MK15')) && (material.includes('titanio') || material.includes('inconel'))) {
-     return '💡 SUGERENCIA: Para Titanio se recomiendan calidades PVD (Ej: MS2050) por su tenacidad de filo, no CVD.';
+  if ((grado.includes('MP') || grado.includes('MK')) && (material.includes('titanio') || material.includes('inconel'))) {
+     return '💡 SUGERENCIA: Para Titanio se recomiendan calidades PVD (Ej: MS2050 o F15M) por su tenacidad de filo, no CVD.';
   }
 
   return null;
@@ -688,27 +688,28 @@ export default function TaylorCurvePage() {
     if (effectivePcsCurrent <= 0) effectivePcsCurrent = 1; if (effectivePcsPremium <= 0) effectivePcsPremium = 1;
     
     const calcCostWithBreakdown = (v: number, isPremium: boolean, feed: number) => {
-      const C = isPremium ? constante_C_Seco : constante_C_Competidor;
-      if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoHerramienta: 0 };
-  
-      const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
-      const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
-      const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
-      const ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
-  
-      const tc = (safeTcCurrent * (safeVcCurrent / v) * ((Number(feedCurrent) || 0.0001) / feed) * ((Number(apCurrent) || 0.0001) / ap));
-      const lifeMins = Math.pow((C / v), (1 / n));
-  
-      const costoMaquina = safeMachineCostMin * tc;
-  
-      const costPerEdge = edges > 0 ? toolPrice / edges : 0;
-      const toolChangePenalty = (costPerEdge * z) + (safeToolChangeTime * safeMachineCostMin);
-      
-      const piecesPerToolLife = lifeMins > 0 ? lifeMins / tc : 0;
-      const costoHerramienta = piecesPerToolLife > 0 ? toolChangePenalty / piecesPerToolLife : 0;
-      
-      const costoTotal = costoMaquina + costoHerramienta;
-      return { costoTotal, costoMaquina, costoHerramienta };
+        const C = isPremium ? constante_C_Seco : constante_C_Competidor;
+        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0 };
+    
+        const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
+        const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
+        const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
+        const ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
+    
+        const tc = (safeTcCurrent * (safeVcCurrent / v) * ((Number(feedCurrent) || 0.0001) / feed) * ((Number(apCurrent) || 0.0001) / ap));
+        const lifeMins = Math.pow((C / v), (1 / n));
+        
+        const costoMaquina = safeMachineCostMin * tc;
+        
+        const piecesPerToolLife = lifeMins > 0 ? lifeMins / tc : 0;
+        const costPerEdge = edges > 0 ? toolPrice / edges : 0;
+        
+        // Breakdown
+        const costoInsertoPuro = piecesPerToolLife > 0 ? (costPerEdge * z) / piecesPerToolLife : 0;
+        const costoParada = piecesPerToolLife > 0 ? (safeToolChangeTime * safeMachineCostMin) / piecesPerToolLife : 0;
+        
+        const costoTotal = costoMaquina + costoInsertoPuro + costoParada;
+        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada };
     };
 
     const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
@@ -732,7 +733,21 @@ export default function TaylorCurvePage() {
         const resActual = calcCostWithBreakdown(v, false, Number(feedCurrent) || 0.0001);
         const resPremium = calcCostWithBreakdown(v, true, Number(feedPremium) || 0.0001);
         if (resPremium.costoTotal < minPremiumCost && resPremium.costoTotal > 0) { minPremiumCost = resPremium.costoTotal; optimalSpeed = v; }
-        return { speed: v, costoActual: Number(resActual.costoTotal.toFixed(2)), costoPremium: Number(resPremium.costoTotal.toFixed(2)), costoMaquinaActual: resActual.costoMaquina, costoHerrActual: resActual.costoHerramienta, costoMaquinaPremium: resPremium.costoMaquina, costoHerrPremium: resPremium.costoHerramienta, };
+        return { 
+          speed: v,
+          costoActual: resActual.costoTotal,
+          costoPremium: resPremium.costoTotal,
+          desgloseActual: {
+            maquina: resActual.costoMaquina,
+            inserto: resActual.costoInsertoPuro,
+            parada: resActual.costoParada,
+          },
+          desglosePremium: {
+            maquina: resPremium.costoMaquina,
+            inserto: resPremium.costoInsertoPuro,
+            parada: resPremium.costoParada,
+          }
+        };
     });
     
     const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, effectivePcsCurrent, (Number(zCurrent) || 1), safeEdgesCurrent);
@@ -805,39 +820,48 @@ export default function TaylorCurvePage() {
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-        const { speed, costoMaquinaActual, costoHerrActual, costoMaquinaPremium, costoHerrPremium } = payload[0].payload;
-        const costoTotalActual = payload.find(p => p.dataKey === 'costoActual')?.value;
-        const costoTotalPremium = payload.find(p => p.dataKey === 'costoPremium')?.value;
-        
-        return (
-            <div className="bg-white p-3 border shadow-lg rounded-md text-xs min-w-[220px]">
-                <p className="font-bold border-b pb-1 mb-2">Vc: {speed} m/min</p>
-                
-                {costoTotalActual !== undefined && (
-                    <div className="mb-2">
-                        <p className="text-red-700 font-bold">
-                            Competidor: {formatCurrency(costoTotalActual)}
-                        </p>
-                        <p className="text-[10px] text-gray-500 leading-tight">
-                            Máquina: {formatCurrency(costoMaquinaActual)} <br/>
-                            Herramienta: {formatCurrency(costoHerrActual)}
-                        </p>
-                    </div>
-                )}
-
-                {costoTotalPremium !== undefined && (
-                    <div>
-                        <p className="text-green-700 font-bold">
-                            SECOCUT: {formatCurrency(costoTotalPremium)}
-                        </p>
-                        <p className="text-[10px] text-gray-500 leading-tight">
-                            Máquina: {formatCurrency(costoMaquinaPremium)} <br/>
-                            Herramienta: {formatCurrency(costoHerrPremium)}
-                        </p>
-                    </div>
-                )}
+      const dataPoint = payload[0].payload;
+      const { speed, desgloseActual, desglosePremium, costoActual, costoPremium } = dataPoint;
+      
+      return (
+        <div className="bg-white p-3 border shadow-lg rounded-md text-xs min-w-[220px]">
+          <p className="font-bold border-b pb-1 mb-2">Vc: {speed} m/min</p>
+          
+          {costoActual !== undefined && desgloseActual && (
+            <div className="mb-2">
+              <p className="text-red-700 font-bold">
+                Competidor: {formatCurrency(costoActual)}
+              </p>
+              <div className="text-[10px] text-gray-500 leading-tight mt-1">
+                  <p>⚙️ Tiempo de Corte: {formatCurrency(desgloseActual.maquina)}</p>
+                  <p>💎 Inserto Puro: {formatCurrency(desgloseActual.inserto)}</p>
+                  {desgloseActual.parada > 0 && (
+                    <p className="text-red-500 font-semibold">
+                      🛑 Costo Paradas: {formatCurrency(desgloseActual.parada)}
+                    </p>
+                  )}
+              </div>
             </div>
-        );
+          )}
+
+          {costoPremium !== undefined && desglosePremium && (
+            <div>
+              <p className="text-green-700 font-bold">
+                SECOCUT: {formatCurrency(costoPremium)}
+              </p>
+              <div className="text-[10px] text-gray-500 leading-tight mt-1">
+                  <p>⚙️ Tiempo de Corte: {formatCurrency(desglosePremium.maquina)}</p>
+                  <p>💎 Inserto Puro: {formatCurrency(desglosePremium.inserto)}</p>
+                  {desglosePremium.parada > 0 && (
+                    <p className="text-red-500 font-semibold">
+                      🛑 Costo Paradas: {formatCurrency(desglosePremium.parada)}
+                    </p>
+                  )}
+              </div>
+            </div>
+          )}
+        </div>
+      );
     }
     return null;
   };
