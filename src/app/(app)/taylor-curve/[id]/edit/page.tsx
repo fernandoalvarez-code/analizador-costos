@@ -463,7 +463,7 @@ export default function EditTaylorCurvePage() {
         hpPremium = kwPremium_base * 1.341 * obtenerFactorForma(toolNamePremium) * obtenerFactorIncidencia(toolNamePremium);
     } else if (operationType === 'milling') {
         const safeDcCurrent = Number(dcCurrent) || 0.0001, safeFzCurrent = Number(feedCurrent) || 0, safeZCurrentMilling = Number(zCurrent) || 1, safeApCurrent = Number(apCurrent) || 0, safeAeCurrent = Number(aeCurrent) || 0;
-        const safeDcPremium = Number(dcPremium) || 0.0001, safeFzPremium = Number(feedPremium) || 0, safeZPremiumMilling = Number(zPremium) || 1, safeApPremium = Number(apPremium) || 0, safeAePremium = Number(aePremium) || 0;
+        const safeVcPremium = Number(vcPremium) || 0.0001, safeDcPremium = Number(dcPremium) || 0.0001, safeFzPremium = Number(feedPremium) || 0, safeZPremiumMilling = Number(zPremium) || 1, safeApPremium = Number(apPremium) || 0, safeAePremium = Number(aePremium) || 0;
         const rpmCurrent = (safeVcCurrent * 1000) / (Math.PI * safeDcCurrent), vfCurrent = safeFzCurrent * safeZCurrentMilling * rpmCurrent;
         const rpmPremium = (safeVcPremium * 1000) / (Math.PI * safeDcPremium), vfPremium = safeFzPremium * safeZPremiumMilling * rpmPremium;
         tcPremium = vfPremium > 0 ? safeTcCurrent * (vfCurrent / vfPremium) : safeTcCurrent;
@@ -571,6 +571,10 @@ export default function EditTaylorCurvePage() {
     
   const materialGroups = MATERIALS.reduce((acc, mat) => { (acc[mat.grupo] = acc[mat.grupo] || []).push(mat); return acc; }, {} as Record<string, typeof MATERIALS>);
   const porcentajeAhorroSimulado = taylorBaseCost > 0 && simulationResult ? (((taylorBaseCost - simulationResult.newCost) / taylorBaseCost) * 100).toFixed(1) : "0.0";
+  const unidadVidaUtil = 
+    operationType === 'drilling' ? 'agujeros/filo' : 
+    operationType === 'milling' ? 'min/filo' :
+    'pzas/filo';
   
   if (isLoading) return <div className="container mx-auto p-6"><Skeleton className="h-96 w-full" /></div>;
   if (!isLoading && !initialData) {
@@ -786,7 +790,10 @@ export default function EditTaylorCurvePage() {
                     </div>
                     <div className="space-y-4 bg-slate-50 p-4 rounded-lg border">
                         <div className="text-center p-3 border rounded-lg bg-white"> <p className="text-xs font-bold text-slate-500 uppercase">⏱️ Nuevo Tiempo de Ciclo</p> <p className="text-2xl font-black text-slate-800">{simulationResult ? formatoMinutosYSegundos(simulationResult.newTime) : '-'}</p> </div>
-                         <div className="text-center p-3 border rounded-lg bg-white"> <p className="text-xs font-bold text-slate-500 uppercase">⚙️ Nueva Vida Útil</p> <p className="text-2xl font-black text-slate-800">{simulationResult ? formatNumber(simulationResult.newPcs) : '-'} pzas/filo</p> </div>
+                         <div className="text-center p-3 border rounded-lg bg-white">
+                            <p className="text-xs font-bold text-slate-500 uppercase">⚙️ Nueva Vida Útil</p>
+                            <p className="text-2xl font-black text-slate-800">{simulationResult ? `${formatNumber(simulationResult.newPcs)} ${unidadVidaUtil}` : '-'}</p>
+                        </div>
                          <div className="text-center p-3 border rounded-lg bg-white"> <p className="text-xs font-bold text-slate-500 uppercase">Acabado Teórico (Ra)</p> <p className={`text-2xl font-black ${simulationResult && simulationResult.newRa && Number(simulationResult.newRa) > 3.2 ? 'text-red-500' : 'text-slate-800'}`}> {simulationResult?.newRa ? `${simulationResult.newRa} µm` : '-'} </p> </div>
                          <div className="text-center p-3 border rounded-lg bg-white shadow-inner border-green-200"> <p className="text-xs font-bold text-green-700 uppercase">💰 Nuevo Costo por Pieza</p> {simulationResult ? ( <div className="flex justify-center items-center gap-2 mt-1"> <span className="font-black text-green-600 text-2xl">{formatCurrency(simulationResult.newCost)}</span> {taylorBaseCost > 0 && simulationResult.newCost < taylorBaseCost && parseFloat(porcentajeAhorroSimulado) > 0 && ( <span className="bg-green-100 text-green-800 font-bold px-2 py-1 rounded-full text-sm"> ↓ {porcentajeAhorroSimulado}% </span> )} </div> ) : ( <p className="text-2xl font-black text-green-600">-</p> )} </div>
                     </div>

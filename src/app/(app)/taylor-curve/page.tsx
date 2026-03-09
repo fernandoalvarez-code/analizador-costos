@@ -872,6 +872,10 @@ export default function TaylorCurvePage() {
         }
     }, [curveDataInfo, vcCurrent]);
 
+    const unidadVidaUtil = 
+        operationType === 'drilling' ? 'agujeros/filo' : 
+        operationType === 'milling' ? 'min/filo' :
+        'pzas/filo';
 
   return (
     <>
@@ -1532,7 +1536,7 @@ export default function TaylorCurvePage() {
                         </div>
                          <div className="text-center p-3 border rounded-lg bg-white">
                             <p className="text-xs font-bold text-slate-500 uppercase">⚙️ Nueva Vida Útil</p>
-                            <p className="text-2xl font-black text-slate-800">{simulationResult ? formatNumber(simulationResult.newPcs) : '-'} pzas/filo</p>
+                            <p className="text-2xl font-black text-slate-800">{simulationResult ? `${formatNumber(simulationResult.newPcs)} ${unidadVidaUtil}` : '-'}</p>
                         </div>
                          <div className="text-center p-3 border rounded-lg bg-white">
                             <p className="text-xs font-bold text-slate-500 uppercase">Acabado Teórico (Ra)</p>
