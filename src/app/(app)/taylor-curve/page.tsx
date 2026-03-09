@@ -705,6 +705,8 @@ export default function TaylorCurvePage() {
         
         const costPerEdge = edges > 0 ? toolPrice / edges : 0;
 
+        const penalidadCambio = (costPerEdge * z) + (safeToolChangeTime * safeMachineCostMin);
+
         // Breakdown
         const costoInsertoPuro = piecesPerToolLife > 0 ? (costPerEdge * z) / piecesPerToolLife : 0;
         const costoParada = piecesPerToolLife > 0 ? (safeToolChangeTime * safeMachineCostMin) / piecesPerToolLife : 0;
@@ -775,12 +777,15 @@ export default function TaylorCurvePage() {
         const factorVelocidad = Math.pow((taylorBase.vc / simulatedVc), 3.0), factorAvance = Math.pow((taylorBase.feed / simulatedFeed), 1.5);
         const nuevasPzas = Math.round(taylorBase.pcs * factorVelocidad * factorAvance);
         const nuevoTiempoMin = taylorBase.time * (taylorBase.vc / simulatedVc) * (taylorBase.feed / simulatedFeed);
+        
         const costCorte = safeMachineCostMin * nuevoTiempoMin;
         const costPerPunta = nuevasPzas > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
         const costJuego = costPerPunta * safeZPremium;
-        const costHerr = nuevasPzas > 0 ? costJuego / nuevasPzas : 0;
-        const costCambio = nuevasPzas > 0 ? (safeMachineCostMin * safeToolChangeTime) / nuevasPzas : 0;
-        const nuevoCosto = costCorte + costHerr + costCambio;
+        
+        const penalidadCambio = costJuego + (safeMachineCostMin * safeToolChangeTime);
+        const costoHerr = nuevasPzas > 0 ? penalidadCambio / nuevasPzas : 0;
+
+        const nuevoCosto = costCorte + costoHerr;
         const nuevoRa = calcularRaTeorico(simulatedFeed, toolNamePremium);
         setSimulationResult({ newPcs: nuevasPzas, newTime: nuevoTiempoMin, newCost: nuevoCosto, newRa: nuevoRa });
     }, [simulatedVc, simulatedFeed, taylorBase, isTaylorModalOpen, machineCostHr, toolCostPremium, toolChangeTime, operationType, zPremium, edgesPremium, toolNamePremium]);
@@ -795,13 +800,14 @@ export default function TaylorCurvePage() {
             const limiteSeguridadVc = taylorBase.vc * 2;
             const safeMachineCostMin = (Number(machineCostHr) || 0) / 60, safeToolCostPremium = Number(toolCostPremium) || 0, safeToolChangeTime = Number(toolChangeTime) || 0, safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1), safeEdgesPremium = Number(edgesPremium) || 1;
             const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0, costJuego = costPerPunta * safeZPremium;
-            
+            const penalidadCambio = costJuego + (safeMachineCostMin * safeToolChangeTime);
+
             while (costoIterativo > costoObjetivo && vcSimulada < limiteSeguridadVc) {
                 vcSimulada++;
                 const factorVelocidad = Math.pow((taylorBase.vc / vcSimulada), 3.0);
                 const piezasTemp = taylorBase.pcs * factorVelocidad, tiempoTemp = taylorBase.time * (taylorBase.vc / vcSimulada);
-                const costCorte = safeMachineCostMin * tiempoTemp, costHerr = piezasTemp > 0 ? costJuego / piezasTemp : 0, costCambio = piezasTemp > 0 ? (safeMachineCostMin * safeToolChangeTime) / piezasTemp : 0;
-                costoIterativo = costCorte + costHerr + costCambio;
+                const costCorte = safeMachineCostMin * tiempoTemp, costHerr = piezasTemp > 0 ? penalidadCambio / piezasTemp : 0;
+                costoIterativo = costCorte + costHerr;
             }
 
             if (vcSimulada < limiteSeguridadVc) {
@@ -827,7 +833,7 @@ export default function TaylorCurvePage() {
       const dataPoint = payload[0].payload;
       const { speed, desgloseActual, desglosePremium, costoActual, costoPremium } = dataPoint;
       
-      const porcentajeAhorro = curveDataInfo.actualCostCurrent > 0 
+      const porcentajeAhorroUnificado = curveDataInfo.actualCostCurrent > 0 
         ? ((curveDataInfo.actualCostCurrent - costoPremium) / curveDataInfo.actualCostCurrent) * 100 
         : 0;
 
@@ -860,9 +866,9 @@ export default function TaylorCurvePage() {
                 <p className="text-green-700 font-bold">
                   SECOCUT: {formatCurrency(costoPremium)}
                 </p>
-                {porcentajeAhorro > 0 && (
+                {porcentajeAhorroUnificado > 0 && (
                   <span className="bg-green-100 text-green-800 text-[10px] font-black px-2 py-0.5 rounded-full">
-                    -{porcentajeAhorro.toFixed(1)}%
+                    -{porcentajeAhorroUnificado.toFixed(1)}%
                   </span>
                 )}
               </div>
@@ -896,7 +902,7 @@ export default function TaylorCurvePage() {
         return acc;
     }, {} as Record<string, typeof MATERIALS>);
 
-    const porcentajeAhorroSimulado = curveDataInfo.actualCostCurrent > 0 && simulationResult ? (((curveDataInfo.actualCostCurrent - simulationResult.newCost) / curveDataInfo.actualCostCurrent) * 100) : 0;
+    const porcentajeAhorroSimulado = taylorBaseCost > 0 && simulationResult ? (((taylorBaseCost - simulationResult.newCost) / taylorBaseCost) * 100) : 0;
     
     const insightText = useMemo(() => {
         const { velocidadOptimaSeco, costoOptimoSeco } = curveDataInfo;
@@ -913,8 +919,8 @@ export default function TaylorCurvePage() {
     }, [curveDataInfo, vcCurrent]);
 
     const unidadVidaUtil = 
-        operationType === 'drilling' ? 'agujeros/filo' : 
-        operationType === 'milling' ? 'min/filo' :
+        operationType === 'drilling' ? 'agujeros' : 
+        operationType === 'milling' ? 'minutos' :
         'pzas/filo';
 
   return (
@@ -1238,9 +1244,9 @@ export default function TaylorCurvePage() {
                             const costCorte = safeMachineCostMin * base.time;
                             const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
                             const costJuego = costPerPunta * safeZPremium;
-                            const costHerr = base.pcs > 0 ? costJuego / base.pcs : 0;
-                            const costCambio = base.pcs > 0 ? (safeMachineCostMin * safeToolChangeTime) / base.pcs : 0;
-                            const baseCost = costCorte + costHerr + costCambio;
+                            const penalidadCambio = costJuego + (safeToolChangeTime * safeMachineCostMin);
+                            const costHerr = base.pcs > 0 ? penalidadCambio / base.pcs : 0;
+                            const baseCost = costCorte + costHerr;
                             setTaylorBaseCost(baseCost);
 
                             setIsTaylorModalOpen(true);
@@ -1758,19 +1764,20 @@ export default function TaylorCurvePage() {
                     <td className="p-2 border border-slate-300 font-bold text-slate-800">Costo Real por Pieza</td>
                     <td className="p-2 border border-slate-300 font-bold text-red-600 text-center">{isFinite(curveDataInfo.actualCostCurrent) ? formatCurrency(curveDataInfo.actualCostCurrent) : 'N/A'}</td>
                     <td className="p-2 border border-slate-300 text-center">
-                      <div className="flex items-center gap-2 justify-center">
-                        <span className="font-bold text-green-600">{isFinite(curveDataInfo.actualCostPremium) ? formatCurrency(curveDataInfo.actualCostPremium) : 'N/A'}</span>
-                        {curveDataInfo.realSavingsPercentage > 0.1 && (
-                            <div className="flex items-center gap-2">
-                                <span className="text-green-700 font-bold text-xl">
-                                    {isFinite(curveDataInfo.actualCostPremium) ? formatCurrency(curveDataInfo.actualCostPremium) : 'N/A'}
-                                </span>
-                                <span className="bg-green-100 text-green-800 font-bold px-2 py-1 rounded-full text-sm">
-                                    ↓ {porcentajeAhorro}%
-                                </span>
-                            </div>
-                        )}
-                      </div>
+                      {isFinite(curveDataInfo.actualCostPremium) ? (
+                          <div className="flex items-center gap-2 justify-center">
+                              <span className="font-black text-green-800 text-lg">
+                                  {formatCurrency(curveDataInfo.actualCostPremium)}
+                              </span>
+                              {curveDataInfo.realSavingsPercentage > 0.1 && (
+                                  <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded-full">
+                                      ↓ {porcentajeAhorro}%
+                                  </span>
+                              )}
+                          </div>
+                      ) : (
+                          'N/A'
+                      )}
                     </td>
                   </tr>
                 </tbody>
