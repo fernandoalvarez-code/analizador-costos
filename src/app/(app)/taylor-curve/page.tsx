@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectGroup, SelectLabel, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, Info, Share2, FileText, Wand2 } from 'lucide-react';
+import { TrendingUp, Info, Share2, FileText, Wand2, Download } from 'lucide-react';
 import { formatCurrency, formatNumber, formatoMinutosYSegundos } from '@/lib/formatters';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -271,6 +271,14 @@ const calcularVf = (f: number | "", vc: number | "", d: number | ""): number => 
     return numF * rpm;
 };
 
+const SurveyField = ({ label }: { label: string }) => (
+    <div className="flex justify-between items-end border-b-2 border-dotted border-slate-300 py-3">
+        <span className="font-semibold text-slate-700">{label}:</span>
+        <span className="flex-grow"></span>
+    </div>
+);
+
+
 export default function TaylorCurvePage() {
   const { user } = useUser();
 
@@ -319,6 +327,7 @@ export default function TaylorCurvePage() {
   const [saveCaseName, setSaveCaseName] = useState("");
   const [saveClientName, setSaveClientName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isGeneratingSurvey, setIsGeneratingSurvey] = useState(false);
 
   // --- ESTADOS DEL COPILOTO ---
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
@@ -779,7 +788,7 @@ export default function TaylorCurvePage() {
         const nuevoTiempoMin = taylorBase.time * (taylorBase.vc / simulatedVc) * (taylorBase.feed / simulatedFeed);
         
         const costCorte = safeMachineCostMin * nuevoTiempoMin;
-        const costPerPunta = nuevasPzas > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
+        const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
         const costJuego = costPerPunta * safeZPremium;
         
         const penalidadCambio = costJuego + (safeMachineCostMin * safeToolChangeTime);
@@ -827,6 +836,28 @@ export default function TaylorCurvePage() {
   const premiumMins = Math.floor(curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0);
   const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
   const porcentajeAhorro = curveDataInfo.realSavingsPercentage.toFixed(1);
+
+  const handleGenerateSurveyPDF = async () => {
+        setIsGeneratingSurvey(true);
+        try {
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const a4Width = 210;
+            const element = document.getElementById('survey-pdf-content');
+            if (!element) throw new Error("Elemento 'survey-pdf-content' no encontrado.");
+            
+            const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+            const imgData = canvas.toDataURL('image/png');
+            const imgHeight = (canvas.height * a4Width) / canvas.width;
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, a4Width, imgHeight);
+            pdf.save(`Planilla_Relevamiento_${operationType}.pdf`);
+        } catch (error) {
+            console.error("Error generando planilla:", error);
+            alert("Error al generar la planilla PDF.");
+        } finally {
+            setIsGeneratingSurvey(false);
+        }
+    };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -985,11 +1016,18 @@ export default function TaylorCurvePage() {
               🏭 1. Parámetros del Taller
             </h2>
             
-            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 mb-5">
+            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 mb-2">
               <button onClick={() => setOperationType('turning')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'turning' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>🔄 Torneado</button>
               <button onClick={() => setOperationType('milling')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'milling' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>⚙️ Fresado</button>
               <button onClick={() => setOperationType('drilling')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'drilling' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>🔩 Taladrado</button>
             </div>
+            <div className="text-center mb-4">
+                <Button variant="link" size="sm" onClick={handleGenerateSurveyPDF} disabled={isGeneratingSurvey} className="text-slate-600">
+                    <Download className="mr-2 h-4 w-4" />
+                    {isGeneratingSurvey ? 'Generando...' : 'Descargar Planilla de Relevamiento'}
+                </Button>
+            </div>
+
             
             <div className="space-y-4 flex-grow">
               <div>
@@ -1245,8 +1283,8 @@ export default function TaylorCurvePage() {
                             const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
                             const costJuego = costPerPunta * safeZPremium;
                             const penalidadCambio = costJuego + (safeToolChangeTime * safeMachineCostMin);
-                            const costHerr = base.pcs > 0 ? penalidadCambio / base.pcs : 0;
-                            const baseCost = costCorte + costHerr;
+                            const costoHerr = base.pcs > 0 ? penalidadCambio / base.pcs : 0;
+                            const baseCost = costCorte + costoHerr;
                             setTaylorBaseCost(baseCost);
 
                             setIsTaylorModalOpen(true);
@@ -1767,7 +1805,7 @@ export default function TaylorCurvePage() {
                       {isFinite(curveDataInfo.actualCostPremium) ? (
                           <div className="flex items-center gap-2 justify-center">
                               <span className="font-black text-green-800 text-lg">
-                                  {formatCurrency(curveDataInfo.actualCostPremium)}
+                                {formatCurrency(curveDataInfo.actualCostPremium)}
                               </span>
                               {curveDataInfo.realSavingsPercentage > 0.1 && (
                                   <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded-full">
@@ -1827,6 +1865,75 @@ export default function TaylorCurvePage() {
               Documento generado automáticamente por Simulador de Competitividad Secocut SRL.
             </div>
           </div>
+        </div>
+        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', zIndex: -1 }}>
+            <div id="survey-pdf-content" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
+                <div className="flex justify-between items-center mb-8 pb-4 border-b-2 border-slate-800">
+                    {logos.company ? <img src={logos.company} alt="Logo Empresa" crossOrigin="anonymous" className="h-16 object-contain" /> : <div className="h-16 w-48 bg-slate-200"></div>}
+                    <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Planilla de Relevamiento</h1>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-8 text-sm">
+                    <SurveyField label="Cliente" />
+                    <SurveyField label="Fecha" />
+                    <SurveyField label="Máquina" />
+                    <SurveyField label="Material a mecanizar" />
+                    <div className="flex items-end border-b-2 border-dotted border-slate-300 py-3">
+                        <span className="font-semibold text-slate-700 mr-2">Costo Máquina ($/hr):</span>
+                        <span className="flex-grow"></span>
+                    </div>
+                    <div className="flex items-end border-b-2 border-dotted border-slate-300 py-3">
+                        <span className="font-semibold text-slate-700 mr-2">Potencia Motor (HP):</span>
+                        <span className="flex-grow"></span>
+                    </div>
+                </div>
+                
+                <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
+                    <h2 className="text-lg font-bold text-blue-700 mb-4 uppercase">Datos Técnicos - {operationType.charAt(0).toUpperCase() + operationType.slice(1)}</h2>
+                    <div className="space-y-4 text-sm">
+                        {operationType === 'turning' && (
+                            <>
+                                <SurveyField label="Inserto Actual (Código)" />
+                                <div className="grid grid-cols-2 gap-8"><SurveyField label="Precio por Inserto (USD)" /><SurveyField label="Filos por Inserto" /></div>
+                                <SurveyField label="Profundidad de Corte (ap) mm" />
+                                <SurveyField label="Avance (fn) mm/rev" />
+                                <SurveyField label="Velocidad de Corte (Vc) m/min" />
+                                <SurveyField label="Vida Útil Actual (Pzas/filo)" />
+                                <SurveyField label="Tiempo de Cambio de Herramienta (min)" />
+                            </>
+                        )}
+                        {operationType === 'milling' && (
+                            <>
+                                <SurveyField label="Inserto Actual (Código)" />
+                                <div className="grid grid-cols-2 gap-8"><SurveyField label="Precio por Inserto (USD)" /><SurveyField label="Filos por Inserto" /></div>
+                                <SurveyField label="Profundidad de Corte (ap) mm" />
+                                <SurveyField label="Avance (fz) mm/z" />
+                                <SurveyField label="Velocidad de Corte (Vc) m/min" />
+                                <SurveyField label="Cantidad de Dientes de la Fresa (Z)" />
+                                <SurveyField label="Vida Útil Actual (Minutos/filo)" />
+                                <SurveyField label="Tiempo de Cambio de Herramienta (min)" />
+                            </>
+                        )}
+                        {operationType === 'drilling' && (
+                            <>
+                                <SurveyField label="Broca / Inserto Actual" />
+                                <div className="grid grid-cols-2 gap-8"><SurveyField label="Precio de Broca/Inserto (USD)" /><SurveyField label="Filos útiles" /></div>
+                                <SurveyField label="Diámetro de Broca (Dc) mm" />
+                                <SurveyField label="Profundidad del Agujero (L) mm" />
+                                <SurveyField label="Avance (fn) mm/rev" />
+                                <SurveyField label="Velocidad de Corte (Vc) m/min" />
+                                <SurveyField label="Vida Útil Actual (Agujeros totales)" />
+                                <SurveyField label="Tiempo de Cambio de Herramienta (min)" />
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                <div className="mt-auto pt-8">
+                    <h3 className="text-sm font-bold text-slate-600 mb-2">Notas Adicionales:</h3>
+                    <div className="w-full h-32 border-2 border-dotted border-slate-300 rounded-lg p-2"></div>
+                </div>
+            </div>
         </div>
     </>
   );
