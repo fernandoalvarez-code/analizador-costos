@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -489,17 +490,33 @@ export default function EditTaylorCurvePage() {
         effectivePcsPremium = tcPremium > 0 ? (Number(pcsPremium) || 0) / tcPremium : 0;
     }
     if (effectivePcsCurrent <= 0) effectivePcsCurrent = 1; if (effectivePcsPremium <= 0) effectivePcsPremium = 1;
+
     const calcCost = (v: number, isPremium: boolean, feed: number) => {
         const C = isPremium ? premiumC : taylorProps.C, toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent, z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1), edges = isPremium ? safeEdgesPremium : safeEdgesCurrent, ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
-        const tc = (safeTcCurrent * (safeVcCurrent / v) * ((Number(feedCurrent) || 0.0001) / feed) * ((Number(apCurrent) || 0.0001) / ap)), lifeMins = Math.pow((C / v), (1 / taylorProps.n));
-        const costPorPunta = toolPrice / edges, costJuego = costPorPunta * z;
-        return (safeMachineCostMin * tc) + ((safeMachineCostMin * safeToolChangeTime + costJuego) * (tc / lifeMins));
+        const tc = (safeTcCurrent * (safeVcCurrent / v) * ((Number(feedCurrent) || 0.0001) / feed) * ((Number(apCurrent) || 0.0001) / ap));
+        const lifeMins = Math.pow((C / v), (1 / taylorProps.n));
+
+        const costoMaquina = safeMachineCostMin * tc;
+
+        const costPerEdge = edges > 0 ? toolPrice / edges : 0;
+        const toolChangePenalty = (costPerEdge * z) + (safeToolChangeTime * safeMachineCostMin);
+        
+        const piecesPerToolLife = lifeMins > 0 ? lifeMins / tc : 0;
+        const costoHerramienta = piecesPerToolLife > 0 ? toolChangePenalty / piecesPerToolLife : 0;
+        
+        return costoMaquina + costoHerramienta;
     };
+
     const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
-        const costCorte = safeMachineCostMin * tc, costPorPunta = toolPrice / edges, costJuego = costPorPunta * z;
-        const costHerr = pcsPerEdge > 0 ? costJuego / pcsPerEdge : 0, costCambio = pcsPerEdge > 0 ? (safeMachineCostMin * safeToolChangeTime) / pcsPerEdge : 0;
-        return costCorte + costHerr + costCambio;
+      const costCorte = safeMachineCostMin * tc;
+      
+      const costPerEdge = edges > 0 ? toolPrice / edges : 0;
+      const toolChangePenalty = (costPerEdge * z) + (safeToolChangeTime * safeMachineCostMin);
+      const costoHerr = pcsPerEdge > 0 ? toolChangePenalty / pcsPerEdge : 0;
+
+      return costCorte + costoHerr;
     };
+
     const speedsSet = new Set<number>();
     for (let v = 50; v <= taylorProps.C * 1.3; v += 10) speedsSet.add(v);
     if (Number(vcCurrent) > 0) speedsSet.add(Number(vcCurrent)); if (Number(vcPremium) > 0) speedsSet.add(Number(vcPremium));

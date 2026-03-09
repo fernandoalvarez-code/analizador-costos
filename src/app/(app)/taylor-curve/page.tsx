@@ -688,37 +688,35 @@ export default function TaylorCurvePage() {
     if (effectivePcsCurrent <= 0) effectivePcsCurrent = 1; if (effectivePcsPremium <= 0) effectivePcsPremium = 1;
     
     const calcCostWithBreakdown = (v: number, isPremium: boolean, feed: number) => {
-        const C = isPremium ? constante_C_Seco : constante_C_Competidor;
-        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoHerramienta: 0 };
-        
-        const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
-        const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
-        const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
-        const ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
-        
-        const tc = (safeTcCurrent * (safeVcCurrent / v) * ((Number(feedCurrent) || 0.0001) / feed) * ((Number(apCurrent) || 0.0001) / ap));
-        const lifeMins = Math.pow((C / v), (1 / n));
-
-        const costPorPunta = edges > 0 ? toolPrice / edges : 0;
-        const costJuego = costPorPunta * z;
-        
-        const costoMaquina = safeMachineCostMin * tc;
-
-        const costoHerrParte1 = costJuego;
-        const costoHerrParte2 = safeMachineCostMin * safeToolChangeTime;
-        const costoTotalHerramienta = lifeMins > 0 ? (costoHerrParte1 + costoHerrParte2) * (tc / lifeMins) : 0;
-
-        const costoTotal = costoMaquina + costoTotalHerramienta;
-        return { costoTotal, costoMaquina, costoHerramienta: costoTotalHerramienta };
+      const C = isPremium ? constante_C_Seco : constante_C_Competidor;
+      if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoHerramienta: 0 };
+  
+      const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
+      const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
+      const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
+      const ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
+  
+      const tc = (safeTcCurrent * (safeVcCurrent / v) * ((Number(feedCurrent) || 0.0001) / feed) * ((Number(apCurrent) || 0.0001) / ap));
+      const lifeMins = Math.pow((C / v), (1 / n));
+  
+      const costoMaquina = safeMachineCostMin * tc;
+  
+      const costPerEdge = edges > 0 ? toolPrice / edges : 0;
+      const toolChangePenalty = (costPerEdge * z) + (safeToolChangeTime * safeMachineCostMin);
+      
+      const piecesPerToolLife = lifeMins > 0 ? lifeMins / tc : 0;
+      const costoHerramienta = piecesPerToolLife > 0 ? toolChangePenalty / piecesPerToolLife : 0;
+      
+      const costoTotal = costoMaquina + costoHerramienta;
+      return { costoTotal, costoMaquina, costoHerramienta };
     };
 
     const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
-      const costCorte = safeMachineCostMin * tc;
-      const costPorPunta = edges > 0 ? toolPrice / edges : 0;
-      const costJuego = costPorPunta * z;
-      const costHerr = pcsPerEdge > 0 ? costJuego / pcsPerEdge : 0;
-      const costCambio = pcsPerEdge > 0 ? (safeMachineCostMin * safeToolChangeTime) / pcsPerEdge : 0;
-      return costCorte + costHerr + costCambio;
+        const costCorte = safeMachineCostMin * tc;
+        const costPerEdge = edges > 0 ? toolPrice / edges : 0;
+        const toolChangePenalty = (costPerEdge * z) + (safeToolChangeTime * safeMachineCostMin);
+        const costoHerr = pcsPerEdge > 0 ? toolChangePenalty / pcsPerEdge : 0;
+        return costCorte + costoHerr;
     };
 
     const speedsSet = new Set<number>();
@@ -1196,7 +1194,7 @@ export default function TaylorCurvePage() {
                             const safeEdgesPremium = Number(edgesPremium) || 1;
                             
                             const costCorte = safeMachineCostMin * base.time;
-                            const costPorPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
+                            const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
                             const costJuego = costPorPunta * safeZPremium;
                             const costHerr = base.pcs > 0 ? costJuego / base.pcs : 0;
                             const costCambio = base.pcs > 0 ? (safeMachineCostMin * safeToolChangeTime) / base.pcs : 0;
@@ -1779,4 +1777,3 @@ export default function TaylorCurvePage() {
     </>
   );
 }
-
