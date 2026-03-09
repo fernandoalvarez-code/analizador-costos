@@ -827,8 +827,8 @@ export default function TaylorCurvePage() {
       const dataPoint = payload[0].payload;
       const { speed, desgloseActual, desglosePremium, costoActual, costoPremium } = dataPoint;
       
-      const porcentajeAhorro = costoActual > 0 
-        ? ((costoActual - costoPremium) / costoActual) * 100 
+      const porcentajeAhorro = curveDataInfo.actualCostCurrent > 0 
+        ? ((curveDataInfo.actualCostCurrent - costoPremium) / curveDataInfo.actualCostCurrent) * 100 
         : 0;
 
       return (
@@ -896,7 +896,7 @@ export default function TaylorCurvePage() {
         return acc;
     }, {} as Record<string, typeof MATERIALS>);
 
-    const porcentajeAhorroSimulado = taylorBaseCost > 0 && simulationResult ? (((taylorBaseCost - simulationResult.newCost) / taylorBaseCost) * 100) : 0;
+    const porcentajeAhorroSimulado = curveDataInfo.actualCostCurrent > 0 && simulationResult ? (((curveDataInfo.actualCostCurrent - simulationResult.newCost) / curveDataInfo.actualCostCurrent) * 100) : 0;
     
     const insightText = useMemo(() => {
         const { velocidadOptimaSeco, costoOptimoSeco } = curveDataInfo;
@@ -1704,10 +1704,10 @@ export default function TaylorCurvePage() {
                   )}
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">
-                      {operationType === 'Taladrado' ? 'Prof. del Agujero (L)' : 'Profundidad de Corte (ap)'}
+                      {operationType === 'drilling' ? 'Prof. del Agujero (L)' : 'Profundidad de Corte (ap)'}
                     </td>
-                    <td className="p-2 border border-slate-300 text-center">{operationType === 'Taladrado' ? profundidadAgujero : apCurrent} mm</td>
-                    <td className="p-2 border border-slate-300 text-center text-green-700">{operationType === 'Taladrado' ? profundidadAgujero : apPremium} mm</td>
+                    <td className="p-2 border border-slate-300 text-center">{operationType === 'drilling' ? profundidadAgujero : apCurrent} mm</td>
+                    <td className="p-2 border border-slate-300 text-center text-green-700">{operationType === 'drilling' ? profundidadAgujero : apPremium} mm</td>
                   </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Tiempo de Corte (min)</td>
@@ -1735,8 +1735,8 @@ export default function TaylorCurvePage() {
                   )}
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Rendimiento Estimado</td>
-                    <td className="p-2 border border-slate-300 text-center">{pcsCurrent} {operationType === 'Taladrado' ? 'agujeros' : 'pzs'}/filo</td>
-                    <td className="p-2 border border-slate-300 text-center text-green-700 font-bold">{pcsPremium} {operationType === 'Taladrado' ? 'agujeros' : 'pzs'}/filo</td>
+                    <td className="p-2 border border-slate-300 text-center">{pcsCurrent} {operationType === 'drilling' ? 'agujeros' : 'pzs'}/filo</td>
+                    <td className="p-2 border border-slate-300 text-center text-green-700 font-bold">{pcsPremium} {operationType === 'drilling' ? 'agujeros' : 'pzs'}/filo</td>
                   </tr>
                    {operationType !== 'drilling' && (
                     <tr className="bg-slate-100">
