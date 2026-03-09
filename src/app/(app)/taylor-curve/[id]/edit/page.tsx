@@ -502,10 +502,10 @@ export default function EditTaylorCurvePage() {
 
         const tc = (safeTcCurrent * (safeVcCurrent / v) * ((Number(feedCurrent) || 0.0001) / feed) * ((Number(apCurrent) || 0.0001) / ap));
         const lifeMins = Math.pow((C / v), (1 / taylorProps.n));
-        const piecesPerToolLife = lifeMins > 0 ? lifeMins / tc : 0;
         
         // Breakdown
         const costoMaquina = safeMachineCostMin * tc;
+        const piecesPerToolLife = lifeMins > 0 ? lifeMins / tc : 0;
         const costPerEdge = edges > 0 ? toolPrice / edges : 0;
         const costoInsertoPuro = piecesPerToolLife > 0 ? (costPerEdge * z) / piecesPerToolLife : 0;
         const costoParada = piecesPerToolLife > 0 ? (safeToolChangeTime * safeMachineCostMin) / piecesPerToolLife : 0;
@@ -561,8 +561,11 @@ export default function EditTaylorCurvePage() {
     const factorVelocidad = Math.pow((taylorBase.vc / simulatedVc), 3.0), factorAvance = Math.pow((taylorBase.feed / simulatedFeed), 1.5);
     const nuevasPzas = Math.round(taylorBase.pcs * factorVelocidad * factorAvance);
     const nuevoTiempoMin = taylorBase.time * (taylorBase.vc / simulatedVc) * (taylorBase.feed / simulatedFeed);
-    const costCorte = safeMachineCostMin * nuevoTiempoMin, costPorPunta = nuevasPzas > 0 ? safeToolCostPremium / safeEdgesPremium : 0, costJuego = costPorPunta * safeZPremium;
-    const costHerr = nuevasPzas > 0 ? costJuego / nuevasPzas : 0, costCambio = nuevasPzas > 0 ? (safeMachineCostMin * safeToolChangeTime) / nuevasPzas : 0;
+    const costCorte = safeMachineCostMin * nuevoTiempoMin;
+    const costPerPunta = nuevasPzas > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
+    const costJuego = costPerPunta * safeZPremium;
+    const costHerr = nuevasPzas > 0 ? costJuego / nuevasPzas : 0;
+    const costCambio = nuevasPzas > 0 ? (safeMachineCostMin * safeToolChangeTime) / nuevasPzas : 0;
     const nuevoCosto = costCorte + costHerr + costCambio;
     const nuevoRa = calcularRaTeorico(simulatedFeed, toolNamePremium);
     setSimulationResult({ newPcs: nuevasPzas, newTime: nuevoTiempoMin, newCost: nuevoCosto, newRa: nuevoRa });
@@ -576,7 +579,7 @@ export default function EditTaylorCurvePage() {
       let vcSimulada = taylorBase.vc, costoIterativo = taylorBaseCost;
       const limiteSeguridadVc = taylorBase.vc * 2;
       const safeMachineCostMin = (Number(machineCostHr) || 0) / 60, safeToolCostPremium = Number(toolCostPremium) || 0, safeToolChangeTime = Number(toolChangeTime) || 0, safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1), safeEdgesPremium = Number(edgesPremium) || 1;
-      const costPorPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0, costJuego = costPorPunta * safeZPremium;
+      const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0, costJuego = costPerPunta * safeZPremium;
       while (costoIterativo > costoObjetivo && vcSimulada < limiteSeguridadVc) {
         vcSimulada++;
         const factorVelocidad = Math.pow((taylorBase.vc / vcSimulada), 3.0);
@@ -808,7 +811,7 @@ export default function EditTaylorCurvePage() {
               <div className="w-full bg-slate-100 rounded-full h-2 mb-1 overflow-hidden"><div className={`h-2 rounded-full transition-all duration-500 ${getLoadColor(curveDataInfo.loadPremium).bar}`} style={{ width: `${Math.min(curveDataInfo.loadPremium, 100)}%` }}></div></div>
               <p className={`text-[9px] font-bold text-right uppercase ${getLoadColor(curveDataInfo.loadPremium).text}`}>{getLoadColor(curveDataInfo.loadPremium).label}</p>
             </div>
-             <div className="mt-4 pt-4 border-t border-green-200/50"> <Button onClick={() => { const base = { vc: Number(vcPremium) || 0, feed: Number(feedPremium) || 0, pcs: Number(pcsPremium) || 0, time: curveDataInfo.tcPremium || 0, }; if (base.vc > 0 && base.feed > 0 && base.pcs > 0 && base.time > 0) { setTaylorBase(base); setSimulatedVc(base.vc); setSimulatedFeed(base.feed); setTargetSavings(''); const safeMachineCostMin = (Number(machineCostHr) || 0) / 60; const safeToolCostPremium = Number(toolCostPremium) || 0; const safeToolChangeTime = Number(toolChangeTime) || 0; const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1); const safeEdgesPremium = Number(edgesPremium) || 1; const costCorte = safeMachineCostMin * base.time; const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0; const costJuego = costPorPunta * safeZPremium; const costHerr = base.pcs > 0 ? costJuego / base.pcs : 0; const costCambio = base.pcs > 0 ? (safeMachineCostMin * safeToolChangeTime) / base.pcs : 0; const baseCost = costCorte + costHerr + costCambio; setTaylorBaseCost(baseCost); setIsTaylorModalOpen(true); } else { alert("Por favor, completa todos los datos de la propuesta (Vc, Avance, Pzas/filo) antes de simular."); } }} variant="outline" className="w-full bg-green-100 border-green-200 text-green-800 hover:bg-green-200 hover:text-green-900" > <Wand2 className="mr-2 h-4 w-4" /> Simular Escenarios (Taylor) </Button> </div>
+             <div className="mt-4 pt-4 border-t border-green-200/50"> <Button onClick={() => { const base = { vc: Number(vcPremium) || 0, feed: Number(feedPremium) || 0, pcs: Number(pcsPremium) || 0, time: curveDataInfo.tcPremium || 0, }; if (base.vc > 0 && base.feed > 0 && base.pcs > 0 && base.time > 0) { setTaylorBase(base); setSimulatedVc(base.vc); setSimulatedFeed(base.feed); setTargetSavings(''); const safeMachineCostMin = (Number(machineCostHr) || 0) / 60; const safeToolCostPremium = Number(toolCostPremium) || 0; const safeToolChangeTime = Number(toolChangeTime) || 0; const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1); const safeEdgesPremium = Number(edgesPremium) || 1; const costCorte = safeMachineCostMin * base.time; const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0; const costJuego = costPerPunta * safeZPremium; const costHerr = base.pcs > 0 ? costJuego / base.pcs : 0; const costCambio = base.pcs > 0 ? (safeMachineCostMin * safeToolChangeTime) / base.pcs : 0; const baseCost = costCorte + costHerr + costCambio; setTaylorBaseCost(baseCost); setIsTaylorModalOpen(true); } else { alert("Por favor, completa todos los datos de la propuesta (Vc, Avance, Pzas/filo) antes de simular."); } }} variant="outline" className="w-full bg-green-100 border-green-200 text-green-800 hover:bg-green-200 hover:text-green-900" > <Wand2 className="mr-2 h-4 w-4" /> Simular Escenarios (Taylor) </Button> </div>
           </div>
         </div>
         <Card>

@@ -702,8 +702,10 @@ export default function TaylorCurvePage() {
         const costoMaquina = safeMachineCostMin * tc;
         
         const piecesPerToolLife = lifeMins > 0 ? lifeMins / tc : 0;
-        const costPerEdge = edges > 0 ? toolPrice / edges : 0;
         
+        const costPerEdge = edges > 0 ? toolPrice / edges : 0;
+        const toolChangePenalty = (costPerEdge * z) + (safeToolChangeTime * safeMachineCostMin);
+
         // Breakdown
         const costoInsertoPuro = piecesPerToolLife > 0 ? (costPerEdge * z) / piecesPerToolLife : 0;
         const costoParada = piecesPerToolLife > 0 ? (safeToolChangeTime * safeMachineCostMin) / piecesPerToolLife : 0;
@@ -774,8 +776,11 @@ export default function TaylorCurvePage() {
         const factorVelocidad = Math.pow((taylorBase.vc / simulatedVc), 3.0), factorAvance = Math.pow((taylorBase.feed / simulatedFeed), 1.5);
         const nuevasPzas = Math.round(taylorBase.pcs * factorVelocidad * factorAvance);
         const nuevoTiempoMin = taylorBase.time * (taylorBase.vc / simulatedVc) * (taylorBase.feed / simulatedFeed);
-        const costCorte = safeMachineCostMin * nuevoTiempoMin, costPorPunta = nuevasPzas > 0 ? safeToolCostPremium / safeEdgesPremium : 0, costJuego = costPorPunta * safeZPremium;
-        const costHerr = nuevasPzas > 0 ? costJuego / nuevasPzas : 0, costCambio = nuevasPzas > 0 ? (safeMachineCostMin * safeToolChangeTime) / nuevasPzas : 0;
+        const costCorte = safeMachineCostMin * nuevoTiempoMin;
+        const costPerPunta = nuevasPzas > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
+        const costJuego = costPerPunta * safeZPremium;
+        const costHerr = nuevasPzas > 0 ? costJuego / nuevasPzas : 0;
+        const costCambio = nuevasPzas > 0 ? (safeMachineCostMin * safeToolChangeTime) / nuevasPzas : 0;
         const nuevoCosto = costCorte + costHerr + costCambio;
         const nuevoRa = calcularRaTeorico(simulatedFeed, toolNamePremium);
         setSimulationResult({ newPcs: nuevasPzas, newTime: nuevoTiempoMin, newCost: nuevoCosto, newRa: nuevoRa });
@@ -790,7 +795,7 @@ export default function TaylorCurvePage() {
             let vcSimulada = taylorBase.vc, costoIterativo = taylorBaseCost;
             const limiteSeguridadVc = taylorBase.vc * 2;
             const safeMachineCostMin = (Number(machineCostHr) || 0) / 60, safeToolCostPremium = Number(toolCostPremium) || 0, safeToolChangeTime = Number(toolChangeTime) || 0, safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1), safeEdgesPremium = Number(edgesPremium) || 1;
-            const costPorPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0, costJuego = costPorPunta * safeZPremium;
+            const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0, costJuego = costPerPunta * safeZPremium;
             
             while (costoIterativo > costoObjetivo && vcSimulada < limiteSeguridadVc) {
                 vcSimulada++;
@@ -1219,7 +1224,7 @@ export default function TaylorCurvePage() {
                             
                             const costCorte = safeMachineCostMin * base.time;
                             const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
-                            const costJuego = costPorPunta * safeZPremium;
+                            const costJuego = costPerPunta * safeZPremium;
                             const costHerr = base.pcs > 0 ? costJuego / base.pcs : 0;
                             const costCambio = base.pcs > 0 ? (safeMachineCostMin * safeToolChangeTime) / base.pcs : 0;
                             const baseCost = costCorte + costHerr + costCambio;
