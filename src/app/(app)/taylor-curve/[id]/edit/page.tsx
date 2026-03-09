@@ -605,6 +605,10 @@ export default function EditTaylorCurvePage() {
       const dataPoint = payload[0].payload;
       const { speed, desgloseActual, desglosePremium, costoActual, costoPremium } = dataPoint;
       
+      const porcentajeAhorro = costoActual > 0 
+        ? ((costoActual - costoPremium) / costoActual) * 100 
+        : 0;
+
       return (
         <div className="bg-white p-3 border shadow-lg rounded-md text-xs min-w-[220px]">
           <p className="font-bold border-b pb-1 mb-2">Vc: {speed} m/min</p>
@@ -626,11 +630,21 @@ export default function EditTaylorCurvePage() {
             </div>
           )}
 
+          <div className="my-1 border-t border-slate-100"></div>
+
           {costoPremium !== undefined && desglosePremium && (
             <div>
-              <p className="text-green-700 font-bold">
-                SECOCUT: {formatCurrency(costoPremium)}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-green-700 font-bold">
+                  SECOCUT: {formatCurrency(costoPremium)}
+                </p>
+                {porcentajeAhorro > 0 && (
+                  <span className="bg-green-100 text-green-800 text-[10px] font-black px-2 py-0.5 rounded-full">
+                    -{porcentajeAhorro.toFixed(1)}%
+                  </span>
+                )}
+              </div>
+
               <div className="text-[10px] text-gray-500 leading-tight mt-1">
                   <p>⚙️ Tiempo de Corte: {formatCurrency(desglosePremium.maquina)}</p>
                   <p>💎 Inserto Puro: {formatCurrency(desglosePremium.inserto)}</p>
