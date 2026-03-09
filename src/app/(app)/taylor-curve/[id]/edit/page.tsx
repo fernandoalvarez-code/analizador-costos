@@ -507,6 +507,8 @@ export default function EditTaylorCurvePage() {
         const costoMaquina = safeMachineCostMin * tc;
         const piecesPerToolLife = lifeMins > 0 ? lifeMins / tc : 0;
         const costPerEdge = edges > 0 ? toolPrice / edges : 0;
+
+        const penalidadCambio = (costPerEdge * z) + (safeToolChangeTime * safeMachineCostMin);
         const costoInsertoPuro = piecesPerToolLife > 0 ? (costPerEdge * z) / piecesPerToolLife : 0;
         const costoParada = piecesPerToolLife > 0 ? (safeToolChangeTime * safeMachineCostMin) / piecesPerToolLife : 0;
         
@@ -654,7 +656,7 @@ export default function EditTaylorCurvePage() {
   };
     
   const materialGroups = MATERIALS.reduce((acc, mat) => { (acc[mat.grupo] = acc[mat.grupo] || []).push(mat); return acc; }, {} as Record<string, typeof MATERIALS>);
-  const porcentajeAhorroSimulado = taylorBaseCost > 0 && simulationResult ? (((taylorBaseCost - simulationResult.newCost) / taylorBaseCost) * 100).toFixed(1) : "0.0";
+  const porcentajeAhorroSimulado = taylorBaseCost > 0 && simulationResult ? (((taylorBaseCost - simulationResult.newCost) / taylorBaseCost) * 100) : 0;
   const unidadVidaUtil = 
     operationType === 'drilling' ? 'agujeros/filo' : 
     operationType === 'milling' ? 'min/filo' :
@@ -879,7 +881,26 @@ export default function EditTaylorCurvePage() {
                             <p className="text-2xl font-black text-slate-800">{simulationResult ? `${formatNumber(simulationResult.newPcs)} ${unidadVidaUtil}` : '-'}</p>
                         </div>
                          <div className="text-center p-3 border rounded-lg bg-white"> <p className="text-xs font-bold text-slate-500 uppercase">Acabado Teórico (Ra)</p> <p className={`text-2xl font-black ${simulationResult && simulationResult.newRa && Number(simulationResult.newRa) > 3.2 ? 'text-red-500' : 'text-slate-800'}`}> {simulationResult?.newRa ? `${simulationResult.newRa} µm` : '-'} </p> </div>
-                         <div className="text-center p-3 border rounded-lg bg-white shadow-inner border-green-200"> <p className="text-xs font-bold text-green-700 uppercase">💰 Nuevo Costo por Pieza</p> {simulationResult ? ( <div className="flex justify-center items-center gap-2 mt-1"> <span className="font-black text-green-600 text-2xl">{formatCurrency(simulationResult.newCost)}</span> {taylorBaseCost > 0 && simulationResult.newCost < taylorBaseCost && parseFloat(porcentajeAhorroSimulado) > 0 && ( <span className="bg-green-100 text-green-800 font-bold px-2 py-1 rounded-full text-sm"> ↓ {porcentajeAhorroSimulado}% </span> )} </div> ) : ( <p className="text-2xl font-black text-green-600">-</p> )} </div>
+                         <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
+                            <p className="text-xs font-bold text-green-700 uppercase mb-1">💰 Nuevo Costo por Pieza</p>
+                            {simulationResult ? (
+                                <>
+                                    <p className="text-3xl font-black text-green-800">{formatCurrency(simulationResult.newCost)}</p>
+                                    {porcentajeAhorroSimulado > 0.1 && (
+                                        <div className="mt-2 text-sm font-bold text-green-800 bg-green-200 inline-block px-3 py-1 rounded-full shadow-sm">
+                                            ↓ Ahorras un {porcentajeAhorroSimulado.toFixed(1)}%
+                                        </div>
+                                    )}
+                                    {porcentajeAhorroSimulado < -0.1 && (
+                                        <div className="mt-2 text-sm font-bold text-red-800 bg-red-200 inline-block px-3 py-1 rounded-full shadow-sm">
+                                            ↑ Sube un {Math.abs(porcentajeAhorroSimulado).toFixed(1)}%
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <p className="text-3xl font-black text-green-800">-</p>
+                            )}
+                        </div>
                     </div>
                 </div>
                 <DialogFooter> <Button variant="ghost" onClick={() => setIsTaylorModalOpen(false)}>Cancelar</Button> <Button className="bg-green-600 hover:bg-green-700" onClick={() => { if (simulationResult) { setVcPremium(simulatedVc); setFeedPremium(simulatedFeed); setPcsPremium(simulationResult.newPcs); } setIsTaylorModalOpen(false); }}> Aplicar estos parámetros </Button> </DialogFooter>
