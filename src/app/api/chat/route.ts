@@ -238,6 +238,29 @@ Utiliza estas fórmulas para auditar si los parámetros del cliente son físicam
 * **Grafito y Composites:** OBLIGATORIO usar fresas con recubrimiento de diamante puro. Recomienda las familias **DIAMOND** o **COMPOSITE**. NUNCA uses una fresa estándar sin recubrir en composite, se desgastará en segundos.
 * **Aluminio y Plásticos (ISO N):** Recomienda la familia **VHM**.
 * **Superaleaciones Aeroespaciales (Inconel / Titanio - ISO S):** Recomienda la línea de **CERÁMICA** para mecanizar a altísima velocidad aprovechando el calor, o la serie **Solid²** específica para ISO S.
+
+### MÓDULO 33: OPERATIVA AVANZADA DE ROSCADO POR TORNEADO
+**Instrucción Crítica:** Al auditar un proceso de roscado, aplica estas reglas operativas para la configuración de la máquina, selección de inserto y número de pasadas:
+
+**1. Configuración y Dirección de Corte:**
+* **Hacia el plato (Towards chuck):** Primera opción por su mejor estabilidad. Permite usar las calzas originales del inserto.
+* **Alejándose del plato (Away from chuck):** Recomiéndalo EXCLUSIVAMENTE para roscado interno cuando hay problemas de evacuación de viruta, ya que dirige el flujo correctamente hacia afuera. Advierte que requiere cambiar la calza (shim) del inserto. 
+
+**2. Selección Estratégica de Insertos:**
+* **Perfil Completo vs. Parcial:** El perfil completo no requiere desbarbado pero exige que el diámetro previo de la pieza sea exacto. El perfil parcial sirve para varios pasos, simplificando el inventario.
+* **Un solo diente (Tipo S):** Usa rompevirutas A1 para acero y A2 para acero inoxidable.
+* **Múltiples Dientes (Tipo M / Twin Threader):** Primera opción para producción en masa porque requiere menos pasadas. REGLA OBLIGATORIA: Estos insertos SOLO pueden programarse con "Avance Radial". 
+* **Tipo K:** Recomiéndalo para roscas muy grandes o gruesas. Su gran ventaja es que recorta la cresta de la rosca, por lo que la pieza no necesita ser pre-mecanizada a un diámetro exacto.
+
+**3. Auditoría de Pasadas y Profundidad (Infeed):**
+* **Regla de oro de profundidad:** La penetración nunca debe ser inferior a 0.05 mm (0.0020") por pasada para evitar que la herramienta "frote" el material en lugar de cortarlo.
+* **Acero Inoxidable:** Exige que la profundidad sea mayor a 0.08 mm (0.0031") por pasada para evitar el endurecimiento por deformación (work hardening).
+* **Fracturas:** Si el radio de la punta del inserto se fractura, exige AUMENTAR el número de pasadas para reducir la carga en cada corte.
+
+**4. Refuerzo de Métodos de Avance:**
+* **Flanco Modificado:** Ángulo de avance 2.5–5% menor que el ángulo de flanco. 1ra opción para CNC. 
+* **Avance Radial:** Difícil control de viruta y altas fuerzas de corte, pero es OBLIGATORIO para materiales que se endurecen por trabajo y para insertos de múltiples dientes.
+* **Flanco Alterno:** 1ra opción para roscas grandes y gruesas en máquinas CNC para alargar la vida útil.
 `;
     
     // Adjuntar el contexto de la pantalla al mensaje del usuario
