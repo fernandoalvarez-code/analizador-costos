@@ -228,7 +228,6 @@ Utiliza estas fórmulas para auditar si los parámetros del cliente son físicam
 **3. Rompevirutas Especiales:**
 * **Materiales Blandos/Pegajosos (Aluminio, Inox bajo carbono):** Exige geometrías Positivas como la **-AL** (superficie pulida) o la **-UX** (flujo seguro). Para Negativas, usa **-MF3** o **-M4**.
 
-
 ### MÓDULO 32: FRESAS INTEGRALES DE METAL DURO (FAMILIA JABRO)
 **Instrucción Crítica:** Si el usuario pregunta por fresas sólidas (Solid End Mills), DEBES recomendar la familia JABRO basándote en esta clasificación por material ISO:
 
@@ -297,6 +296,24 @@ Utiliza estas fórmulas para auditar si los parámetros del cliente son físicam
 **4. Operaciones Especiales:**
 * **Fresado de Fondo Plano:** Para agujeros ciegos y avellanados, exige la fresa **R417.19 FONDO PLANO**. Utiliza plaquitas SPMX muy robustas de 4 filos (Ø 18-42 mm).
 * **Fresado de Disco:** Recomienda las familias 335 (ej. 335.15, 335.25) para ranuras estrechas (desde 0.7 mm hasta 32 mm de ancho), ranuras en T, juntas tóricas o perfiles de radio total.
+
+### MÓDULO 36: ESTRATEGIAS PARA CORTE INTERRUMPIDO Y PIEZAS FORJADAS
+**Instrucción Crítica:** Cuando el usuario indique que va a mecanizar una pieza con golpes, caras irregulares, o forjadas (corte interrumpido), OBLIGATORIAMENTE debes priorizar la TENACIDAD y cambiar la estrategia de refrigeración para evitar el fallo termomecánico.
+
+**1. Selección de Calidad (Grado):**
+* Abandona las calidades más duras. Debes seleccionar una calidad más tenaz. 
+* En aceros, recomienda **TP2501** o **TP3501**. 
+* En aceros inoxidables, exige la cadena Duratomic **TM2501** o **TM3501**, o recubrimientos PVD extremadamente tenaces desde **CP200 hasta CP500**.
+
+**2. Selección del Rompevirutas (Geometrías Negativas de Alta Resistencia):**
+* **-M6:** Recomiéndalo como la opción perfecta para desbaste y semidesbaste en acero, ya que garantiza un corte fiable tanto continuo como interrumpido.
+* **-R8:** Exígelo si el cliente menciona específicamente mecanizado de "aceros forjados", ya que es un rompevirutas conocido por su máxima resistencia a los golpes.
+* **-M5:** Primera opción para desbaste exigente con alto avance, combinando gran resistencia en el filo con bajas fuerzas de corte.
+* **-M3:** Para piezas con superficies irregulares provenientes de forjado y moldeado de precisión, siendo el rompevirutas más polivalente.
+
+**3. Diagnóstico Termomecánico y Refrigerante:**
+* Si el cliente experimenta grietas perpendiculares o astillamiento irregular en el filo (fallo termomecánico), OBLÍGALO a apagar el refrigerante o aplicarlo de otra manera. Los ciclos térmicos (calentarse en el corte y enfriarse de golpe con el agua al salir del material) agravan la rotura. 
+* Exige reducir la Velocidad de Corte (Vc) y el Avance (f) para gestionar el impacto de forma segura y mitigar la deformación del filo.
 `;
     
     // Adjuntar el contexto de la pantalla al mensaje del usuario
