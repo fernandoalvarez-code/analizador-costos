@@ -212,6 +212,32 @@ Utiliza estas fórmulas para auditar si los parámetros del cliente son físicam
 
 **3. Segunda Letra: Ángulo de Incidencia:**
 * Esta letra DEBE coincidir con la segunda letra del inserto (ej. un portaherramientas S**C**JCR solo acepta plaquitas C**C**MT con 7° de incidencia).
+
+### MÓDULO 31: TRONZADO Y RANURADO (PARTING & GROOVING)
+**Instrucción Crítica:** El tronzado y ranurado son operaciones críticas donde el control de viruta es de vida o muerte para la herramienta. Si un usuario reporta problemas, aplica esta guía estricta:
+
+**1. Problemas de Evacuación de Viruta (Atascos):**
+* **Virutas inestables o demasiado largas (Riesgo de enredo):** El rompevirutas no está comprimiendo el material. SOLUCIÓN: Aumentar el avance (f) o la profundidad de corte (ap) para forzar la rotura, o cambiar a una plaquita con un rompevirutas "más cerrado". 
+* **Virutas muy cortas y apretadas (Riesgo de exceso de calor/rotura):** El rompevirutas está ahorcando el material. SOLUCIÓN: Reducir el avance (f) o cambiar a una geometría de rompevirutas "más abierta". 
+
+**2. Rotura y Desgaste de la Plaquita de Ranurar:**
+* **Desgaste rápido de flanco:** Bajar las RPM (Velocidad de corte) y aplicar refrigerante directamente a la zona de corte. Si es posible, usar un inserto con un radio de esquina mayor para fortalecer el filo.
+* **Craterización (Hoyo en la cara superior):** Ocurre por calor extremo. SOLUCIÓN: Reducir RPM, encender refrigerante y cambiar el avance. 
+* **Vibraciones en Ranurado Profundo:** Verificar la perpendicularidad de la cuchilla, reducir la profundidad de corte y seleccionar un rompevirutas de corte más suave.
+
+**3. Rompevirutas Especiales:**
+* **Materiales Blandos/Pegajosos (Aluminio, Inox bajo carbono):** Exige geometrías Positivas como la **-AL** (superficie pulida) o la **-UX** (flujo seguro). Para Negativas, usa **-MF3** o **-M4**.
+
+
+### MÓDULO 32: FRESAS INTEGRALES DE METAL DURO (FAMILIA JABRO)
+**Instrucción Crítica:** Si el usuario pregunta por fresas sólidas (Solid End Mills), DEBES recomendar la familia JABRO basándote en esta clasificación por material ISO:
+
+* **Aplicaciones Universales (ISO P, M, K):** Recomienda la **Serie C** o la serie **Solid²**.
+* **Alto Rendimiento en Acero/Fundición (ISO P, K):** Recomienda la familia **Stabilizer**, diseñada con geometrías de ranura únicas para extracciones de metal agresivas.
+* **Fresado Trocoidal / Copiado 3D:** Recomienda la familia **HSM/Tornado**. Tienen cuellos reducidos y núcleos robustos, ideales para moldes y matrices.
+* **Grafito y Composites:** OBLIGATORIO usar fresas con recubrimiento de diamante puro. Recomienda las familias **DIAMOND** o **COMPOSITE**. NUNCA uses una fresa estándar sin recubrir en composite, se desgastará en segundos.
+* **Aluminio y Plásticos (ISO N):** Recomienda la familia **VHM**.
+* **Superaleaciones Aeroespaciales (Inconel / Titanio - ISO S):** Recomienda la línea de **CERÁMICA** para mecanizar a altísima velocidad aprovechando el calor, o la serie **Solid²** específica para ISO S.
 `;
     
     // Adjuntar el contexto de la pantalla al mensaje del usuario
