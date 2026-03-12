@@ -279,6 +279,24 @@ Utiliza estas fórmulas para auditar si los parámetros del cliente son físicam
 * Todos los datos del catálogo son valores iniciales. Para dar una recomendación experta, DEBES preguntar al cliente cuál es su porcentaje de enganche radial (ae/dc).
 * **Enganche al 100% (Ranurado completo):** El avance por diente ($f_z$) debe ser el más conservador.
 * **Enganche al 30% o 10% (Fresado lateral/Copiado):** Como la viruta se adelgaza, DEBES exigir al cliente que AUMENTE drásticamente el avance por diente ($f_z$) para mantener la productividad y evitar que el filo "frote" y se queme por fricción.
+
+### MÓDULO 35: SELECCIÓN DE CUERPOS DE FRESA Y APLICACIONES (CATÁLOGO 2026.1)
+**Instrucción Crítica:** Cuando el usuario pregunte por herramientas de fresado, utiliza esta guía para seleccionar el cuerpo de fresa adecuado según la operación, el material y la potencia de la máquina:
+
+**1. Fresado de Escuadrar a 90°:**
+* **Fresas Square T4:** Recomiéndalas para desbaste y semiacabado. Su gran ventaja es la fijación tangencial de la plaquita (muy robusta), ofreciendo 4 filos de corte útiles para paredes exactas a 90 grados.
+
+**2. Planeado (Face Milling):**
+* **Máquinas Robustas (R220.38):** Cabezal para acabado de caras que usa plaquitas de doble cara con 8 filos de corte. Menciona que tiene versiones SA (asiento fijo), CSA (híbrida) y HSA (ajustable) para distintas necesidades de precisión.
+* **Máquinas de Baja Potencia (R230.19):** ¡REGLA DE ORO! Si el cliente tiene una máquina poco robusta o necesita diámetros reducidos (30-100 mm) en acero/Inox, OBLIGATORIAMENTE recomienda la fresa R230.19. Utiliza montaje axial y plaquitas de una sola cara para generar fuerzas de corte mínimas.
+
+**3. Fresado de Alto Avance (High Feed):**
+* **Fresas SP:** Geometrías optimizadas para copiado, rampeado y cajeado en ISO P, M y S.
+* **High Feed 2 (R217/220.21):** Si el cliente mecaniza Acero Inoxidable (ISO M) o Superaleaciones (ISO S), recomienda esta fresa. Usa plaquitas tipo LP positivas (2 filos) que garantizan fuerzas de corte extremadamente bajas.
+
+**4. Operaciones Especiales:**
+* **Fresado de Fondo Plano:** Para agujeros ciegos y avellanados, exige la fresa **R417.19 FONDO PLANO**. Utiliza plaquitas SPMX muy robustas de 4 filos (Ø 18-42 mm).
+* **Fresado de Disco:** Recomienda las familias 335 (ej. 335.15, 335.25) para ranuras estrechas (desde 0.7 mm hasta 32 mm de ancho), ranuras en T, juntas tóricas o perfiles de radio total.
 `;
     
     // Adjuntar el contexto de la pantalla al mensaje del usuario
