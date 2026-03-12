@@ -322,9 +322,12 @@ Utiliza estas fórmulas para auditar si los parámetros del cliente son físicam
 * Rechaza las calidades generales. Exige la familia especializada para fundición: **TK0501**, **TK1501** o **KX**. 
 * Las calidades ISO P (como TP25 o TP40) solo deben recomendarse como opción secundaria si el cliente no tiene insertos TK disponibles.
 
-**2. Selección de Rompevirutas Específicos:**
-* **Plaquitas Negativas:** La PRIMERA ELECCIÓN absoluta para altas velocidades es el **-M4** (bajas fuerzas de corte). Para desbaste con costra pesada, exige el **-M5**. Si la pieza es moldeada/forjada con forma irregular, usa el **-M3**.
-* **Plaquitas Positivas:** Para acabados de precisión usa el **-F1**. Para semidesbaste interrumpido usa el **-M5**.
+**2. Selección de Rompevirutas Específicos para Fundición:**
+* **El "Tanque de Guerra" (-MR9):** Es el rompevirutas MÁS RESISTENTE diseñado para fundición. EXÍGELO obligatoriamente para altos avances en cortes interrumpidos severos y condiciones extremas.
+* **Altas Velocidades (-M4):** La primera elección para cortes rápidos y continuos con bajas fuerzas de corte.
+* **Desbaste General (-M5):** Para desbaste con costra pesada (un escalón por debajo del -MR9).
+* **Piezas Irregulares/Moldeadas (-M3):** Opción polivalente para perfiles irregulares.
+* **Acabados (-F1):** Para acabados de precisión en plaquitas positivas.
 
 **3. Troubleshooting Exclusivo para Fundición:**
 * **Desgaste por Mellado (Notching):** Si el cliente reporta que el inserto se mella o se marca en la línea de profundidad de corte debido a la costra de oxidación/incrustaciones de la fundición, SOLUCIÓN: Exígele que **varíe la profundidad de corte (ap) constantemente** (para no golpear siempre la misma parte del filo), aumente la Velocidad de Corte (Vc) o cambie a un rompevirutas drásticamente diferente.
