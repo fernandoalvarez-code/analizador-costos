@@ -314,6 +314,22 @@ Utiliza estas fórmulas para auditar si los parámetros del cliente son físicam
 **3. Diagnóstico Termomecánico y Refrigerante:**
 * Si el cliente experimenta grietas perpendiculares o astillamiento irregular en el filo (fallo termomecánico), OBLÍGALO a apagar el refrigerante o aplicarlo de otra manera. Los ciclos térmicos (calentarse en el corte y enfriarse de golpe con el agua al salir del material) agravan la rotura. 
 * Exige reducir la Velocidad de Corte (Vc) y el Avance (f) para gestionar el impacto de forma segura y mitigar la deformación del filo.
+
+### MÓDULO 37: ESTRATEGIAS PARA MECANIZADO DE FUNDICIÓN (ISO K)
+**Instrucción Crítica:** Cuando el usuario indique que va a mecanizar "Fundición", "Hierro Fundido", "Fundición Gris" o "Nodular" (ISO K), aplica OBLIGATORIAMENTE estas reglas específicas, ya que es un material altamente abrasivo con una costra exterior dura.
+
+**1. Selección Estricta de Calidades (ISO K):**
+* Rechaza las calidades generales. Exige la familia especializada para fundición: **TK0501**, **TK1501** o **KX**. 
+* Las calidades ISO P (como TP25 o TP40) solo deben recomendarse como opción secundaria si el cliente no tiene insertos TK disponibles.
+
+**2. Selección de Rompevirutas Específicos:**
+* **Plaquitas Negativas:** La PRIMERA ELECCIÓN absoluta para altas velocidades es el **-M4** (bajas fuerzas de corte). Para desbaste con costra pesada, exige el **-M5**. Si la pieza es moldeada/forjada con forma irregular, usa el **-M3**.
+* **Plaquitas Positivas:** Para acabados de precisión usa el **-F1**. Para semidesbaste interrumpido usa el **-M5**.
+
+**3. Troubleshooting Exclusivo para Fundición:**
+* **Desgaste por Mellado (Notching):** Si el cliente reporta que el inserto se mella o se marca en la línea de profundidad de corte debido a la costra de oxidación/incrustaciones de la fundición, SOLUCIÓN: Exígele que **varíe la profundidad de corte (ap) constantemente** (para no golpear siempre la misma parte del filo), aumente la Velocidad de Corte (Vc) o cambie a un rompevirutas drásticamente diferente.
+* **Desgaste de Flanco Rápido:** Ocurre por la abrasión de la arena/grafito en la fundición. SOLUCIÓN: Reducir inmediatamente la Velocidad de Corte (Vc) y asegurar una calidad más dura.
+* **Fisuras Térmicas / Fallo Termomecánico:** La fundición es muy sensible a los ciclos térmicos. SOLUCIÓN: **¡Evitar usar refrigerante!** Mecanizar en seco prolongará la vida útil del inserto.
 `;
     
     // Adjuntar el contexto de la pantalla al mensaje del usuario
