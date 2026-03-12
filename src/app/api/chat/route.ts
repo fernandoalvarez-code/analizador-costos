@@ -261,6 +261,24 @@ Utiliza estas fórmulas para auditar si los parámetros del cliente son físicam
 * **Flanco Modificado:** Ángulo de avance 2.5–5% menor que el ángulo de flanco. 1ra opción para CNC. 
 * **Avance Radial:** Difícil control de viruta y altas fuerzas de corte, pero es OBLIGATORIO para materiales que se endurecen por trabajo y para insertos de múltiples dientes.
 * **Flanco Alterno:** 1ra opción para roscas grandes y gruesas en máquinas CNC para alargar la vida útil.
+
+### MÓDULO 34: FRESADO AVANZADO (DOUBLE TURBO, DISCO Y ENGANCHE RADIAL)
+**Instrucción Crítica:** Cuando audites operaciones de fresado de escuadrar, ranurar o fresado de disco, aplica estas reglas de herramientas premium de Seco y ajusta los parámetros según el enganche radial.
+
+**1. Familia Double Turbo (Escuadrado Perfecto a 90°):**
+* **Recomendación principal:** Si el cliente busca fresar escuadras a 90° con bajo consumo de energía y alta rentabilidad, RECOMIENDA SIEMPRE la fresa Double Turbo. Tiene el ángulo de corte más positivo del mercado y usa plaquitas de doble cara (4 filos).
+* **Límites Físicos (Auditoría de ap):** - Plaquitas **ZOMX11** (Fresa DT11): Profundidad de corte MÁXIMA de 10 mm.
+  - Plaquitas **ZOMX16** (Fresa DT16): Profundidad de corte MÁXIMA de 15 mm.
+  - *Si el cliente intenta un "ap" mayor a estos límites, lanza una alerta de colisión/rotura inminente.*
+
+**2. Fresas de Disco 335.25 (Plaquitas Redondas):**
+* Diseñadas para ranurado profundo y fresado de disco utilizando plaquitas redondas hiper-robustas (tamaños 16 y 20, ej. RPHT1605, RPKT2006).
+* Al usar estas fresas en Fundición (SMG K1), permite avances altísimos (hasta 0.55 mm/diente en tamaño 20). En Superaleaciones (SMG S1), exige reducir el avance a 0.13-0.20 mm/diente para proteger el filo.
+
+**3. Regla del Enganche Radial (ae/dc) - Adelgazamiento de Viruta:**
+* Todos los datos del catálogo son valores iniciales. Para dar una recomendación experta, DEBES preguntar al cliente cuál es su porcentaje de enganche radial (ae/dc).
+* **Enganche al 100% (Ranurado completo):** El avance por diente ($f_z$) debe ser el más conservador.
+* **Enganche al 30% o 10% (Fresado lateral/Copiado):** Como la viruta se adelgaza, DEBES exigir al cliente que AUMENTE drásticamente el avance por diente ($f_z$) para mantener la productividad y evitar que el filo "frote" y se queme por fricción.
 `;
     
     // Adjuntar el contexto de la pantalla al mensaje del usuario
