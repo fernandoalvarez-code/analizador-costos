@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot, ReferenceLine } from 'recharts';
@@ -293,6 +292,8 @@ export default function TaylorCurvePage() {
   const [pieceName, setPieceName] = useState<string>("");
   const [machinePowerHP, setMachinePowerHP] = useState<number | "">(15); // Potencia del motor
   const [profundidadAgujero, setProfundidadAgujero] = useState<number | "">("");
+  const [lifeModeCurrent, setLifeModeCurrent] = useState<'piezas' | 'minutos'>('piezas');
+  const [lifeModePremium, setLifeModePremium] = useState<'piezas' | 'minutos'>('piezas');
   
   // Competidor
   const [toolNameCurrent, setToolNameCurrent] = useState<string>("");
@@ -640,17 +641,17 @@ export default function TaylorCurvePage() {
     
     const n = taylorProps.n;
 
-    // --- ANCLAJE COMPETIDOR (A) ---
-    const T_A = (Number(pcsCurrent) || 1) * safeTcCurrent;
-    const constante_C_Competidor = safeVcCurrent > 0 && T_A > 0 ? safeVcCurrent * Math.pow(T_A, n) : 0;
+    // --- CORRECCIÓN SELECTOR MODO DE VIDA ÚTIL ---
+    const vidaMinutosCompetidor = lifeModeCurrent === 'minutos' ? (Number(pcsCurrent) || 1) : ((Number(pcsCurrent) || 1) * safeTcCurrent);
+    const constante_C_Competidor = safeVcCurrent > 0 && vidaMinutosCompetidor > 0 ? safeVcCurrent * Math.pow(vidaMinutosCompetidor, n) : 0;
     
-    // --- ANCLAJE SECOCUT (B) ---
     const vcPropuesta = Number(vcPremium) || 0.0001;
     const tcPremium_at_vcPremium = vcPropuesta > 0 
         ? safeTcCurrent * (safeVcCurrent / vcPropuesta) * ((Number(feedCurrent) || 0.0001) / (Number(feedPremium) || 0.0001)) * ((Number(apCurrent) || 0.0001) / (Number(apPremium) || 0.0001)) 
         : 0;
-    const T_B = (Number(pcsPremium) || 1) * tcPremium_at_vcPremium;
-    const constante_C_Seco = vcPropuesta > 0 && T_B > 0 ? vcPropuesta * Math.pow(T_B, n) : 0;
+        
+    const vidaMinutosSeco = lifeModePremium === 'minutos' ? (Number(pcsPremium) || 1) : ((Number(pcsPremium) || 1) * tcPremium_at_vcPremium);
+    const constante_C_Seco = vcPropuesta > 0 && vidaMinutosSeco > 0 ? vcPropuesta * Math.pow(vidaMinutosSeco, n) : 0;
 
     const kc = mat.kc || 1500;
     const safeMachinePowerHP = Number(machinePowerHP) || 15;
@@ -669,7 +670,7 @@ export default function TaylorCurvePage() {
         hpPremium = kwPremium_base * 1.341 * obtenerFactorForma(toolNamePremium) * obtenerFactorIncidencia(toolNamePremium);
     } else if (operationType === 'milling') {
         const safeDcCurrent = Number(dcCurrent) || 0.0001, safeFzCurrent = Number(feedCurrent) || 0, safeZCurrentMilling = Number(zCurrent) || 1, safeApCurrent = Number(apCurrent) || 0, safeAeCurrent = Number(aeCurrent) || 0;
-        const safeVcPremium = Number(vcPremium) || 0, safeDcPremium = Number(dcPremium) || 0.0001, safeFzPremium = Number(feedPremium) || 0, safeZPremiumMilling = Number(zPremium) || 1, safeApPremium = Number(apPremium) || 0, safeAePremium = Number(aePremium) || 0;
+        const safeVcPremium = Number(vcPremium) || 0.0001, safeDcPremium = Number(dcPremium) || 0.0001, safeFzPremium = Number(feedPremium) || 0, safeZPremiumMilling = Number(zPremium) || 1, safeApPremium = Number(apPremium) || 0, safeAePremium = Number(aePremium) || 0;
         const rpmCurrent = (safeVcCurrent * 1000) / (Math.PI * safeDcCurrent), vfCurrent = safeFzCurrent * safeZCurrentMilling * rpmCurrent;
         const rpmPremium = (safeVcPremium * 1000) / (Math.PI * safeDcPremium), vfPremium = safeFzPremium * safeZPremiumMilling * rpmPremium;
         tcPremium = vfPremium > 0 ? safeTcCurrent * (vfCurrent / vfPremium) : safeTcCurrent;
@@ -689,12 +690,11 @@ export default function TaylorCurvePage() {
         hpPremium = (kwPremium * 1.341) / 0.8;
     }
     const loadCurrent = (hpCurrent / safeMachinePowerHP) * 100, loadPremium = (hpPremium / safeMachinePowerHP) * 100;
-    let effectivePcsCurrent = Number(pcsCurrent) || 1, effectivePcsPremium = Number(pcsPremium) || 1;
-    if (operationType === 'milling') {
-        effectivePcsCurrent = safeTcCurrent > 0 ? (Number(pcsCurrent) || 0) / safeTcCurrent : 0;
-        effectivePcsPremium = tcPremium > 0 ? (Number(pcsPremium) || 0) / tcPremium : 0;
-    }
-    if (effectivePcsCurrent <= 0) effectivePcsCurrent = 1; if (effectivePcsPremium <= 0) effectivePcsPremium = 1;
+    
+    let effectivePcsCurrent = lifeModeCurrent === 'piezas' ? (Number(pcsCurrent) || 1) : (safeTcCurrent > 0 ? (Number(pcsCurrent) || 0) / safeTcCurrent : 0);
+    let effectivePcsPremium = lifeModePremium === 'piezas' ? (Number(pcsPremium) || 1) : (tcPremium > 0 ? (Number(pcsPremium) || 0) / tcPremium : 0);
+    if (effectivePcsCurrent <= 0) effectivePcsCurrent = 1; 
+    if (effectivePcsPremium <= 0) effectivePcsPremium = 1;
     
     const calcCostWithBreakdown = (v: number, isPremium: boolean, feed: number) => {
         const C = isPremium ? constante_C_Seco : constante_C_Competidor;
@@ -714,9 +714,6 @@ export default function TaylorCurvePage() {
         
         const costPerEdge = edges > 0 ? toolPrice / edges : 0;
 
-        const penalidadCambio = (costPerEdge * z) + (safeToolChangeTime * safeMachineCostMin);
-
-        // Breakdown
         const costoInsertoPuro = piecesPerToolLife > 0 ? (costPerEdge * z) / piecesPerToolLife : 0;
         const costoParada = piecesPerToolLife > 0 ? (safeToolChangeTime * safeMachineCostMin) / piecesPerToolLife : 0;
         
@@ -764,13 +761,14 @@ export default function TaylorCurvePage() {
     
     const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, effectivePcsCurrent, (Number(zCurrent) || 1), safeEdgesCurrent);
     const actualCostPremium = calcEmpiricalCost(tcPremium, safeToolCostPremium, effectivePcsPremium, (Number(zPremium) || 1), safeEdgesPremium);
+    
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
     const realSavingsPercentage = actualCostCurrent > 0 ? (realAbsoluteSavings / actualCostCurrent) * 100 : 0;
     const monthlySavings = isFinite(realAbsoluteSavings) ? realAbsoluteSavings * safeMonthlyProduction : 0;
 
     return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero]);
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium]);
 
     useEffect(() => {
         if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
@@ -784,6 +782,7 @@ export default function TaylorCurvePage() {
         const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1);
         const safeEdgesPremium = Number(edgesPremium) || 1;
         const factorVelocidad = Math.pow((taylorBase.vc / simulatedVc), 3.0), factorAvance = Math.pow((taylorBase.feed / simulatedFeed), 1.5);
+        
         const nuevasPzas = Math.round(taylorBase.pcs * factorVelocidad * factorAvance);
         const nuevoTiempoMin = taylorBase.time * (taylorBase.vc / simulatedVc) * (taylorBase.feed / simulatedFeed);
         
@@ -792,12 +791,19 @@ export default function TaylorCurvePage() {
         const costJuego = costPerPunta * safeZPremium;
         
         const penalidadCambio = costJuego + (safeMachineCostMin * safeToolChangeTime);
-        const costoHerr = nuevasPzas > 0 ? penalidadCambio / nuevasPzas : 0;
+        
+        let costoHerr = 0;
+        if (lifeModePremium === 'minutos') {
+            const piecesPerToolLife = nuevasPzas > 0 ? nuevasPzas / nuevoTiempoMin : 0;
+            costoHerr = piecesPerToolLife > 0 ? penalidadCambio / piecesPerToolLife : 0;
+        } else {
+            costoHerr = nuevasPzas > 0 ? penalidadCambio / nuevasPzas : 0;
+        }
 
         const nuevoCosto = costCorte + costoHerr;
         const nuevoRa = calcularRaTeorico(simulatedFeed, toolNamePremium);
         setSimulationResult({ newPcs: nuevasPzas, newTime: nuevoTiempoMin, newCost: nuevoCosto, newRa: nuevoRa });
-    }, [simulatedVc, simulatedFeed, taylorBase, isTaylorModalOpen, machineCostHr, toolCostPremium, toolChangeTime, operationType, zPremium, edgesPremium, toolNamePremium]);
+    }, [simulatedVc, simulatedFeed, taylorBase, isTaylorModalOpen, machineCostHr, toolCostPremium, toolChangeTime, operationType, zPremium, edgesPremium, toolNamePremium, lifeModePremium]);
 
     useEffect(() => {
         const percentage = Number(targetSavings);
@@ -815,7 +821,16 @@ export default function TaylorCurvePage() {
                 vcSimulada++;
                 const factorVelocidad = Math.pow((taylorBase.vc / vcSimulada), 3.0);
                 const piezasTemp = taylorBase.pcs * factorVelocidad, tiempoTemp = taylorBase.time * (taylorBase.vc / vcSimulada);
-                const costCorte = safeMachineCostMin * tiempoTemp, costHerr = piezasTemp > 0 ? penalidadCambio / piezasTemp : 0;
+                const costCorte = safeMachineCostMin * tiempoTemp;
+                
+                let costHerr = 0;
+                if (lifeModePremium === 'minutos') {
+                    const pzasTempLife = piezasTemp > 0 ? piezasTemp / tiempoTemp : 0;
+                    costHerr = pzasTempLife > 0 ? penalidadCambio / pzasTempLife : 0;
+                } else {
+                    costHerr = piezasTemp > 0 ? penalidadCambio / piezasTemp : 0;
+                }
+
                 costoIterativo = costCorte + costHerr;
             }
 
@@ -830,7 +845,7 @@ export default function TaylorCurvePage() {
         const debounceTimer = setTimeout(() => { autoCalcularPorObjetivo(); }, 500);
         return () => clearTimeout(debounceTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [targetSavings, isTaylorModalOpen]);
+    }, [targetSavings, isTaylorModalOpen, lifeModePremium]);
 
 
   const premiumMins = Math.floor(curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0);
@@ -942,17 +957,14 @@ export default function TaylorCurvePage() {
         
         if (numVcCurrent < velocidadOptimaSeco) {
             return `💡 Tu máquina está subutilizada. Si subimos la velocidad de ${numVcCurrent} a ${velocidadOptimaSeco} m/min con el inserto Seco, alcanzarás el costo mínimo absoluto de ${formatCurrency(costoOptimoSeco)} por pieza.`;
-        } else if (numVcCurrent > velocidadOptimaSeco + 10) { // Added a small buffer
+        } else if (numVcCurrent > velocidadOptimaSeco + 10) { 
             return `⚠️ Estás quemando insertos. Bajando la velocidad a ${velocidadOptimaSeco} m/min con Seco, extenderás la vida útil drásticamente y bajarás tu costo a ${formatCurrency(costoOptimoSeco)}.`;
         } else {
             return `✅ ¡Estás muy cerca del punto óptimo! Mantener la velocidad alrededor de ${velocidadOptimaSeco} m/min te asegura la máxima eficiencia y rentabilidad.`;
         }
     }, [curveDataInfo, vcCurrent]);
 
-    const unidadVidaUtil = 
-        operationType === 'drilling' ? 'agujeros' : 
-        operationType === 'milling' ? 'minutos' :
-        'pzas/filo';
+    const unidadVidaUtil = lifeModePremium === 'minutos' ? 'minutos' : (operationType === 'drilling' ? 'agujeros' : 'pzas/filo');
 
   return (
     <>
@@ -1124,9 +1136,21 @@ export default function TaylorCurvePage() {
               
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label><Input type="number" className="border-red-200 bg-white" value={vcCurrent} onChange={e => setVcCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               
-              <div className="col-span-2">
-                <Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Minutos / filo' : operationType === 'drilling' ? 'Agujeros / filo' : 'Pzas / filo'}</Label>
-                <Input type="number" className="border-red-200 bg-white" placeholder={operationType === 'milling' ? 'Ej: 45' : operationType === 'drilling' ? 'Ej: 500' : 'Ej: 120'} value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+              <div className="col-span-2 grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="block text-[10px] font-bold text-red-600 mb-1">Medir en</Label>
+                  <Select value={lifeModeCurrent} onValueChange={(v: 'piezas'|'minutos') => setLifeModeCurrent(v)}>
+                    <SelectTrigger className="border-red-200 bg-white h-9 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="piezas">{operationType === 'drilling' ? 'Agujeros' : 'Piezas'}</SelectItem>
+                      <SelectItem value="minutos">Minutos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="block text-[10px] font-bold text-red-600 mb-1">Rendimiento</Label>
+                  <Input type="number" className="border-red-200 bg-white h-9" placeholder="Ej: 120" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+                </div>
               </div>
               
               <div className="col-span-2">
@@ -1214,9 +1238,21 @@ export default function TaylorCurvePage() {
 
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Vc Propuesta</Label><Input type="number" className="border-green-200 bg-white" value={vcPremium} onChange={e => setVcPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               
-              <div className="col-span-2">
-                 <Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'milling' ? 'Minutos / filo' : operationType === 'drilling' ? 'Agujeros / filo' : 'Pzas / filo'}</Label>
-                <Input type="number" className="border-green-200 bg-white" placeholder={operationType === 'milling' ? 'Ej: 60' : operationType === 'drilling' ? 'Ej: 800' : 'Ej: 250'} value={pcsPremium} onChange={e => setPcsPremium(e.target.value === "" ? "" : Number(e.target.value))} />
+              <div className="col-span-2 grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="block text-[10px] font-bold text-green-700 mb-1">Medir en</Label>
+                  <Select value={lifeModePremium} onValueChange={(v: 'piezas'|'minutos') => setLifeModePremium(v)}>
+                    <SelectTrigger className="border-green-200 bg-white h-9 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="piezas">{operationType === 'drilling' ? 'Agujeros' : 'Piezas'}</SelectItem>
+                      <SelectItem value="minutos">Minutos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="block text-[10px] font-bold text-green-700 mb-1">Rendimiento</Label>
+                  <Input type="number" className="border-green-200 bg-white h-9" placeholder="Ej: 120" value={pcsPremium} onChange={e => setPcsPremium(e.target.value === "" ? "" : Number(e.target.value))} />
+                </div>
               </div>
               
               <div className="col-span-2">
@@ -1270,9 +1306,8 @@ export default function TaylorCurvePage() {
                             setTaylorBase(base);
                             setSimulatedVc(base.vc);
                             setSimulatedFeed(base.feed);
-                            setTargetSavings(''); // Reset target savings
+                            setTargetSavings('');
 
-                            // Calculate and set base cost
                             const safeMachineCostMin = (Number(machineCostHr) || 0) / 60;
                             const safeToolCostPremium = Number(toolCostPremium) || 0;
                             const safeToolChangeTime = Number(toolChangeTime) || 0;
@@ -1655,19 +1690,9 @@ export default function TaylorCurvePage() {
                     <Button variant="ghost" onClick={() => setIsTaylorModalOpen(false)}>Cancelar</Button>
                     <Button className="bg-green-600 hover:bg-green-700" onClick={() => {
                         if (simulationResult) {
-                            const newTime = simulationResult.newTime;
-                            const newTimeMin = Math.floor(newTime);
-                            const newTimeSec = Math.round((newTime - newTimeMin) * 60);
-
                             setVcPremium(simulatedVc);
                             setFeedPremium(simulatedFeed);
                             setPcsPremium(simulationResult.newPcs);
-                            // Este es el único lugar donde necesitamos escribir al form directamente
-                            // ya que el estado local es la fuente de verdad.
-                            // Para el resto de los campos usamos el estado local.
-                            // Aquí usamos los equivalentes de la propuesta
-                            // setTcPremiumMin(newTimeMin);
-                            // setTcPremiumSec(newTimeSec);
                         }
                         setIsTaylorModalOpen(false);
                     }}>
