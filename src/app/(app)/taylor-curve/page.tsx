@@ -1082,7 +1082,6 @@ export default function TaylorCurvePage() {
               </div>
             </div>
 
-            {/* Escala Comercial integrada al fondo de esta tarjeta */}
             <div className="mt-6 pt-5 border-t border-slate-100">
               <Label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wide">📦 Escala Comercial</Label>
               <div className="relative">
@@ -1238,6 +1237,7 @@ export default function TaylorCurvePage() {
 
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Vc Propuesta</Label><Input type="number" className="border-green-200 bg-white" value={vcPremium} onChange={e => setVcPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
               
+              {/* NUEVO: SELECTOR DE PIEZAS O MINUTOS PREMIUM */}
               <div className="col-span-2 grid grid-cols-2 gap-2">
                 <div>
                   <Label className="block text-[10px] font-bold text-green-700 mb-1">Medir en</Label>
@@ -1277,7 +1277,7 @@ export default function TaylorCurvePage() {
                 {chipbreakerAuditPremium}
               </div>
             )}
-            {/* Progress Bar alineada al fondo */}
+            {/* Progress Bar */}
             <div className="mt-6 bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
               <div className="flex justify-between items-center mb-1">
                 <div className="flex items-center gap-2">
@@ -1804,8 +1804,8 @@ export default function TaylorCurvePage() {
                   )}
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Rendimiento Estimado</td>
-                    <td className="p-2 border border-slate-300 text-center">{pcsCurrent} {operationType === 'drilling' ? 'agujeros' : 'pzs'}/filo</td>
-                    <td className="p-2 border border-slate-300 text-center text-green-700 font-bold">{pcsPremium} {operationType === 'drilling' ? 'agujeros' : 'pzs'}/filo</td>
+                    <td className="p-2 border border-slate-300 text-center">{pcsCurrent} {lifeModeCurrent === 'minutos' ? 'minutos' : (operationType === 'drilling' ? 'agujeros' : 'pzs')}/filo</td>
+                    <td className="p-2 border border-slate-300 text-center text-green-700 font-bold">{pcsPremium} {lifeModePremium === 'minutos' ? 'minutos' : (operationType === 'drilling' ? 'agujeros' : 'pzs')}/filo</td>
                   </tr>
                    {operationType !== 'drilling' && (
                     <tr className="bg-slate-100">
@@ -1923,7 +1923,7 @@ export default function TaylorCurvePage() {
                                 <SurveyField label="Profundidad de Corte (ap) mm" />
                                 <SurveyField label="Avance (fn) mm/rev" />
                                 <SurveyField label="Velocidad de Corte (Vc) m/min" />
-                                <SurveyField label="Vida Útil Actual (Pzas/filo)" />
+                                <SurveyField label="Vida Útil Actual" />
                                 <SurveyField label="Tiempo de Cambio de Herramienta (min)" />
                             </>
                         )}
@@ -1935,7 +1935,7 @@ export default function TaylorCurvePage() {
                                 <SurveyField label="Avance (fz) mm/z" />
                                 <SurveyField label="Velocidad de Corte (Vc) m/min" />
                                 <SurveyField label="Cantidad de Dientes de la Fresa (Z)" />
-                                <SurveyField label="Vida Útil Actual (Minutos/filo)" />
+                                <SurveyField label="Vida Útil Actual" />
                                 <SurveyField label="Tiempo de Cambio de Herramienta (min)" />
                             </>
                         )}
@@ -1947,7 +1947,7 @@ export default function TaylorCurvePage() {
                                 <SurveyField label="Profundidad del Agujero (L) mm" />
                                 <SurveyField label="Avance (fn) mm/rev" />
                                 <SurveyField label="Velocidad de Corte (Vc) m/min" />
-                                <SurveyField label="Vida Útil Actual (Agujeros totales)" />
+                                <SurveyField label="Vida Útil Actual" />
                                 <SurveyField label="Tiempo de Cambio de Herramienta (min)" />
                             </>
                         )}
@@ -1963,3 +1963,4 @@ export default function TaylorCurvePage() {
     </>
   );
 }
+```
