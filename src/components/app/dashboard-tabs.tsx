@@ -337,9 +337,18 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     const diasLaboralesAhorradosAnual = machineHoursFreedAnnual / 8; 
     const semanasLaboralesAhorradasAnual = diasLaboralesAhorradosAnual / 5;
 
-    const insertosNecesariosA = piezasTotalVidaA > 0 ? Math.ceil(piezasAlMes / piezasTotalVidaA) * (safeNumber(data.insertosPorHerramientaA) || 1) : 0;
-    const insertosNecesariosB = piezasTotalVidaB > 0 ? Math.ceil(piezasAlMes / piezasTotalVidaB) * (safeNumber(data.insertosPorHerramientaB) || 1) : 0;
-    
+    const filosA_safe = safeNumber(data.filosA) || 1;
+    const insertosPorHerramientaA_safe = safeNumber(data.insertosPorHerramientaA) || 1;
+    const insertosNecesariosA = (pzA > 0 && filosA_safe > 0)
+      ? Math.ceil((piezasAlMes / pzA) * (insertosPorHerramientaA_safe / filosA_safe))
+      : 0;
+
+    const filosB_safe = safeNumber(data.filosB) || 1;
+    const insertosPorHerramientaB_safe = safeNumber(data.insertosPorHerramientaB) || 1;
+    const insertosNecesariosB = (pzB > 0 && filosB_safe > 0)
+      ? Math.ceil((piezasAlMes / pzB) * (insertosPorHerramientaB_safe / filosB_safe))
+      : 0;
+
     const costoTotalInsertosA = insertosNecesariosA * safeNumber(data.precioA); 
     const costoTotalInsertosB = insertosNecesariosB * safeNumber(data.precioB);
 
