@@ -16,46 +16,29 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 
-
 const MATERIALS = [
-  // --- GRUPO ISO P (Aceros) 🟦 ---
   { grupo: "ISO P", nombre: "Acero Bajo Carbono (Ej: 1010, 1020)", kc: 1500, dureza: "150 HB" },
   { grupo: "ISO P", nombre: "Acero Medio Carbono (Ej: 1045, 4140)", kc: 1800, dureza: "200 HB" },
   { grupo: "ISO P", nombre: "Acero Aleado / Cementación (Ej: 8620, 16MnCr5)", kc: 1700, dureza: "180 HB" },
   { grupo: "ISO P", nombre: "Acero Alta Aleación / Herramienta", kc: 2100, dureza: "300 HB" },
-
-  // --- GRUPO ISO M (Inoxidables) 🟨 ---
   { grupo: "ISO M", nombre: "Acero Inoxidable Austenítico (304, 316)", kc: 2200, dureza: "200 HB" },
   { grupo: "ISO M", nombre: "Acero Inox. Dúplex / Súper Dúplex", kc: 2600, dureza: "260 HB" },
-
-  // --- GRUPO ISO K (Fundiciones) 🟥 ---
   { grupo: "ISO K", nombre: "Fundición Gris (GG)", kc: 1200, dureza: "200 HB" },
   { grupo: "ISO K", nombre: "Fundición Nodular / Dúctil (GGG)", kc: 1500, dureza: "250 HB" },
-
-  // --- GRUPO ISO N (No Ferrosos y Plásticos) 🟩 ---
   { grupo: "ISO N", nombre: "Aluminio / Aleaciones de Aluminio", kc: 700, dureza: "60 HB" },
   { grupo: "ISO N", nombre: "Latón / Bronce / Cobre", kc: 900, dureza: "100 HB" },
   { grupo: "ISO N", nombre: "Plásticos de Ingeniería (Nylon, Delrin)", kc: 300, dureza: "N/A" },
-
-  // --- GRUPO ISO S (Superaleaciones y Titanio) 🟧 ---
   { grupo: "ISO S", nombre: "Aleaciones de Titanio (Ej: Ti-6Al-4V)", kc: 2000, dureza: "350 HB" },
   { grupo: "ISO S", nombre: "Súper Aleaciones Base Níquel (Inconel)", kc: 2800, dureza: "400 HB" },
-
-  // --- GRUPO ISO H (Materiales Templados) ⬜ ---
   { grupo: "ISO H", nombre: "Aceros Templados (> 45 HRC)", kc: 3500, dureza: "50+ HRC" }
 ];
 
 const TAYLOR_CONSTANTS: Record<string, {n: number, C: number}> = {
-  "ISO P": { n: 0.25, C: 250 },
-  "ISO M": { n: 0.20, C: 150 },
-  "ISO K": { n: 0.25, C: 200 },
-  "ISO N": { n: 0.35, C: 900 },
-  "ISO S": { n: 0.18, C: 130 },
-  "ISO H": { n: 0.15, C: 120 },
+  "ISO P": { n: 0.25, C: 250 }, "ISO M": { n: 0.20, C: 150 }, "ISO K": { n: 0.25, C: 200 },
+  "ISO N": { n: 0.35, C: 900 }, "ISO S": { n: 0.18, C: 130 }, "ISO H": { n: 0.15, C: 120 },
 };
 
 const MATRIZ_ROMPEVIRUTAS: Record<string, {min_f: number, max_f: number, min_ap?: number, max_ap?: number, desc: string}> = {
-  // Plaquitas Positivas
   "AL":  { min_f: 0.15, max_f: 0.60, min_ap: 0.5, max_ap: 4.0, desc: "Aluminio" },
   "FF1": { min_f: 0.05, max_f: 0.30, min_ap: 0.2, max_ap: 3.0, desc: "Súper Acabado" },
   "F1":  { min_f: 0.10, max_f: 0.50, min_ap: 0.2, max_ap: 3.0, desc: "Fundiciones/Forjados Finos" },
@@ -65,8 +48,6 @@ const MATRIZ_ROMPEVIRUTAS: Record<string, {min_f: number, max_f: number, min_ap?
   "RR96": { min_f: 0.50, max_f: 2.20, min_ap: 5.0, max_ap: 24.0, desc: "Desbaste Pesado Ferrocarril" },
   "RR97": { min_f: 0.50, max_f: 2.20, min_ap: 5.0, max_ap: 24.0, desc: "Desbaste Pesado Ferrocarril" },
   "UX":  { min_f: 0.05, max_f: 0.40, min_ap: 0.5, max_ap: 4.0, desc: "Piezas Delgadas" },
-  
-  // Plaquitas Negativas
   "FF2": { min_f: 0.08, max_f: 0.30, min_ap: 0.2, max_ap: 1.5, desc: "Acabado" },
   "MF1": { min_f: 0.08, max_f: 0.30, min_ap: 0.2, max_ap: 3.5, desc: "Acabado Inox/Titanio" },
   "MF4": { min_f: 0.15, max_f: 0.50, desc: "Inox/Superaleaciones" },
@@ -75,147 +56,77 @@ const MATRIZ_ROMPEVIRUTAS: Record<string, {min_f: number, max_f: number, min_ap?
   "M4":  { min_f: 0.10, max_f: 0.70, min_ap: 0.2, max_ap: 5.0, desc: "Fundición" },
 };
 
-// Función para extraer el radio del código ISO (Ej: "TNMG 160408-M5" -> 0.8)
 const extraerRadioISO = (codigoInserto: string): number | null => {
   if (!codigoInserto) return null;
-
-  // 1. Trabajar con la parte ANTES del rompevirutas/sufijo
   const partePrincipal = codigoInserto.split('-')[0];
-
-  // 2. Quitar todos los caracteres no numéricos
   const soloNumeros = partePrincipal.replace(/\D/g, '');
-
-  // 3. Necesitamos al menos 2 dígitos para el radio (ej: 04, 08, 12)
-  if (soloNumeros.length >= 2) {
-    // 4. Tomar los ÚLTIMOS dos dígitos
-    const radioString = soloNumeros.slice(-2);
-    return parseInt(radioString, 10) / 10;
-  }
-  
+  if (soloNumeros.length >= 2) return parseInt(soloNumeros.slice(-2), 10) / 10;
   return null;
 };
 
-// Analizador del Rompevirutas a prueba de errores de tipeo
 const analizarRompevirutas = (codigoInserto: string): { esWiper: boolean; tipoCorte: string; sufijo: string } => {
-    if (!codigoInserto) {
-        return { esWiper: false, tipoCorte: 'Desconocido', sufijo: '' };
-    }
+    if (!codigoInserto) return { esWiper: false, tipoCorte: 'Desconocido', sufijo: '' };
     const textoLimpio = codigoInserto.replace(/\s|-/g, '').toUpperCase();
     const match = textoLimpio.match(/\d{6}(.*)/);
-
-    if (!match || !match[1]) {
-        return { esWiper: false, tipoCorte: 'Desconocido', sufijo: '' };
-    }
-
+    if (!match || !match[1]) return { esWiper: false, tipoCorte: 'Desconocido', sufijo: '' };
     const sufijo = match[1];
     const esWiper = sufijo.includes('W');
-
     let tipoCorte = 'Medio';
-    if (sufijo.includes('F') || sufijo.includes('FF')) {
-        tipoCorte = 'Terminacion';
-    } else if (sufijo.includes('R') || sufijo.includes('RR')) {
-        tipoCorte = 'Desbaste';
-    }
-
+    if (sufijo.includes('F') || sufijo.includes('FF')) tipoCorte = 'Terminacion';
+    else if (sufijo.includes('R') || sufijo.includes('RR')) tipoCorte = 'Desbaste';
     return { esWiper, tipoCorte, sufijo };
 };
 
 const auditarLimitesRompevirutas = (codigoInserto: string | undefined, avance_f: number | string, ap_mm: number | string): string | null => {
   if (!codigoInserto || !avance_f || !ap_mm) return null;
-
   const { sufijo } = analizarRompevirutas(codigoInserto);
   if (!sufijo) return null;
-
-  // Prioriza llaves más largas para evitar falsos positivos (ej: "MF2" antes que "M" o "F")
-  const chipbreakerKey = Object.keys(MATRIZ_ROMPEVIRUTAS)
-                               .sort((a, b) => b.length - a.length)
-                               .find(key => sufijo.includes(key));
-
+  const chipbreakerKey = Object.keys(MATRIZ_ROMPEVIRUTAS).sort((a, b) => b.length - a.length).find(key => sufijo.includes(key));
   if (!chipbreakerKey) return null;
-
   const limites = MATRIZ_ROMPEVIRUTAS[chipbreakerKey];
   const numAvance = Number(avance_f);
   const numAp = Number(ap_mm);
-
-  if (numAvance < limites.min_f || numAvance > limites.max_f) {
-    return `⚠️ Avance (${numAvance}) fuera de rango para ${chipbreakerKey} (${limites.desc}). Rango ideal: ${limites.min_f}-${limites.max_f} mm/rev.`;
-  }
-  if (limites.min_ap !== undefined && limites.max_ap !== undefined && (numAp < limites.min_ap || numAp > limites.max_ap)) {
-    return `⚠️ Profundidad (${numAp}mm) fuera de rango para ${chipbreakerKey} (${limites.desc}). Rango ideal: ${limites.min_ap}-${limites.max_ap} mm.`;
-  }
-  
+  if (numAvance < limites.min_f || numAvance > limites.max_f) return `⚠️ Avance (${numAvance}) fuera de rango para ${chipbreakerKey} (${limites.desc}). Rango ideal: ${limites.min_f}-${limites.max_f} mm/rev.`;
+  if (limites.min_ap !== undefined && limites.max_ap !== undefined && (numAp < limites.min_ap || numAp > limites.max_ap)) return `⚠️ Profundidad (${numAp}mm) fuera de rango para ${chipbreakerKey} (${limites.desc}). Rango ideal: ${limites.min_ap}-${limites.max_ap} mm.`;
   return `✅ Parámetros en rango para rompevirutas ${chipbreakerKey} (${limites.desc}).`;
 };
 
-
-// Función para generar advertencias técnicas
-const auditarParametros = (ap: number | "", avance: number | "", codigoInserto: string): string | null => {
+const auditarParametros = (ap: number | string, avance: number | string, codigoInserto: string): string | null => {
   const radio = extraerRadioISO(codigoInserto);
-  let advertencia = null;
-
-  if (radio && ap && avance) {
-    const apNum = Number(ap);
-    const avanceNum = Number(avance);
-    // 1. Auditoría de Vibración / Rotura de Viruta
-    if (apNum < radio) {
-      advertencia = `⚠️ Riesgo de Vibración: Tu ap (${apNum}mm) es menor al radio del inserto (${radio}mm). Las fuerzas radiales empujarán la pieza.`;
-    }
-    // 2. Auditoría de Acabado Superficial y Rotura
-    else if (avanceNum > (radio * 0.6)) {
-      advertencia = `⚠️ Avance Excesivo: Un avance de ${avanceNum} mm/rev es muy alto para un radio de ${radio}mm. Generará mal acabado superficial o romperá el filo.`;
-    }
-  }
-
-  return advertencia; // Si devuelve un string, mostrarlo en rojo en la pantalla
-};
-
-const auditarAplicacion = (ap: number | "", codigoInserto: string): string | null => {
-  if (!ap || !codigoInserto) return null;
-  const { tipoCorte } = analizarRompevirutas(codigoInserto);
+  if (!radio || !ap || !avance) return null;
   const apNum = Number(ap);
-  
-  if (tipoCorte === 'Terminacion' && apNum > 1.5) {
-    return `⚠️ Cuidado: Estás usando un rompevirutas de Terminación con un ap de ${apNum}mm. La viruta se va a atascar y romperá el filo.`;
-  }
-  
-  if (tipoCorte === 'Desbaste' && apNum < 1.0) {
-    return `⚠️ Cuidado: Estás usando un rompevirutas de Desbaste Pesado para un corte muy fino (${apNum}mm). La viruta no va a romper y saldrá en hilos largos.`;
-  }
-  
+  const avanceNum = Number(avance);
+  if (apNum < radio) return `⚠️ Riesgo de Vibración: Tu ap (${apNum}mm) es menor al radio del inserto (${radio}mm). Las fuerzas radiales empujarán la pieza.`;
+  if (avanceNum > (radio * 0.6)) return `⚠️ Avance Excesivo: Un avance de ${avanceNum} mm/rev es muy alto para un radio de ${radio}mm. Generará mal acabado superficial o romperá el filo.`;
   return null;
 };
 
-const calcularRaTeorico = (avance: number | "", codigoInserto: string): string | null => {
+const auditarAplicacion = (ap: number | string, codigoInserto: string): string | null => {
+  if (!ap || !codigoInserto) return null;
+  const { tipoCorte } = analizarRompevirutas(codigoInserto);
+  const apNum = Number(ap);
+  if (tipoCorte === 'Terminacion' && apNum > 1.5) return `⚠️ Cuidado: Estás usando un rompevirutas de Terminación con un ap de ${apNum}mm. La viruta se va a atascar y romperá el filo.`;
+  if (tipoCorte === 'Desbaste' && apNum < 1.0) return `⚠️ Cuidado: Estás usando un rompevirutas de Desbaste Pesado para un corte muy fino (${apNum}mm). La viruta no va a romper y saldrá en hilos largos.`;
+  return null;
+};
+
+const calcularRaTeorico = (avance: number | string, codigoInserto: string): string | null => {
   const radio = extraerRadioISO(codigoInserto);
   const avanceNum = Number(avance);
   if (!avanceNum || !radio || radio <= 0) return null;
-
-  // Fórmula estándar ISO
   let ra_micrones = (Math.pow(avanceNum, 2) / (32 * radio)) * 1000;
-
-  // Analizamos el rompevirutas
   const { esWiper } = analizarRompevirutas(codigoInserto);
-  
-  // LA MAGIA DEL WIPER: Si es Wiper, el acabado mejora drásticamente (dividimos el Ra aprox a la mitad)
-  if (esWiper) {
-    ra_micrones = ra_micrones / 2; 
-  }
-
+  if (esWiper) ra_micrones = ra_micrones / 2; 
   return ra_micrones.toFixed(2);
 };
 
-// Analizador Inteligente para Plaquitas de Fresado
 const analizarInsertoFresado = (codigoInserto: string): { formaPlaquita: string, incidenciaPlaquita: string, geometriaFilo: string, alertaGeometria: string | null } | null => {
   if (!codigoInserto) return null;
-
   const textoLimpio = codigoInserto.toUpperCase().trim();
-  
   const formaPlaquita = textoLimpio.charAt(0); 
   const incidenciaPlaquita = textoLimpio.charAt(1);
-
   let geometriaFilo = 'Media';
   let alertaGeometria = null;
-
   if (textoLimpio.includes('-D') || textoLimpio.includes('TN')) {
     geometriaFilo = 'Robusta / Negativa';
     alertaGeometria = '💡 Filo robusto detectado. Ideal para desbaste pesado o cortes interrumpidos. Consumirá más HP de la máquina.';
@@ -223,7 +134,6 @@ const analizarInsertoFresado = (codigoInserto: string): { formaPlaquita: string,
     geometriaFilo = 'Viva / Positiva';
     alertaGeometria = '⚠️ Filo muy vivo y positivo. Excelente para acabados y bajo consumo de HP, pero frágil ante cortes interrumpidos.';
   }
-
   return { formaPlaquita, incidenciaPlaquita, geometriaFilo, alertaGeometria };
 };
 
@@ -231,40 +141,24 @@ const auditarMaterialFresado = (codigoGrado: string, materialSeleccionado: strin
   if (!codigoGrado || !materialSeleccionado) return null;
   const grado = codigoGrado.toUpperCase();
   const material = materialSeleccionado.toLowerCase();
-
-  if (grado.includes('PCD') && (material.includes('acero') || material.includes('fundicion'))) {
-    return '❌ ERROR CRÍTICO: El PCD (Diamante) reacciona químicamente con el hierro a altas temperaturas. Solo usar en Aluminio, Plásticos o Titanio.';
-  }
-
-  if (grado.includes('PCBN') && material.includes('aluminio')) {
-    return '⚠️ ALERTA DE COSTO: El PCBN es extremadamente caro y está diseñado para aceros templados >45HRC o fundición gris. Para aluminio, usa plaquitas no recubiertas (Ej: H15) o PCD.';
-  }
-
-  if ((grado.includes('MP') || grado.includes('MK')) && (material.includes('titanio') || material.includes('inconel'))) {
-     return '💡 SUGERENCIA: Para Titanio se recomiendan calidades PVD (Ej: MS2050 o F15M) por su tenacidad de filo, no CVD.';
-  }
-
+  if (grado.includes('PCD') && (material.includes('acero') || material.includes('fundicion'))) return '❌ ERROR CRÍTICO: El PCD (Diamante) reacciona químicamente con el hierro a altas temperaturas. Solo usar en Aluminio, Plásticos o Titanio.';
+  if (grado.includes('PCBN') && material.includes('aluminio')) return '⚠️ ALERTA DE COSTO: El PCBN es extremadamente caro y está diseñado para aceros templados >45HRC o fundición gris. Para aluminio, usa plaquitas no recubiertas (Ej: H15) o PCD.';
+  if ((grado.includes('MP') || grado.includes('MK')) && (material.includes('titanio') || material.includes('inconel'))) return '💡 SUGERENCIA: Para Titanio se recomiendan calidades PVD (Ej: MS2050 o F15M) por su tenacidad de filo, no CVD.';
   return null;
 };
 
-const auditarBroca = (diametro?: number | "", profundidad?: number | ""): string | null => {
+const auditarBroca = (diametro?: number | string, profundidad?: number | string): string | null => {
   if (!diametro || !profundidad) return null;
   const numDiametro = Number(diametro);
   const numProfundidad = Number(profundidad);
   if (numDiametro <= 0 || numProfundidad <= 0) return null;
-  
   const ratioL_D = numProfundidad / numDiametro;
-  
-  if (ratioL_D > 8) {
-    return '⚠️ Alerta de Profundidad (>8xD): Broca muy larga. Se requiere agujero piloto y reducir el avance (fn) un 20% al entrar para evitar que la broca flexe o se parta.';
-  }
+  if (ratioL_D > 8) return '⚠️ Alerta de Profundidad (>8xD): Broca muy larga. Se requiere agujero piloto y reducir el avance (fn) un 20% al entrar para evitar que la broca flexe o se parta.';
   return null;
 };
 
-const calcularVf = (f: number | "", vc: number | "", d: number | ""): number => {
-    const numF = Number(f);
-    const numVc = Number(vc);
-    const numD = Number(d);
+const calcularVf = (f: number | string, vc: number | string, d: number | string): number => {
+    const numF = Number(f); const numVc = Number(vc); const numD = Number(d);
     if (numF <= 0 || numVc <= 0 || numD <= 0) return 0;
     const rpm = (numVc * 1000) / (Math.PI * numD);
     return numF * rpm;
@@ -277,52 +171,49 @@ const SurveyField = ({ label }: { label: string }) => (
     </div>
 );
 
-
 export default function TaylorCurvePage() {
   const { user } = useUser();
 
-  // --- ESTADO PARA LOGOS DEL PDF ---
   const [logos, setLogos] = useState({ company: '', brand: '' });
 
-  // --- ESTADOS DEL FORMULARIO (Inician vacíos por requerimiento de UX) ---
   const [operationType, setOperationType] = useState<'turning' | 'milling' | 'drilling'>('turning');
-  const [materialId, setMaterialId] = useState('Acero Medio Carbono (Ej: 1045, 4140)'); // El select sí tiene default
-  const [machineCostHr, setMachineCostHr] = useState<number | "">("");
-  const [toolChangeTime, setToolChangeTime] = useState<number | "">("");
+  const [materialId, setMaterialId] = useState('Acero Medio Carbono (Ej: 1045, 4140)'); 
+  const [machineCostHr, setMachineCostHr] = useState<string | number>("");
+  const [toolChangeTime, setToolChangeTime] = useState<string | number>("");
   const [pieceName, setPieceName] = useState<string>("");
-  const [machinePowerHP, setMachinePowerHP] = useState<number | "">(15); // Potencia del motor
-  const [profundidadAgujero, setProfundidadAgujero] = useState<number | "">("");
+  const [machinePowerHP, setMachinePowerHP] = useState<string | number>(15); 
+  const [profundidadAgujero, setProfundidadAgujero] = useState<string | number>("");
   const [lifeModeCurrent, setLifeModeCurrent] = useState<'piezas' | 'minutos'>('piezas');
   const [lifeModePremium, setLifeModePremium] = useState<'piezas' | 'minutos'>('piezas');
-  
+
   // Competidor
   const [toolNameCurrent, setToolNameCurrent] = useState<string>("");
-  const [toolCostCurrent, setToolCostCurrent] = useState<number | "">("");
-  const [apCurrent, setApCurrent] = useState<number | "">("");
-  const [feedCurrent, setFeedCurrent] = useState<number | "">("");
-  const [vcCurrent, setVcCurrent] = useState<number | "">("");
-  const [pcsCurrent, setPcsCurrent] = useState<number | "">("");
-  const [tcCurrentMin, setTcCurrentMin] = useState<number | "">("");
-  const [tcCurrentSec, setTcCurrentSec] = useState<number | "">("");
-  const [zCurrent, setZCurrent] = useState<number | "">("");
-  const [edgesCurrent, setEdgesCurrent] = useState<number | "">("");
-  const [dcCurrent, setDcCurrent] = useState<number | "">("");
-  const [aeCurrent, setAeCurrent] = useState<number | "">("");
+  const [toolCostCurrent, setToolCostCurrent] = useState<string | number>("");
+  const [apCurrent, setApCurrent] = useState<string | number>("");
+  const [feedCurrent, setFeedCurrent] = useState<string | number>("");
+  const [vcCurrent, setVcCurrent] = useState<string | number>("");
+  const [pcsCurrent, setPcsCurrent] = useState<string | number>("");
+  const [tcCurrentMin, setTcCurrentMin] = useState<string | number>("");
+  const [tcCurrentSec, setTcCurrentSec] = useState<string | number>("");
+  const [zCurrent, setZCurrent] = useState<string | number>("");
+  const [edgesCurrent, setEdgesCurrent] = useState<string | number>("");
+  const [dcCurrent, setDcCurrent] = useState<string | number>("");
+  const [aeCurrent, setAeCurrent] = useState<string | number>("");
   
   // Premium
   const [toolNamePremium, setToolNamePremium] = useState<string>("");
-  const [toolCostPremium, setToolCostPremium] = useState<number | "">("");
-  const [apPremium, setApPremium] = useState<number | "">("");
-  const [feedPremium, setFeedPremium] = useState<number | "">("");
-  const [vcPremium, setVcPremium] = useState<number | "">("");
-  const [pcsPremium, setPcsPremium] = useState<number | "">("");
-  const [zPremium, setZPremium] = useState<number | "">("");
-  const [edgesPremium, setEdgesPremium] = useState<number | "">("");
-  const [dcPremium, setDcPremium] = useState<number | "">("");
-  const [aePremium, setAePremium] = useState<number | "">("");
+  const [toolCostPremium, setToolCostPremium] = useState<string | number>("");
+  const [apPremium, setApPremium] = useState<string | number>("");
+  const [feedPremium, setFeedPremium] = useState<string | number>("");
+  const [vcPremium, setVcPremium] = useState<string | number>("");
+  const [pcsPremium, setPcsPremium] = useState<string | number>("");
+  const [zPremium, setZPremium] = useState<string | number>("");
+  const [edgesPremium, setEdgesPremium] = useState<string | number>("");
+  const [dcPremium, setDcPremium] = useState<string | number>("");
+  const [aePremium, setAePremium] = useState<string | number>("");
 
   // Volumen
-  const [monthlyProduction, setMonthlyProduction] = useState<number | "">("");
+  const [monthlyProduction, setMonthlyProduction] = useState<string | number>("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [saveCaseName, setSaveCaseName] = useState("");
@@ -330,7 +221,7 @@ export default function TaylorCurvePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingSurvey, setIsGeneratingSurvey] = useState(false);
 
-  // --- ESTADOS DEL COPILOTO ---
+  // Copiloto
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([
@@ -338,7 +229,7 @@ export default function TaylorCurvePage() {
   ]);
   const [isChatLoading, setIsChatLoading] = useState(false);
 
-  // --- ESTADOS PARA SIMULADOR TAYLOR ---
+  // Simulador Taylor
   const [isTaylorModalOpen, setIsTaylorModalOpen] = useState(false);
   const [taylorBase, setTaylorBase] = useState({ vc: 0, feed: 0, pcs: 0, time: 0 });
   const [simulatedVc, setSimulatedVc] = useState(0);
@@ -347,29 +238,15 @@ export default function TaylorCurvePage() {
   const [taylorBaseCost, setTaylorBaseCost] = useState(0);
   const [targetSavings, setTargetSavings] = useState<number | ''>('');
 
-  // --- Efecto para auto-calcular tiempo de corte en Taladrado ---
   useEffect(() => {
     if (operationType === 'drilling') {
-      const vc = Number(vcCurrent);
-      const d = Number(dcCurrent);
-      const f = Number(feedCurrent);
-      const l = Number(profundidadAgujero);
-
+      const vc = Number(vcCurrent); const d = Number(dcCurrent); const f = Number(feedCurrent); const l = Number(profundidadAgujero);
       if (vc > 0 && d > 0 && f > 0 && l > 0) {
-        const rpm = (vc * 1000) / (Math.PI * d);
-        const vf = f * rpm; // Velocidad de penetración (mm/min)
-        const tiempoMinutosDecimal = l / vf;
-
+        const rpm = (vc * 1000) / (Math.PI * d); const vf = f * rpm; const tiempoMinutosDecimal = l / vf;
         if (isFinite(tiempoMinutosDecimal)) {
-          const min = Math.floor(tiempoMinutosDecimal);
-          let seg = Math.round((tiempoMinutosDecimal - min) * 60);
-          if (seg === 60) {
-            setTcCurrentMin(min + 1);
-            setTcCurrentSec(0);
-          } else {
-            setTcCurrentMin(min);
-            setTcCurrentSec(seg);
-          }
+          const min = Math.floor(tiempoMinutosDecimal); let seg = Math.round((tiempoMinutosDecimal - min) * 60);
+          if (seg === 60) { setTcCurrentMin(min + 1); setTcCurrentSec(0); } 
+          else { setTcCurrentMin(min); setTcCurrentSec(seg); }
         }
       }
     }
@@ -399,8 +276,6 @@ export default function TaylorCurvePage() {
   const warningBrocaCurrent = useMemo(() => auditarBroca(dcCurrent, profundidadAgujero), [dcCurrent, profundidadAgujero]);
   const warningBrocaPremium = useMemo(() => auditarBroca(dcPremium, profundidadAgujero), [dcPremium, profundidadAgujero]);
 
-
-  // --- Funciones de Cálculo ---
   const obtenerFactorIncidencia = (codigoInserto: string): number => {
     if (!codigoInserto || codigoInserto.length < 2) return 1.0;
     const segundaLetra = codigoInserto.charAt(1).toUpperCase();
@@ -463,7 +338,6 @@ export default function TaylorCurvePage() {
         const pdf = new jsPDF('p', 'mm', 'a4');
         const a4Width = 210;
 
-        // 1. CAPTURAR PÁGINA 1 (Tablas de Datos y Ahorros)
         const elementoPagina1 = document.getElementById('pdf-pagina-1');
         if (!elementoPagina1) throw new Error("Elemento 'pdf-pagina-1' no encontrado.");
         
@@ -472,10 +346,8 @@ export default function TaylorCurvePage() {
         const imgHeight1 = (canvas1.height * a4Width) / canvas1.width;
         pdf.addImage(imgData1, 'PNG', 0, 0, a4Width, imgHeight1);
 
-        // 2. CREAR SALTO DE PÁGINA
         pdf.addPage();
 
-        // 3. CAPTURAR PÁGINA 2 (Gráfica de Curva de Costos)
         const elementoPagina2 = document.getElementById('pdf-pagina-2');
         if (!elementoPagina2) throw new Error("Elemento 'pdf-pagina-2' no encontrado.");
 
@@ -484,13 +356,12 @@ export default function TaylorCurvePage() {
         const imgHeight2 = (canvas2.height * a4Width) / canvas2.width;
         pdf.addImage(imgData2, 'PNG', 0, 0, a4Width, imgHeight2);
 
-        // 4. DEVOLVER EL TIPO CORRECTO
         const fileName = `Reporte_Secocut_Analisis.pdf`;
         if (action === 'blob') {
           return pdf.output('blob');
         } else if (action === 'download') {
             pdf.save(fileName);
-        } else { // share
+        } else {
             const pdfBlob = pdf.output('blob');
             const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
             if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -554,21 +425,18 @@ export default function TaylorCurvePage() {
     };
 
     try {
-      console.log("Enviando petición a /api/chat...", chatPayload);
-      
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(chatPayload)
       });
 
-      // Si la respuesta no es OK, forzamos a leer el error real
       if (!response.ok) {
         let errorMsg = `Error HTTP: ${response.status}`;
         try {
            const errData = await response.json();
            errorMsg = errData.error || errData.message || errorMsg;
-        } catch(e) { /* ignorar si no es json */ }
+        } catch(e) { }
         throw new Error(errorMsg);
       }
 
@@ -576,11 +444,9 @@ export default function TaylorCurvePage() {
       setChatMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
       
     } catch (error) {
-      console.error("Error capturado en frontend:", error);
-      // AHORA IMPRIMIMOS EL ERROR REAL EN PANTALLA
       setChatMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: `❌ Error de conexión: ${error instanceof Error ? error.message : 'Desconocido'}. (Dile al programador que revise la consola F12 o la terminal)` 
+        content: `❌ Error de conexión: ${error instanceof Error ? error.message : 'Desconocido'}.` 
       }]);
     } finally {
       setIsChatLoading(false);
@@ -641,7 +507,6 @@ export default function TaylorCurvePage() {
     
     const n = taylorProps.n;
 
-    // --- CORRECCIÓN SELECTOR MODO DE VIDA ÚTIL ---
     const vidaMinutosCompetidor = lifeModeCurrent === 'minutos' ? (Number(pcsCurrent) || 1) : ((Number(pcsCurrent) || 1) * safeTcCurrent);
     const constante_C_Competidor = safeVcCurrent > 0 && vidaMinutosCompetidor > 0 ? safeVcCurrent * Math.pow(vidaMinutosCompetidor, n) : 0;
     
@@ -845,7 +710,7 @@ export default function TaylorCurvePage() {
         const debounceTimer = setTimeout(() => { autoCalcularPorObjetivo(); }, 500);
         return () => clearTimeout(debounceTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [targetSavings, isTaylorModalOpen, lifeModePremium]);
+    }, [targetSavings, isTaylorModalOpen]);
 
 
   const premiumMins = Math.floor(curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0);
@@ -969,7 +834,6 @@ export default function TaylorCurvePage() {
   return (
     <>
       <div className={`container mx-auto space-y-8 pb-16 transition-all duration-300 ${isCopilotOpen ? 'pr-[320px]' : ''}`}>
-      {/* HEADER Y BOTONES DE ACCIÓN */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2">
@@ -979,7 +843,6 @@ export default function TaylorCurvePage() {
           <p className="text-slate-500 text-sm mt-1">Compara la Vc actual vs. la propuesta para demostrar el ahorro real.</p>
         </div>
 
-        {/* BOTONERA ESTILO "SIMULADOR PRINCIPAL" */}
         <div className="flex flex-wrap gap-2 w-full md:w-auto bg-slate-100 p-1.5 rounded-lg border border-slate-200">
           <button
             onClick={() => handleGeneratePDF('download')}
@@ -1016,13 +879,10 @@ export default function TaylorCurvePage() {
         </div>
       </div>
 
-      {/* LAYOUT PRINCIPAL: INPUTS ARRIBA, GRÁFICO ABAJO */}
       <div className="space-y-6">
         
-        {/* PANEL DE INPUTS (Horizontal 3 Columnas Simétricas) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           
-          {/* 1. PARÁMETROS GENERALES (Ahora incluye Producción Mensual) */}
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
             <h2 className="font-black text-slate-800 text-sm uppercase border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
               🏭 1. Parámetros del Taller
@@ -1064,20 +924,20 @@ export default function TaylorCurvePage() {
                 {operationType === 'drilling' && (
                     <div className="col-span-2">
                         <Label className="block text-xs font-bold text-slate-500 mb-1">Profundidad del Agujero (mm)</Label>
-                        <Input type="number" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value === "" ? "" : Number(e.target.value))} />
+                        <Input type="number" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value)} />
                     </div>
                 )}
                 <div>
                   <Label className="block text-xs font-bold text-blue-700 mb-1">Motor (HP)</Label>
-                  <Input type="number" step="0.5" className="font-bold text-blue-700 bg-blue-50/50" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value === "" ? "" : Number(e.target.value))} />
+                  <Input type="number" step="0.5" className="font-bold text-blue-700 bg-blue-50/50" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value)} />
                 </div>
                  <div>
                   <Label className="block text-xs font-bold text-slate-500 mb-1">Costo Máq. ($/hr)</Label>
-                  <Input type="number" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value === "" ? "" : Number(e.target.value))} />
+                  <Input type="number" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value)} />
                 </div>
                 <div>
                   <Label className="block text-xs font-bold text-slate-500 mb-1">Cambio (min)</Label>
-                  <Input type="number" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value === "" ? "" : Number(e.target.value))} />
+                  <Input type="number" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -1085,13 +945,12 @@ export default function TaylorCurvePage() {
             <div className="mt-6 pt-5 border-t border-slate-100">
               <Label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wide">📦 Escala Comercial</Label>
               <div className="relative">
-                <Input type="number" placeholder="Ej: 1000" className="w-full text-lg font-black text-blue-700 pl-4 pr-16 h-12 bg-slate-50" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value === "" ? "" : Number(e.target.value))} />
+                <Input type="number" placeholder="Ej: 1000" className="w-full text-lg font-black text-blue-700 pl-4 pr-16 h-12 bg-slate-50" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value)} />
                 <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400">pzs/mes</span>
               </div>
             </div>
           </div>
 
-          {/* 2. SITUACIÓN ACTUAL (COMPETIDOR) */}
           <div className="bg-red-50/30 p-5 rounded-xl border border-red-100 flex flex-col h-full relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-red-500"></div>
             <h2 className="font-black text-red-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🔴 Condición Actual</h2>
@@ -1099,33 +958,33 @@ export default function TaylorCurvePage() {
             <div className="grid grid-cols-2 gap-4 flex-grow">
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-red-800 mb-1 uppercase tracking-wider">Herramienta / Inserto Competencia</Label>
-                <Input type="text" placeholder="Ej: CNMG 120408" className="border-red-200 bg-white" value={toolNameCurrent} onChange={e => setToolNameCurrent(e.target.value)} />
+                <Input type="text" placeholder="Ej: CNMG 120408" className="border-red-200 bg-white text-slate-900" value={toolNameCurrent} onChange={e => setToolNameCurrent(e.target.value)} />
                 {operationType === 'milling' && warningFresaCurrent && (
                     <div className={`mt-2 p-2 text-xs font-medium rounded-r-lg ${warningFresaCurrent.includes('ERROR') ? 'bg-red-100 border-l-4 border-red-500 text-red-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}>
                         {warningFresaCurrent}
                     </div>
                 )}
               </div>
-              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-red-200 bg-white" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
-              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 4" className="border-red-200 bg-white" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value)} /></div>
+              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 4" className="border-red-200 bg-white text-slate-900" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value)} /></div>
               
               {operationType === 'milling' || operationType === 'drilling' ? (
-                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Diámetro Fresa (Dc) mm' : 'Diámetro Broca (Dc) mm'}</Label><Input type="number" className="border-red-200 bg-white" value={dcCurrent} onChange={e => setDcCurrent(e.target.value === '' ? '' : Number(e.target.value))} /></div>
+                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Diámetro Fresa (Dc) mm' : 'Diámetro Broca (Dc) mm'}</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={dcCurrent} onChange={e => setDcCurrent(e.target.value)} /></div>
               ) : null}
 
               {operationType === 'milling' ? (
                 <>
-                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Ancho Corte (ae) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white" value={aeCurrent} onChange={e => setAeCurrent(e.target.value === '' ? '' : Number(e.target.value))} /></div>
-                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white" value={apCurrent} onChange={e => setApCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
-                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-red-200 bg-white" value={zCurrent} onChange={e => setZCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Ancho Corte (ae) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={aeCurrent} onChange={e => setAeCurrent(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={zCurrent} onChange={e => setZCurrent(e.target.value)} /></div>
                 </>
               ) : operationType === 'turning' ? (
-                 <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white" value={apCurrent} onChange={e => setApCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+                 <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div>
               ) : null}
 
               <div>
                   <Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}</Label>
-                  <Input type="number" step="0.01" className="border-red-200 bg-white" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+                  <Input type="number" step="0.01" className="border-red-200 bg-white text-slate-900" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value)} />
                   {operationType === 'turning' && raActual && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
                           Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
@@ -1133,13 +992,13 @@ export default function TaylorCurvePage() {
                   )}
               </div>
               
-              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label><Input type="number" className="border-red-200 bg-white" value={vcCurrent} onChange={e => setVcCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={vcCurrent} onChange={e => setVcCurrent(e.target.value)} /></div>
               
               <div className="col-span-2 grid grid-cols-2 gap-2">
                 <div>
                   <Label className="block text-[10px] font-bold text-red-600 mb-1">Medir en</Label>
                   <Select value={lifeModeCurrent} onValueChange={(v: 'piezas'|'minutos') => setLifeModeCurrent(v)}>
-                    <SelectTrigger className="border-red-200 bg-white h-9 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="border-red-200 bg-white text-slate-900 h-9 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="piezas">{operationType === 'drilling' ? 'Agujeros' : 'Piezas'}</SelectItem>
                       <SelectItem value="minutos">Minutos</SelectItem>
@@ -1148,15 +1007,15 @@ export default function TaylorCurvePage() {
                 </div>
                 <div>
                   <Label className="block text-[10px] font-bold text-red-600 mb-1">Rendimiento</Label>
-                  <Input type="number" className="border-red-200 bg-white h-9" placeholder="Ej: 120" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value === "" ? "" : Number(e.target.value))} />
+                  <Input type="number" className="border-red-200 bg-white text-slate-900 h-9" placeholder="Ej: 120" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value)} />
                 </div>
               </div>
               
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-red-700 mb-1">Tiempo Actual (Corte)</Label>
                 <div className="flex gap-2">
-                  <div className="relative w-1/2"><Input type="number" className="pr-7 border-red-300 font-bold bg-white disabled:bg-slate-100" value={tcCurrentMin} onChange={e => setTcCurrentMin(e.target.value === "" ? "" : Number(e.target.value))} disabled={operationType === 'drilling'} /><span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">min</span></div>
-                  <div className="relative w-1/2"><Input type="number" className="pr-7 border-red-300 font-bold bg-white disabled:bg-slate-100" value={tcCurrentSec} onChange={e => setTcCurrentSec(e.target.value === "" ? "" : Number(e.target.value))} disabled={operationType === 'drilling'} /><span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">seg</span></div>
+                  <div className="relative w-1/2"><Input type="number" className="pr-7 border-red-300 font-bold bg-white text-slate-900 disabled:bg-slate-100" value={tcCurrentMin} onChange={e => setTcCurrentMin(e.target.value)} disabled={operationType === 'drilling'} /><span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">min</span></div>
+                  <div className="relative w-1/2"><Input type="number" className="pr-7 border-red-300 font-bold bg-white text-slate-900 disabled:bg-slate-100" value={tcCurrentSec} onChange={e => setTcCurrentSec(e.target.value)} disabled={operationType === 'drilling'} /><span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">seg</span></div>
                 </div>
               </div>
             </div>
@@ -1175,7 +1034,6 @@ export default function TaylorCurvePage() {
                 {chipbreakerAuditCurrent}
               </div>
             )}
-            {/* Progress Bar alineada al fondo */}
             <div className="mt-6 bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
               <div className="flex justify-between items-center mb-1">
                 <div className="flex items-center gap-2">
@@ -1193,7 +1051,6 @@ export default function TaylorCurvePage() {
             </div>
           </div>
 
-          {/* 3. PROPUESTA PREMIUM */}
           <div className="bg-green-50/30 p-5 rounded-xl border border-green-200 flex flex-col h-full relative overflow-hidden shadow-[0_0_15px_rgba(34,197,94,0.1)]">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-green-500"></div>
             <h2 className="font-black text-green-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🟢 Propuesta (Secocut)</h2>
@@ -1201,33 +1058,33 @@ export default function TaylorCurvePage() {
             <div className="grid grid-cols-2 gap-4 flex-grow">
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-green-800 mb-1 uppercase tracking-wider">Herramienta / Inserto Seco</Label>
-                <Input type="text" placeholder="Ej: CNMG 120408-M3W TP2501" className="border-green-300 bg-white shadow-inner font-bold text-green-900" value={toolNamePremium} onChange={e => setToolNamePremium(e.target.value)} />
+                <Input type="text" placeholder="Ej: CNMG 120408-M3W TP2501" className="border-green-300 bg-white text-slate-900 shadow-inner font-bold" value={toolNamePremium} onChange={e => setToolNamePremium(e.target.value)} />
                  {operationType === 'milling' && warningFresaPremium && (
                     <div className={`mt-2 p-2 text-xs font-medium rounded-r-lg ${warningFresaPremium.includes('ERROR') ? 'bg-red-100 border-l-4 border-red-500 text-red-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}>
                         {warningFresaPremium}
                     </div>
                 )}
               </div>
-              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-green-200 bg-white" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
-              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 8" className="border-green-200 bg-white" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value)} /></div>
+              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 8" className="border-green-200 bg-white text-slate-900" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value)} /></div>
               
               {operationType === 'milling' || operationType === 'drilling' ? (
-                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'milling' ? 'Diámetro Fresa (Dc) mm' : 'Diámetro Broca (Dc) mm'}</Label><Input type="number" className="border-green-200 bg-white" value={dcPremium} onChange={e => setDcPremium(e.target.value === '' ? '' : Number(e.target.value))} /></div>
+                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'milling' ? 'Diámetro Fresa (Dc) mm' : 'Diámetro Broca (Dc) mm'}</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={dcPremium} onChange={e => setDcPremium(e.target.value)} /></div>
               ) : null}
 
               {operationType === 'milling' ? (
                 <>
-                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Ancho Corte (ae) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white" value={aePremium} onChange={e => setAePremium(e.target.value === '' ? '' : Number(e.target.value))} /></div>
-                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white" value={apPremium} onChange={e => setApPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
-                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-green-200 bg-white" value={zPremium} onChange={e => setZPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Ancho Corte (ae) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white text-slate-900" value={aePremium} onChange={e => setAePremium(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white text-slate-900" value={apPremium} onChange={e => setApPremium(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={zPremium} onChange={e => setZPremium(e.target.value)} /></div>
                 </>
               ) : operationType === 'turning' ? (
-                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white" value={apPremium} onChange={e => setApPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white text-slate-900" value={apPremium} onChange={e => setApPremium(e.target.value)} /></div>
               ) : null }
 
               <div>
                   <Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}</Label>
-                  <Input type="number" step="0.01" className="border-green-200 bg-white" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} />
+                  <Input type="number" step="0.01" className="border-green-200 bg-white text-slate-900" value={feedPremium} onChange={e => setFeedPremium(e.target.value)} />
                   {operationType === 'turning' && raPropuesta && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
                           Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
@@ -1235,14 +1092,13 @@ export default function TaylorCurvePage() {
                   )}
               </div>
 
-              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Vc Propuesta</Label><Input type="number" className="border-green-200 bg-white" value={vcPremium} onChange={e => setVcPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
+              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Vc Propuesta</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={vcPremium} onChange={e => setVcPremium(e.target.value)} /></div>
               
-              {/* NUEVO: SELECTOR DE PIEZAS O MINUTOS PREMIUM */}
               <div className="col-span-2 grid grid-cols-2 gap-2">
                 <div>
                   <Label className="block text-[10px] font-bold text-green-700 mb-1">Medir en</Label>
                   <Select value={lifeModePremium} onValueChange={(v: 'piezas'|'minutos') => setLifeModePremium(v)}>
-                    <SelectTrigger className="border-green-200 bg-white h-9 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="border-green-200 bg-white text-slate-900 h-9 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="piezas">{operationType === 'drilling' ? 'Agujeros' : 'Piezas'}</SelectItem>
                       <SelectItem value="minutos">Minutos</SelectItem>
@@ -1251,7 +1107,7 @@ export default function TaylorCurvePage() {
                 </div>
                 <div>
                   <Label className="block text-[10px] font-bold text-green-700 mb-1">Rendimiento</Label>
-                  <Input type="number" className="border-green-200 bg-white h-9" placeholder="Ej: 120" value={pcsPremium} onChange={e => setPcsPremium(e.target.value === "" ? "" : Number(e.target.value))} />
+                  <Input type="number" className="border-green-200 bg-white text-slate-900 h-9" placeholder="Ej: 120" value={pcsPremium} onChange={e => setPcsPremium(e.target.value)} />
                 </div>
               </div>
               
@@ -1277,7 +1133,6 @@ export default function TaylorCurvePage() {
                 {chipbreakerAuditPremium}
               </div>
             )}
-            {/* Progress Bar */}
             <div className="mt-6 bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
               <div className="flex justify-between items-center mb-1">
                 <div className="flex items-center gap-2">
@@ -1337,7 +1192,6 @@ export default function TaylorCurvePage() {
           </div>
         </div>
 
-        {/* GRAFICO (Ancho Completo Abajo) */}
         <Card>
             <CardHeader>
                 <CardTitle>Curva de Costo vs. Velocidad</CardTitle>
@@ -1373,7 +1227,6 @@ export default function TaylorCurvePage() {
         </Card>
       </div>
 
-       {/* EL GRAN REMATE VISUAL - AHORRO MENSUAL */}
       <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl p-8 text-center shadow-2xl relative overflow-hidden mt-6">
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-black opacity-10 rounded-full blur-2xl"></div>
@@ -1398,7 +1251,6 @@ export default function TaylorCurvePage() {
         )}
       </div>
 
-      {/* BOTÓN FLOTANTE DEL COPILOTO */}
       <button
         onClick={() => setIsCopilotOpen(!isCopilotOpen)}
         className="fixed bottom-6 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 transition-transform z-50 border-2 border-slate-700"
@@ -1406,9 +1258,7 @@ export default function TaylorCurvePage() {
         <span className="text-2xl">🤖</span>
       </button>
 
-      {/* DRAWER DEL COPILOTO */}
       <div className={`fixed top-0 right-0 h-full w-[320px] bg-white border-l border-slate-200 shadow-2xl transform transition-transform duration-300 ease-in-out z-40 flex flex-col ${isCopilotOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        {/* Header Drawer */}
         <div className="h-16 border-b border-slate-200 flex items-center justify-between px-4 bg-slate-50">
           <div className="flex items-center gap-2">
             <span className="text-xl">🤖</span>
@@ -1419,7 +1269,6 @@ export default function TaylorCurvePage() {
           </button>
         </div>
 
-        {/* Zona de Mensajes */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
           {chatMessages.map((msg, idx) => (
             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -1437,7 +1286,6 @@ export default function TaylorCurvePage() {
           )}
         </div>
 
-        {/* Input Footer */}
         <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-slate-200">
           <div className="relative">
             <input
@@ -1455,14 +1303,11 @@ export default function TaylorCurvePage() {
         </form>
       </div>
 
-        {/* MODAL DE GUARDADO EN CRM */}
       {isSaveModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="bg-slate-50 border-b border-slate-200 p-4">
-              <h3 className="font-black text-slate-800 text-lg flex items-center gap-2">
-                💾 Guardar Simulación
-              </h3>
+              <h3 className="font-black text-slate-800 text-lg flex items-center gap-2">💾 Guardar Simulación</h3>
               <p className="text-xs text-slate-500 mt-1">Este análisis se guardará en la tabla de Historial.</p>
             </div>
             <div className="p-5 space-y-4">
@@ -1483,10 +1328,7 @@ export default function TaylorCurvePage() {
               </div>
             </div>
             <div className="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50">
-              <button 
-                onClick={() => setIsSaveModalOpen(false)} 
-                className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-md transition-colors"
-              >
+              <button onClick={() => setIsSaveModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-md transition-colors">
                 Cancelar
               </button>
               
@@ -1497,85 +1339,50 @@ export default function TaylorCurvePage() {
                     return;
                   }
 
-                  if (!user) {
-                      alert("Debes iniciar sesión para guardar este análisis.");
-                      return;
-                  }
+                  if (!user) { alert("Debes iniciar sesión para guardar este análisis."); return; }
                   
                   setIsSaving(true);
                   try {
-                    console.log("1. Iniciando proceso de guardado...");
                     let pdfDownloadUrl = "";
-
-                    // BLOQUE AISLADO PARA EL PDF (Si falla, no bloquea el guardado en BD)
                     try {
-                      console.log("2. Generando PDF...");
-                      const pdfBlob = await handleGeneratePDF('blob'); // Changed this
-                      
+                      const pdfBlob = await handleGeneratePDF('blob'); 
                       if (pdfBlob && storage) {
-                        console.log("3. Subiendo PDF a Storage...");
                         const safeFileName = (pieceName || 'Sin_Nombre').replace(/\s+/g, '_');
                         const fileName = `taylor_reports/Simulacion_${safeFileName}_${Date.now()}.pdf`;
                         const storageRef = ref(storage, fileName);
                         await uploadBytes(storageRef, pdfBlob);
                         pdfDownloadUrl = await getDownloadURL(storageRef);
                       }
-                    } catch (pdfError) {
-                      console.warn("⚠️ Advertencia: No se pudo generar o subir el PDF. Guardando solo los datos. Error:", pdfError);
-                    }
+                    } catch (pdfError) { console.warn("⚠️ No se pudo generar PDF. Guardando datos. Error:", pdfError); }
 
-                    console.log("4. Guardando en Firestore...");
-                    const payload = {
+                    const rawPayload = {
                       clientName: saveClientName,
                       caseName: saveCaseName || pieceName || 'Análisis sin nombre',
-                      status: 'pending', // <-- AHORA NACE COMO 'PENDING' PARA LA NUEVA TABLA
-                      annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12,
-                      pdfUrl: pdfDownloadUrl || "", // Puede estar vacío si el PDF falló
-                      dateCreated: serverTimestamp(),
+                      status: 'pending', 
+                      annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12, 
+                      pdfUrl: pdfDownloadUrl || "", 
                       userId: user.uid, 
                       taylorInputs: { 
-                        operationType,
-                        materialId,
-                        machineCostHr,
-                        toolChangeTime,
-                        pieceName,
-                        machinePowerHP,
-                        profundidadAgujero,
-                        monthlyProduction,
-                        // Current
-                        toolNameCurrent,
-                        toolCostCurrent,
-                        apCurrent,
-                        feedCurrent,
-                        vcCurrent,
-                        pcsCurrent,
-                        tcCurrentMin,
-                        tcCurrentSec,
-                        zCurrent,
-                        edgesCurrent,
-                        dcCurrent,
-                        aeCurrent,
-                        // Premium
-                        toolNamePremium,
-                        toolCostPremium,
-                        apPremium,
-                        feedPremium,
-                        vcPremium,
-                        pcsPremium,
-                        zPremium,
-                        edgesPremium,
-                        dcPremium,
-                        aePremium,
+                        operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, profundidadAgujero, monthlyProduction,
+                        toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrentMin, tcCurrentSec, zCurrent, edgesCurrent, dcCurrent, aeCurrent,
+                        toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, zPremium, edgesPremium, dcPremium, aePremium,
+                        lifeModeCurrent, lifeModePremium
                       }
                     };
 
-                    await addDoc(collection(db, "analisis_costos"), payload);
+                    const sanitizedString = JSON.stringify(rawPayload, (key, value) => {
+                      if (typeof value === 'number' && !isFinite(value)) return null;
+                      if (value === undefined) return null;
+                      return value;
+                    });
+                    const safePayload = JSON.parse(sanitizedString);
+                    safePayload.dateCreated = serverTimestamp();
+
+                    await addDoc(collection(db, "analisis_costos"), safePayload);
                     
-                    console.log("5. ¡Proceso completado con éxito!");
                     setIsSaveModalOpen(false);
                     alert("¡Análisis guardado exitosamente en el Historial!");
                   } catch (error) {
-                    console.error("Error CRÍTICO al guardar en BD:", error);
                     alert(`Fallo al guardar en la base de datos. El sistema dice: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
                   } finally {
                     setIsSaving(false);
@@ -1591,8 +1398,7 @@ export default function TaylorCurvePage() {
         </div>
       )}
 
-      {/* MODAL SIMULADOR TAYLOR */}
-        <Dialog open={isTaylorModalOpen} onOpenChange={(isOpen) => { setIsTaylorModalOpen(isOpen); if (!isOpen) setTargetSavings(''); }}>
+      <Dialog open={isTaylorModalOpen} onOpenChange={(isOpen) => { setIsTaylorModalOpen(isOpen); if (!isOpen) setTargetSavings(''); }}>
             <DialogContent className="max-w-3xl">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-xl">
@@ -1607,10 +1413,7 @@ export default function TaylorCurvePage() {
                 <div className="py-4 space-y-2">
                     <Label htmlFor="target-savings" className="font-bold">🎯 Ahorro Objetivo (%)</Label>
                     <Input
-                        id="target-savings"
-                        type="number"
-                        placeholder="Ej: 15"
-                        value={targetSavings}
+                        id="target-savings" type="number" placeholder="Ej: 15" value={targetSavings}
                         onChange={(e) => setTargetSavings(e.target.value === '' ? '' : Number(e.target.value))}
                         className="w-full md:w-1/2 border-purple-300 focus-visible:ring-purple-500"
                     />
@@ -1618,36 +1421,22 @@ export default function TaylorCurvePage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                    {/* Controles */}
                     <div className="space-y-6">
                         <div>
                             <Label className="font-bold">Velocidad de Corte (Vc)</Label>
                             <div className="flex items-center gap-4">
-                                <Slider
-                                    min={taylorBase.vc * 0.7}
-                                    max={taylorBase.vc * 1.5}
-                                    step={1}
-                                    value={[simulatedVc]}
-                                    onValueChange={(val) => setSimulatedVc(val[0])}
-                                />
+                                <Slider min={taylorBase.vc * 0.7} max={taylorBase.vc * 1.5} step={1} value={[simulatedVc]} onValueChange={(val) => setSimulatedVc(val[0])} />
                                 <span className="font-bold text-blue-600 w-24 text-center border rounded-md p-2">{simulatedVc.toFixed(0)} m/min</span>
                             </div>
                         </div>
                         <div>
                             <Label className="font-bold">Avance (f)</Label>
                              <div className="flex items-center gap-4">
-                                <Slider
-                                    min={taylorBase.feed * 0.7}
-                                    max={taylorBase.feed * 1.5}
-                                    step={0.01}
-                                    value={[simulatedFeed]}
-                                    onValueChange={(val) => setSimulatedFeed(val[0])}
-                                />
+                                <Slider min={taylorBase.feed * 0.7} max={taylorBase.feed * 1.5} step={0.01} value={[simulatedFeed]} onValueChange={(val) => setSimulatedFeed(val[0])} />
                                 <span className="font-bold text-blue-600 w-24 text-center border rounded-md p-2">{simulatedFeed.toFixed(2)} mm/rev</span>
                             </div>
                         </div>
                     </div>
-                    {/* Resultados */}
                     <div className="space-y-4 bg-slate-50 p-4 rounded-lg border">
                         <div className="text-center p-3 border rounded-lg bg-white">
                             <p className="text-xs font-bold text-slate-500 uppercase">⏱️ Nuevo Tiempo de Ciclo</p>
@@ -1702,12 +1491,9 @@ export default function TaylorCurvePage() {
             </DialogContent>
         </Dialog>
 
-
-        {/* PLANTILLA OCULTA PARA PDF (Renderizada fuera de pantalla para html2canvas) */}
         <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', zIndex: -1 }}>
           <div id="pdf-pagina-1" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
             
-            {/* HEADER DEL PDF CON LOGOS UNIFICADO */}
             <div className="relative mb-8 pb-4 border-b-2 border-slate-800">
               <div className="flex justify-between items-start mb-8 h-16">
                 {logos.company ? (
@@ -1781,7 +1567,7 @@ export default function TaylorCurvePage() {
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Tiempo de Corte (min)</td>
                     <td className="p-2 border border-slate-300 text-center">{`${tcCurrentMin || 0}m ${tcCurrentSec || 0}s`}</td>
-                    <td className="p-2 border border-slate-300 text-center">{`${premiumMins}m ${premiumSecs}s`}</td>
+                    <td className="p-2 border border-slate-300 text-center">{`${Math.floor(curveDataInfo.tcPremium)}m ${Math.round((curveDataInfo.tcPremium - Math.floor(curveDataInfo.tcPremium))*60)}s`}</td>
                   </tr>
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Velocidad de Corte (Vc)</td>
@@ -1832,11 +1618,6 @@ export default function TaylorCurvePage() {
                               <span className="font-black text-green-800 text-lg">
                                 {formatCurrency(curveDataInfo.actualCostPremium)}
                               </span>
-                              {curveDataInfo.realSavingsPercentage > 0.1 && (
-                                  <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded-full">
-                                      ↓ {porcentajeAhorro}%
-                                  </span>
-                              )}
                           </div>
                       ) : (
                           'N/A'
@@ -1963,4 +1744,3 @@ export default function TaylorCurvePage() {
     </>
   );
 }
-```
