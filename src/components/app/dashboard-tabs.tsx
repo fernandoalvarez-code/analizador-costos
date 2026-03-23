@@ -1,5 +1,4 @@
-
-'use client';
+"use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
@@ -338,8 +337,8 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     const diasLaboralesAhorradosAnual = machineHoursFreedAnnual / 8; 
     const semanasLaboralesAhorradasAnual = diasLaboralesAhorradosAnual / 5;
 
-    const insertosNecesariosA = piezasTotalVidaA > 0 ? (piezasAlMes / piezasTotalVidaA) * (safeNumber(data.insertosPorHerramientaA) || 1) : 0; 
-    const insertosNecesariosB = piezasTotalVidaB > 0 ? (piezasAlMes / piezasTotalVidaB) * (safeNumber(data.insertosPorHerramientaB) || 1) : 0; 
+    const insertosNecesariosA = piezasTotalVidaA > 0 ? Math.ceil(piezasAlMes / piezasTotalVidaA) * (safeNumber(data.insertosPorHerramientaA) || 1) : 0;
+    const insertosNecesariosB = piezasTotalVidaB > 0 ? Math.ceil(piezasAlMes / piezasTotalVidaB) * (safeNumber(data.insertosPorHerramientaB) || 1) : 0;
     
     const costoTotalInsertosA = insertosNecesariosA * safeNumber(data.precioA); 
     const costoTotalInsertosB = insertosNecesariosB * safeNumber(data.precioB);
@@ -401,16 +400,23 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
           return await getDownloadURL(snapshot.ref);
         });
         const newUrls = await Promise.all(promises);
-        finalImageUrls = [...finalImageUrls, ...newUrls];
+        finalImageUrls = [...finalImageUrls, ...newUrls].filter(url => url); 
       }
+      
+      const safeDescriptions = (imageDescriptions || []).map(desc => desc || "");
 
-      const historyEntry = { modifiedBy: user.uid, lastModifiedByEmail: user.email, modifiedAt: new Date(), snapshot: cleanForFirestore(formValues) };
+      const historyEntry = { 
+        modifiedBy: user.uid, 
+        lastModifiedByEmail: user.email, 
+        modifiedAt: new Date().toISOString(), 
+        snapshot: formValues 
+      };
       
       const rawData = {
         ...formValues,
         results: detailedResult,
         imageUrls: finalImageUrls, 
-        imageDescriptions: imageDescriptions,
+        imageDescriptions: safeDescriptions,
         userId: isExistingCase ? initialData.userId : user.uid,
         name: caseName,
         annualSavings: detailedResult.ahorroAnual || 0,
@@ -418,8 +424,8 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
         status: formValues.status || "Pendiente",
         history: [...(initialData?.history || []), historyEntry]
       };
-
-      const cleanData = cleanForFirestore(rawData);
+      
+      const cleanData = JSON.parse(JSON.stringify(rawData));
 
       const finalData = {
         ...cleanData,
@@ -844,7 +850,3 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     </>
   );
 }
-
-    
-
-    
