@@ -193,37 +193,37 @@ export default function EditTaylorCurvePage() {
   const [logos, setLogos] = useState({ company: '', brand: '' });
   const [operationType, setOperationType] = useState<'turning' | 'milling' | 'drilling'>('turning');
   const [materialId, setMaterialId] = useState('Acero Medio Carbono (Ej: 1045, 4140)');
-  const [machineCostHr, setMachineCostHr] = useState<number | "">("");
-  const [toolChangeTime, setToolChangeTime] = useState<number | "">("");
+  const [machineCostHr, setMachineCostHr] = useState<string | number>("");
+  const [toolChangeTime, setToolChangeTime] = useState<string | number>("");
   const [pieceName, setPieceName] = useState<string>("");
-  const [machinePowerHP, setMachinePowerHP] = useState<number | "">(15);
-  const [profundidadAgujero, setProfundidadAgujero] = useState<number | "">("");
+  const [machinePowerHP, setMachinePowerHP] = useState<string | number>(15);
+  const [profundidadAgujero, setProfundidadAgujero] = useState<string | number>("");
   
   const [toolNameCurrent, setToolNameCurrent] = useState<string>("");
-  const [toolCostCurrent, setToolCostCurrent] = useState<number | "">("");
-  const [apCurrent, setApCurrent] = useState<number | "">("");
-  const [feedCurrent, setFeedCurrent] = useState<number | "">("");
-  const [vcCurrent, setVcCurrent] = useState<number | "">("");
-  const [pcsCurrent, setPcsCurrent] = useState<number | "">("");
-  const [tcCurrentMin, setTcCurrentMin] = useState<number | "">("");
-  const [tcCurrentSec, setTcCurrentSec] = useState<number | "">("");
-  const [zCurrent, setZCurrent] = useState<number | "">("");
-  const [edgesCurrent, setEdgesCurrent] = useState<number | "">("");
-  const [dcCurrent, setDcCurrent] = useState<number | "">("");
-  const [aeCurrent, setAeCurrent] = useState<number | "">("");
+  const [toolCostCurrent, setToolCostCurrent] = useState<string | number>("");
+  const [apCurrent, setApCurrent] = useState<string | number>("");
+  const [feedCurrent, setFeedCurrent] = useState<string | number>("");
+  const [vcCurrent, setVcCurrent] = useState<string | number>("");
+  const [pcsCurrent, setPcsCurrent] = useState<string | number>("");
+  const [tcCurrent, setTcCurrent] = useState<string | number>("");
+  const [zCurrent, setZCurrent] = useState<string | number>("");
+  const [edgesCurrent, setEdgesCurrent] = useState<string | number>("");
+  const [dcCurrent, setDcCurrent] = useState<string | number>("");
+  const [aeCurrent, setAeCurrent] = useState<string | number>("");
   
   const [toolNamePremium, setToolNamePremium] = useState<string>("");
-  const [toolCostPremium, setToolCostPremium] = useState<number | "">("");
-  const [apPremium, setApPremium] = useState<number | "">("");
-  const [feedPremium, setFeedPremium] = useState<number | "">("");
-  const [vcPremium, setVcPremium] = useState<number | "">("");
-  const [pcsPremium, setPcsPremium] = useState<number | "">("");
-  const [zPremium, setZPremium] = useState<number | "">("");
-  const [edgesPremium, setEdgesPremium] = useState<number | "">("");
-  const [dcPremium, setDcPremium] = useState<number | "">("");
-  const [aePremium, setAePremium] = useState<number | "">("");
+  const [toolCostPremium, setToolCostPremium] = useState<string | number>("");
+  const [apPremium, setApPremium] = useState<string | number>("");
+  const [feedPremium, setFeedPremium] = useState<string | number>("");
+  const [vcPremium, setVcPremium] = useState<string | number>("");
+  const [pcsPremium, setPcsPremium] = useState<string | number>("");
+  const [tcPremiumInput, setTcPremiumInput] = useState<string | number>("");
+  const [zPremium, setZPremium] = useState<string | number>("");
+  const [edgesPremium, setEdgesPremium] = useState<string | number>("");
+  const [dcPremium, setDcPremium] = useState<string | number>("");
+  const [aePremium, setAePremium] = useState<string | number>("");
 
-  const [monthlyProduction, setMonthlyProduction] = useState<number | "">("");
+  const [monthlyProduction, setMonthlyProduction] = useState<string | number>("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [saveCaseName, setSaveCaseName] = useState("");
@@ -243,7 +243,45 @@ export default function EditTaylorCurvePage() {
   const [simulatedFeed, setSimulatedFeed] = useState(0);
   const [simulationResult, setSimulationResult] = useState<{ newPcs: number, newTime: number, newCost: number, newRa: string | null } | null>(null);
   const [taylorBaseCost, setTaylorBaseCost] = useState(0);
-  const [targetSavings, setTargetSavings] = useState<number | ''>('');
+  const [targetSavings, setTargetSavings] = useState<string | number>('');
+  const [lifeModeCurrent, setLifeModeCurrent] = useState<'piezas' | 'minutos'>('piezas');
+  const [lifeModePremium, setLifeModePremium] = useState<'piezas' | 'minutos'>('piezas');
+
+    // --- Efecto Inteligente para Autocalcular Tiempo Propuesto ---
+    useEffect(() => {
+    // 1. Extraer los valores numéricos seguros de la caja Roja (Base de cálculo)
+    const baseTc = Number(tcCurrent);
+    const baseVc = Number(vcCurrent);
+    const baseFeed = Number(feedCurrent);
+    const baseAp = Number(apCurrent);
+
+    // 2. Extraer los valores numéricos seguros de la caja Verde (Propuesta)
+    const premVc = Number(vcPremium);
+    const premFeed = Number(feedPremium);
+    const premAp = Number(apPremium);
+
+    // 3. Solo operamos si el usuario ya llenó el Tiempo Base (Caja Roja) 
+    // y si los parámetros de la caja verde son mayores a cero para evitar dividir por cero.
+    if (baseTc > 0 && premVc > 0 && premFeed > 0 && premAp > 0) {
+      
+      // Protegemos contra divisiones por cero en la base
+      const safeBaseVc = baseVc > 0 ? baseVc : premVc;
+      const safeBaseFeed = baseFeed > 0 ? baseFeed : premFeed;
+      const safeBaseAp = baseAp > 0 ? baseAp : premAp;
+
+      // 4. Fórmula Universal de Mecanizado: 
+      // El tiempo es inversamente proporcional a la Velocidad, Avance y Profundidad.
+      const nuevoTiempoPremium = baseTc * (safeBaseVc / premVc) * (safeBaseFeed / premFeed) * (safeBaseAp / premAp);
+
+      // 5. Actualizamos automáticamente el campo verde "Tiempo Propuesto"
+      // Solo actualizamos si el nuevo tiempo es razonable y diferente al actual para evitar loops
+      if (isFinite(nuevoTiempoPremium) && nuevoTiempoPremium > 0) {
+          // Formateamos a 2 decimales para que se vea limpio en el input
+          setTcPremiumInput(nuevoTiempoPremium.toFixed(2));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tcCurrent, vcCurrent, feedCurrent, apCurrent, vcPremium, feedPremium, apPremium]);
 
     // --- Efecto para auto-calcular tiempo de corte en Taladrado ---
     useEffect(() => {
@@ -259,15 +297,7 @@ export default function EditTaylorCurvePage() {
         const tiempoMinutosDecimal = l / vf;
 
         if (isFinite(tiempoMinutosDecimal)) {
-          const min = Math.floor(tiempoMinutosDecimal);
-          let seg = Math.round((tiempoMinutosDecimal - min) * 60);
-          if (seg === 60) {
-            setTcCurrentMin(min + 1);
-            setTcCurrentSec(0);
-          } else {
-            setTcCurrentMin(min);
-            setTcCurrentSec(seg);
-          }
+          setTcCurrent(tiempoMinutosDecimal.toFixed(4));
         }
       }
     }
@@ -292,8 +322,7 @@ export default function EditTaylorCurvePage() {
         setFeedCurrent(inputs.feedCurrent || "");
         setVcCurrent(inputs.vcCurrent || "");
         setPcsCurrent(inputs.pcsCurrent || "");
-        setTcCurrentMin(inputs.tcCurrentMin || "");
-        setTcCurrentSec(inputs.tcCurrentSec || "");
+        setTcCurrent(inputs.tcCurrent || "");
         setZCurrent(inputs.zCurrent || "");
         setEdgesCurrent(inputs.edgesCurrent || "");
         setDcCurrent(inputs.dcCurrent || "");
@@ -305,10 +334,13 @@ export default function EditTaylorCurvePage() {
         setFeedPremium(inputs.feedPremium || "");
         setVcPremium(inputs.vcPremium || "");
         setPcsPremium(inputs.pcsPremium || "");
+        setTcPremiumInput(inputs.tcPremiumInput || "");
         setZPremium(inputs.zPremium || "");
         setEdgesPremium(inputs.edgesPremium || "");
         setDcPremium(inputs.dcPremium || "");
         setAePremium(inputs.aePremium || "");
+        setLifeModeCurrent(inputs.lifeModeCurrent || 'piezas');
+        setLifeModePremium(inputs.lifeModePremium || 'piezas');
       }
       setSaveClientName(initialData.clientName || "");
       setSaveCaseName(initialData.caseName || "");
@@ -441,167 +473,225 @@ export default function EditTaylorCurvePage() {
     const safeToolCostCurrent = Number(toolCostCurrent) || 0;
     const safeToolCostPremium = Number(toolCostPremium) || 0;
     const safeToolChangeTime = Number(toolChangeTime) || 0;
-    const safeTcCurrent = (Number(tcCurrentMin) || 0) + ((Number(tcCurrentSec) || 0) / 60);
+    const safeTcCurrent = Number(tcCurrent) || 0;
+    const safeTcPremium = Number(tcPremiumInput) || 0;
     const safeVcCurrent = Number(vcCurrent) || 0.0001;
+    const vcPropuesta = Number(vcPremium) || 0.0001;
     const mat = MATERIALS.find(m => m.nombre === materialId) || MATERIALS[1];
     const taylorProps = TAYLOR_CONSTANTS[mat.grupo as keyof typeof TAYLOR_CONSTANTS] || { n: 0.25, C: 250 };
-    const premiumC = taylorProps.C * 1.25;
+    
+    const n = taylorProps.n;
+
+    const vidaMinutosCompetidor = lifeModeCurrent === 'minutos' ? 
+        (Number(pcsCurrent) || 1) : 
+        ((Number(pcsCurrent) || 1) * safeTcCurrent);
+        
+    const constante_C_Competidor = safeVcCurrent > 0 && vidaMinutosCompetidor > 0 ? 
+        safeVcCurrent * Math.pow(vidaMinutosCompetidor, n) : 0;
+        
+    const vidaMinutosSeco = lifeModePremium === 'minutos' ? 
+        (Number(pcsPremium) || 1) : 
+        ((Number(pcsPremium) || 1) * safeTcPremium);
+        
+    const constante_C_Seco = vcPropuesta > 0 && vidaMinutosSeco > 0 ? 
+        vcPropuesta * Math.pow(vidaMinutosSeco, n) : 0;
+    
     const kc = mat.kc || 1500;
     const safeMachinePowerHP = Number(machinePowerHP) || 15;
-    let tcPremium = 0, hpCurrent = 0, hpPremium = 0;
+    let hpCurrent = 0, hpPremium = 0;
     const safeMonthlyProduction = Number(monthlyProduction) || 0;
     const safeEdgesCurrent = Number(edgesCurrent) || 1;
     const safeEdgesPremium = Number(edgesPremium) || 1;
-    
+
     if (operationType === 'turning') {
         const safeFeedCurrent = Number(feedCurrent) || 0.0001, safeApCurrent = Number(apCurrent) || 0.0001;
-        const safeVcPremium = Number(vcPremium) || 0.0001, safeFeedPremium = Number(feedPremium) || 0.0001, safeApPremium = Number(apPremium) || 0.0001;
-        tcPremium = safeTcCurrent * (safeVcCurrent / safeVcPremium) * (safeFeedCurrent / safeFeedPremium) * (safeApCurrent / safeApPremium);
         const kwCurrent_base = (safeApCurrent * safeFeedCurrent * safeVcCurrent * kc) / 60000;
         hpCurrent = kwCurrent_base * 1.341 * obtenerFactorForma(toolNameCurrent) * obtenerFactorIncidencia(toolNameCurrent);
-        const kwPremium_base = (safeApPremium * safeFeedPremium * safeVcPremium * kc) / 60000;
+        const kwPremium_base = (Number(apPremium) * Number(feedPremium) * vcPropuesta * kc) / 60000;
         hpPremium = kwPremium_base * 1.341 * obtenerFactorForma(toolNamePremium) * obtenerFactorIncidencia(toolNamePremium);
     } else if (operationType === 'milling') {
         const safeDcCurrent = Number(dcCurrent) || 0.0001, safeFzCurrent = Number(feedCurrent) || 0, safeZCurrentMilling = Number(zCurrent) || 1, safeApCurrent = Number(apCurrent) || 0, safeAeCurrent = Number(aeCurrent) || 0;
-        const safeVcPremium = Number(vcPremium) || 0.0001, safeDcPremium = Number(dcPremium) || 0.0001, safeFzPremium = Number(feedCurrent) || 0, safeZPremiumMilling = Number(zPremium) || 1, safeApPremium = Number(apPremium) || 0, safeAePremium = Number(aePremium) || 0;
+        const safeDcPremium = Number(dcPremium) || 0.0001, safeFzPremium = Number(feedPremium) || 0, safeZPremiumMilling = Number(zPremium) || 1, safeApPremium = Number(apPremium) || 0, safeAePremium = Number(aePremium) || 0;
         const rpmCurrent = (safeVcCurrent * 1000) / (Math.PI * safeDcCurrent), vfCurrent = safeFzCurrent * safeZCurrentMilling * rpmCurrent;
-        const rpmPremium = (safeVcPremium * 1000) / (Math.PI * safeDcPremium), vfPremium = safeFzPremium * safeZPremiumMilling * rpmPremium;
-        tcPremium = vfPremium > 0 ? safeTcCurrent * (vfCurrent / vfPremium) : safeTcCurrent;
+        const rpmPremium = (vcPropuesta * 1000) / (Math.PI * safeDcPremium), vfPremium = safeFzPremium * safeZPremiumMilling * rpmPremium;
         const qCurrent = (safeApCurrent * safeAeCurrent * vfCurrent) / 1000, kwCurrent = (qCurrent * kc) / 60000;
         hpCurrent = (kwCurrent * 1.341) / 0.8;
         const qPremium = (safeApPremium * safeAePremium * vfPremium) / 1000, kwPremium = (qPremium * kc) / 60000;
         hpPremium = (kwPremium * 1.341) / 0.8;
     } else if (operationType === 'drilling') {
         const safeDcCurrent = Number(dcCurrent) || 0.0001, safeFnCurrent = Number(feedCurrent) || 0;
-        const safeVcPremium = Number(vcPremium) || 0.0001, safeDcPremium = Number(dcPremium) || 0.0001, safeFnPremium = Number(feedPremium) || 0;
+        const safeDcPremium = Number(dcPremium) || 0.0001, safeFnPremium = Number(feedPremium) || 0;
         const rpmCurrent = (safeVcCurrent * 1000) / (Math.PI * safeDcCurrent), vfCurrent = safeFnCurrent * rpmCurrent;
-        const rpmPremium = (safeVcPremium * 1000) / (Math.PI * safeDcPremium), vfPremium = safeFnPremium * rpmPremium;
-        tcPremium = vfPremium > 0 ? safeTcCurrent * (vfCurrent / vfPremium) : safeTcCurrent;
+        const rpmPremium = (vcPropuesta * 1000) / (Math.PI * safeDcPremium), vfPremium = safeFnPremium * rpmPremium;
         const qCurrent = (Math.PI * Math.pow(safeDcCurrent, 2) / 4) * vfCurrent / 1000, kwCurrent = (qCurrent * kc) / 60000;
         hpCurrent = (kwCurrent * 1.341) / 0.8;
         const qPremium = (Math.PI * Math.pow(safeDcPremium, 2) / 4) * vfPremium / 1000, kwPremium = (qPremium * kc) / 60000;
         hpPremium = (kwPremium * 1.341) / 0.8;
     }
     const loadCurrent = (hpCurrent / safeMachinePowerHP) * 100, loadPremium = (hpPremium / safeMachinePowerHP) * 100;
-    let effectivePcsCurrent = Number(pcsCurrent) || 1, effectivePcsPremium = Number(pcsPremium) || 1;
-    if (operationType === 'milling') {
-        effectivePcsCurrent = safeTcCurrent > 0 ? (Number(pcsCurrent) || 0) / safeTcCurrent : 0;
-        effectivePcsPremium = tcPremium > 0 ? (Number(pcsPremium) || 0) / tcPremium : 0;
-    }
-    if (effectivePcsCurrent <= 0) effectivePcsCurrent = 1; if (effectivePcsPremium <= 0) effectivePcsPremium = 1;
-
+    
+    let effectivePcsCurrent = lifeModeCurrent === 'piezas' ? (Number(pcsCurrent) || 1) : (safeTcCurrent > 0 ? (Number(pcsCurrent) || 0) / safeTcCurrent : 0);
+    let effectivePcsPremium = lifeModePremium === 'piezas' ? (Number(pcsPremium) || 1) : (safeTcPremium > 0 ? (Number(pcsPremium) || 0) / safeTcPremium : 0);
+    if (effectivePcsCurrent <= 0) effectivePcsCurrent = 1; 
+    if (effectivePcsPremium <= 0) effectivePcsPremium = 1;
+    
     const calcCostWithBreakdown = (v: number, isPremium: boolean, feed: number) => {
-        const C = isPremium ? premiumC : taylorProps.C;
+        const C = isPremium ? constante_C_Seco : constante_C_Competidor;
+        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0, lifePcs: 0 };
+    
         const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
         const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
         const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
-        const ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
-
-        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0, insertsToBuy: 0 };
-
-        const tc = (safeTcCurrent * (safeVcCurrent / v) * ((Number(feedCurrent) || 0.0001) / feed) * ((Number(apCurrent) || 0.0001) / ap));
-        const lifeMins = Math.pow((C / v), (1 / taylorProps.n));
         
-        const piecesPerToolLife = lifeMins > 0 ? lifeMins / tc : 0;
-
-        const insertsToBuy = (piecesPerToolLife > 0 && edges > 0) 
-            ? Math.ceil((safeMonthlyProduction / piecesPerToolLife) * (z / edges)) 
-            : 0;
-
+        const baseTime = isPremium ? safeTcPremium : safeTcCurrent;
+        const baseVc = isPremium ? vcPropuesta : safeVcCurrent;
+        const tc = baseTime * (baseVc / v);
+        
+        const lifeMins = Math.pow((C / v), (1 / n));
+        
         const costoMaquina = safeMachineCostMin * tc;
-        
+        const piecesPerToolLife = lifeMins > 0 ? lifeMins / tc : 0;
         const costPerEdge = edges > 0 ? toolPrice / edges : 0;
 
-        const penalidadCambio = (costPerEdge * z) + (safeToolChangeTime * safeMachineCostMin);
         const costoInsertoPuro = piecesPerToolLife > 0 ? (costPerEdge * z) / piecesPerToolLife : 0;
         const costoParada = piecesPerToolLife > 0 ? (safeToolChangeTime * safeMachineCostMin) / piecesPerToolLife : 0;
         
         const costoTotal = costoMaquina + costoInsertoPuro + costoParada;
-        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada, insertsToBuy };
+        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada, lifePcs: piecesPerToolLife };
     };
 
     const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
-      const costCorte = safeMachineCostMin * tc;
-      
-      const costPerEdge = edges > 0 ? toolPrice / edges : 0;
-      const toolChangePenalty = (costPerEdge * z) + (safeToolChangeTime * safeMachineCostMin);
-      const costoHerr = pcsPerEdge > 0 ? toolChangePenalty / pcsPerEdge : 0;
-
-      return costCorte + costoHerr;
+        const costCorte = safeMachineCostMin * tc;
+        const costPerEdge = edges > 0 ? toolPrice / edges : 0;
+        const toolChangePenalty = (costPerEdge * z) + (safeToolChangeTime * safeMachineCostMin);
+        const costoHerr = pcsPerEdge > 0 ? toolChangePenalty / pcsPerEdge : 0;
+        return costCorte + costoHerr;
     };
 
     const speedsSet = new Set<number>();
-    for (let v = 50; v <= taylorProps.C * 1.3; v += 10) speedsSet.add(v);
+    const C_for_range = taylorProps.C;
+    for (let v = 50; v <= C_for_range * 1.5; v += 10) { speedsSet.add(v); }
     if (Number(vcCurrent) > 0) speedsSet.add(Number(vcCurrent)); if (Number(vcPremium) > 0) speedsSet.add(Number(vcPremium));
     const sortedSpeeds = Array.from(speedsSet).sort((a, b) => a - b);
+    
+    let minPremiumCost = Infinity;
+    let optimalSpeed = 0;
+
     const data = sortedSpeeds.map(v => {
         const resActual = calcCostWithBreakdown(v, false, Number(feedCurrent) || 0.0001);
         const resPremium = calcCostWithBreakdown(v, true, Number(feedPremium) || 0.0001);
-        return {
-            speed: v,
-            costoActual: resActual.costoTotal,
-            costoPremium: resPremium.costoTotal,
-            desgloseActual: {
-                maquina: resActual.costoMaquina,
-                inserto: resActual.costoInsertoPuro,
-                parada: resActual.costoParada,
-                insertsToBuy: resActual.insertsToBuy
-            },
-            desglosePremium: {
-                maquina: resPremium.costoMaquina,
-                inserto: resPremium.costoInsertoPuro,
-                parada: resPremium.costoParada,
-                insertsToBuy: resPremium.insertsToBuy
-            }
+        if (resPremium.costoTotal < minPremiumCost && resPremium.costoTotal > 0) { minPremiumCost = resPremium.costoTotal; optimalSpeed = v; }
+        
+        const multZ_Act = operationType === 'milling' ? (Number(zCurrent)||1) : 1;
+        const multZ_Prem = operationType === 'milling' ? (Number(zPremium)||1) : 1;
+        
+        const insertosAct = resActual.lifePcs > 0 ? Math.ceil(safeMonthlyProduction / (resActual.lifePcs * safeEdgesCurrent)) * multZ_Act : 0;
+        const insertosPrem = resPremium.lifePcs > 0 ? Math.ceil(safeMonthlyProduction / (resPremium.lifePcs * safeEdgesPremium)) * multZ_Prem : 0;
+
+        return { 
+          speed: v,
+          costoActual: resActual.costoTotal,
+          costoPremium: resPremium.costoTotal,
+          desgloseActual: {
+            maquina: resActual.costoMaquina,
+            inserto: resActual.costoInsertoPuro,
+            parada: resActual.costoParada,
+            lote: insertosAct
+          },
+          desglosePremium: {
+            maquina: resPremium.costoMaquina,
+            inserto: resPremium.costoInsertoPuro,
+            parada: resPremium.costoParada,
+            lote: insertosPrem
+          }
         };
     });
+    
     const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, effectivePcsCurrent, (Number(zCurrent) || 1), safeEdgesCurrent);
-    const actualCostPremium = calcEmpiricalCost(tcPremium, safeToolCostPremium, effectivePcsPremium, (Number(zPremium) || 1), safeEdgesPremium);
+    const actualCostPremium = calcEmpiricalCost(safeTcPremium, safeToolCostPremium, effectivePcsPremium, (Number(zPremium) || 1), safeEdgesPremium);
+    
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
     const realSavingsPercentage = actualCostCurrent > 0 ? (realAbsoluteSavings / actualCostCurrent) * 100 : 0;
     const monthlySavings = isFinite(realAbsoluteSavings) ? realAbsoluteSavings * safeMonthlyProduction : 0;
-    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium };
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrentMin, tcCurrentSec, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero]);
+
+    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, tcPremiumInput, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium]);
 
   useEffect(() => {
-    if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) { setSimulationResult(null); return; }
-    const safeMachineCostMin = (Number(machineCostHr) || 0) / 60, safeToolCostPremium = Number(toolCostPremium) || 0, safeToolChangeTime = Number(toolChangeTime) || 0, safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1), safeEdgesPremium = Number(edgesPremium) || 1;
+    if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
+        setSimulationResult(null);
+        return;
+    }
+
+    const safeMachineCostMin = (Number(machineCostHr) || 0) / 60;
+    const safeToolCostPremium = Number(toolCostPremium) || 0;
+    const safeToolChangeTime = Number(toolChangeTime) || 0;
+    const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1);
+    const safeEdgesPremium = Number(edgesPremium) || 1;
     const factorVelocidad = Math.pow((taylorBase.vc / simulatedVc), 3.0), factorAvance = Math.pow((taylorBase.feed / simulatedFeed), 1.5);
+    
     const nuevasPzas = Math.round(taylorBase.pcs * factorVelocidad * factorAvance);
     const nuevoTiempoMin = taylorBase.time * (taylorBase.vc / simulatedVc) * (taylorBase.feed / simulatedFeed);
+    
     const costCorte = safeMachineCostMin * nuevoTiempoMin;
-    const costPerPunta = nuevasPzas > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
+    const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
     const costJuego = costPerPunta * safeZPremium;
-    const penalidadCambio = costJuego + (safeToolChangeTime * safeMachineCostMin);
-    const costHerr = nuevasPzas > 0 ? penalidadCambio / nuevasPzas : 0;
-    const nuevoCosto = costCorte + costHerr;
+    
+    const penalidadCambio = costJuego + (safeMachineCostMin * safeToolChangeTime);
+    
+    let costoHerr = 0;
+    if (lifeModePremium === 'minutos') {
+        const piecesPerToolLife = nuevasPzas > 0 ? nuevasPzas / nuevoTiempoMin : 0;
+        costoHerr = piecesPerToolLife > 0 ? penalidadCambio / piecesPerToolLife : 0;
+    } else {
+        costoHerr = nuevasPzas > 0 ? penalidadCambio / nuevasPzas : 0;
+    }
+
+    const nuevoCosto = costCorte + costoHerr;
     const nuevoRa = calcularRaTeorico(simulatedFeed, toolNamePremium);
     setSimulationResult({ newPcs: nuevasPzas, newTime: nuevoTiempoMin, newCost: nuevoCosto, newRa: nuevoRa });
-  }, [simulatedVc, simulatedFeed, taylorBase, isTaylorModalOpen, machineCostHr, toolCostPremium, toolChangeTime, operationType, zPremium, edgesPremium, toolNamePremium]);
+  }, [simulatedVc, simulatedFeed, taylorBase, isTaylorModalOpen, machineCostHr, toolCostPremium, toolChangeTime, operationType, zPremium, edgesPremium, toolNamePremium, lifeModePremium]);
 
   useEffect(() => {
     const percentage = Number(targetSavings);
     if (!percentage || percentage <= 0 || !isTaylorModalOpen || taylorBaseCost <= 0) return;
+
     const autoCalcularPorObjetivo = () => {
       const costoObjetivo = taylorBaseCost * (1 - (percentage / 100));
       let vcSimulada = taylorBase.vc, costoIterativo = taylorBaseCost;
       const limiteSeguridadVc = taylorBase.vc * 2;
       const safeMachineCostMin = (Number(machineCostHr) || 0) / 60, safeToolCostPremium = Number(toolCostPremium) || 0, safeToolChangeTime = Number(toolChangeTime) || 0, safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1), safeEdgesPremium = Number(edgesPremium) || 1;
       const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0, costJuego = costPerPunta * safeZPremium;
-      const penalidadCambio = costJuego + (safeToolChangeTime * safeMachineCostMin);
+      const penalidadCambio = costJuego + (safeMachineCostMin * safeToolChangeTime);
+
       while (costoIterativo > costoObjetivo && vcSimulada < limiteSeguridadVc) {
         vcSimulada++;
         const factorVelocidad = Math.pow((taylorBase.vc / vcSimulada), 3.0);
         const piezasTemp = taylorBase.pcs * factorVelocidad, tiempoTemp = taylorBase.time * (taylorBase.vc / vcSimulada);
-        const costCorte = safeMachineCostMin * tiempoTemp, costHerr = piezasTemp > 0 ? penalidadCambio / piezasTemp : 0;
+        const costCorte = safeMachineCostMin * tiempoTemp;
+        
+        let costHerr = 0;
+        if (lifeModePremium === 'minutos') {
+            const pzasTempLife = piezasTemp > 0 ? piezasTemp / tiempoTemp : 0;
+            costHerr = pzasTempLife > 0 ? penalidadCambio / pzasTempLife : 0;
+        } else {
+            costHerr = piezasTemp > 0 ? penalidadCambio / piezasTemp : 0;
+        }
+
         costoIterativo = costCorte + costHerr;
       }
-      if (vcSimulada < limiteSeguridadVc) { setSimulatedVc(vcSimulada); setSimulatedFeed(taylorBase.feed); } 
-      else alert("El porcentaje de ahorro deseado es físicamente imposible solo aumentando la velocidad. Intenta un objetivo más bajo o ajusta también el avance.");
+
+      if (vcSimulada < limiteSeguridadVc) {
+        setSimulatedVc(vcSimulada);
+        setSimulatedFeed(taylorBase.feed);
+      } else {
+        alert("El porcentaje de ahorro deseado es físicamente imposible solo aumentando la velocidad. Intenta un objetivo más bajo o ajusta también el avance.");
+      }
     };
     const debounceTimer = setTimeout(autoCalcularPorObjetivo, 500);
     return () => clearTimeout(debounceTimer);
-  }, [targetSavings, isTaylorModalOpen, taylorBase.vc, taylorBase.feed, taylorBase.pcs, taylorBase.time, taylorBaseCost, machineCostHr, toolCostPremium, toolChangeTime, operationType, zPremium, edgesPremium]);
+  }, [targetSavings, isTaylorModalOpen, taylorBase.vc, taylorBase.feed, taylorBase.pcs, taylorBase.time, taylorBaseCost, machineCostHr, toolCostPremium, toolChangeTime, operationType, zPremium, edgesPremium, lifeModePremium]);
 
   const premiumMins = Math.floor(curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0);
   const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
@@ -622,32 +712,26 @@ export default function EditTaylorCurvePage() {
           
           {costoActual !== undefined && desgloseActual && (
             <div className="mb-2">
-              <p className="text-red-700 font-bold">
-                Competidor: {formatCurrency(costoActual)}
-              </p>
-              <div className="text-[10px] text-gray-500 leading-tight mt-1">
+              <p className="text-red-700 font-bold">Competidor: {formatCurrency(costoActual)}</p>
+              <div className="text-[10px] text-gray-500 leading-tight mt-1 space-y-0.5">
                   <p>⚙️ Tiempo de Corte: {formatCurrency(desgloseActual.maquina)}</p>
                   <p>💎 Inserto Puro: {formatCurrency(desgloseActual.inserto)}</p>
-                  {desgloseActual.parada > 0 && (
-                    <p className="text-red-500 font-semibold">
-                      🛑 Costo Paradas: {formatCurrency(desgloseActual.parada)}
-                    </p>
+                  <p>🔴 Costo Paradas: {formatCurrency(desgloseActual.parada)}</p>
+                  {desgloseActual.lote > 0 && (
+                      <p className="text-amber-700 font-bold mt-1 pt-1 border-t border-slate-100">
+                          📦 Insertos para Lote: {desgloseActual.lote} unds.
+                      </p>
                   )}
-                  <p className="text-red-800 font-semibold mt-1">
-                    📦 Insertos para Lote: {desgloseActual.insertsToBuy} unds.
-                  </p>
               </div>
             </div>
           )}
 
-          <div className="my-1 border-t border-slate-100"></div>
+          <div className="my-1 border-t border-slate-200"></div>
 
           {costoPremium !== undefined && desglosePremium && (
             <div>
               <div className="flex items-center gap-2">
-                <p className="text-green-700 font-bold">
-                  SECOCUT: {formatCurrency(costoPremium)}
-                </p>
+                <p className="text-green-700 font-bold">SECOCUT: {formatCurrency(costoPremium)}</p>
                 {porcentajeAhorroUnificado > 0 && (
                   <span className="bg-green-100 text-green-800 text-[10px] font-black px-2 py-0.5 rounded-full">
                     -{porcentajeAhorroUnificado.toFixed(1)}%
@@ -655,17 +739,15 @@ export default function EditTaylorCurvePage() {
                 )}
               </div>
 
-              <div className="text-[10px] text-gray-500 leading-tight mt-1">
+              <div className="text-[10px] text-gray-500 leading-tight mt-1 space-y-0.5">
                   <p>⚙️ Tiempo de Corte: {formatCurrency(desglosePremium.maquina)}</p>
                   <p>💎 Inserto Puro: {formatCurrency(desglosePremium.inserto)}</p>
-                  {desglosePremium.parada > 0 && (
-                    <p className="text-red-500 font-semibold">
-                      🛑 Costo Paradas: {formatCurrency(desglosePremium.parada)}
-                    </p>
+                  <p>🔴 Costo Paradas: {formatCurrency(desglosePremium.parada)}</p>
+                  {desglosePremium.lote > 0 && (
+                      <p className="text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-100">
+                          📦 Insertos para Lote: {desglosePremium.lote} unds.
+                      </p>
                   )}
-                   <p className="text-green-800 font-semibold mt-1">
-                    📦 Insertos para Lote: {desglosePremium.insertsToBuy} unds.
-                  </p>
               </div>
             </div>
           )}
@@ -674,87 +756,163 @@ export default function EditTaylorCurvePage() {
     }
     return null;
   };
-
-  const getLoadColor = (load: number) => {
-    if (load < 20) return { bar: 'bg-red-500', text: 'text-red-700', label: 'Subutilizado (Sube Avance)' };
-    if (load <= 80) return { bar: 'bg-emerald-500', text: 'text-emerald-700', label: 'Óptimo / Seguro' };
-    if (load <= 95) return { bar: 'bg-amber-500', text: 'text-amber-700', label: 'Desbaste Pesado' };
-    return { bar: 'bg-red-600 animate-pulse', text: 'text-red-800 font-black', label: '¡PELIGRO: Sobrecarga!' };
-  };
-    
-  const materialGroups = MATERIALS.reduce((acc, mat) => { (acc[mat.grupo] = acc[mat.grupo] || []).push(mat); return acc; }, {} as Record<string, typeof MATERIALS>);
-  const porcentajeAhorroSimulado = taylorBaseCost > 0 && simulationResult ? (((taylorBaseCost - simulationResult.newCost) / taylorBaseCost) * 100) : 0;
-  const unidadVidaUtil = 
-    operationType === 'drilling' ? 'agujeros' : 
-    operationType === 'milling' ? 'minutos' :
-    'pzas/filo';
   
-  if (isLoading) return <div className="container mx-auto p-6"><Skeleton className="h-96 w-full" /></div>;
-  if (!isLoading && !initialData) {
-      return (
-          <div className="container mx-auto p-8 text-center">
-              <h2 className="text-xl font-bold text-red-500">Error: Análisis no encontrado</h2>
-              <p>El análisis que intentas editar no existe o fue eliminado.</p>
-              <Button variant="outline" className="mt-4" onClick={() => router.push('/history')}>
-                  <ArrowLeft className="mr-2 h-4 w-4" /> Volver al Historial
-              </Button>
-          </div>
-      );
-  }
-
   const handleSaveCase = async () => {
+    if (!saveClientName.trim() || !saveCaseName.trim()) {
+      alert("⚠️ Por favor, completa el nombre del Cliente y de la Operación para poder guardar.");
+      return;
+    }
+
     if (!user) { alert("Debes iniciar sesión para guardar este análisis."); return; }
+    
     setIsSaving(true);
     try {
-        const payload = {
-            clientName: saveClientName,
-            caseName: saveCaseName || pieceName || 'Análisis sin nombre',
-            status: initialData?.status || 'pending',
-            annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction) || 0)) * 12,
-            dateModified: serverTimestamp(),
-            taylorInputs: { operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, profundidadAgujero, monthlyProduction, toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrentMin, tcCurrentSec, zCurrent, edgesCurrent, dcCurrent, aeCurrent, toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, zPremium, edgesPremium, dcPremium, aePremium, }
-        };
-        await updateDoc(docRef, payload);
-        setIsSaveModalOpen(false);
-        alert("¡Análisis actualizado exitosamente en el Historial!");
+      let pdfDownloadUrl = "";
+      try {
+        const pdfBlob = await handleGeneratePDF('blob'); 
+        if (pdfBlob && storage) {
+          const safeFileName = (pieceName || 'Sin_Nombre').replace(/\s+/g, '_');
+          const fileName = `taylor_reports/Simulacion_${safeFileName}_${Date.now()}.pdf`;
+          const storageRef = ref(storage, fileName);
+          await uploadBytes(storageRef, pdfBlob);
+          pdfDownloadUrl = await getDownloadURL(storageRef);
+        }
+      } catch (pdfError) { console.warn("⚠️ No se pudo generar PDF. Guardando datos. Error:", pdfError); }
+
+      const rawPayload = {
+        clientName: saveClientName,
+        caseName: saveCaseName || pieceName || 'Análisis sin nombre',
+        status: 'pending', 
+        annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12, 
+        pdfUrl: pdfDownloadUrl || "", 
+        userId: user.uid, 
+        taylorInputs: { 
+          operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, profundidadAgujero, monthlyProduction,
+          toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrent, 
+          zCurrent, edgesCurrent, dcCurrent, aeCurrent,
+          toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, tcPremiumInput,
+          zPremium, edgesPremium, dcPremium, aePremium,
+          lifeModeCurrent, lifeModePremium
+        }
+      };
+
+      const sanitizedString = JSON.stringify(rawPayload, (key, value) => {
+        if (typeof value === 'number' && !isFinite(value)) return null;
+        if (value === undefined) return null;
+        return value;
+      });
+      const safePayload = JSON.parse(sanitizedString);
+      safePayload.dateCreated = serverTimestamp();
+
+      await addDoc(collection(db, "analisis_costos"), safePayload);
+      
+      setIsSaveModalOpen(false);
+      alert("¡Análisis guardado exitosamente en el Historial!");
     } catch (error) {
-        console.error("Error CRÍTICO al actualizar en BD:", error);
-        alert(`Fallo al actualizar en la base de datos. El sistema dice: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
-    } finally { setIsSaving(false); }
+      alert(`Fallo al guardar en la base de datos. El sistema dice: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
+    
+  const materialGroups = MATERIALS.reduce((acc, mat) => {
+      (acc[mat.grupo] = acc[mat.grupo] || []).push(mat);
+      return acc;
+  }, {} as Record<string, typeof MATERIALS>);
+
+  const porcentajeAhorroSimulado = taylorBaseCost > 0 && simulationResult ? (((taylorBaseCost - simulationResult.newCost) / taylorBaseCost) * 100) : 0;
   
+  const insightText = useMemo(() => {
+      const { velocidadOptimaSeco, costoOptimoSeco } = curveDataInfo;
+      const numVcCurrent = Number(vcCurrent);
+      if (!numVcCurrent || !velocidadOptimaSeco || !costoOptimoSeco) return null;
+      
+      if (numVcCurrent < velocidadOptimaSeco) {
+          return `💡 Tu máquina está subutilizada. Si subimos la velocidad de ${numVcCurrent} a ${velocidadOptimaSeco} m/min con el inserto Seco, alcanzarás el costo mínimo absoluto de ${formatCurrency(costoOptimoSeco)} por pieza.`;
+      } else if (numVcCurrent > velocidadOptimaSeco + 10) { 
+          return `⚠️ Estás quemando insertos. Bajando la velocidad a ${velocidadOptimaSeco} m/min con Seco, extenderás la vida útil drásticamente y bajarás tu costo a ${formatCurrency(costoOptimoSeco)}.`;
+      } else {
+          return `✅ ¡Estás muy cerca del punto óptimo! Mantener la velocidad alrededor de ${velocidadOptimaSeco} m/min te asegura la máxima eficiencia y rentabilidad.`;
+      }
+  }, [curveDataInfo, vcCurrent]);
+
+  const unidadVidaUtil = lifeModePremium === 'minutos' ? 'minutos' : (operationType === 'drilling' ? 'agujeros' : 'pzas/filo');
+
   return (
     <>
       <div className={`container mx-auto space-y-8 pb-16 transition-all duration-300 ${isCopilotOpen ? 'pr-[320px]' : ''}`}>
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-            <div className="flex items-center gap-4">
-                <Button variant="outline" size="icon" onClick={() => router.back()}><ArrowLeft /></Button>
-                <div>
-                <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                    Editando Análisis
-                </h1>
-                <p className="text-slate-500 text-sm mt-1">{initialData?.caseName}</p>
-                </div>
-            </div>
-            <div className="flex flex-wrap gap-2 w-full md:w-auto bg-slate-100 p-1.5 rounded-lg border border-slate-200">
-                <button onClick={() => setIsSaveModalOpen(true)} disabled={isSaving} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md text-sm font-bold shadow-sm transition-all disabled:opacity-50">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                    Actualizar Análisis
-                </button>
-            </div>
+      {/* HEADER Y BOTONES DE ACCIÓN */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+            <TrendingUp className="text-blue-600 h-7 w-7" />
+            Análisis de Curva de Costos
+          </h1>
+          <p className="text-slate-500 text-sm mt-1">Compara la Vc actual vs. la propuesta para demostrar el ahorro real.</p>
         </div>
 
+        {/* BOTONERA ESTILO "SIMULADOR PRINCIPAL" */}
+        <div className="flex flex-wrap gap-2 w-full md:w-auto bg-slate-100 p-1.5 rounded-lg border border-slate-200">
+          <button
+            onClick={() => handleGeneratePDF('download')}
+            disabled={isGenerating}
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-md text-sm font-bold shadow-sm transition-all disabled:opacity-50"
+          >
+            {isGenerating ? <span className="animate-pulse">⏳ Generando...</span> : <>
+              <FileText size={16} />
+              PDF
+            </>}
+          </button>
+          
+          <button
+            onClick={() => handleGeneratePDF('share')}
+            disabled={isGenerating}
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-md text-sm font-bold shadow-sm transition-all disabled:opacity-50"
+          >
+            {isGenerating ? <span className="animate-pulse">⏳...</span> : <>
+              <Share2 size={16} />
+              WhatsApp
+            </>}
+          </button>
+          <button
+            onClick={() => {
+              setSaveCaseName(pieceName);
+              setIsSaveModalOpen(true);
+            }}
+            disabled={isSaving}
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md text-sm font-bold shadow-sm transition-all disabled:opacity-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            Guardar Análisis
+          </button>
+        </div>
+      </div>
+
+      {/* LAYOUT PRINCIPAL: INPUTS ARRIBA, GRÁFICO ABAJO */}
       <div className="space-y-6">
+        
+        {/* PANEL DE INPUTS (Horizontal 3 Columnas Simétricas) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          
+          {/* 1. PARÁMETROS GENERALES */}
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
             <h2 className="font-black text-slate-800 text-sm uppercase border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
               🏭 1. Parámetros del Taller
             </h2>
-            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 mb-5">
+            
+            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 mb-2">
               <button onClick={() => setOperationType('turning')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'turning' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>🔄 Torneado</button>
               <button onClick={() => setOperationType('milling')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'milling' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>⚙️ Fresado</button>
               <button onClick={() => setOperationType('drilling')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'drilling' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>🔩 Taladrado</button>
             </div>
+            <div className="text-center mb-4">
+                <Button variant="link" size="sm" onClick={handleGenerateSurveyPDF} disabled={isGeneratingSurvey} className="text-slate-600">
+                    <Download className="mr-2 h-4 w-4" />
+                    {isGeneratingSurvey ? 'Generando...' : 'Descargar Planilla de Relevamiento'}
+                </Button>
+            </div>
+
+            
             <div className="space-y-4 flex-grow">
               <div>
                 <Label className="block text-xs font-bold text-slate-500 mb-1">Pieza / Operación</Label>
@@ -775,12 +933,28 @@ export default function EditTaylorCurvePage() {
                     </SelectContent>
                   </Select>
                 </div>
-                {operationType === 'drilling' && ( <div className="col-span-2"> <Label className="block text-xs font-bold text-slate-500 mb-1">Profundidad del Agujero (mm)</Label> <Input type="number" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value)} /> </div> )}
-                <div> <Label className="block text-xs font-bold text-blue-700 mb-1">Motor (HP)</Label> <Input type="number" step="0.5" className="font-bold text-blue-700 bg-blue-50/50" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value)} /> </div>
-                 <div> <Label className="block text-xs font-bold text-slate-500 mb-1">Costo Máq. ($/hr)</Label> <Input type="number" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value)} /> </div>
-                <div> <Label className="block text-xs font-bold text-slate-500 mb-1">Cambio (min)</Label> <Input type="number" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value)} /> </div>
+                {operationType === 'drilling' && (
+                    <div className="col-span-2">
+                        <Label className="block text-xs font-bold text-slate-500 mb-1">Profundidad del Agujero (mm)</Label>
+                        <Input type="number" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value)} />
+                    </div>
+                )}
+                <div>
+                  <Label className="block text-xs font-bold text-blue-700 mb-1">Motor (HP)</Label>
+                  <Input type="number" step="0.5" className="font-bold text-blue-700 bg-blue-50/50" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value)} />
+                </div>
+                 <div>
+                  <Label className="block text-xs font-bold text-slate-500 mb-1">Costo Máq. ($/hr)</Label>
+                  <Input type="number" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="block text-xs font-bold text-slate-500 mb-1">Cambio (min)</Label>
+                  <Input type="number" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value)} />
+                </div>
               </div>
             </div>
+
+            {/* Escala Comercial */}
             <div className="mt-6 pt-5 border-t border-slate-100">
               <Label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wide">📦 Escala Comercial</Label>
               <div className="relative">
@@ -789,97 +963,403 @@ export default function EditTaylorCurvePage() {
               </div>
             </div>
           </div>
+
+          {/* 2. SITUACIÓN ACTUAL (COMPETIDOR) */}
           <div className="bg-red-50/30 p-5 rounded-xl border border-red-100 flex flex-col h-full relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-red-500"></div>
             <h2 className="font-black text-red-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🔴 Condición Actual</h2>
+            
             <div className="grid grid-cols-2 gap-4 flex-grow">
-              <div className="col-span-2"> <Label className="block text-[10px] font-bold text-red-800 mb-1 uppercase tracking-wider">Herramienta / Inserto Competencia</Label> <Input type="text" placeholder="Ej: CNMG 120408" className="border-red-200 bg-white text-slate-900" value={toolNameCurrent} onChange={e => setToolNameCurrent(e.target.value)} /> {operationType === 'milling' && warningFresaCurrent && ( <div className={`mt-2 p-2 text-xs font-medium rounded-r-lg ${warningFresaCurrent.includes('ERROR') ? 'bg-red-100 border-l-4 border-red-500 text-red-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}> {warningFresaCurrent} </div> )} </div>
+              <div className="col-span-2">
+                <Label className="block text-[10px] font-bold text-red-800 mb-1 uppercase tracking-wider">Herramienta Competencia</Label>
+                <Input type="text" placeholder="Ej: CNMG 120408" className="border-red-200 bg-white text-slate-900" value={toolNameCurrent} onChange={e => setToolNameCurrent(e.target.value)} />
+                {operationType === 'milling' && warningFresaCurrent && (
+                    <div className={`mt-2 p-2 text-xs font-medium rounded-r-lg ${warningFresaCurrent.includes('ERROR') ? 'bg-red-100 border-l-4 border-red-500 text-red-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}>
+                        {warningFresaCurrent}
+                    </div>
+                )}
+              </div>
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value)} /></div>
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 4" className="border-red-200 bg-white text-slate-900" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value)} /></div>
-              {operationType === 'milling' || operationType === 'drilling' ? ( <div><Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Diámetro Fresa (Dc) mm' : 'Diámetro Broca (Dc) mm'}</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={dcCurrent} onChange={e => setDcCurrent(e.target.value)} /></div> ) : null}
-              {operationType === 'milling' ? ( <> <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Ancho Corte (ae) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={aeCurrent} onChange={e => setAeCurrent(e.target.value)} /></div> <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div> <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={zCurrent} onChange={e => setZCurrent(e.target.value)} /></div> </> ) : operationType === 'turning' ? ( <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div> ) : null}
-              <div> <Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}</Label> <Input type="number" step="0.01" className="border-red-200 bg-white text-slate-900" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value)} /> {operationType === 'turning' && raActual && ( <p className="text-[10px] text-slate-500 font-semibold mt-1"> Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span> </p> )} </div>
+              
+              {operationType === 'milling' || operationType === 'drilling' ? (
+                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Dc Fresa (mm)' : 'Dc Broca (mm)'}</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={dcCurrent} onChange={e => setDcCurrent(e.target.value)} /></div>
+              ) : null}
+
+              {operationType === 'milling' ? (
+                <>
+                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Ancho (ae) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={aeCurrent} onChange={e => setAeCurrent(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={zCurrent} onChange={e => setZCurrent(e.target.value)} /></div>
+                </>
+              ) : operationType === 'turning' ? (
+                 <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div>
+              ) : null}
+
+              <div>
+                  <Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}</Label>
+                  <Input type="number" step="0.01" className="border-red-200 bg-white text-slate-900" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value)} />
+                  {operationType === 'turning' && raActual && (
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                          Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
+                      </p>
+                  )}
+              </div>
+              
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={vcCurrent} onChange={e => setVcCurrent(e.target.value)} /></div>
-              <div className="col-span-2"> <Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Minutos / filo' : operationType === 'drilling' ? 'Agujeros / filo' : 'Pzas / filo'}</Label> <Input type="number" className="border-red-200 bg-white text-slate-900" placeholder={operationType === 'milling' ? 'Ej: 45' : operationType === 'drilling' ? 'Ej: 500' : 'Ej: 120'} value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value)} /> </div>
-              <div className="col-span-2">
-                <Label className="block text-[10px] font-bold text-red-700 mb-1">Tiempo Actual (Corte)</Label>
-                <div className="flex gap-2">
-                  <div className="relative w-1/2"><Input type="number" className="pr-7 border-red-300 font-bold bg-white text-slate-900 disabled:bg-slate-100" value={tcCurrentMin} onChange={e => setTcCurrentMin(e.target.value)} disabled={operationType === 'drilling'} /><span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">min</span></div>
-                  <div className="relative w-1/2"><Input type="number" className="pr-7 border-red-300 font-bold bg-white text-slate-900 disabled:bg-slate-100" value={tcCurrentSec} onChange={e => setTcCurrentSec(e.target.value)} disabled={operationType === 'drilling'} /><span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">seg</span></div>
+              
+              <div className="col-span-2 grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="block text-[10px] font-bold text-red-600 mb-1">Medir en</Label>
+                  <Select value={lifeModeCurrent} onValueChange={(v: 'piezas'|'minutos') => setLifeModeCurrent(v)}>
+                    <SelectTrigger className="border-red-200 bg-white text-slate-900 h-9 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="piezas">{operationType === 'drilling' ? 'Agujeros' : 'Piezas'}</SelectItem>
+                      <SelectItem value="minutos">Minutos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="block text-[10px] font-bold text-red-600 mb-1">Rendimiento</Label>
+                  <Input type="number" className="border-red-200 bg-white text-slate-900 h-9" placeholder="Ej: 120" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value)} />
                 </div>
               </div>
+              
+              <div className="col-span-2">
+                <Label className="block text-[10px] font-bold text-red-700 mb-1">Tiempo Actual (min decimales)</Label>
+                <Input type="number" step="0.01" className="border-red-300 font-bold bg-white text-slate-900" placeholder="Ej: 7.0" value={tcCurrent} onChange={e => setTcCurrent(e.target.value)} disabled={operationType === 'drilling'} />
+              </div>
             </div>
-            {operationType === 'turning' && warningCurrent && ( <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-800 p-3 text-xs font-medium rounded-r-lg"> {warningCurrent} </div> )}
-             {operationType === 'drilling' && warningBrocaCurrent && ( <div className="mt-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 text-xs font-medium rounded-r-lg"> {warningBrocaCurrent} </div> )}
-            {chipbreakerAuditCurrent && ( <div className={`mt-4 p-3 text-xs font-medium rounded-lg ${chipbreakerAuditCurrent.includes('✅') ? 'bg-green-100 border-l-4 border-green-500 text-green-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}> {chipbreakerAuditCurrent} </div> )}
+            {operationType === 'turning' && warningCurrent && (
+              <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-800 p-3 text-xs font-medium rounded-r-lg">
+                {warningCurrent}
+              </div>
+            )}
+             {operationType === 'drilling' && warningBrocaCurrent && (
+              <div className="mt-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 text-xs font-medium rounded-r-lg">
+                {warningBrocaCurrent}
+              </div>
+            )}
+            {chipbreakerAuditCurrent && (
+              <div className={`mt-4 p-3 text-xs font-medium rounded-lg ${chipbreakerAuditCurrent.includes('✅') ? 'bg-green-100 border-l-4 border-green-500 text-green-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}>
+                {chipbreakerAuditCurrent}
+              </div>
+            )}
             <div className="mt-6 bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
-              <div className="flex justify-between items-center mb-1"> <div className="flex items-center gap-2"> <span className="text-[10px] font-bold text-slate-500 uppercase">Carga Husillo</span> <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${ curveDataInfo.loadCurrent > 100 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600' }`}> {curveDataInfo.loadCurrent.toFixed(1)}% </span> </div> <span className={`text-xs font-black ${getLoadColor(curveDataInfo.loadCurrent).text}`}>⚡ {curveDataInfo.hpCurrent.toFixed(1)} HP</span> </div>
+              <div className="flex justify-between items-center mb-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">Carga Husillo</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                    curveDataInfo.loadCurrent > 100 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {curveDataInfo.loadCurrent.toFixed(1)}%
+                  </span>
+                </div>
+                <span className={`text-xs font-black ${getLoadColor(curveDataInfo.loadCurrent).text}`}>⚡ {curveDataInfo.hpCurrent.toFixed(1)} HP</span>
+              </div>
               <div className="w-full bg-slate-100 rounded-full h-2 mb-1 overflow-hidden"><div className={`h-2 rounded-full transition-all duration-500 ${getLoadColor(curveDataInfo.loadCurrent).bar}`} style={{ width: `${Math.min(curveDataInfo.loadCurrent, 100)}%` }}></div></div>
               <p className={`text-[9px] font-bold text-right uppercase ${getLoadColor(curveDataInfo.loadCurrent).text}`}>{getLoadColor(curveDataInfo.loadCurrent).label}</p>
             </div>
           </div>
+
+          {/* 3. PROPUESTA PREMIUM */}
           <div className="bg-green-50/30 p-5 rounded-xl border border-green-200 flex flex-col h-full relative overflow-hidden shadow-[0_0_15px_rgba(34,197,94,0.1)]">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-green-500"></div>
             <h2 className="font-black text-green-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🟢 Propuesta (Secocut)</h2>
+            
             <div className="grid grid-cols-2 gap-4 flex-grow">
-              <div className="col-span-2"> <Label className="block text-[10px] font-bold text-green-800 mb-1 uppercase tracking-wider">Herramienta / Inserto Seco</Label> <Input type="text" placeholder="Ej: CNMG 120408-M3W TP2501" className="border-green-300 bg-white text-slate-900 shadow-inner font-bold" value={toolNamePremium} onChange={e => setToolNamePremium(e.target.value)} /> {operationType === 'milling' && warningFresaPremium && ( <div className={`mt-2 p-2 text-xs font-medium rounded-r-lg ${warningFresaPremium.includes('ERROR') ? 'bg-red-100 border-l-4 border-red-500 text-red-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}> {warningFresaPremium} </div> )} </div>
+              <div className="col-span-2">
+                <Label className="block text-[10px] font-bold text-green-800 mb-1 uppercase tracking-wider">Herramienta / Inserto Seco</Label>
+                <Input type="text" placeholder="Ej: CNMG 120408-M3W TP2501" className="border-green-300 bg-white text-slate-900 shadow-inner font-bold" value={toolNamePremium} onChange={e => setToolNamePremium(e.target.value)} />
+                 {operationType === 'milling' && warningFresaPremium && (
+                    <div className={`mt-2 p-2 text-xs font-medium rounded-r-lg ${warningFresaPremium.includes('ERROR') ? 'bg-red-100 border-l-4 border-red-500 text-red-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}>
+                        {warningFresaPremium}
+                    </div>
+                )}
+              </div>
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value)} /></div>
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 8" className="border-green-200 bg-white text-slate-900" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value)} /></div>
-              {operationType === 'milling' || operationType === 'drilling' ? ( <div><Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'milling' ? 'Diámetro Fresa (Dc) mm' : 'Diámetro Broca (Dc) mm'}</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={dcPremium} onChange={e => setDcPremium(e.target.value)} /></div> ) : null}
-              {operationType === 'milling' ? ( <> <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Ancho Corte (ae) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white text-slate-900" value={aePremium} onChange={e => setAePremium(e.target.value)} /></div> <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white text-slate-900" value={apPremium} onChange={e => setApPremium(e.target.value)} /></div> <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={zPremium} onChange={e => setZPremium(e.target.value)} /></div> </> ) : operationType === 'turning' ? ( <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white text-slate-900" value={apPremium} onChange={e => setApPremium(e.target.value)} /></div> ) : null }
-              <div> <Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}</Label> <Input type="number" step="0.01" className="border-green-200 bg-white text-slate-900" value={feedPremium} onChange={e => setFeedPremium(e.target.value)} /> {operationType === 'turning' && raPropuesta && ( <p className="text-[10px] text-slate-500 font-semibold mt-1"> Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span> </p> )} </div>
+              
+              {operationType === 'milling' || operationType === 'drilling' ? (
+                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'milling' ? 'Diámetro Fresa (Dc) mm' : 'Diámetro Broca (Dc) mm'}</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={dcPremium} onChange={e => setDcPremium(e.target.value)} /></div>
+              ) : null}
+
+              {operationType === 'milling' ? (
+                <>
+                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Ancho Corte (ae) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white text-slate-900" value={aePremium} onChange={e => setAePremium(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white text-slate-900" value={apPremium} onChange={e => setApPremium(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={zPremium} onChange={e => setZPremium(e.target.value)} /></div>
+                </>
+              ) : operationType === 'turning' ? (
+                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white text-slate-900" value={apPremium} onChange={e => setApPremium(e.target.value)} /></div>
+              ) : null }
+
+              <div>
+                  <Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}</Label>
+                  <Input type="number" step="0.01" className="border-green-200 bg-white text-slate-900" value={feedPremium} onChange={e => setFeedPremium(e.target.value)} />
+                  {operationType === 'turning' && raPropuesta && (
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                          Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
+                      </p>
+                  )}
+              </div>
+
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Vc Propuesta</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={vcPremium} onChange={e => setVcPremium(e.target.value)} /></div>
-              <div className="col-span-2"> <Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'milling' ? 'Minutos / filo' : operationType === 'drilling' ? 'Agujeros / filo' : 'Pzas / filo'}</Label> <Input type="number" className="border-green-200 bg-white text-slate-900" placeholder={operationType === 'milling' ? 'Ej: 60' : operationType === 'drilling' ? 'Ej: 800' : 'Ej: 250'} value={pcsPremium} onChange={e => setPcsPremium(e.target.value)} /> </div>
-              <div className="col-span-2"> <Label className="block text-[10px] font-bold text-green-800 mb-1">Tiempo Deducido (Corte)</Label> <div className="w-full p-2 border-2 border-green-300 bg-green-100 text-green-800 rounded-md text-sm font-black flex items-center justify-center shadow-inner h-10"> {premiumMins} min {premiumSecs} seg </div> </div>
+              
+              <div className="col-span-2 grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="block text-[10px] font-bold text-green-700 mb-1">Medir en</Label>
+                  <Select value={lifeModePremium} onValueChange={(v: 'piezas'|'minutos') => setLifeModePremium(v)}>
+                    <SelectTrigger className="border-green-200 bg-white text-slate-900 h-9 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="piezas">{operationType === 'drilling' ? 'Agujeros' : 'Piezas'}</SelectItem>
+                      <SelectItem value="minutos">Minutos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="block text-[10px] font-bold text-green-700 mb-1">Rendimiento</Label>
+                  <Input type="number" className="border-green-200 bg-white text-slate-900 h-9" placeholder="Ej: 120" value={pcsPremium} onChange={e => setPcsPremium(e.target.value)} />
+                </div>
+              </div>
+              
+              <div className="col-span-2">
+                <Label className="block text-[10px] font-bold text-green-800 mb-1">Tiempo Propuesto (min decimales)</Label>
+                <Input type="number" step="0.01" className="border-green-400 font-black bg-green-50 text-green-900 shadow-inner h-10 text-lg text-center" placeholder="Ej: 6.36" value={tcPremiumInput} onChange={e => setTcPremiumInput(e.target.value)} />
+              </div>
             </div>
-            {operationType === 'turning' && warningPremium && ( <div className="mt-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 text-xs font-medium rounded-r-lg"> {warningPremium} </div> )}
-             {operationType === 'drilling' && warningBrocaPremium && ( <div className="mt-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 text-xs font-medium rounded-r-lg"> {warningBrocaPremium} </div> )}
-            {chipbreakerAuditPremium && ( <div className={`mt-4 p-3 text-xs font-medium rounded-lg ${chipbreakerAuditPremium.includes('✅') ? 'bg-green-100 border-l-4 border-green-500 text-green-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}> {chipbreakerAuditPremium} </div> )}
+            {operationType === 'turning' && warningPremium && (
+              <div className="mt-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 text-xs font-medium rounded-r-lg">
+                {warningPremium}
+              </div>
+            )}
+             {operationType === 'drilling' && warningBrocaPremium && (
+              <div className="mt-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 text-xs font-medium rounded-r-lg">
+                {warningBrocaPremium}
+              </div>
+            )}
+            {chipbreakerAuditPremium && (
+              <div className={`mt-4 p-3 text-xs font-medium rounded-lg ${chipbreakerAuditPremium.includes('✅') ? 'bg-green-100 border-l-4 border-green-500 text-green-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}>
+                {chipbreakerAuditPremium}
+              </div>
+            )}
             <div className="mt-6 bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
-              <div className="flex justify-between items-center mb-1"> <div className="flex items-center gap-2"> <span className="text-[10px] font-bold text-slate-500 uppercase">Carga Husillo</span> <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${ curveDataInfo.loadPremium > 100 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600' }`}> {curveDataInfo.loadPremium.toFixed(1)}% </span> </div> <span className={`text-xs font-black ${getLoadColor(curveDataInfo.loadPremium).text}`}>⚡ {curveDataInfo.hpPremium.toFixed(1)} HP</span> </div>
+              <div className="flex justify-between items-center mb-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">Carga Husillo</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                    curveDataInfo.loadPremium > 100 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {curveDataInfo.loadPremium.toFixed(1)}%
+                  </span>
+                </div>
+                <span className={`text-xs font-black ${getLoadColor(curveDataInfo.loadPremium).text}`}>⚡ {curveDataInfo.hpPremium.toFixed(1)} HP</span>
+              </div>
               <div className="w-full bg-slate-100 rounded-full h-2 mb-1 overflow-hidden"><div className={`h-2 rounded-full transition-all duration-500 ${getLoadColor(curveDataInfo.loadPremium).bar}`} style={{ width: `${Math.min(curveDataInfo.loadPremium, 100)}%` }}></div></div>
               <p className={`text-[9px] font-bold text-right uppercase ${getLoadColor(curveDataInfo.loadPremium).text}`}>{getLoadColor(curveDataInfo.loadPremium).label}</p>
             </div>
-             <div className="mt-4 pt-4 border-t border-green-200/50"> <Button onClick={() => { const base = { vc: Number(vcPremium) || 0, feed: Number(feedPremium) || 0, pcs: Number(pcsPremium) || 0, time: curveDataInfo.tcPremium || 0, }; if (base.vc > 0 && base.feed > 0 && base.pcs > 0 && base.time > 0) { setTaylorBase(base); setSimulatedVc(base.vc); setSimulatedFeed(base.feed); setTargetSavings(''); const safeMachineCostMin = (Number(machineCostHr) || 0) / 60; const safeToolCostPremium = Number(toolCostPremium) || 0; const safeToolChangeTime = Number(toolChangeTime) || 0; const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1); const safeEdgesPremium = Number(edgesPremium) || 1; const costCorte = safeMachineCostMin * base.time; const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0; const costJuego = costPerPunta * safeZPremium; const penalidadCambio = costJuego + (safeToolChangeTime * safeMachineCostMin); const costHerr = base.pcs > 0 ? penalidadCambio / base.pcs : 0; const baseCost = costCorte + costoHerr; setTaylorBaseCost(baseCost); setIsTaylorModalOpen(true); } else { alert("Por favor, completa todos los datos de la propuesta (Vc, Avance, Pzas/filo) antes de simular."); } }} variant="outline" className="w-full bg-green-100 border-green-200 text-green-800 hover:bg-green-200 hover:text-green-900" > <Wand2 className="mr-2 h-4 w-4" /> Simular Escenarios (Taylor) </Button> </div>
+             <div className="mt-4 pt-4 border-t border-green-200/50">
+                <Button
+                    onClick={() => {
+                        const base = {
+                            vc: Number(vcPremium) || 0,
+                            feed: Number(feedPremium) || 0,
+                            pcs: Number(pcsPremium) || 0,
+                            time: curveDataInfo.tcPremium || 0,
+                        };
+                        if (base.vc > 0 && base.feed > 0 && base.pcs > 0 && base.time > 0) {
+                            setTaylorBase(base);
+                            setSimulatedVc(base.vc);
+                            setSimulatedFeed(base.feed);
+                            setTargetSavings('');
+
+                            const safeMachineCostMin = (Number(machineCostHr) || 0) / 60;
+                            const safeToolCostPremium = Number(toolCostPremium) || 0;
+                            const safeToolChangeTime = Number(toolChangeTime) || 0;
+                            const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1);
+                            const safeEdgesPremium = Number(edgesPremium) || 1;
+                            
+                            const costCorte = safeMachineCostMin * base.time;
+                            const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
+                            const costJuego = costPerPunta * safeZPremium;
+                            const penalidadCambio = costJuego + (safeToolChangeTime * safeMachineCostMin);
+                            const costoHerr = base.pcs > 0 ? penalidadCambio / base.pcs : 0;
+                            const baseCost = costCorte + costoHerr;
+                            setTaylorBaseCost(baseCost);
+
+                            setIsTaylorModalOpen(true);
+                        } else {
+                            alert("Por favor, completa todos los datos de la propuesta (Vc, Avance, Pzas/filo) antes de simular.");
+                        }
+                    }}
+                    variant="outline"
+                    className="w-full bg-green-100 border-green-200 text-green-800 hover:bg-green-200 hover:text-green-900"
+                >
+                    <Wand2 className="mr-2 h-4 w-4" />
+                    Simular Escenarios (Taylor)
+                </Button>
+            </div>
           </div>
         </div>
+
+        {/* GRAFICO (Ancho Completo Abajo) */}
         <Card>
-            <CardHeader><CardTitle>Curva de Costo vs. Velocidad</CardTitle><CardDescription>Los puntos marcan el costo operativo real en la Vc seleccionada.</CardDescription></CardHeader>
-            <CardContent><div className="h-[400px] w-full"> <ResponsiveContainer width="100%" height="100%"> <LineChart data={curveDataInfo.data} margin={{ top: 5, right: 20, left: 10, bottom: 30 }}> <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" /> <XAxis type="number" dataKey="speed" domain={['dataMin', 'dataMax']} label={{ value: 'Velocidad de Corte Vc (m/min)', position: 'bottom', offset: 15 }} tick={{fontSize: 12}} /> <YAxis label={{ value: 'Costo Total Relativo', angle: -90, position: 'insideLeft', offset: 0 }} tick={{fontSize: 12}} tickFormatter={(value) => formatCurrency(value).replace('USD ', '$')} /> <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 2, strokeDasharray: '5 5' }} /> <Legend verticalAlign="top" height={36} /> <Line type="monotone" dataKey="costoActual" name="Inserto Competidor" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#ef4444' }} /> <Line type="monotone" dataKey="costoPremium" name="Propuesta (Secocut)" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#22c55e' }} /> {isFinite(curveDataInfo.actualCostCurrent) && <ReferenceDot x={Number(vcCurrent)} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />} {isFinite(curveDataInfo.actualCostPremium) && <ReferenceDot x={Number(vcPremium)} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />} </LineChart> </ResponsiveContainer> </div></CardContent>
+            <CardHeader>
+                <CardTitle>Curva de Costo vs. Velocidad</CardTitle>
+                <CardDescription>Los puntos marcan el costo operativo real en la Vc seleccionada.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="h-[400px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={curveDataInfo.data} margin={{ top: 5, right: 20, left: 10, bottom: 30 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <XAxis type="number" dataKey="speed" domain={['dataMin', 'dataMax']} label={{ value: 'Velocidad de Corte Vc (m/min)', position: 'bottom', offset: 15 }} tick={{fontSize: 12}} />
+                        <YAxis label={{ value: 'Costo Total Relativo', angle: -90, position: 'insideLeft', offset: 0 }} tick={{fontSize: 12}} tickFormatter={(value) => formatCurrency(value).replace('USD ', '$')} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 2, strokeDasharray: '5 5' }} />
+                        <Legend verticalAlign="top" height={36} />
+                        <Line type="monotone" dataKey="costoActual" name="Inserto Competidor" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#ef4444' }} />
+                        <Line type="monotone" dataKey="costoPremium" name="Propuesta (Secocut)" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#22c55e' }} />
+
+                        {isFinite(curveDataInfo.actualCostCurrent) && <ReferenceDot x={Number(vcCurrent)} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />}
+                        {isFinite(curveDataInfo.actualCostPremium) && <ReferenceDot x={Number(vcPremium)} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
+                        
+                        {curveDataInfo.velocidadOptimaSeco > 0 &&
+                          <ReferenceLine 
+                            x={curveDataInfo.velocidadOptimaSeco} 
+                            stroke="#10B981" 
+                            strokeDasharray="4 4" 
+                            label={{ position: 'insideTopRight', value: '🔥 Óptimo', fill: '#10B981', fontSize: 10, fontWeight: 'bold' }} 
+                          />
+                        }
+                    </LineChart>
+                    </ResponsiveContainer>
+                </div>
+            </CardContent>
         </Card>
       </div>
-       <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl p-8 text-center shadow-2xl relative overflow-hidden mt-6">
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl"></div> <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-black opacity-10 rounded-full blur-2xl"></div>
-        <p className="relative z-10 text-green-100 font-bold tracking-widest uppercase text-sm mb-2">💰 Impacto Financiero Proyectado</p> <h2 className="relative z-10 text-5xl md:text-6xl font-black text-white drop-shadow-md mb-3"> {formatCurrency(curveDataInfo.monthlySavings)} </h2> <p className="relative z-10 text-lg text-green-50 font-medium"> Ahorro mensual neto al fabricar <span className="font-bold text-white bg-green-700 px-2 py-1 rounded">{formatNumber(Number(monthlyProduction))} piezas</span> con tecnología Secocut. </p>
+
+       {/* EL GRAN REMATE VISUAL - AHORRO MENSUAL */}
+      <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl p-8 text-center shadow-2xl relative overflow-hidden mt-6">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-black opacity-10 rounded-full blur-2xl"></div>
+        
+        <p className="relative z-10 text-green-100 font-bold tracking-widest uppercase text-sm mb-2">💰 Impacto Financiero Proyectado</p>
+        <h2 className="relative z-10 text-5xl md:text-6xl font-black text-white drop-shadow-md mb-3">
+          {formatCurrency(curveDataInfo.monthlySavings)}
+        </h2>
+        <p className="relative z-10 text-lg text-green-50 font-medium">
+          Ahorro mensual neto al fabricar <span className="font-bold text-white bg-green-700 px-2 py-1 rounded">{formatNumber(Number(monthlyProduction))} piezas</span> con tecnología Secocut.
+        </p>
       </div>
-        <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800/30 flex items-start gap-3">
-            <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-            <div>
-                <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-1">¿Cómo leer este gráfico?</h3>
-                <p className="text-sm text-blue-900 dark:text-blue-300 mb-2">La curva muestra cómo varía el costo de fabricar una pieza a medida que aumentamos la Velocidad de Corte (Vc).</p>
-                <ul className="text-xs text-blue-800 dark:text-blue-400 space-y-1.5 list-disc pl-4"> <li>El <strong>punto rojo</strong> marca tu costo operativo actual, mientras que el <strong>punto verde</strong> marca el costo con la Vc y Avance que proponemos para el inserto premium.</li> <li>El objetivo es que el punto verde esté por debajo del rojo, lo que significa un ahorro real por cada pieza fabricada.</li> </ul>
-            </div>
-        </div>
-      </div>
-      <button onClick={() => setIsCopilotOpen(!isCopilotOpen)} className="fixed bottom-6 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 transition-transform z-50 border-2 border-slate-700"> <span className="text-2xl">🤖</span> </button>
-      <div className={`fixed top-0 right-0 h-full w-[320px] bg-white border-l border-slate-200 shadow-2xl transform transition-transform duration-300 ease-in-out z-40 flex flex-col ${isCopilotOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="h-16 border-b border-slate-200 flex items-center justify-between px-4 bg-slate-50"> <div className="flex items-center gap-2"> <span className="text-xl">🤖</span> <h3 className="font-black text-slate-800 tracking-tight">Copiloto Seco</h3> </div> <button onClick={() => setIsCopilotOpen(false)} className="text-slate-400 hover:text-slate-600"> <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> </button> </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50"> {chatMessages.map((msg, idx) => ( <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}> <div className={`max-w-[85%] rounded-xl p-3 shadow-sm border ${msg.role === 'user' ? 'bg-blue-600 text-white border-blue-700 rounded-tr-none' : 'bg-white text-slate-700 border-slate-200 rounded-tl-none'}`}> {msg.role === 'assistant' ? renderChatMessage(msg.content) : <p className="text-sm whitespace-pre-wrap">{msg.content}</p>} </div> </div> ))} {isChatLoading && ( <div className="flex justify-start"> <div className="bg-white border border-slate-200 rounded-xl rounded-tl-none p-3 shadow-sm text-slate-400 text-sm flex gap-1"> <span className="animate-bounce">●</span><span className="animate-bounce delay-100">●</span><span className="animate-bounce delay-200">●</span> </div> </div> )} </div>
-        <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-slate-200"> <div className="relative"> <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Pregúntale al Copiloto..." className="w-full pl-4 pr-14 py-2.5 bg-slate-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm transition-all" /> <button type="submit" disabled={!chatInput.trim() || isChatLoading} className="absolute right-2 top-2 text-blue-600 hover:text-blue-800 disabled:opacity-50"> <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> </button> </div> <p className="text-[9px] text-center text-slate-400 mt-2">El Copiloto lee automáticamente tus parámetros.</p> </form>
-      </div>
-        <Dialog open={isSaveModalOpen} onOpenChange={setIsSaveModalOpen}>
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-              <div className="bg-slate-50 border-b border-slate-200 p-4"> <h3 className="font-black text-slate-800 text-lg flex items-center gap-2"> 💾 Guardar Simulación </h3> <p className="text-xs text-slate-500 mt-1">Este análisis se guardará en la tabla de Historial.</p> </div>
-              <div className="p-5 space-y-4">
-                <div> <Label className="block text-xs font-bold text-slate-700 mb-1">Cliente / Empresa</Label> <Input type="text" placeholder="Ej: John Deere" className="w-full" value={saveClientName} onChange={e => setSaveClientName(e.target.value)} /> </div>
-                <div> <Label className="block text-xs font-bold text-slate-700 mb-1">Nombre de la Operación</Label> <Input type="text" placeholder="Ej: Torneado Eje Principal" className="w-full" value={saveCaseName} onChange={e => setSaveCaseName(e.target.value)} /> </div>
-                <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100"> <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Ahorro Anual Proyectado (Automático)</p> <p className="font-black text-emerald-800 text-xl"> {formatCurrency((curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12)} </p> </div>
+      
+        {insightText && (
+          <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800/30 flex items-start gap-3">
+              <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+              <div>
+                  <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-1">Análisis del Punto Óptimo</h3>
+                  <p className="text-sm text-blue-900 dark:text-blue-300">{insightText}</p>
               </div>
-              <div className="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50"> <button onClick={() => setIsSaveModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-md transition-colors"> Cancelar </button> <button onClick={handleSaveCase} disabled={isSaving} className="px-4 py-2 text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm"> {isSaving ? '⏳ Guardando...' : 'Actualizar Análisis'} </button> </div>
+          </div>
+        )}
+      </div>
+
+      {/* BOTÓN FLOTANTE DEL COPILOTO */}
+      <button
+        onClick={() => setIsCopilotOpen(!isCopilotOpen)}
+        className="fixed bottom-6 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 transition-transform z-50 border-2 border-slate-700"
+      >
+        <span className="text-2xl">🤖</span>
+      </button>
+
+      {/* DRAWER DEL COPILOTO */}
+      <div className={`fixed top-0 right-0 h-full w-[320px] bg-white border-l border-slate-200 shadow-2xl transform transition-transform duration-300 ease-in-out z-40 flex flex-col ${isCopilotOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="h-16 border-b border-slate-200 flex items-center justify-between px-4 bg-slate-50">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🤖</span>
+            <h3 className="font-black text-slate-800 tracking-tight">Copiloto Seco</h3>
+          </div>
+          <button onClick={() => setIsCopilotOpen(false)} className="text-slate-400 hover:text-slate-600">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
+          {chatMessages.map((msg, idx) => (
+            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] rounded-xl p-3 shadow-sm border ${msg.role === 'user' ? 'bg-blue-600 text-white border-blue-700 rounded-tr-none' : 'bg-white text-slate-700 border-slate-200 rounded-tl-none'}`}>
+                {msg.role === 'assistant' ? renderChatMessage(msg.content) : <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
+              </div>
+            </div>
+          ))}
+          {isChatLoading && (
+            <div className="flex justify-start">
+              <div className="bg-white border border-slate-200 rounded-xl rounded-tl-none p-3 shadow-sm text-slate-400 text-sm flex gap-1">
+                <span className="animate-bounce">●</span><span className="animate-bounce delay-100">●</span><span className="animate-bounce delay-200">●</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-slate-200">
+          <div className="relative">
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder="Pregúntale al Copiloto..."
+              className="w-full pl-4 pr-14 py-2.5 bg-slate-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm transition-all"
+            />
+            <button type="submit" disabled={!chatInput.trim() || isChatLoading} className="absolute right-2 top-2 text-blue-600 hover:text-blue-800 disabled:opacity-50">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+          </div>
+          <p className="text-[9px] text-center text-slate-400 mt-2">El Copiloto lee automáticamente tus parámetros.</p>
+        </form>
+      </div>
+
+        {/* MODAL DE GUARDADO EN CRM BLINDADO */}
+      {isSaveModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-slate-50 border-b border-slate-200 p-4">
+              <h3 className="font-black text-slate-800 text-lg flex items-center gap-2">💾 Guardar Simulación</h3>
+              <p className="text-xs text-slate-500 mt-1">Este análisis se guardará en la tabla de Historial.</p>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <Label className="block text-xs font-bold text-slate-700 mb-1">Cliente / Empresa</Label>
+                <Input type="text" placeholder="Ej: John Deere" className="w-full" value={saveClientName} onChange={e => setSaveClientName(e.target.value)} />
+              </div>
+              <div>
+                <Label className="block text-xs font-bold text-slate-700 mb-1">Nombre de la Operación</Label>
+                <Input type="text" placeholder="Ej: Torneado Eje Principal" className="w-full" value={saveCaseName} onChange={e => setSaveCaseName(e.target.value)} />
+              </div>
+              
+              <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+                <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Ahorro Anual Proyectado (Automático)</p>
+                <p className="font-black text-emerald-800 text-xl">
+                  {formatCurrency((curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12)}
+                </p>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50">
+              <button onClick={() => setIsSaveModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-md transition-colors">
+                Cancelar
+              </button>
+              
+              <button 
+                onClick={handleSaveCase} 
+                disabled={isSaving}
+                className="px-4 py-2 text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm"
+              >
+                {isSaving ? '⏳ Guardando...' : 'Guardar Análisis'}
+              </button>
             </div>
           </div>
-        </Dialog>
+        </div>
+      )}
+
+      {/* MODAL SIMULADOR TAYLOR */}
         <Dialog open={isTaylorModalOpen} onOpenChange={(isOpen) => { setIsTaylorModalOpen(isOpen); if (!isOpen) setTargetSavings(''); }}>
             <DialogContent className="max-w-3xl">
                 <DialogHeader>
@@ -887,27 +1367,53 @@ export default function EditTaylorCurvePage() {
                         <Wand2 className="text-purple-500" />
                         Simulador Interactivo (Ecuación de Taylor)
                     </DialogTitle>
-                    <DialogDescription> Mueve los controles para encontrar el punto óptimo entre productividad y vida útil, o ingresa un % de ahorro objetivo. </DialogDescription>
+                    <DialogDescription>
+                        Mueve los controles para encontrar el punto óptimo entre productividad y vida útil, o ingresa un % de ahorro objetivo.
+                    </DialogDescription>
                 </DialogHeader>
-                <div className="py-4 space-y-2"> <Label htmlFor="target-savings" className="font-bold">🎯 Ahorro Objetivo (%)</Label> <Input id="target-savings" type="number" placeholder="Ej: 15" value={targetSavings} onChange={(e) => setTargetSavings(e.target.value === '' ? '' : Number(e.target.value))} className="w-full md:w-1/2 border-purple-300 focus-visible:ring-purple-500" /> <p className="text-xs text-muted-foreground">Ingresa un % de ahorro y el simulador encontrará la Vc necesaria.</p> </div>
+
+                <div className="py-4 space-y-2">
+                    <Label htmlFor="target-savings" className="font-bold">🎯 Ahorro Objetivo (%)</Label>
+                    <Input
+                        id="target-savings" type="number" placeholder="Ej: 15" value={targetSavings}
+                        onChange={(e) => setTargetSavings(e.target.value)}
+                        className="w-full md:w-1/2 border-purple-300 focus-visible:ring-purple-500"
+                    />
+                    <p className="text-xs text-muted-foreground">Ingresa un % de ahorro y el simulador encontrará la Vc necesaria.</p>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                     <div className="space-y-6">
                         <div>
                             <Label className="font-bold">Velocidad de Corte (Vc)</Label>
-                            <div className="flex items-center gap-4"> <Slider min={taylorBase.vc * 0.7} max={taylorBase.vc * 1.5} step={1} value={[simulatedVc]} onValueChange={(val) => setSimulatedVc(val[0])} /> <span className="font-bold text-blue-600 w-24 text-center border rounded-md p-2">{simulatedVc.toFixed(0)} m/min</span> </div>
+                            <div className="flex items-center gap-4">
+                                <Slider min={taylorBase.vc * 0.7} max={taylorBase.vc * 1.5} step={1} value={[simulatedVc]} onValueChange={(val) => setSimulatedVc(val[0])} />
+                                <span className="font-bold text-blue-600 w-24 text-center border rounded-md p-2">{simulatedVc.toFixed(0)} m/min</span>
+                            </div>
                         </div>
                         <div>
                             <Label className="font-bold">Avance (f)</Label>
-                             <div className="flex items-center gap-4"> <Slider min={taylorBase.feed * 0.7} max={taylorBase.feed * 1.5} step={0.01} value={[simulatedFeed]} onValueChange={(val) => setSimulatedFeed(val[0])} /> <span className="font-bold text-blue-600 w-24 text-center border rounded-md p-2">{simulatedFeed.toFixed(2)} mm/rev</span> </div>
+                             <div className="flex items-center gap-4">
+                                <Slider min={taylorBase.feed * 0.7} max={taylorBase.feed * 1.5} step={0.01} value={[simulatedFeed]} onValueChange={(val) => setSimulatedFeed(val[0])} />
+                                <span className="font-bold text-blue-600 w-24 text-center border rounded-md p-2">{simulatedFeed.toFixed(2)} mm/rev</span>
+                            </div>
                         </div>
                     </div>
                     <div className="space-y-4 bg-slate-50 p-4 rounded-lg border">
-                        <div className="text-center p-3 border rounded-lg bg-white"> <p className="text-xs font-bold text-slate-500 uppercase">⏱️ Nuevo Tiempo de Ciclo</p> <p className="text-2xl font-black text-slate-800">{simulationResult ? formatoMinutosYSegundos(simulationResult.newTime) : '-'}</p> </div>
+                        <div className="text-center p-3 border rounded-lg bg-white">
+                            <p className="text-xs font-bold text-slate-500 uppercase">⏱️ Nuevo Tiempo de Ciclo</p>
+                            <p className="text-2xl font-black text-slate-800">{simulationResult ? formatoMinutosYSegundos(simulationResult.newTime) : '-'}</p>
+                        </div>
                          <div className="text-center p-3 border rounded-lg bg-white">
                             <p className="text-xs font-bold text-slate-500 uppercase">⚙️ Nueva Vida Útil</p>
                             <p className="text-2xl font-black text-slate-800">{simulationResult ? `${formatNumber(simulationResult.newPcs)} ${unidadVidaUtil}` : '-'}</p>
                         </div>
-                         <div className="text-center p-3 border rounded-lg bg-white"> <p className="text-xs font-bold text-slate-500 uppercase">Acabado Teórico (Ra)</p> <p className={`text-2xl font-black ${simulationResult && simulationResult.newRa && Number(simulationResult.newRa) > 3.2 ? 'text-red-500' : 'text-slate-800'}`}> {simulationResult?.newRa ? `${simulationResult.newRa} µm` : '-'} </p> </div>
+                         <div className="text-center p-3 border rounded-lg bg-white">
+                            <p className="text-xs font-bold text-slate-500 uppercase">Acabado Teórico (Ra)</p>
+                            <p className={`text-2xl font-black ${simulationResult && simulationResult.newRa && Number(simulationResult.newRa) > 3.2 ? 'text-red-500' : 'text-slate-800'}`}>
+                                {simulationResult?.newRa ? `${simulationResult.newRa} µm` : '-'}
+                            </p>
+                        </div>
                          <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
                             <p className="text-xs font-bold text-green-700 uppercase mb-1">💰 Nuevo Costo por Pieza</p>
                             {simulationResult ? (
@@ -930,9 +1436,274 @@ export default function EditTaylorCurvePage() {
                         </div>
                     </div>
                 </div>
-                <DialogFooter> <Button variant="ghost" onClick={() => setIsTaylorModalOpen(false)}>Cancelar</Button> <Button className="bg-green-600 hover:bg-green-700" onClick={() => { if (simulationResult) { setVcPremium(simulatedVc); setFeedPremium(simulatedFeed); setPcsPremium(simulationResult.newPcs); } setIsTaylorModalOpen(false); }}> Aplicar estos parámetros </Button> </DialogFooter>
+
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => setIsTaylorModalOpen(false)}>Cancelar</Button>
+                    <Button className="bg-green-600 hover:bg-green-700" onClick={() => {
+                        if (simulationResult) {
+                            setVcPremium(simulatedVc);
+                            setFeedPremium(simulatedFeed);
+                            setPcsPremium(simulationResult.newPcs);
+                        }
+                        setIsTaylorModalOpen(false);
+                    }}>
+                        Aplicar estos parámetros
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
-      </>
-    );
+
+        {/* PLANTILLA OCULTA PARA PDF (Renderizada fuera de pantalla para html2canvas) */}
+        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', zIndex: -1 }}>
+          <div id="pdf-pagina-1" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
+            
+            <div className="relative mb-8 pb-4 border-b-2 border-slate-800">
+              <div className="flex justify-between items-start mb-8 h-16">
+                {logos.company ? (
+                  <img src={logos.company} alt="Logo Empresa" crossOrigin="anonymous" className="h-full object-contain max-w-[250px] object-left" />
+                ) : (
+                  <div className="h-12 flex items-center justify-center bg-blue-600 text-white font-black px-4 rounded text-lg">SECOCUT</div>
+                )}
+                
+                {logos.brand ? (
+                  <img src={logos.brand} alt="Logo Marca" crossOrigin="anonymous" className="h-full object-contain max-w-[200px] object-right" />
+                ) : (
+                  <div className="h-12 flex items-center justify-center text-slate-800 font-black text-3xl">Seco</div>
+                )}
+              </div>
+
+              <div className="text-center mb-10 mt-4">
+                <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tight">Análisis de Curva de Costos</h1>
+              </div>
+
+              <div className="flex justify-between items-end">
+                <h2 className="text-2xl font-bold text-blue-600">{saveClientName || pieceName || 'Reporte de Análisis'}</h2>
+                <div className="text-right">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Informe Técnico</p>
+                  <p className="text-lg font-black text-slate-800">{new Date().toLocaleDateString('es-ES')}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">1. Condiciones de Trabajo Evaluadas</h2>
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-800 text-white">
+                    <th className="p-2 border border-slate-700">Parámetro</th>
+                    <th className="p-2 border border-slate-700 text-center">Condición Actual (Competidor)</th>
+                    <th className="p-2 border border-slate-700 text-center">Propuesta (Secocut)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold bg-slate-50">Herramienta</td>
+                    <td className="p-2 border border-slate-300 text-center">{toolNameCurrent || 'No especificada'}</td>
+                    <td className="p-2 border border-slate-300 font-bold text-green-700 bg-green-50 text-center">{toolNamePremium || 'No especificada'}</td>
+                  </tr>
+                  {(operationType === 'turning' || operationType === 'milling') && (
+                    <tr>
+                      <td className="p-2 border border-slate-300 font-bold">Incidencia (Holgura)</td>
+                      <td className="p-2 border border-slate-300 text-center">{obtenerAnguloTexto(toolNameCurrent)}</td>
+                      <td className="p-2 border border-slate-300 text-center bg-green-50 font-medium">{obtenerAnguloTexto(toolNamePremium)}</td>
+                    </tr>
+                  )}
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold">Precio Inserto</td>
+                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(Number(toolCostCurrent))}</td>
+                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(Number(toolCostPremium))}</td>
+                  </tr>
+                  {(operationType === 'milling' || operationType === 'drilling') && (
+                    <tr>
+                      <td className="p-2 border border-slate-300 font-bold">{operationType === 'drilling' ? 'Diámetro de Broca (Dc)' : 'Diámetro Fresa (Dc)'}</td>
+                      <td className="p-2 border border-slate-300 text-center">{dcCurrent} mm</td>
+                      <td className="p-2 border border-slate-300 text-center font-bold text-green-700">{dcPremium} mm</td>
+                    </tr>
+                  )}
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold">
+                      {operationType === 'drilling' ? 'Prof. del Agujero (L)' : 'Profundidad de Corte (ap)'}
+                    </td>
+                    <td className="p-2 border border-slate-300 text-center">{operationType === 'drilling' ? profundidadAgujero : apCurrent} mm</td>
+                    <td className="p-2 border border-slate-300 text-center text-green-700">{operationType === 'drilling' ? profundidadAgujero : apPremium} mm</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold">Tiempo de Corte (min)</td>
+                    <td className="p-2 border border-slate-300 text-center">{formatoMinutosYSegundos(Number(tcCurrent))}</td>
+                    <td className="p-2 border border-slate-300 text-center">{formatoMinutosYSegundos(Number(tcPremiumInput))}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold">Velocidad de Corte (Vc)</td>
+                    <td className="p-2 border border-slate-300 text-center">{vcCurrent} m/min</td>
+                    <td className="p-2 border border-slate-300 text-center">{vcPremium} m/min</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold">Avance ({operationType === 'milling' ? 'fz' : 'fn'})</td>
+                    <td className="p-2 border border-slate-300 text-center">{feedCurrent} {operationType === 'milling' ? 'mm/z' : 'mm/rev'}</td>
+                    <td className="p-2 border border-slate-300 text-center text-green-700 font-bold">{feedPremium} {operationType === 'milling' ? 'mm/z' : 'mm/rev'}</td>
+                  </tr>
+                  {operationType === 'drilling' && (
+                    <tr className="bg-green-50">
+                      <td className="font-bold p-2 text-gray-800 border border-slate-300">Velocidad de Penetración (Vf)</td>
+                      <td className="p-2 text-center border border-slate-300">{calcularVf(feedCurrent, vcCurrent, dcCurrent).toFixed(0)} mm/min</td>
+                      <td className="p-2 text-center text-green-800 font-black border border-slate-300">
+                        {calcularVf(feedPremium, vcPremium, dcPremium).toFixed(0)} mm/min
+                      </td>
+                    </tr>
+                  )}
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold">Rendimiento Estimado</td>
+                    <td className="p-2 border border-slate-300 text-center">{pcsCurrent} {lifeModeCurrent === 'minutos' ? 'minutos' : (operationType === 'drilling' ? 'agujeros' : 'pzs')}/filo</td>
+                    <td className="p-2 border border-slate-300 text-center text-green-700 font-bold">{pcsPremium} {lifeModePremium === 'minutos' ? 'minutos' : (operationType === 'drilling' ? 'agujeros' : 'pzs')}/filo</td>
+                  </tr>
+                   {operationType !== 'drilling' && (
+                    <tr className="bg-slate-100">
+                      <td className="p-2 border border-slate-300 font-bold">Rugosidad Teórica (Ra)</td>
+                      <td className="p-2 border border-slate-300 text-center">
+                          {`${raActual ?? 'N/A'} µm`}
+                      </td>
+                      <td className="p-2 border border-slate-300 text-center bg-slate-50 font-medium">
+                          {`${raPropuesta ?? 'N/A'} µm`}
+                      </td>
+                    </tr>
+                  )}
+                  <tr>
+                    <td className="p-2 border border-slate-300 font-bold">Consumo de Motor</td>
+                    <td className="p-2 border border-slate-300 text-center">{curveDataInfo.hpCurrent.toFixed(1)} HP ({curveDataInfo.loadCurrent.toFixed(1)}%)</td>
+                    <td className="p-2 border border-slate-300 text-center">{curveDataInfo.hpPremium.toFixed(1)} HP ({curveDataInfo.loadPremium.toFixed(1)}%)</td>
+                  </tr>
+                  <tr className="bg-slate-50">
+                    <td className="p-2 border border-slate-300 font-bold text-slate-800">Costo Real por Pieza</td>
+                    <td className="p-2 border border-slate-300 font-bold text-red-600 text-center">{isFinite(curveDataInfo.actualCostCurrent) ? formatCurrency(curveDataInfo.actualCostCurrent) : 'N/A'}</td>
+                    <td className="p-2 border border-slate-300 text-center">
+                      {isFinite(curveDataInfo.actualCostPremium) ? (
+                          <div className="flex items-center gap-2 justify-center">
+                              <span className="font-black text-green-800 text-lg">
+                                {formatCurrency(curveDataInfo.actualCostPremium)}
+                              </span>
+                          </div>
+                      ) : (
+                          'N/A'
+                      )}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bg-green-50 border-2 border-green-500 rounded-xl p-6 text-center mb-8 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
+              <p className="text-sm font-bold text-green-700 uppercase tracking-widest mb-2 mt-2">Impacto Anual Proyectado</p>
+              <p className="text-5xl font-black text-green-800 mb-2">
+                {formatCurrency(curveDataInfo.monthlySavings * 12)}
+              </p>
+              <div className="inline-block bg-green-100 px-4 py-2 rounded-full mt-2">
+                <p className="text-sm font-bold text-green-800">
+                  Basado en {formatNumber(Number(monthlyProduction))} piezas/mes • Ahorro mensual: {formatCurrency(curveDataInfo.monthlySavings)}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-4 border-t border-slate-300 text-center text-[10px] text-slate-500">
+              Reporte de Análisis de Costos • Página 1 de 2
+            </div>
+          </div>
+
+          <div id="pdf-pagina-2" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
+              <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-xl font-black text-slate-800 uppercase">Análisis Gráfico</h2>
+                  <p className="text-sm font-bold text-slate-500">Página 2 de 2</p>
+              </div>
+            <div>
+              <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">2. Análisis de Curva de Costos</h2>
+              <div className="w-full h-[300px] border border-slate-200 p-2 bg-white">
+                <LineChart width={650} height={280} data={curveDataInfo.data}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="speed" label={{ value: 'Vc (m/min)', position: 'bottom', offset: -5 }} />
+                  <YAxis label={{ value: 'Costo USD', angle: -90, position: 'insideLeft' }} />
+                  <Legend verticalAlign="top" height={36} />
+                  <Line type="monotone" dataKey="costoActual" name="Inserto Competidor" stroke="#ef4444" strokeWidth={3} dot={false} />
+                  <Line type="monotone" dataKey="costoPremium" name="Propuesta (Secocut)" stroke="#22c55e" strokeWidth={3} dot={false} />
+                  {isFinite(curveDataInfo.actualCostCurrent) && <ReferenceDot x={Number(vcCurrent)} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />}
+                  {isFinite(curveDataInfo.actualCostPremium) && <ReferenceDot x={Number(vcPremium)} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
+                </LineChart>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-4 border-t border-slate-300 text-center text-[10px] text-slate-500">
+              Documento generado automáticamente por Simulador de Competitividad Secocut SRL.
+            </div>
+          </div>
+        </div>
+        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', zIndex: -1 }}>
+            <div id="survey-pdf-content" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
+                <div className="flex justify-between items-center mb-8 pb-4 border-b-2 border-slate-800">
+                    {logos.company ? <img src={logos.company} alt="Logo Empresa" crossOrigin="anonymous" className="h-16 object-contain" /> : <div className="h-16 w-48 bg-slate-200"></div>}
+                    <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Planilla de Relevamiento</h1>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-8 text-sm">
+                    <SurveyField label="Cliente" />
+                    <SurveyField label="Fecha" />
+                    <SurveyField label="Máquina" />
+                    <SurveyField label="Material a mecanizar" />
+                    <div className="flex items-end border-b-2 border-dotted border-slate-300 py-3">
+                        <span className="font-semibold text-slate-700 mr-2">Costo Máquina ($/hr):</span>
+                        <span className="flex-grow"></span>
+                    </div>
+                    <div className="flex items-end border-b-2 border-dotted border-slate-300 py-3">
+                        <span className="font-semibold text-slate-700 mr-2">Potencia Motor (HP):</span>
+                        <span className="flex-grow"></span>
+                    </div>
+                </div>
+                
+                <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
+                    <h2 className="text-lg font-bold text-blue-700 mb-4 uppercase">Datos Técnicos - {operationType.charAt(0).toUpperCase() + operationType.slice(1)}</h2>
+                    <div className="space-y-4 text-sm">
+                        {operationType === 'turning' && (
+                            <>
+                                <SurveyField label="Inserto Actual (Código)" />
+                                <div className="grid grid-cols-2 gap-8"><SurveyField label="Precio por Inserto (USD)" /><SurveyField label="Filos por Inserto" /></div>
+                                <SurveyField label="Profundidad de Corte (ap) mm" />
+                                <SurveyField label="Avance (fn) mm/rev" />
+                                <SurveyField label="Velocidad de Corte (Vc) m/min" />
+                                <SurveyField label="Vida Útil Actual" />
+                                <SurveyField label="Tiempo de Cambio de Herramienta (min)" />
+                            </>
+                        )}
+                        {operationType === 'milling' && (
+                            <>
+                                <SurveyField label="Inserto Actual (Código)" />
+                                <div className="grid grid-cols-2 gap-8"><SurveyField label="Precio por Inserto (USD)" /><SurveyField label="Filos por Inserto" /></div>
+                                <SurveyField label="Profundidad de Corte (ap) mm" />
+                                <SurveyField label="Avance (fz) mm/z" />
+                                <SurveyField label="Velocidad de Corte (Vc) m/min" />
+                                <SurveyField label="Cantidad de Dientes de la Fresa (Z)" />
+                                <SurveyField label="Vida Útil Actual" />
+                                <SurveyField label="Tiempo de Cambio de Herramienta (min)" />
+                            </>
+                        )}
+                        {operationType === 'drilling' && (
+                            <>
+                                <SurveyField label="Broca / Inserto Actual" />
+                                <div className="grid grid-cols-2 gap-8"><SurveyField label="Precio de Broca/Inserto (USD)" /><SurveyField label="Filos útiles" /></div>
+                                <SurveyField label="Diámetro de Broca (Dc) mm" />
+                                <SurveyField label="Profundidad del Agujero (L) mm" />
+                                <SurveyField label="Avance (fn) mm/rev" />
+                                <SurveyField label="Velocidad de Corte (Vc) m/min" />
+                                <SurveyField label="Vida Útil Actual" />
+                                <SurveyField label="Tiempo de Cambio de Herramienta (min)" />
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                <div className="mt-auto pt-8">
+                    <h3 className="text-sm font-bold text-slate-600 mb-2">Notas Adicionales:</h3>
+                    <div className="w-full h-32 border-2 border-dotted border-slate-300 rounded-lg p-2"></div>
+                </div>
+            </div>
+        </div>
+    </>
+  );
 }

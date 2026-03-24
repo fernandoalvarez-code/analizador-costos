@@ -239,6 +239,42 @@ export default function TaylorCurvePage() {
   const [taylorBaseCost, setTaylorBaseCost] = useState(0);
   const [targetSavings, setTargetSavings] = useState<string | number>('');
 
+  // --- Efecto Inteligente para Autocalcular Tiempo Propuesto ---
+  useEffect(() => {
+    // 1. Extraer los valores numéricos seguros de la caja Roja (Base de cálculo)
+    const baseTc = Number(tcCurrent);
+    const baseVc = Number(vcCurrent);
+    const baseFeed = Number(feedCurrent);
+    const baseAp = Number(apCurrent);
+
+    // 2. Extraer los valores numéricos seguros de la caja Verde (Propuesta)
+    const premVc = Number(vcPremium);
+    const premFeed = Number(feedPremium);
+    const premAp = Number(apPremium);
+
+    // 3. Solo operamos si el usuario ya llenó el Tiempo Base (Caja Roja) 
+    // y si los parámetros de la caja verde son mayores a cero para evitar dividir por cero.
+    if (baseTc > 0 && premVc > 0 && premFeed > 0 && premAp > 0) {
+      
+      // Protegemos contra divisiones por cero en la base
+      const safeBaseVc = baseVc > 0 ? baseVc : premVc;
+      const safeBaseFeed = baseFeed > 0 ? baseFeed : premFeed;
+      const safeBaseAp = baseAp > 0 ? baseAp : premAp;
+
+      // 4. Fórmula Universal de Mecanizado: 
+      // El tiempo es inversamente proporcional a la Velocidad, Avance y Profundidad.
+      const nuevoTiempoPremium = baseTc * (safeBaseVc / premVc) * (safeBaseFeed / premFeed) * (safeBaseAp / premAp);
+
+      // 5. Actualizamos automáticamente el campo verde "Tiempo Propuesto"
+      // Solo actualizamos si el nuevo tiempo es razonable y diferente al actual para evitar loops
+      if (isFinite(nuevoTiempoPremium) && nuevoTiempoPremium > 0) {
+          // Formateamos a 2 decimales para que se vea limpio en el input
+          setTcPremiumInput(nuevoTiempoPremium.toFixed(2));
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tcCurrent, vcCurrent, feedCurrent, apCurrent, vcPremium, feedPremium, apPremium]);
+
   useEffect(() => {
     if (operationType === 'drilling') {
       const vc = Number(vcCurrent); const d = Number(dcCurrent); const f = Number(feedCurrent); const l = Number(profundidadAgujero);
@@ -912,6 +948,7 @@ export default function TaylorCurvePage() {
                 </Button>
             </div>
 
+            
             <div className="space-y-4 flex-grow">
               <div>
                 <Label className="block text-xs font-bold text-slate-500 mb-1">Pieza / Operación</Label>
@@ -1762,5 +1799,3 @@ export default function TaylorCurvePage() {
     </>
   );
 }
-
-```
