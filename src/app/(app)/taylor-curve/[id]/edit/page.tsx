@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectGroup, SelectLabel, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, Info, Share2, FileText, Wand2, ArrowLeft } from 'lucide-react';
+import { TrendingUp, Info, Share2, FileText, Wand2, ArrowLeft, Download } from 'lucide-react';
 import { formatCurrency, formatNumber, formatoMinutosYSegundos } from '@/lib/formatters';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -181,6 +181,21 @@ const auditarBroca = (diametro?: number | "", profundidad?: number | ""): string
   return null;
 };
 
+const calcularVf = (f: number | string, vc: number | string, d: number | string): number => {
+    const numF = Number(f); const numVc = Number(vc); const numD = Number(d);
+    if (numF <= 0 || numVc <= 0 || numD <= 0) return 0;
+    const rpm = (numVc * 1000) / (Math.PI * numD);
+    return numF * rpm;
+};
+
+const SurveyField = ({ label }: { label: string }) => (
+    <div className="flex justify-between items-end border-b-2 border-dotted border-slate-300 py-3">
+        <span className="font-semibold text-slate-700">{label}:</span>
+        <span className="flex-grow"></span>
+    </div>
+);
+
+
 export default function EditTaylorCurvePage() {
   const { user } = useUser();
   const router = useRouter();
@@ -198,6 +213,7 @@ export default function EditTaylorCurvePage() {
   const [pieceName, setPieceName] = useState<string>("");
   const [machinePowerHP, setMachinePowerHP] = useState<string | number>(15);
   const [profundidadAgujero, setProfundidadAgujero] = useState<string | number>("");
+  const [isGeneratingSurvey, setIsGeneratingSurvey] = useState(false);
   
   const [toolNameCurrent, setToolNameCurrent] = useState<string>("");
   const [toolCostCurrent, setToolCostCurrent] = useState<string | number>("");
@@ -511,21 +527,19 @@ export default function EditTaylorCurvePage() {
         hpPremium = kwPremium_base * 1.341 * obtenerFactorForma(toolNamePremium) * obtenerFactorIncidencia(toolNamePremium);
     } else if (operationType === 'milling') {
         const safeDcCurrent = Number(dcCurrent) || 0.0001, safeFzCurrent = Number(feedCurrent) || 0, safeZCurrentMilling = Number(zCurrent) || 1, safeApCurrent = Number(apCurrent) || 0, safeAeCurrent = Number(aeCurrent) || 0;
-        const safeDcPremium = Number(dcPremium) || 0.0001, safeFzPremium = Number(feedPremium) || 0, safeZPremiumMilling = Number(zPremium) || 1, safeApPremium = Number(apPremium) || 0, safeAePremium = Number(aePremium) || 0;
         const rpmCurrent = (safeVcCurrent * 1000) / (Math.PI * safeDcCurrent), vfCurrent = safeFzCurrent * safeZCurrentMilling * rpmCurrent;
-        const rpmPremium = (vcPropuesta * 1000) / (Math.PI * safeDcPremium), vfPremium = safeFzPremium * safeZPremiumMilling * rpmPremium;
+        const rpmPremium = (vcPropuesta * 1000) / (Math.PI * (Number(dcPremium) || 0.0001)), vfPremium = (Number(feedPremium) || 0) * (Number(zPremium) || 1) * rpmPremium;
         const qCurrent = (safeApCurrent * safeAeCurrent * vfCurrent) / 1000, kwCurrent = (qCurrent * kc) / 60000;
         hpCurrent = (kwCurrent * 1.341) / 0.8;
-        const qPremium = (safeApPremium * safeAePremium * vfPremium) / 1000, kwPremium = (qPremium * kc) / 60000;
+        const qPremium = ((Number(apPremium) || 0) * (Number(aePremium) || 0) * vfPremium) / 1000, kwPremium = (qPremium * kc) / 60000;
         hpPremium = (kwPremium * 1.341) / 0.8;
     } else if (operationType === 'drilling') {
         const safeDcCurrent = Number(dcCurrent) || 0.0001, safeFnCurrent = Number(feedCurrent) || 0;
-        const safeDcPremium = Number(dcPremium) || 0.0001, safeFnPremium = Number(feedPremium) || 0;
         const rpmCurrent = (safeVcCurrent * 1000) / (Math.PI * safeDcCurrent), vfCurrent = safeFnCurrent * rpmCurrent;
-        const rpmPremium = (vcPropuesta * 1000) / (Math.PI * safeDcPremium), vfPremium = safeFnPremium * rpmPremium;
+        const rpmPremium = (vcPropuesta * 1000) / (Math.PI * (Number(dcPremium) || 0.0001)), vfPremium = (Number(feedPremium) || 0) * rpmPremium;
         const qCurrent = (Math.PI * Math.pow(safeDcCurrent, 2) / 4) * vfCurrent / 1000, kwCurrent = (qCurrent * kc) / 60000;
         hpCurrent = (kwCurrent * 1.341) / 0.8;
-        const qPremium = (Math.PI * Math.pow(safeDcPremium, 2) / 4) * vfPremium / 1000, kwPremium = (qPremium * kc) / 60000;
+        const qPremium = (Math.PI * Math.pow((Number(dcPremium) || 0.0001), 2) / 4) * vfPremium / 1000, kwPremium = (qPremium * kc) / 60000;
         hpPremium = (kwPremium * 1.341) / 0.8;
     }
     const loadCurrent = (hpCurrent / safeMachinePowerHP) * 100, loadPremium = (hpPremium / safeMachinePowerHP) * 100;
@@ -542,7 +556,8 @@ export default function EditTaylorCurvePage() {
         const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
         const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
         const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
-        
+        const ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
+    
         const baseTime = isPremium ? safeTcPremium : safeTcCurrent;
         const baseVc = isPremium ? vcPropuesta : safeVcCurrent;
         const tc = baseTime * (baseVc / v);
@@ -616,7 +631,7 @@ export default function EditTaylorCurvePage() {
 
     return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, tcPremiumInput, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium]);
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium]);
 
   useEffect(() => {
     if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
@@ -838,20 +853,28 @@ export default function EditTaylorCurvePage() {
 
   const unidadVidaUtil = lifeModePremium === 'minutos' ? 'minutos' : (operationType === 'drilling' ? 'agujeros' : 'pzas/filo');
 
+  if (isLoading) {
+    return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
+  }
+
   return (
     <>
       <div className={`container mx-auto space-y-8 pb-16 transition-all duration-300 ${isCopilotOpen ? 'pr-[320px]' : ''}`}>
       {/* HEADER Y BOTONES DE ACCIÓN */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-            <TrendingUp className="text-blue-600 h-7 w-7" />
-            Análisis de Curva de Costos
-          </h1>
-          <p className="text-slate-500 text-sm mt-1">Compara la Vc actual vs. la propuesta para demostrar el ahorro real.</p>
+        <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => router.back()} className="mr-2 h-10 w-10">
+                <ArrowLeft />
+            </Button>
+            <div>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                <TrendingUp className="text-blue-600 h-7 w-7" />
+                Editar Análisis de Costos
+            </h1>
+            <p className="text-slate-500 text-sm mt-1">Ajusta los parámetros para refinar tu análisis.</p>
+            </div>
         </div>
 
-        {/* BOTONERA ESTILO "SIMULADOR PRINCIPAL" */}
         <div className="flex flex-wrap gap-2 w-full md:w-auto bg-slate-100 p-1.5 rounded-lg border border-slate-200">
           <button
             onClick={() => handleGeneratePDF('download')}
@@ -916,13 +939,13 @@ export default function EditTaylorCurvePage() {
             <div className="space-y-4 flex-grow">
               <div>
                 <Label className="block text-xs font-bold text-slate-500 mb-1">Pieza / Operación</Label>
-                <Input type="text" placeholder="Ej: Eje principal" className="w-full bg-slate-50" value={pieceName} onChange={e => setPieceName(e.target.value)} />
+                <Input type="text" placeholder="Ej: Eje principal" className="w-full bg-slate-50 text-slate-900" value={pieceName} onChange={e => setPieceName(e.target.value)} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <Label className="block text-xs font-bold text-slate-500 mb-1">Material</Label>
                   <Select value={materialId} onValueChange={setMaterialId}>
-                    <SelectTrigger className="w-full bg-slate-50"><SelectValue placeholder="Selecciona un material" /></SelectTrigger>
+                    <SelectTrigger className="w-full bg-slate-50 text-slate-900"><SelectValue placeholder="Selecciona un material" /></SelectTrigger>
                     <SelectContent>
                         {Object.entries(materialGroups).map(([groupName, materials]) => (
                             <SelectGroup key={groupName}>
@@ -936,20 +959,20 @@ export default function EditTaylorCurvePage() {
                 {operationType === 'drilling' && (
                     <div className="col-span-2">
                         <Label className="block text-xs font-bold text-slate-500 mb-1">Profundidad del Agujero (mm)</Label>
-                        <Input type="number" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value)} />
+                        <Input type="number" className="bg-white text-slate-900 border-slate-200" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value)} />
                     </div>
                 )}
                 <div>
                   <Label className="block text-xs font-bold text-blue-700 mb-1">Motor (HP)</Label>
-                  <Input type="number" step="0.5" className="font-bold text-blue-700 bg-blue-50/50" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value)} />
+                  <Input type="number" step="0.5" className="font-bold text-blue-700 bg-blue-50 text-slate-900 border-blue-200" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value)} />
                 </div>
                  <div>
                   <Label className="block text-xs font-bold text-slate-500 mb-1">Costo Máq. ($/hr)</Label>
-                  <Input type="number" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value)} />
+                  <Input type="number" className="bg-white text-slate-900 border-slate-200" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value)} />
                 </div>
                 <div>
                   <Label className="block text-xs font-bold text-slate-500 mb-1">Cambio (min)</Label>
-                  <Input type="number" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value)} />
+                  <Input type="number" className="bg-white text-slate-900 border-slate-200" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -958,7 +981,7 @@ export default function EditTaylorCurvePage() {
             <div className="mt-6 pt-5 border-t border-slate-100">
               <Label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wide">📦 Escala Comercial</Label>
               <div className="relative">
-                <Input type="number" placeholder="Ej: 1000" className="w-full text-lg font-black text-blue-700 pl-4 pr-16 h-12 bg-slate-50" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value)} />
+                <Input type="number" placeholder="Ej: 1000" className="w-full text-lg font-black text-blue-700 pl-4 pr-16 h-12 bg-slate-50 text-slate-900" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value)} />
                 <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400">pzs/mes</span>
               </div>
             </div>
@@ -1027,7 +1050,7 @@ export default function EditTaylorCurvePage() {
               
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-red-700 mb-1">Tiempo Actual (min decimales)</Label>
-                <Input type="number" step="0.01" className="border-red-300 font-bold bg-white text-slate-900" placeholder="Ej: 7.0" value={tcCurrent} onChange={e => setTcCurrent(e.target.value)} disabled={operationType === 'drilling'} />
+                <Input type="number" step="0.01" className="border-red-300 font-bold bg-white text-slate-900 disabled:bg-slate-100" placeholder="Ej: 7.0" value={tcCurrent} onChange={e => setTcCurrent(e.target.value)} disabled={operationType === 'drilling'} />
               </div>
             </div>
             {operationType === 'turning' && warningCurrent && (
@@ -1070,7 +1093,7 @@ export default function EditTaylorCurvePage() {
             <div className="grid grid-cols-2 gap-4 flex-grow">
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-green-800 mb-1 uppercase tracking-wider">Herramienta / Inserto Seco</Label>
-                <Input type="text" placeholder="Ej: CNMG 120408-M3W TP2501" className="border-green-300 bg-white text-slate-900 shadow-inner font-bold" value={toolNamePremium} onChange={e => setToolNamePremium(e.target.value)} />
+                <Input type="text" placeholder="Ej: CNMG 120408-M3W TP2501" className="border-green-300 bg-white text-slate-900 shadow-inner font-bold text-green-900" value={toolNamePremium} onChange={e => setToolNamePremium(e.target.value)} />
                  {operationType === 'milling' && warningFresaPremium && (
                     <div className={`mt-2 p-2 text-xs font-medium rounded-r-lg ${warningFresaPremium.includes('ERROR') ? 'bg-red-100 border-l-4 border-red-500 text-red-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}>
                         {warningFresaPremium}
