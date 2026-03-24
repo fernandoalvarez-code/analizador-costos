@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -498,14 +497,19 @@ export default function EditTaylorCurvePage() {
         const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
         const ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
 
-        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0 };
+        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0, insertsToBuy: 0 };
 
         const tc = (safeTcCurrent * (safeVcCurrent / v) * ((Number(feedCurrent) || 0.0001) / feed) * ((Number(apCurrent) || 0.0001) / ap));
         const lifeMins = Math.pow((C / v), (1 / taylorProps.n));
         
-        // Breakdown
-        const costoMaquina = safeMachineCostMin * tc;
         const piecesPerToolLife = lifeMins > 0 ? lifeMins / tc : 0;
+
+        const insertsToBuy = (piecesPerToolLife > 0 && edges > 0) 
+            ? Math.ceil((safeMonthlyProduction / piecesPerToolLife) * (z / edges)) 
+            : 0;
+
+        const costoMaquina = safeMachineCostMin * tc;
+        
         const costPerEdge = edges > 0 ? toolPrice / edges : 0;
 
         const penalidadCambio = (costPerEdge * z) + (safeToolChangeTime * safeMachineCostMin);
@@ -513,7 +517,7 @@ export default function EditTaylorCurvePage() {
         const costoParada = piecesPerToolLife > 0 ? (safeToolChangeTime * safeMachineCostMin) / piecesPerToolLife : 0;
         
         const costoTotal = costoMaquina + costoInsertoPuro + costoParada;
-        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada };
+        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada, insertsToBuy };
     };
 
     const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
@@ -541,16 +545,18 @@ export default function EditTaylorCurvePage() {
                 maquina: resActual.costoMaquina,
                 inserto: resActual.costoInsertoPuro,
                 parada: resActual.costoParada,
+                insertsToBuy: resActual.insertsToBuy
             },
             desglosePremium: {
                 maquina: resPremium.costoMaquina,
                 inserto: resPremium.costoInsertoPuro,
                 parada: resPremium.costoParada,
+                insertsToBuy: resPremium.insertsToBuy
             }
         };
     });
     const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, effectivePcsCurrent, (Number(zCurrent) || 1), safeEdgesCurrent);
-    const actualCostPremium = calcEmpiricalCost(tcPremium, safeToolCostPremium, effectivePcsPremium, (Number(zPremium) || 1), safeEdgesCurrent);
+    const actualCostPremium = calcEmpiricalCost(tcPremium, safeToolCostPremium, effectivePcsPremium, (Number(zPremium) || 1), safeEdgesPremium);
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
     const realSavingsPercentage = actualCostCurrent > 0 ? (realAbsoluteSavings / actualCostCurrent) * 100 : 0;
     const monthlySavings = isFinite(realAbsoluteSavings) ? realAbsoluteSavings * safeMonthlyProduction : 0;
@@ -627,6 +633,9 @@ export default function EditTaylorCurvePage() {
                       🛑 Costo Paradas: {formatCurrency(desgloseActual.parada)}
                     </p>
                   )}
+                  <p className="text-red-800 font-semibold mt-1">
+                    📦 Insertos para Lote: {desgloseActual.insertsToBuy} unds.
+                  </p>
               </div>
             </div>
           )}
@@ -654,6 +663,9 @@ export default function EditTaylorCurvePage() {
                       🛑 Costo Paradas: {formatCurrency(desglosePremium.parada)}
                     </p>
                   )}
+                   <p className="text-green-800 font-semibold mt-1">
+                    📦 Insertos para Lote: {desglosePremium.insertsToBuy} unds.
+                  </p>
               </div>
             </div>
           )}
@@ -763,16 +775,16 @@ export default function EditTaylorCurvePage() {
                     </SelectContent>
                   </Select>
                 </div>
-                {operationType === 'drilling' && ( <div className="col-span-2"> <Label className="block text-xs font-bold text-slate-500 mb-1">Profundidad del Agujero (mm)</Label> <Input type="number" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value === "" ? "" : Number(e.target.value))} /> </div> )}
-                <div> <Label className="block text-xs font-bold text-blue-700 mb-1">Motor (HP)</Label> <Input type="number" step="0.5" className="font-bold text-blue-700 bg-blue-50/50" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value === "" ? "" : Number(e.target.value))} /> </div>
-                 <div> <Label className="block text-xs font-bold text-slate-500 mb-1">Costo Máq. ($/hr)</Label> <Input type="number" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value === "" ? "" : Number(e.target.value))} /> </div>
-                <div> <Label className="block text-xs font-bold text-slate-500 mb-1">Cambio (min)</Label> <Input type="number" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value === "" ? "" : Number(e.target.value))} /> </div>
+                {operationType === 'drilling' && ( <div className="col-span-2"> <Label className="block text-xs font-bold text-slate-500 mb-1">Profundidad del Agujero (mm)</Label> <Input type="number" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value)} /> </div> )}
+                <div> <Label className="block text-xs font-bold text-blue-700 mb-1">Motor (HP)</Label> <Input type="number" step="0.5" className="font-bold text-blue-700 bg-blue-50/50" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value)} /> </div>
+                 <div> <Label className="block text-xs font-bold text-slate-500 mb-1">Costo Máq. ($/hr)</Label> <Input type="number" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value)} /> </div>
+                <div> <Label className="block text-xs font-bold text-slate-500 mb-1">Cambio (min)</Label> <Input type="number" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value)} /> </div>
               </div>
             </div>
             <div className="mt-6 pt-5 border-t border-slate-100">
               <Label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wide">📦 Escala Comercial</Label>
               <div className="relative">
-                <Input type="number" placeholder="Ej: 1000" className="w-full text-lg font-black text-blue-700 pl-4 pr-16 h-12 bg-slate-50" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value === "" ? "" : Number(e.target.value))} />
+                <Input type="number" placeholder="Ej: 1000" className="w-full text-lg font-black text-blue-700 pl-4 pr-16 h-12 bg-slate-50" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value)} />
                 <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400">pzs/mes</span>
               </div>
             </div>
@@ -781,19 +793,19 @@ export default function EditTaylorCurvePage() {
             <div className="absolute top-0 left-0 w-full h-1.5 bg-red-500"></div>
             <h2 className="font-black text-red-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🔴 Condición Actual</h2>
             <div className="grid grid-cols-2 gap-4 flex-grow">
-              <div className="col-span-2"> <Label className="block text-[10px] font-bold text-red-800 mb-1 uppercase tracking-wider">Herramienta / Inserto Competencia</Label> <Input type="text" placeholder="Ej: CNMG 120408" className="border-red-200 bg-white" value={toolNameCurrent} onChange={e => setToolNameCurrent(e.target.value)} /> {operationType === 'milling' && warningFresaCurrent && ( <div className={`mt-2 p-2 text-xs font-medium rounded-r-lg ${warningFresaCurrent.includes('ERROR') ? 'bg-red-100 border-l-4 border-red-500 text-red-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}> {warningFresaCurrent} </div> )} </div>
-              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-red-200 bg-white" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
-              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 4" className="border-red-200 bg-white" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
-              {operationType === 'milling' || operationType === 'drilling' ? ( <div><Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Diámetro Fresa (Dc) mm' : 'Diámetro Broca (Dc) mm'}</Label><Input type="number" className="border-red-200 bg-white" value={dcCurrent} onChange={e => setDcCurrent(e.target.value === '' ? '' : Number(e.target.value))} /></div> ) : null}
-              {operationType === 'milling' ? ( <> <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Ancho Corte (ae) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white" value={aeCurrent} onChange={e => setAeCurrent(e.target.value === '' ? '' : Number(e.target.value))} /></div> <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white" value={apCurrent} onChange={e => setApCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div> <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-red-200 bg-white" value={zCurrent} onChange={e => setZCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div> </> ) : operationType === 'turning' ? ( <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white" value={apCurrent} onChange={e => setApCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div> ) : null}
-              <div> <Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}</Label> <Input type="number" step="0.01" className="border-red-200 bg-white" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value === "" ? "" : Number(e.target.value))} /> {operationType === 'turning' && raActual && ( <p className="text-[10px] text-slate-500 font-semibold mt-1"> Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span> </p> )} </div>
-              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label><Input type="number" className="border-red-200 bg-white" value={vcCurrent} onChange={e => setVcCurrent(e.target.value === "" ? "" : Number(e.target.value))} /></div>
-              <div className="col-span-2"> <Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Minutos / filo' : operationType === 'drilling' ? 'Agujeros / filo' : 'Pzas / filo'}</Label> <Input type="number" className="border-red-200 bg-white" placeholder={operationType === 'milling' ? 'Ej: 45' : operationType === 'drilling' ? 'Ej: 500' : 'Ej: 120'} value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value === "" ? "" : Number(e.target.value))} /> </div>
+              <div className="col-span-2"> <Label className="block text-[10px] font-bold text-red-800 mb-1 uppercase tracking-wider">Herramienta / Inserto Competencia</Label> <Input type="text" placeholder="Ej: CNMG 120408" className="border-red-200 bg-white text-slate-900" value={toolNameCurrent} onChange={e => setToolNameCurrent(e.target.value)} /> {operationType === 'milling' && warningFresaCurrent && ( <div className={`mt-2 p-2 text-xs font-medium rounded-r-lg ${warningFresaCurrent.includes('ERROR') ? 'bg-red-100 border-l-4 border-red-500 text-red-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}> {warningFresaCurrent} </div> )} </div>
+              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value)} /></div>
+              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 4" className="border-red-200 bg-white text-slate-900" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value)} /></div>
+              {operationType === 'milling' || operationType === 'drilling' ? ( <div><Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Diámetro Fresa (Dc) mm' : 'Diámetro Broca (Dc) mm'}</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={dcCurrent} onChange={e => setDcCurrent(e.target.value)} /></div> ) : null}
+              {operationType === 'milling' ? ( <> <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Ancho Corte (ae) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={aeCurrent} onChange={e => setAeCurrent(e.target.value)} /></div> <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div> <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={zCurrent} onChange={e => setZCurrent(e.target.value)} /></div> </> ) : operationType === 'turning' ? ( <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div> ) : null}
+              <div> <Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}</Label> <Input type="number" step="0.01" className="border-red-200 bg-white text-slate-900" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value)} /> {operationType === 'turning' && raActual && ( <p className="text-[10px] text-slate-500 font-semibold mt-1"> Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span> </p> )} </div>
+              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={vcCurrent} onChange={e => setVcCurrent(e.target.value)} /></div>
+              <div className="col-span-2"> <Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Minutos / filo' : operationType === 'drilling' ? 'Agujeros / filo' : 'Pzas / filo'}</Label> <Input type="number" className="border-red-200 bg-white text-slate-900" placeholder={operationType === 'milling' ? 'Ej: 45' : operationType === 'drilling' ? 'Ej: 500' : 'Ej: 120'} value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value)} /> </div>
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-red-700 mb-1">Tiempo Actual (Corte)</Label>
                 <div className="flex gap-2">
-                  <div className="relative w-1/2"><Input type="number" className="pr-7 border-red-300 font-bold bg-white disabled:bg-slate-100" value={tcCurrentMin} onChange={e => setTcCurrentMin(e.target.value === "" ? "" : Number(e.target.value))} disabled={operationType === 'drilling'} /><span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">min</span></div>
-                  <div className="relative w-1/2"><Input type="number" className="pr-7 border-red-300 font-bold bg-white disabled:bg-slate-100" value={tcCurrentSec} onChange={e => setTcCurrentSec(e.target.value === "" ? "" : Number(e.target.value))} disabled={operationType === 'drilling'} /><span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">seg</span></div>
+                  <div className="relative w-1/2"><Input type="number" className="pr-7 border-red-300 font-bold bg-white text-slate-900 disabled:bg-slate-100" value={tcCurrentMin} onChange={e => setTcCurrentMin(e.target.value)} disabled={operationType === 'drilling'} /><span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">min</span></div>
+                  <div className="relative w-1/2"><Input type="number" className="pr-7 border-red-300 font-bold bg-white text-slate-900 disabled:bg-slate-100" value={tcCurrentSec} onChange={e => setTcCurrentSec(e.target.value)} disabled={operationType === 'drilling'} /><span className="absolute right-2 top-2.5 text-[10px] font-bold text-red-400">seg</span></div>
                 </div>
               </div>
             </div>
@@ -810,14 +822,14 @@ export default function EditTaylorCurvePage() {
             <div className="absolute top-0 left-0 w-full h-1.5 bg-green-500"></div>
             <h2 className="font-black text-green-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🟢 Propuesta (Secocut)</h2>
             <div className="grid grid-cols-2 gap-4 flex-grow">
-              <div className="col-span-2"> <Label className="block text-[10px] font-bold text-green-800 mb-1 uppercase tracking-wider">Herramienta / Inserto Seco</Label> <Input type="text" placeholder="Ej: CNMG 120408-M3W TP2501" className="border-green-300 bg-white shadow-inner font-bold text-green-900" value={toolNamePremium} onChange={e => setToolNamePremium(e.target.value)} /> {operationType === 'milling' && warningFresaPremium && ( <div className={`mt-2 p-2 text-xs font-medium rounded-r-lg ${warningFresaPremium.includes('ERROR') ? 'bg-red-100 border-l-4 border-red-500 text-red-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}> {warningFresaPremium} </div> )} </div>
-              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-green-200 bg-white" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
-              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 8" className="border-green-200 bg-white" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
-              {operationType === 'milling' || operationType === 'drilling' ? ( <div><Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'milling' ? 'Diámetro Fresa (Dc) mm' : 'Diámetro Broca (Dc) mm'}</Label><Input type="number" className="border-green-200 bg-white" value={dcPremium} onChange={e => setDcPremium(e.target.value === '' ? '' : Number(e.target.value))} /></div> ) : null}
-              {operationType === 'milling' ? ( <> <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Ancho Corte (ae) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white" value={aePremium} onChange={e => setAePremium(e.target.value === '' ? '' : Number(e.target.value))} /></div> <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white" value={apPremium} onChange={e => setApPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div> <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-green-200 bg-white" value={zPremium} onChange={e => setZPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div> </> ) : operationType === 'turning' ? ( <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white" value={apPremium} onChange={e => setApPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div> ) : null }
-              <div> <Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}</Label> <Input type="number" step="0.01" className="border-green-200 bg-white" value={feedPremium} onChange={e => setFeedPremium(e.target.value === "" ? "" : Number(e.target.value))} /> {operationType === 'turning' && raPropuesta && ( <p className="text-[10px] text-slate-500 font-semibold mt-1"> Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span> </p> )} </div>
-              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Vc Propuesta</Label><Input type="number" className="border-green-200 bg-white" value={vcPremium} onChange={e => setVcPremium(e.target.value === "" ? "" : Number(e.target.value))} /></div>
-              <div className="col-span-2"> <Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'milling' ? 'Minutos / filo' : operationType === 'drilling' ? 'Agujeros / filo' : 'Pzas / filo'}</Label> <Input type="number" className="border-green-200 bg-white" placeholder={operationType === 'milling' ? 'Ej: 60' : operationType === 'drilling' ? 'Ej: 800' : 'Ej: 250'} value={pcsPremium} onChange={e => setPcsPremium(e.target.value === "" ? "" : Number(e.target.value))} /> </div>
+              <div className="col-span-2"> <Label className="block text-[10px] font-bold text-green-800 mb-1 uppercase tracking-wider">Herramienta / Inserto Seco</Label> <Input type="text" placeholder="Ej: CNMG 120408-M3W TP2501" className="border-green-300 bg-white text-slate-900 shadow-inner font-bold" value={toolNamePremium} onChange={e => setToolNamePremium(e.target.value)} /> {operationType === 'milling' && warningFresaPremium && ( <div className={`mt-2 p-2 text-xs font-medium rounded-r-lg ${warningFresaPremium.includes('ERROR') ? 'bg-red-100 border-l-4 border-red-500 text-red-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}> {warningFresaPremium} </div> )} </div>
+              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value)} /></div>
+              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 8" className="border-green-200 bg-white text-slate-900" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value)} /></div>
+              {operationType === 'milling' || operationType === 'drilling' ? ( <div><Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'milling' ? 'Diámetro Fresa (Dc) mm' : 'Diámetro Broca (Dc) mm'}</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={dcPremium} onChange={e => setDcPremium(e.target.value)} /></div> ) : null}
+              {operationType === 'milling' ? ( <> <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Ancho Corte (ae) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white text-slate-900" value={aePremium} onChange={e => setAePremium(e.target.value)} /></div> <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white text-slate-900" value={apPremium} onChange={e => setApPremium(e.target.value)} /></div> <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={zPremium} onChange={e => setZPremium(e.target.value)} /></div> </> ) : operationType === 'turning' ? ( <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white text-slate-900" value={apPremium} onChange={e => setApPremium(e.target.value)} /></div> ) : null }
+              <div> <Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}</Label> <Input type="number" step="0.01" className="border-green-200 bg-white text-slate-900" value={feedPremium} onChange={e => setFeedPremium(e.target.value)} /> {operationType === 'turning' && raPropuesta && ( <p className="text-[10px] text-slate-500 font-semibold mt-1"> Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span> </p> )} </div>
+              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Vc Propuesta</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={vcPremium} onChange={e => setVcPremium(e.target.value)} /></div>
+              <div className="col-span-2"> <Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'milling' ? 'Minutos / filo' : operationType === 'drilling' ? 'Agujeros / filo' : 'Pzas / filo'}</Label> <Input type="number" className="border-green-200 bg-white text-slate-900" placeholder={operationType === 'milling' ? 'Ej: 60' : operationType === 'drilling' ? 'Ej: 800' : 'Ej: 250'} value={pcsPremium} onChange={e => setPcsPremium(e.target.value)} /> </div>
               <div className="col-span-2"> <Label className="block text-[10px] font-bold text-green-800 mb-1">Tiempo Deducido (Corte)</Label> <div className="w-full p-2 border-2 border-green-300 bg-green-100 text-green-800 rounded-md text-sm font-black flex items-center justify-center shadow-inner h-10"> {premiumMins} min {premiumSecs} seg </div> </div>
             </div>
             {operationType === 'turning' && warningPremium && ( <div className="mt-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 text-xs font-medium rounded-r-lg"> {warningPremium} </div> )}
@@ -828,7 +840,7 @@ export default function EditTaylorCurvePage() {
               <div className="w-full bg-slate-100 rounded-full h-2 mb-1 overflow-hidden"><div className={`h-2 rounded-full transition-all duration-500 ${getLoadColor(curveDataInfo.loadPremium).bar}`} style={{ width: `${Math.min(curveDataInfo.loadPremium, 100)}%` }}></div></div>
               <p className={`text-[9px] font-bold text-right uppercase ${getLoadColor(curveDataInfo.loadPremium).text}`}>{getLoadColor(curveDataInfo.loadPremium).label}</p>
             </div>
-             <div className="mt-4 pt-4 border-t border-green-200/50"> <Button onClick={() => { const base = { vc: Number(vcPremium) || 0, feed: Number(feedPremium) || 0, pcs: Number(pcsPremium) || 0, time: curveDataInfo.tcPremium || 0, }; if (base.vc > 0 && base.feed > 0 && base.pcs > 0 && base.time > 0) { setTaylorBase(base); setSimulatedVc(base.vc); setSimulatedFeed(base.feed); setTargetSavings(''); const safeMachineCostMin = (Number(machineCostHr) || 0) / 60; const safeToolCostPremium = Number(toolCostPremium) || 0; const safeToolChangeTime = Number(toolChangeTime) || 0; const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1); const safeEdgesPremium = Number(edgesPremium) || 1; const costCorte = safeMachineCostMin * base.time; const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0; const costJuego = costPerPunta * safeZPremium; const penalidadCambio = costJuego + (safeToolChangeTime * safeMachineCostMin); const costHerr = base.pcs > 0 ? penalidadCambio / base.pcs : 0; const baseCost = costCorte + costHerr; setTaylorBaseCost(baseCost); setIsTaylorModalOpen(true); } else { alert("Por favor, completa todos los datos de la propuesta (Vc, Avance, Pzas/filo) antes de simular."); } }} variant="outline" className="w-full bg-green-100 border-green-200 text-green-800 hover:bg-green-200 hover:text-green-900" > <Wand2 className="mr-2 h-4 w-4" /> Simular Escenarios (Taylor) </Button> </div>
+             <div className="mt-4 pt-4 border-t border-green-200/50"> <Button onClick={() => { const base = { vc: Number(vcPremium) || 0, feed: Number(feedPremium) || 0, pcs: Number(pcsPremium) || 0, time: curveDataInfo.tcPremium || 0, }; if (base.vc > 0 && base.feed > 0 && base.pcs > 0 && base.time > 0) { setTaylorBase(base); setSimulatedVc(base.vc); setSimulatedFeed(base.feed); setTargetSavings(''); const safeMachineCostMin = (Number(machineCostHr) || 0) / 60; const safeToolCostPremium = Number(toolCostPremium) || 0; const safeToolChangeTime = Number(toolChangeTime) || 0; const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1); const safeEdgesPremium = Number(edgesPremium) || 1; const costCorte = safeMachineCostMin * base.time; const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0; const costJuego = costPerPunta * safeZPremium; const penalidadCambio = costJuego + (safeToolChangeTime * safeMachineCostMin); const costHerr = base.pcs > 0 ? penalidadCambio / base.pcs : 0; const baseCost = costCorte + costoHerr; setTaylorBaseCost(baseCost); setIsTaylorModalOpen(true); } else { alert("Por favor, completa todos los datos de la propuesta (Vc, Avance, Pzas/filo) antes de simular."); } }} variant="outline" className="w-full bg-green-100 border-green-200 text-green-800 hover:bg-green-200 hover:text-green-900" > <Wand2 className="mr-2 h-4 w-4" /> Simular Escenarios (Taylor) </Button> </div>
           </div>
         </div>
         <Card>
