@@ -183,7 +183,6 @@ export default function TaylorCurvePage() {
   const [pieceName, setPieceName] = useState<string>("");
   const [machinePowerHP, setMachinePowerHP] = useState<string | number>(15); 
   const [profundidadAgujero, setProfundidadAgujero] = useState<string | number>("");
-  const [precioVentaPieza, setPrecioVentaPieza] = useState<string | number>("");
   
   const [lifeModeCurrent, setLifeModeCurrent] = useState<'piezas' | 'minutos'>('piezas');
   const [lifeModePremium, setLifeModePremium] = useState<'piezas' | 'minutos'>('piezas');
@@ -562,9 +561,9 @@ export default function TaylorCurvePage() {
     if (effectivePcsCurrent <= 0) effectivePcsCurrent = 1; 
     if (effectivePcsPremium <= 0) effectivePcsPremium = 1;
     
-    const calcCostWithBreakdown = (v: number, isPremium: boolean) => {
+    const calcCostWithBreakdown = (v: number, isPremium: boolean, feed: number) => {
         const C = isPremium ? constante_C_Seco : constante_C_Competidor;
-        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0, insertsToBuy: 0 };
+        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0, lifePcs: 0 };
     
         const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
         const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
@@ -575,14 +574,16 @@ export default function TaylorCurvePage() {
         const tc = baseTime * (baseVc / v);
         
         const lifeMins = Math.pow((C / v), (1 / n));
+        
         const costoMaquina = safeMachineCostMin * tc;
-        const piecesPerToolLife = lifeMins > 0 ? (lifeMins / tc) : 0;
+        const piecesPerToolLife = lifeMins > 0 ? lifeMins / tc : 0;
         const costPerEdge = edges > 0 ? toolPrice / edges : 0;
+
         const costoInsertoPuro = piecesPerToolLife > 0 ? (costPerEdge * z) / piecesPerToolLife : 0;
         const costoParada = piecesPerToolLife > 0 ? (safeToolChangeTime * safeMachineCostMin) / piecesPerToolLife : 0;
-        const insertsForLot = piecesPerToolLife > 0 ? Math.ceil(safeMonthlyProduction / piecesPerToolLife * (z / edges)) : 0;
+        
         const costoTotal = costoMaquina + costoInsertoPuro + costoParada;
-        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada, insertsToBuy: insertsForLot };
+        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada, lifePcs: piecesPerToolLife };
     };
 
     const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
@@ -603,15 +604,32 @@ export default function TaylorCurvePage() {
     let optimalSpeed = 0;
 
     const data = sortedSpeeds.map(v => {
-        const resActual = calcCostWithBreakdown(v, false);
-        const resPremium = calcCostWithBreakdown(v, true);
+        const resActual = calcCostWithBreakdown(v, false, Number(feedCurrent) || 0.0001);
+        const resPremium = calcCostWithBreakdown(v, true, Number(feedPremium) || 0.0001);
         if (resPremium.costoTotal < minPremiumCost && resPremium.costoTotal > 0) { minPremiumCost = resPremium.costoTotal; optimalSpeed = v; }
+        
+        const multZ_Act = operationType === 'milling' ? (Number(zCurrent)||1) : 1;
+        const multZ_Prem = operationType === 'milling' ? (Number(zPremium)||1) : 1;
+        
+        const insertosAct = resActual.lifePcs > 0 ? Math.ceil(safeMonthlyProduction / (resActual.lifePcs * safeEdgesCurrent)) * multZ_Act : 0;
+        const insertosPrem = resPremium.lifePcs > 0 ? Math.ceil(safeMonthlyProduction / (resPremium.lifePcs * safeEdgesPremium)) * multZ_Prem : 0;
+
         return { 
           speed: v,
           costoActual: resActual.costoTotal,
           costoPremium: resPremium.costoTotal,
-          desgloseActual: resActual,
-          desglosePremium: resPremium
+          desgloseActual: {
+            maquina: resActual.costoMaquina,
+            inserto: resActual.costoInsertoPuro,
+            parada: resActual.costoParada,
+            lote: insertosAct
+          },
+          desglosePremium: {
+            maquina: resPremium.costoMaquina,
+            inserto: resPremium.costoInsertoPuro,
+            parada: resPremium.costoParada,
+            lote: insertosPrem
+          }
         };
     });
     
@@ -622,23 +640,9 @@ export default function TaylorCurvePage() {
     const realSavingsPercentage = actualCostCurrent > 0 ? (realAbsoluteSavings / actualCostCurrent) * 100 : 0;
     const monthlySavings = isFinite(realAbsoluteSavings) ? realAbsoluteSavings * safeMonthlyProduction : 0;
 
-    const safePrecioVenta = Number(precioVentaPieza) || 0;
-    const horasA = (safeTcCurrent * safeMonthlyProduction) / 60;
-    const horasB = (safeTcPremium * safeMonthlyProduction) / 60;
-    const horasLiberadas = horasA - horasB;
-    const piezasExtraMes = safeTcPremium > 0 ? Math.floor((horasLiberadas * 60) / safeTcPremium) : 0;
-    
-    const facturacionExtraMensual = piezasExtraMes * safePrecioVenta;
-    const impactoMensualTotal = monthlySavings + facturacionExtraMensual;
-    const impactoAnualTotal = impactoMensualTotal * 12;
-
-    return { 
-        data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, 
-        tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, 
-        velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost,
-        horasLiberadas, piezasExtraMes, facturacionExtraMensual, impactoAnualTotal
-    };
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, tcPremiumInput, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium, precioVentaPieza]);
+    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, tcPremiumInput, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium]);
 
     useEffect(() => {
         if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
@@ -758,25 +762,27 @@ export default function TaylorCurvePage() {
           <p className="font-bold border-b pb-1 mb-2">Vc: {speed} m/min</p>
           
           {costoActual !== undefined && desgloseActual && (
-            <div className="mb-3">
-              <p className="font-bold text-red-600">Competidor: {formatCurrency(costoActual)}</p>
-              <div className="text-sm text-gray-500 space-y-0.5 mt-1">
-                <p>⚙️ Tiempo de Corte: {formatCurrency(desgloseActual.maquina)}</p>
-                <p>💎 Inserto Puro: {formatCurrency(desgloseActual.inserto)}</p>
-                <p>🔴 Costo Paradas: {formatCurrency(desgloseActual.parada)}</p>
-                <p className="text-red-800 font-semibold mt-1">
-                  📦 Insertos para Lote: {desgloseActual.insertsToBuy} unds.
-                </p>
+            <div className="mb-2">
+              <p className="text-red-700 font-bold">Competidor: {formatCurrency(costoActual)}</p>
+              <div className="text-[10px] text-gray-500 leading-tight mt-1 space-y-0.5">
+                  <p>⚙️ Tiempo de Corte: {formatCurrency(desgloseActual.maquina)}</p>
+                  <p>💎 Inserto Puro: {formatCurrency(desgloseActual.inserto)}</p>
+                  <p>🔴 Costo Paradas: {formatCurrency(desgloseActual.parada)}</p>
+                  {desgloseActual.lote > 0 && (
+                      <p className="text-amber-700 font-bold mt-1 pt-1 border-t border-slate-100">
+                          📦 Insertos para Lote: {desgloseActual.lote} unds.
+                      </p>
+                  )}
               </div>
             </div>
           )}
 
-          <div className="my-1 border-t border-slate-100"></div>
+          <div className="my-1 border-t border-slate-200"></div>
 
           {costoPremium !== undefined && desglosePremium && (
             <div>
               <div className="flex items-center gap-2">
-                <p className="font-bold text-green-600">SECOCUT: {formatCurrency(costoPremium)}</p>
+                <p className="text-green-700 font-bold">SECOCUT: {formatCurrency(costoPremium)}</p>
                 {porcentajeAhorroUnificado > 0 && (
                   <span className="bg-green-100 text-green-800 text-[10px] font-black px-2 py-0.5 rounded-full">
                     -{porcentajeAhorroUnificado.toFixed(1)}%
@@ -784,13 +790,15 @@ export default function TaylorCurvePage() {
                 )}
               </div>
 
-              <div className="text-sm text-gray-500 space-y-0.5 mt-1">
-                <p>⚙️ Tiempo de Corte: {formatCurrency(desglosePremium.maquina)}</p>
-                <p>💎 Inserto Puro: {formatCurrency(desglosePremium.inserto)}</p>
-                <p>🔴 Costo Paradas: {formatCurrency(desglosePremium.parada)}</p>
-                <p className="text-green-800 font-semibold mt-1">
-                  📦 Insertos para Lote: {desglosePremium.insertsToBuy} unds.
-                </p>
+              <div className="text-[10px] text-gray-500 leading-tight mt-1 space-y-0.5">
+                  <p>⚙️ Tiempo de Corte: {formatCurrency(desglosePremium.maquina)}</p>
+                  <p>💎 Inserto Puro: {formatCurrency(desglosePremium.inserto)}</p>
+                  <p>🔴 Costo Paradas: {formatCurrency(desglosePremium.parada)}</p>
+                  {desglosePremium.lote > 0 && (
+                      <p className="text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-100">
+                          📦 Insertos para Lote: {desglosePremium.lote} unds.
+                      </p>
+                  )}
               </div>
             </div>
           )}
@@ -904,7 +912,6 @@ export default function TaylorCurvePage() {
                 </Button>
             </div>
 
-            
             <div className="space-y-4 flex-grow">
               <div>
                 <Label className="block text-xs font-bold text-slate-500 mb-1">Pieza / Operación</Label>
@@ -949,16 +956,9 @@ export default function TaylorCurvePage() {
             {/* Escala Comercial */}
             <div className="mt-6 pt-5 border-t border-slate-100">
               <Label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wide">📦 Escala Comercial</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="relative">
-                  <Input type="number" placeholder="Ej: 1000" className="w-full font-bold text-blue-700 pl-2 pr-12 bg-slate-50" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value)} />
-                  <span className="absolute right-2 top-2.5 text-[10px] font-bold text-slate-400">pzs/mes</span>
-                </div>
-                <div className="relative">
-                  <Input type="number" placeholder="Ej: 50.00" className="w-full font-bold text-green-700 pl-8 bg-green-50 border-green-200" value={precioVentaPieza} onChange={e => setPrecioVentaPieza(e.target.value)} />
-                  <span className="absolute left-2 top-2.5 text-xs font-bold text-green-600">USD</span>
-                </div>
-                <div className="col-span-2 text-[10px] text-slate-400 mt-1">Ingresa el valor de venta para calcular facturación extra.</div>
+              <div className="relative">
+                <Input type="number" placeholder="Ej: 1000" className="w-full text-lg font-black text-blue-700 pl-4 pr-16 h-12 bg-slate-50" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value)} />
+                <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400">pzs/mes</span>
               </div>
             </div>
           </div>
@@ -1237,17 +1237,17 @@ export default function TaylorCurvePage() {
         </Card>
       </div>
 
-       {/* EL GRAN REMATE VISUAL - AHORA MUESTRA EL IMPACTO TOTAL ANUAL (FACTURACIÓN + AHORRO) */}
+       {/* EL GRAN REMATE VISUAL - AHORRO MENSUAL */}
       <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl p-8 text-center shadow-2xl relative overflow-hidden mt-6">
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-black opacity-10 rounded-full blur-2xl"></div>
         
-        <p className="relative z-10 text-green-100 font-bold tracking-widest uppercase text-sm mb-2">💰 Impacto Financiero Proyectado (Anual)</p>
+        <p className="relative z-10 text-green-100 font-bold tracking-widest uppercase text-sm mb-2">💰 Impacto Financiero Proyectado</p>
         <h2 className="relative z-10 text-5xl md:text-6xl font-black text-white drop-shadow-md mb-3">
-          {formatCurrency(curveDataInfo.impactoAnualTotal)}
+          {formatCurrency(curveDataInfo.monthlySavings)}
         </h2>
         <p className="relative z-10 text-lg text-green-50 font-medium">
-          Ahorro operativo + Nueva Facturación por {formatNumber(curveDataInfo.piezasExtraMes * 12)} piezas extras.
+          Ahorro mensual neto al fabricar <span className="font-bold text-white bg-green-700 px-2 py-1 rounded">{formatNumber(Number(monthlyProduction))} piezas</span> con tecnología Secocut.
         </p>
       </div>
       
@@ -1335,9 +1335,9 @@ export default function TaylorCurvePage() {
               </div>
               
               <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
-                <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Impacto Anual Proyectado</p>
+                <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Ahorro Anual Proyectado (Automático)</p>
                 <p className="font-black text-emerald-800 text-xl">
-                  {formatCurrency(curveDataInfo.impactoAnualTotal)}
+                  {formatCurrency((curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12)}
                 </p>
               </div>
             </div>
@@ -1373,11 +1373,11 @@ export default function TaylorCurvePage() {
                       clientName: saveClientName,
                       caseName: saveCaseName || pieceName || 'Análisis sin nombre',
                       status: 'pending', 
-                      annualSavings: curveDataInfo.impactoAnualTotal, 
+                      annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12, 
                       pdfUrl: pdfDownloadUrl || "", 
                       userId: user.uid, 
                       taylorInputs: { 
-                        operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, profundidadAgujero, monthlyProduction, precioVentaPieza,
+                        operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, profundidadAgujero, monthlyProduction,
                         toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrent, 
                         zCurrent, edgesCurrent, dcCurrent, aeCurrent,
                         toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, tcPremiumInput,
@@ -1650,11 +1650,11 @@ export default function TaylorCurvePage() {
               <div className="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
               <p className="text-sm font-bold text-green-700 uppercase tracking-widest mb-2 mt-2">Impacto Anual Proyectado</p>
               <p className="text-5xl font-black text-green-800 mb-2">
-                {formatCurrency(curveDataInfo.impactoAnualTotal)}
+                {formatCurrency(curveDataInfo.monthlySavings * 12)}
               </p>
               <div className="inline-block bg-green-100 px-4 py-2 rounded-full mt-2">
                 <p className="text-sm font-bold text-green-800">
-                  Basado en Ahorro de Costos + Facturación Extra
+                  Basado en {formatNumber(Number(monthlyProduction))} piezas/mes • Ahorro mensual: {formatCurrency(curveDataInfo.monthlySavings)}
                 </p>
               </div>
             </div>
@@ -1762,4 +1762,5 @@ export default function TaylorCurvePage() {
     </>
   );
 }
+
 ```
