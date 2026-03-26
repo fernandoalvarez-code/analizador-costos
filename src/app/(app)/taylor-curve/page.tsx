@@ -259,17 +259,19 @@ export default function TaylorCurvePage() {
       // Protegemos contra divisiones por cero en la base
       const safeBaseVc = baseVc > 0 ? baseVc : premVc;
       const safeBaseFeed = baseFeed > 0 ? baseFeed : premFeed;
-      const safeBaseAp = baseAp > 0 ? baseAp : premAp;
+      
+      // Si es taladrado, ap es irrelevante, lo forzamos a 1 para que no afecte la división
+      const safeBaseAp = baseAp > 0 ? baseAp : 1;
+      const safePremAp = premAp > 0 ? premAp : 1;
 
-      // 4. Fórmula Universal de Mecanizado: 
-      // El tiempo es inversamente proporcional a la Velocidad, Avance y Profundidad.
-      const nuevoTiempoPremium = baseTc * (safeBaseVc / premVc) * (safeBaseFeed / premFeed) * (safeBaseAp / premAp);
+      const nuevoTiempoPremium = baseTc * (safeBaseVc / premVc) * (safeBaseFeed / premFeed) * (safeBaseAp / safePremAp);
 
-      // 5. Actualizamos automáticamente el campo verde "Tiempo Propuesto"
-      // Solo actualizamos si el nuevo tiempo es razonable y diferente al actual para evitar loops
       if (isFinite(nuevoTiempoPremium) && nuevoTiempoPremium > 0) {
-          // Formateamos a 2 decimales para que se vea limpio en el input
-          setTcPremiumInput(nuevoTiempoPremium.toFixed(2));
+          setTcPremiumInput((prev) => {
+              const newVal = nuevoTiempoPremium.toFixed(2);
+              // Solo actualizamos si el valor cambió para no causar loops infinitos de renderizado
+              return prev !== newVal ? newVal : prev;
+          });
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -285,7 +287,7 @@ export default function TaylorCurvePage() {
 
       if (vc > 0 && d > 0 && f > 0 && l > 0) {
         const rpm = (vc * 1000) / (Math.PI * d);
-        const vf = f * rpm; // Velocidad de penetración (mm/min)
+        const vf = f * rpm; 
         const tiempoMinutosDecimal = l / vf;
 
         if (isFinite(tiempoMinutosDecimal)) {
@@ -420,7 +422,29 @@ export default function TaylorCurvePage() {
     } finally {
         setIsGenerating(false);
     }
-};
+  };
+
+  const handleGenerateSurveyPDF = async () => {
+    setIsGeneratingSurvey(true);
+    try {
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const a4Width = 210;
+        const element = document.getElementById('survey-pdf-content');
+        if (!element) throw new Error("Elemento 'survey-pdf-content' no encontrado.");
+        
+        const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL('image/png');
+        const imgHeight = (canvas.height * a4Width) / canvas.width;
+        
+        pdf.addImage(imgData, 'PNG', 0, 0, a4Width, imgHeight);
+        pdf.save(`Planilla_Relevamiento_${operationType}.pdf`);
+    } catch (error) {
+        console.error("Error generando planilla:", error);
+        alert("Error al generar la planilla PDF.");
+    } finally {
+        setIsGeneratingSurvey(false);
+    }
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -552,7 +576,6 @@ export default function TaylorCurvePage() {
     
     const n = taylorProps.n;
 
-    // --- CORRECCIÓN SELECTOR MODO DE VIDA ÚTIL ---
     const vidaMinutosCompetidor = lifeModeCurrent === 'minutos' ? (Number(pcsCurrent) || 1) : ((Number(pcsCurrent) || 1) * safeTcCurrent);
     const constante_C_Competidor = safeVcCurrent > 0 && vidaMinutosCompetidor > 0 ? safeVcCurrent * Math.pow(vidaMinutosCompetidor, n) : 0;
     
@@ -619,7 +642,6 @@ export default function TaylorCurvePage() {
         const costoParada = piecesPerToolLife > 0 ? (safeToolChangeTime * safeMachineCostMin) / piecesPerToolLife : 0;
         
         const costoTotal = costoMaquina + costoInsertoPuro + costoParada;
-        
         return { costoTotal, costoMaquina, costoInsertoPuro, costoParada, lifePcs: piecesPerToolLife };
     };
 
@@ -633,7 +655,7 @@ export default function TaylorCurvePage() {
 
     const speedsSet = new Set<number>();
     const C_for_range = taylorProps.C;
-    for (let v = 50; v <= C_for_range * 1.3; v += 10) { speedsSet.add(v); }
+    for (let v = 50; v <= C_for_range * 1.5; v += 10) { speedsSet.add(v); }
     if (Number(vcCurrent) > 0) speedsSet.add(Number(vcCurrent)); if (Number(vcPremium) > 0) speedsSet.add(Number(vcPremium));
     const sortedSpeeds = Array.from(speedsSet).sort((a, b) => a - b);
     
@@ -769,6 +791,11 @@ export default function TaylorCurvePage() {
         ? ((curveDataInfo.actualCostCurrent - costoPremium) / curveDataInfo.actualCostCurrent) * 100 
         : 0;
 
+      const calculateIncidence = (partCost: number, totalCost: number) => {
+        if (!totalCost || totalCost === 0) return "0.0";
+        return ((partCost / totalCost) * 100).toFixed(1); 
+      };
+
       return (
         <div className="bg-white p-3 border shadow-lg rounded-md text-xs min-w-[220px]">
           <p className="font-bold border-b pb-1 mb-2">Vc: {speed} m/min</p>
@@ -778,7 +805,12 @@ export default function TaylorCurvePage() {
               <p className="text-red-700 font-bold">Competidor: {formatCurrency(costoActual)}</p>
               <div className="text-[10px] text-gray-500 leading-tight mt-1 space-y-0.5">
                   <p>⚙️ Tiempo de Corte: {formatCurrency(desgloseActual.maquina)}</p>
-                  <p>💎 Inserto Puro: {formatCurrency(desgloseActual.inserto)}</p>
+                  <div className="flex items-baseline gap-1">
+                    <span>💎 Inserto Puro: {formatCurrency(desgloseActual.inserto)}</span>
+                    <span className="text-[9px] text-slate-500 font-semibold">
+                      ({calculateIncidence(desgloseActual.inserto, costoActual)}%)
+                    </span>
+                  </div>
                   <p>🔴 Costo Paradas: {formatCurrency(desgloseActual.parada)}</p>
                   {desgloseActual.lote > 0 && (
                       <p className="text-amber-700 font-bold mt-1 pt-1 border-t border-slate-100">
@@ -804,7 +836,12 @@ export default function TaylorCurvePage() {
 
               <div className="text-[10px] text-gray-500 leading-tight mt-1 space-y-0.5">
                   <p>⚙️ Tiempo de Corte: {formatCurrency(desglosePremium.maquina)}</p>
-                  <p>💎 Inserto Puro: {formatCurrency(desglosePremium.inserto)}</p>
+                  <div className="flex items-baseline gap-1">
+                    <span>💎 Inserto Puro: {formatCurrency(desglosePremium.inserto)}</span>
+                    <span className="text-[9px] text-slate-500 font-semibold">
+                      ({calculateIncidence(desglosePremium.inserto, costoPremium)}%)
+                    </span>
+                  </div>
                   <p>🔴 Costo Paradas: {formatCurrency(desglosePremium.parada)}</p>
                   {desglosePremium.lote > 0 && (
                       <p className="text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-100">
@@ -1360,63 +1397,7 @@ export default function TaylorCurvePage() {
               </button>
               
               <button 
-                onClick={async () => {
-                  if (!saveClientName.trim() || !saveCaseName.trim()) {
-                    alert("⚠️ Por favor, completa el nombre del Cliente y de la Operación para poder guardar.");
-                    return;
-                  }
-
-                  if (!user) { alert("Debes iniciar sesión para guardar este análisis."); return; }
-                  
-                  setIsSaving(true);
-                  try {
-                    let pdfDownloadUrl = "";
-                    try {
-                      const pdfBlob = await handleGeneratePDF('blob'); 
-                      if (pdfBlob && storage) {
-                        const safeFileName = (pieceName || 'Sin_Nombre').replace(/\s+/g, '_');
-                        const fileName = `taylor_reports/Simulacion_${safeFileName}_${Date.now()}.pdf`;
-                        const storageRef = ref(storage, fileName);
-                        await uploadBytes(storageRef, pdfBlob);
-                        pdfDownloadUrl = await getDownloadURL(storageRef);
-                      }
-                    } catch (pdfError) { console.warn("⚠️ No se pudo generar PDF. Guardando datos. Error:", pdfError); }
-
-                    const rawPayload = {
-                      clientName: saveClientName,
-                      caseName: saveCaseName || pieceName || 'Análisis sin nombre',
-                      status: 'pending', 
-                      annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12, 
-                      pdfUrl: pdfDownloadUrl || "", 
-                      userId: user.uid, 
-                      taylorInputs: { 
-                        operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, profundidadAgujero, monthlyProduction,
-                        toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrent,
-                        zCurrent, edgesCurrent, dcCurrent, aeCurrent,
-                        toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, tcPremiumInput,
-                        zPremium, edgesPremium, dcPremium, aePremium,
-                        lifeModeCurrent, lifeModePremium
-                      }
-                    };
-
-                    const sanitizedString = JSON.stringify(rawPayload, (key, value) => {
-                      if (typeof value === 'number' && !isFinite(value)) return null;
-                      if (value === undefined) return null;
-                      return value;
-                    });
-                    const safePayload = JSON.parse(sanitizedString);
-                    safePayload.dateCreated = serverTimestamp();
-
-                    await addDoc(collection(db, "analisis_costos"), safePayload);
-                    
-                    setIsSaveModalOpen(false);
-                    alert("¡Análisis guardado exitosamente en el Historial!");
-                  } catch (error) {
-                    alert(`Fallo al guardar en la base de datos. El sistema dice: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
-                  } finally {
-                    setIsSaving(false);
-                  }
-                }} 
+                onClick={handleSaveCase} 
                 disabled={isSaving}
                 className="px-4 py-2 text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm"
               >

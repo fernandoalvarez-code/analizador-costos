@@ -721,6 +721,11 @@ export default function EditTaylorCurvePage() {
         ? ((curveDataInfo.actualCostCurrent - costoPremium) / curveDataInfo.actualCostCurrent) * 100 
         : 0;
 
+      const calculateIncidence = (partCost: number, totalCost: number) => {
+        if (!totalCost || totalCost === 0) return "0.0";
+        return ((partCost / totalCost) * 100).toFixed(1); 
+      };
+
       return (
         <div className="bg-white p-3 border shadow-lg rounded-md text-xs min-w-[220px]">
           <p className="font-bold border-b pb-1 mb-2">Vc: {speed} m/min</p>
@@ -730,7 +735,12 @@ export default function EditTaylorCurvePage() {
               <p className="text-red-700 font-bold">Competidor: {formatCurrency(costoActual)}</p>
               <div className="text-[10px] text-gray-500 leading-tight mt-1 space-y-0.5">
                   <p>⚙️ Tiempo de Corte: {formatCurrency(desgloseActual.maquina)}</p>
-                  <p>💎 Inserto Puro: {formatCurrency(desgloseActual.inserto)}</p>
+                  <div className="flex items-baseline gap-1">
+                    <span>💎 Inserto Puro: {formatCurrency(desgloseActual.inserto)}</span>
+                    <span className="text-[9px] text-slate-500 font-semibold">
+                      ({calculateIncidence(desgloseActual.inserto, costoActual)}%)
+                    </span>
+                  </div>
                   <p>🔴 Costo Paradas: {formatCurrency(desgloseActual.parada)}</p>
                   {desgloseActual.lote > 0 && (
                       <p className="text-amber-700 font-bold mt-1 pt-1 border-t border-slate-100">
@@ -756,7 +766,12 @@ export default function EditTaylorCurvePage() {
 
               <div className="text-[10px] text-gray-500 leading-tight mt-1 space-y-0.5">
                   <p>⚙️ Tiempo de Corte: {formatCurrency(desglosePremium.maquina)}</p>
-                  <p>💎 Inserto Puro: {formatCurrency(desglosePremium.inserto)}</p>
+                  <div className="flex items-baseline gap-1">
+                    <span>💎 Inserto Puro: {formatCurrency(desglosePremium.inserto)}</span>
+                    <span className="text-[9px] text-slate-500 font-semibold">
+                      ({calculateIncidence(desglosePremium.inserto, costoPremium)}%)
+                    </span>
+                  </div>
                   <p>🔴 Costo Paradas: {formatCurrency(desglosePremium.parada)}</p>
                   {desglosePremium.lote > 0 && (
                       <p className="text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-100">
@@ -830,6 +845,13 @@ export default function EditTaylorCurvePage() {
     }
   };
     
+  const getLoadColor = (load: number) => {
+      if (load < 20) return { bar: 'bg-red-500', text: 'text-red-700', label: 'Subutilizado (Sube Avance)' };
+      if (load <= 80) return { bar: 'bg-emerald-500', text: 'text-emerald-700', label: 'Óptimo / Seguro' };
+      if (load <= 95) return { bar: 'bg-amber-500', text: 'text-amber-700', label: 'Desbaste Pesado' };
+      return { bar: 'bg-red-600 animate-pulse', text: 'text-red-800 font-black', label: '¡PELIGRO: Sobrecarga!' };
+  };
+  
   const materialGroups = MATERIALS.reduce((acc, mat) => {
       (acc[mat.grupo] = acc[mat.grupo] || []).push(mat);
       return acc;
