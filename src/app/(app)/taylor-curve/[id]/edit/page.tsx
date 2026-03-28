@@ -730,139 +730,6 @@ export default function EditTaylorCurvePage() {
   const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
   const porcentajeAhorro = curveDataInfo.realSavingsPercentage.toFixed(1);
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const dataPoint = payload[0].payload;
-      const { speed, desgloseActual, desglosePremium, costoActual, costoPremium } = dataPoint;
-      
-      const porcentajeAhorroUnificado = curveDataInfo.actualCostCurrent > 0 
-        ? ((curveDataInfo.actualCostCurrent - costoPremium) / curveDataInfo.actualCostCurrent) * 100 
-        : 0;
-
-      const calculateIncidence = (partCost: number, totalCost: number) => {
-        if (!totalCost || totalCost === 0) return "0.0";
-        return ((partCost / totalCost) * 100).toFixed(1); 
-      };
-
-      return (
-        <div className="bg-white p-3 border shadow-lg rounded-md text-xs min-w-[220px]">
-          <p className="font-bold border-b pb-1 mb-2">Vc: {speed} m/min</p>
-          
-          {costoActual !== undefined && desgloseActual && (
-            <div className="mb-2">
-              <p className="text-red-700 font-bold">Competidor: {formatCurrency(costoActual)}</p>
-              <div className="text-[10px] text-gray-500 leading-tight mt-1 space-y-0.5">
-                  <p>⚙️ Tiempo de Corte: {formatCurrency(desgloseActual.maquina)}</p>
-                  <div className="flex items-baseline gap-1">
-                    <span>💎 Inserto Puro: {formatCurrency(desgloseActual.inserto)}</span>
-                    <span className="text-[9px] text-slate-500 font-semibold">
-                      ({calculateIncidence(desgloseActual.inserto, costoActual)}%)
-                    </span>
-                  </div>
-                  <p>🔴 Costo Paradas: {formatCurrency(desgloseActual.parada)}</p>
-                  {desgloseActual.lote > 0 && (
-                      <p className="text-amber-700 font-bold mt-1 pt-1 border-t border-slate-100">
-                          📦 Insertos para Lote: {desgloseActual.lote} unds.
-                      </p>
-                  )}
-              </div>
-            </div>
-          )}
-
-          <div className="my-1 border-t border-slate-200"></div>
-
-          {costoPremium !== undefined && desglosePremium && (
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="text-green-700 font-bold">SECOCUT: {formatCurrency(costoPremium)}</p>
-                {porcentajeAhorroUnificado > 0 && (
-                  <span className="bg-green-100 text-green-800 text-[10px] font-black px-2 py-0.5 rounded-full">
-                    -{porcentajeAhorroUnificado.toFixed(1)}%
-                  </span>
-                )}
-              </div>
-
-              <div className="text-[10px] text-gray-500 leading-tight mt-1 space-y-0.5">
-                  <p>⚙️ Tiempo de Corte: {formatCurrency(desglosePremium.maquina)}</p>
-                  <div className="flex items-baseline gap-1">
-                    <span>💎 Inserto Puro: {formatCurrency(desglosePremium.inserto)}</span>
-                    <span className="text-[9px] text-slate-500 font-semibold">
-                      ({calculateIncidence(desglosePremium.inserto, costoPremium)}%)
-                    </span>
-                  </div>
-                  <p>🔴 Costo Paradas: {formatCurrency(desglosePremium.parada)}</p>
-                  {desglosePremium.lote > 0 && (
-                      <p className="text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-100">
-                          📦 Insertos para Lote: {desglosePremium.lote} unds.
-                      </p>
-                  )}
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    }
-    return null;
-  };
-  
-  const handleSaveCase = async () => {
-    if (!saveClientName.trim() || !saveCaseName.trim()) {
-      alert("⚠️ Por favor, completa el nombre del Cliente y de la Operación para poder guardar.");
-      return;
-    }
-
-    if (!user) { alert("Debes iniciar sesión para guardar este análisis."); return; }
-    
-    setIsSaving(true);
-    try {
-      let pdfDownloadUrl = "";
-      try {
-        const pdfBlob = await handleGeneratePDF('blob'); 
-        if (pdfBlob && storage) {
-          const safeFileName = (pieceName || 'Sin_Nombre').replace(/\s+/g, '_');
-          const fileName = `taylor_reports/Simulacion_${safeFileName}_${Date.now()}.pdf`;
-          const storageRef = ref(storage, fileName);
-          await uploadBytes(storageRef, pdfBlob);
-          pdfDownloadUrl = await getDownloadURL(storageRef);
-        }
-      } catch (pdfError) { console.warn("⚠️ No se pudo generar PDF. Guardando datos. Error:", pdfError); }
-
-      const rawPayload = {
-        clientName: saveClientName,
-        caseName: saveCaseName || pieceName || 'Análisis sin nombre',
-        status: 'pending', 
-        annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12, 
-        pdfUrl: pdfDownloadUrl || "", 
-        userId: user.uid, 
-        taylorInputs: { 
-          operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, profundidadAgujero, monthlyProduction,
-          toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrent, 
-          zCurrent, edgesCurrent, dcCurrent, aeCurrent,
-          toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, tcPremiumInput,
-          zPremium, edgesPremium, dcPremium, aePremium,
-          lifeModeCurrent, lifeModePremium
-        }
-      };
-
-      const sanitizedString = JSON.stringify(rawPayload, (key, value) => {
-        if (typeof value === 'number' && !isFinite(value)) return null;
-        if (value === undefined) return null;
-        return value;
-      });
-      const safePayload = JSON.parse(sanitizedString);
-      safePayload.dateCreated = serverTimestamp();
-
-      await addDoc(collection(db, "analisis_costos"), safePayload);
-      
-      setIsSaveModalOpen(false);
-      alert("¡Análisis guardado exitosamente en el Historial!");
-    } catch (error) {
-      alert(`Fallo al guardar en la base de datos. El sistema dice: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-    
   const getLoadColor = (load: number) => {
       if (load < 20) return { bar: 'bg-red-500', text: 'text-red-700', label: 'Subutilizado (Sube Avance)' };
       if (load <= 80) return { bar: 'bg-emerald-500', text: 'text-emerald-700', label: 'Óptimo / Seguro' };
@@ -1379,8 +1246,8 @@ export default function EditTaylorCurvePage() {
             monthlyVolume={Number(monthlyProduction)}
             compToolCost={curveDataInfo.desgloseActualReal.inserto}
             secoToolCost={curveDataInfo.desglosePremiumReal.inserto}
-            compMachineCost={curveDataInfo.desgloseActualReal.maquina}
-            secoMachineCost={curveDataInfo.desglosePremiumReal.maquina}
+            compMachineCost={curveDataInfo.desgloseActualReal.maquina + curveDataInfo.desgloseActualReal.parada}
+            secoMachineCost={curveDataInfo.desglosePremiumReal.maquina + curveDataInfo.desglosePremiumReal.parada}
           />
         )}
       </div>

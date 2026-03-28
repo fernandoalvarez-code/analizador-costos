@@ -573,7 +573,7 @@ export default function TaylorCurvePage() {
     const taylorProps = TAYLOR_CONSTANTS[mat.grupo as keyof typeof TAYLOR_CONSTANTS] || { n: 0.25, C: 250 };
     
     const n = taylorProps.n;
-
+    
     const vidaMinutosCompetidor = lifeModeCurrent === 'minutos' ? (Number(pcsCurrent) || 1) : ((Number(pcsCurrent) || 1) * safeTcCurrent);
     const constante_C_Competidor = safeVcCurrent > 0 && vidaMinutosCompetidor > 0 ? safeVcCurrent * Math.pow(vidaMinutosCompetidor, n) : 0;
     
@@ -1305,8 +1305,8 @@ export default function TaylorCurvePage() {
             monthlyVolume={Number(monthlyProduction)}
             compToolCost={curveDataInfo.desgloseActualReal.inserto}
             secoToolCost={curveDataInfo.desglosePremiumReal.inserto}
-            compMachineCost={curveDataInfo.desgloseActualReal.maquina}
-            secoMachineCost={curveDataInfo.desglosePremiumReal.maquina}
+            compMachineCost={curveDataInfo.desgloseActualReal.maquina + curveDataInfo.desgloseActualReal.parada}
+            secoMachineCost={curveDataInfo.desglosePremiumReal.maquina + curveDataInfo.desglosePremiumReal.parada}
           />
         )}
       </div>
