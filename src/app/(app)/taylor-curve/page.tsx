@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot, ReferenceLine } from 'recharts';
@@ -374,6 +375,51 @@ export default function TaylorCurvePage() {
     };
     if (user) fetchLogos();
   }, [user]);
+
+  const handleSaveCase = async () => {
+    if (!user) { alert("Debes iniciar sesión para guardar."); return; }
+    if (!saveCaseName.trim()) { alert("Por favor, ingresa un nombre para el caso."); return; }
+
+    setIsSaving(true);
+    
+    try {
+        const pdfBlob = await handleGeneratePDF('blob');
+        let pdfUrl = '';
+
+        if (pdfBlob instanceof Blob) {
+            const storageRef = ref(storage, `analisis_costos_pdfs/${user.uid}_${Date.now()}.pdf`);
+            const snapshot = await uploadBytes(storageRef, pdfBlob);
+            pdfUrl = await getDownloadURL(snapshot.ref);
+        }
+
+        const docData = {
+            userId: user.uid,
+            clientName: saveClientName,
+            caseName: saveCaseName,
+            annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction) || 0)) * 12,
+            pdfUrl: pdfUrl,
+            status: "pending",
+            dateCreated: serverTimestamp(),
+            taylorInputs: {
+              operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, profundidadAgujero,
+              monthlyProduction, lifeModeCurrent, lifeModePremium,
+              toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrent, zCurrent, edgesCurrent, dcCurrent, aeCurrent,
+              toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, tcPremiumInput, zPremium, edgesPremium, dcPremium, aePremium,
+            },
+        };
+        
+        await addDoc(collection(db, "analisis_costos"), docData);
+        
+        alert(`Análisis "${saveCaseName}" guardado correctamente.`);
+        setIsSaveModalOpen(false);
+
+    } catch (error) {
+        console.error("Error al guardar en Firebase: ", error);
+        alert(`Error al guardar. ${error instanceof Error ? error.message : 'Error desconocido'}`);
+    } finally {
+        setIsSaving(false);
+    }
+};
 
   const handleGeneratePDF = async (action: 'download' | 'share' | 'blob') => {
     setIsGenerating(true);
@@ -1238,7 +1284,7 @@ export default function TaylorCurvePage() {
                                             </div>
                                             {desgloseActual.lote > 0 && (
                                                 <p className="text-[10px] text-amber-700 font-bold mt-1 pt-1 border-t border-slate-50">
-                                                    📦 Insertos para Lote: {desgloseActual.lote} unds.
+                                                    📦 Insertos para Lote: {(desgloseActual.lote || 0).toFixed(1)} unds.
                                                 </p>
                                             )}
                                           </div>
@@ -1268,12 +1314,33 @@ export default function TaylorCurvePage() {
                                             </div>
                                             {desglosePremium.lote > 0 && (
                                                 <p className="text-[10px] text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-50">
-                                                    📦 Insertos para Lote: {desglosePremium.lote} unds.
+                                                    📦 Insertos para Lote: {(desglosePremium.lote || 0).toFixed(1)} unds.
                                                 </p>
                                             )}
                                           </div>
                                         )}
+                                        {/* FOOTER COMPARATIVO DE INSERTO */}
+                                        {desgloseActual && desglosePremium && costoPremium > 0 && (
+                                          (() => {
+                                            const diffInserto = desglosePremium.inserto - desgloseActual.inserto;
+                                            const diffPercentage = (Math.abs(diffInserto) / costoPremium) * 100;
+                                            const isMoreExpensive = diffInserto > 0;
 
+                                            return (
+                                              <div className="mt-3 pt-2 border-t border-slate-200/80 bg-slate-50 rounded-b-md -mx-3 -mb-3 px-3 pb-2 text-center">
+                                                <p className="text-[10px] text-slate-600 leading-tight">
+                                                  <span className="font-bold text-slate-700">⚖️ Diferencia de Inserto:</span>{' '}
+                                                  <span className={isMoreExpensive ? 'text-red-600 font-medium' : 'text-emerald-600 font-bold'}>
+                                                    {isMoreExpensive ? '+' : ''}{formatCurrency(diffInserto)}
+                                                  </span>
+                                                </p>
+                                                <p className="text-[9px] text-slate-400 mt-0.5 italic">
+                                                  (Apenas un <span className="font-bold">{diffPercentage.toFixed(1)}%</span> de impacto en la pieza)
+                                                </p>
+                                              </div>
+                                            );
+                                          })()
+                                        )}
                                       </div>
                                     );
                                 }
