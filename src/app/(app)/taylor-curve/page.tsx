@@ -697,12 +697,14 @@ export default function TaylorCurvePage() {
         maquina: safeMachineCostMin * safeTcCurrent,
         inserto: effectivePcsCurrent > 0 ? ((safeToolCostCurrent / safeEdgesCurrent) * (operationType === 'milling' ? (Number(zCurrent)||1) : 1)) / effectivePcsCurrent : 0,
         parada: effectivePcsCurrent > 0 ? (safeToolChangeTime * safeMachineCostMin) / effectivePcsCurrent : 0,
+        lote: effectivePcsCurrent > 0 ? Math.ceil(safeMonthlyProduction / (effectivePcsCurrent * safeEdgesCurrent)) * (operationType === 'milling' ? (Number(zCurrent)||1) : 1) : 0,
     };
 
     const desglosePremiumReal = {
         maquina: safeMachineCostMin * safeTcPremium,
         inserto: effectivePcsPremium > 0 ? ((safeToolCostPremium / safeEdgesPremium) * (operationType === 'milling' ? (Number(zPremium)||1) : 1)) / effectivePcsPremium : 0,
         parada: effectivePcsPremium > 0 ? (safeToolChangeTime * safeMachineCostMin) / effectivePcsPremium : 0,
+        lote: effectivePcsPremium > 0 ? Math.ceil(safeMonthlyProduction / (effectivePcsPremium * safeEdgesPremium)) * (operationType === 'milling' ? (Number(zPremium)||1) : 1) : 0,
     };
 
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
@@ -733,7 +735,7 @@ export default function TaylorCurvePage() {
     const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
     const costJuego = costPerPunta * safeZPremium;
     
-    const penalidadCambio = costJuego + (safeToolChangeTime * safeMachineCostMin);
+    const penalidadCambio = costJuego + (safeMachineCostMin * safeToolChangeTime);
     
     let costoHerr = 0;
     if (lifeModePremium === 'minutos') {
@@ -1676,8 +1678,12 @@ export default function TaylorCurvePage() {
                   </tr>
                   <tr className="bg-amber-50/40">
                     <td className="p-2 border border-slate-300 font-bold text-amber-900">📦 Insertos Consumidos (Lote)</td>
-                    <td className="p-2 border border-slate-300 text-center font-black text-amber-700">{curveDataInfo.desgloseActualReal.lote.toFixed(1)} unds.</td>
-                    <td className="p-2 border border-slate-300 text-center font-black text-emerald-700">{curveDataInfo.desglosePremiumReal.lote.toFixed(1)} unds.</td>
+                    <td className="p-2 border border-slate-300 text-center font-black text-amber-700">
+                      {(curveDataInfo.desgloseActualReal?.lote || 0).toFixed(1)} unds.
+                    </td>
+                    <td className="p-2 border border-slate-300 text-center font-black text-emerald-700">
+                      {(curveDataInfo.desglosePremiumReal?.lote || 0).toFixed(1)} unds.
+                    </td>
                   </tr>
                 </tbody>
               </table>
