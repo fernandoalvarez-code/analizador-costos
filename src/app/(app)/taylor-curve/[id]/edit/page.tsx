@@ -626,21 +626,16 @@ export default function EditTaylorCurvePage() {
     const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, effectivePcsCurrent, (Number(zCurrent) || 1), safeEdgesCurrent);
     const actualCostPremium = calcEmpiricalCost(safeTcPremium, safeToolCostPremium, effectivePcsPremium, (Number(zPremium) || 1), safeEdgesPremium);
     
-    const multZ_Act = operationType === 'milling' ? (Number(zCurrent)||1) : 1;
-    const multZ_Prem = operationType === 'milling' ? (Number(zPremium)||1) : 1;
-
     const desgloseActualReal = {
         maquina: safeMachineCostMin * safeTcCurrent,
-        inserto: effectivePcsCurrent > 0 ? ((safeToolCostCurrent / safeEdgesCurrent) * multZ_Act) / effectivePcsCurrent : 0,
+        inserto: effectivePcsCurrent > 0 ? ((safeToolCostCurrent / safeEdgesCurrent) * (operationType === 'milling' ? (Number(zCurrent)||1) : 1)) / effectivePcsCurrent : 0,
         parada: effectivePcsCurrent > 0 ? (safeToolChangeTime * safeMachineCostMin) / effectivePcsCurrent : 0,
-        lote: effectivePcsCurrent > 0 ? Math.ceil(safeMonthlyProduction / (effectivePcsCurrent * safeEdgesCurrent)) * multZ_Act : 0
     };
 
     const desglosePremiumReal = {
         maquina: safeMachineCostMin * safeTcPremium,
-        inserto: effectivePcsPremium > 0 ? ((safeToolCostPremium / safeEdgesPremium) * multZ_Prem) / effectivePcsPremium : 0,
+        inserto: effectivePcsPremium > 0 ? ((safeToolCostPremium / safeEdgesPremium) * (operationType === 'milling' ? (Number(zPremium)||1) : 1)) / effectivePcsPremium : 0,
         parada: effectivePcsPremium > 0 ? (safeToolChangeTime * safeMachineCostMin) / effectivePcsPremium : 0,
-        lote: effectivePcsPremium > 0 ? Math.ceil(safeMonthlyProduction / (effectivePcsPremium * safeEdgesPremium)) * multZ_Prem : 0
     };
 
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
@@ -1170,13 +1165,15 @@ export default function EditTaylorCurvePage() {
                                             <p className="text-[11px] font-bold text-red-700 uppercase tracking-wide">Competidor: {formatCurrency(costoActual)}</p>
                                             <div className="flex items-center gap-1 text-[10px] text-slate-500">
                                               <span>⚙️ Tiempo de Corte: {formatCurrency(desgloseActual.maquina)}</span>
+                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desgloseActual.maquina, costoActual)}%)</span>
                                             </div>
                                             <div className="flex items-center gap-1 text-[10px] text-slate-500">
                                               <span>💎 Inserto Puro: {formatCurrency(desgloseActual.inserto)}</span>
-                                               <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desgloseActual.inserto, costoActual)}%)</span>
+                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desgloseActual.inserto, costoActual)}%)</span>
                                             </div>
                                             <div className="flex items-center gap-1 text-[10px] text-slate-500">
                                               <span>🔴 Costo Paradas: {formatCurrency(desgloseActual.parada)}</span>
+                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desgloseActual.parada, costoActual)}%)</span>
                                             </div>
                                             {desgloseActual.lote > 0 && (
                                                 <p className="text-[10px] text-amber-700 font-bold mt-1 pt-1 border-t border-slate-50">
@@ -1198,13 +1195,15 @@ export default function EditTaylorCurvePage() {
                                             </div>
                                             <div className="flex items-center gap-1 text-[10px] text-slate-500">
                                               <span>⚙️ Tiempo de Corte: {formatCurrency(desglosePremium.maquina)}</span>
+                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desglosePremium.maquina, costoPremium)}%)</span>
                                             </div>
                                             <div className="flex items-center gap-1 text-[10px] text-slate-500">
                                               <span>💎 Inserto Puro: {formatCurrency(desglosePremium.inserto)}</span>
-                                               <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desglosePremium.inserto, costoPremium)}%)</span>
+                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desglosePremium.inserto, costoPremium)}%)</span>
                                             </div>
                                             <div className="flex items-center gap-1 text-[10px] text-slate-500">
                                               <span>🔴 Costo Paradas: {formatCurrency(desglosePremium.parada)}</span>
+                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desglosePremium.parada, costoPremium)}%)</span>
                                             </div>
                                             {desglosePremium.lote > 0 && (
                                                 <p className="text-[10px] text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-50">

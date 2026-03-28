@@ -693,21 +693,16 @@ export default function TaylorCurvePage() {
     const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, effectivePcsCurrent, (Number(zCurrent) || 1), safeEdgesCurrent);
     const actualCostPremium = calcEmpiricalCost(safeTcPremium, safeToolCostPremium, effectivePcsPremium, (Number(zPremium) || 1), safeEdgesPremium);
     
-    const multZ_Act = operationType === 'milling' ? (Number(zCurrent)||1) : 1;
-    const multZ_Prem = operationType === 'milling' ? (Number(zPremium)||1) : 1;
-
     const desgloseActualReal = {
         maquina: safeMachineCostMin * safeTcCurrent,
-        inserto: effectivePcsCurrent > 0 ? ((safeToolCostCurrent / safeEdgesCurrent) * multZ_Act) / effectivePcsCurrent : 0,
+        inserto: effectivePcsCurrent > 0 ? ((safeToolCostCurrent / safeEdgesCurrent) * (operationType === 'milling' ? (Number(zCurrent)||1) : 1)) / effectivePcsCurrent : 0,
         parada: effectivePcsCurrent > 0 ? (safeToolChangeTime * safeMachineCostMin) / effectivePcsCurrent : 0,
-        lote: effectivePcsCurrent > 0 ? Math.ceil(safeMonthlyProduction / (effectivePcsCurrent * safeEdgesCurrent)) * multZ_Act : 0
     };
 
     const desglosePremiumReal = {
         maquina: safeMachineCostMin * safeTcPremium,
-        inserto: effectivePcsPremium > 0 ? ((safeToolCostPremium / safeEdgesPremium) * multZ_Prem) / effectivePcsPremium : 0,
+        inserto: effectivePcsPremium > 0 ? ((safeToolCostPremium / safeEdgesPremium) * (operationType === 'milling' ? (Number(zPremium)||1) : 1)) / effectivePcsPremium : 0,
         parada: effectivePcsPremium > 0 ? (safeToolChangeTime * safeMachineCostMin) / effectivePcsPremium : 0,
-        lote: effectivePcsPremium > 0 ? Math.ceil(safeMonthlyProduction / (effectivePcsPremium * safeEdgesPremium)) * multZ_Prem : 0
     };
 
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
@@ -738,7 +733,7 @@ export default function TaylorCurvePage() {
     const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
     const costJuego = costPerPunta * safeZPremium;
     
-    const penalidadCambio = costJuego + (safeMachineCostMin * safeToolChangeTime);
+    const penalidadCambio = costJuego + (safeToolChangeTime * safeMachineCostMin);
     
     let costoHerr = 0;
     if (lifeModePremium === 'minutos') {
@@ -1229,13 +1224,15 @@ export default function TaylorCurvePage() {
                                             <p className="text-[11px] font-bold text-red-700 uppercase tracking-wide">Competidor: {formatCurrency(costoActual)}</p>
                                             <div className="flex items-center gap-1 text-[10px] text-slate-500">
                                               <span>⚙️ Tiempo de Corte: {formatCurrency(desgloseActual.maquina)}</span>
+                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desgloseActual.maquina, costoActual)}%)</span>
                                             </div>
                                             <div className="flex items-center gap-1 text-[10px] text-slate-500">
                                               <span>💎 Inserto Puro: {formatCurrency(desgloseActual.inserto)}</span>
-                                               <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desgloseActual.inserto, costoActual)}%)</span>
+                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desgloseActual.inserto, costoActual)}%)</span>
                                             </div>
                                             <div className="flex items-center gap-1 text-[10px] text-slate-500">
                                               <span>🔴 Costo Paradas: {formatCurrency(desgloseActual.parada)}</span>
+                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desgloseActual.parada, costoActual)}%)</span>
                                             </div>
                                             {desgloseActual.lote > 0 && (
                                                 <p className="text-[10px] text-amber-700 font-bold mt-1 pt-1 border-t border-slate-50">
@@ -1257,13 +1254,15 @@ export default function TaylorCurvePage() {
                                             </div>
                                             <div className="flex items-center gap-1 text-[10px] text-slate-500">
                                               <span>⚙️ Tiempo de Corte: {formatCurrency(desglosePremium.maquina)}</span>
+                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desglosePremium.maquina, costoPremium)}%)</span>
                                             </div>
                                             <div className="flex items-center gap-1 text-[10px] text-slate-500">
                                               <span>💎 Inserto Puro: {formatCurrency(desglosePremium.inserto)}</span>
-                                               <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desglosePremium.inserto, costoPremium)}%)</span>
+                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desglosePremium.inserto, costoPremium)}%)</span>
                                             </div>
                                             <div className="flex items-center gap-1 text-[10px] text-slate-500">
                                               <span>🔴 Costo Paradas: {formatCurrency(desglosePremium.parada)}</span>
+                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desglosePremium.parada, costoPremium)}%)</span>
                                             </div>
                                             {desglosePremium.lote > 0 && (
                                                 <p className="text-[10px] text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-50">
@@ -1421,63 +1420,7 @@ export default function TaylorCurvePage() {
               </button>
               
               <button 
-                onClick={async () => {
-                  if (!saveClientName.trim() || !saveCaseName.trim()) {
-                    alert("⚠️ Por favor, completa el nombre del Cliente y de la Operación para poder guardar.");
-                    return;
-                  }
-
-                  if (!user) { alert("Debes iniciar sesión para guardar este análisis."); return; }
-                  
-                  setIsSaving(true);
-                  try {
-                    let pdfDownloadUrl = "";
-                    try {
-                      const pdfBlob = await handleGeneratePDF('blob'); 
-                      if (pdfBlob && storage) {
-                        const safeFileName = (pieceName || 'Sin_Nombre').replace(/\s+/g, '_');
-                        const fileName = `taylor_reports/Simulacion_${safeFileName}_${Date.now()}.pdf`;
-                        const storageRef = ref(storage, fileName);
-                        await uploadBytes(storageRef, pdfBlob);
-                        pdfDownloadUrl = await getDownloadURL(storageRef);
-                      }
-                    } catch (pdfError) { console.warn("⚠️ No se pudo generar PDF. Guardando datos. Error:", pdfError); }
-
-                    const rawPayload = {
-                      clientName: saveClientName,
-                      caseName: saveCaseName || pieceName || 'Análisis sin nombre',
-                      status: 'pending', 
-                      annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction)||0)) * 12, 
-                      pdfUrl: pdfDownloadUrl || "", 
-                      userId: user.uid, 
-                      taylorInputs: { 
-                        operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, profundidadAgujero, monthlyProduction,
-                        toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrent, 
-                        zCurrent, edgesCurrent, dcCurrent, aeCurrent,
-                        toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, tcPremiumInput,
-                        zPremium, edgesPremium, dcPremium, aePremium,
-                        lifeModeCurrent, lifeModePremium
-                      }
-                    };
-
-                    const sanitizedString = JSON.stringify(rawPayload, (key, value) => {
-                      if (typeof value === 'number' && !isFinite(value)) return null;
-                      if (value === undefined) return null;
-                      return value;
-                    });
-                    const safePayload = JSON.parse(sanitizedString);
-                    safePayload.dateCreated = serverTimestamp();
-
-                    await addDoc(collection(db, "analisis_costos"), safePayload);
-                    
-                    setIsSaveModalOpen(false);
-                    alert("¡Análisis guardado exitosamente en el Historial!");
-                  } catch (error) {
-                    alert(`Fallo al guardar en la base de datos. El sistema dice: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
-                  } finally {
-                    setIsSaving(false);
-                  }
-                }} 
+                onClick={handleSaveCase} 
                 disabled={isSaving}
                 className="px-4 py-2 text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm"
               >
@@ -1586,7 +1529,6 @@ export default function TaylorCurvePage() {
         <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', zIndex: -1 }}>
           <div id="pdf-pagina-1" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
             
-            {/* HEADER DEL PDF CON LOGOS UNIFICADO */}
             <div className="relative mb-8 pb-4 border-b-2 border-slate-800">
               <div className="flex justify-between items-start mb-8 h-16">
                 {logos.company ? (
