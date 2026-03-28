@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MonthlySavingsSummary } from '@/components/calculator/MonthlySavingsSummary';
 
 
 const MATERIALS = [
@@ -497,7 +498,7 @@ export default function EditTaylorCurvePage() {
     const taylorProps = TAYLOR_CONSTANTS[mat.grupo as keyof typeof TAYLOR_CONSTANTS] || { n: 0.25, C: 250 };
     
     const n = taylorProps.n;
-
+    
     const vidaMinutosCompetidor = lifeModeCurrent === 'minutos' ? 
         (Number(pcsCurrent) || 1) : 
         ((Number(pcsCurrent) || 1) * safeTcCurrent);
@@ -625,13 +626,30 @@ export default function EditTaylorCurvePage() {
     const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, effectivePcsCurrent, (Number(zCurrent) || 1), safeEdgesCurrent);
     const actualCostPremium = calcEmpiricalCost(safeTcPremium, safeToolCostPremium, effectivePcsPremium, (Number(zPremium) || 1), safeEdgesPremium);
     
+    const multZ_Act = operationType === 'milling' ? (Number(zCurrent)||1) : 1;
+    const multZ_Prem = operationType === 'milling' ? (Number(zPremium)||1) : 1;
+
+    const desgloseActualReal = {
+        maquina: safeMachineCostMin * safeTcCurrent,
+        inserto: effectivePcsCurrent > 0 ? ((safeToolCostCurrent / safeEdgesCurrent) * multZ_Act) / effectivePcsCurrent : 0,
+        parada: effectivePcsCurrent > 0 ? (safeToolChangeTime * safeMachineCostMin) / effectivePcsCurrent : 0,
+        lote: effectivePcsCurrent > 0 ? Math.ceil(safeMonthlyProduction / (effectivePcsCurrent * safeEdgesCurrent)) * multZ_Act : 0
+    };
+
+    const desglosePremiumReal = {
+        maquina: safeMachineCostMin * safeTcPremium,
+        inserto: effectivePcsPremium > 0 ? ((safeToolCostPremium / safeEdgesPremium) * multZ_Prem) / effectivePcsPremium : 0,
+        parada: effectivePcsPremium > 0 ? (safeToolChangeTime * safeMachineCostMin) / effectivePcsPremium : 0,
+        lote: effectivePcsPremium > 0 ? Math.ceil(safeMonthlyProduction / (effectivePcsPremium * safeEdgesPremium)) * multZ_Prem : 0
+    };
+
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
     const realSavingsPercentage = actualCostCurrent > 0 ? (realAbsoluteSavings / actualCostCurrent) * 100 : 0;
     const monthlySavings = isFinite(realAbsoluteSavings) ? realAbsoluteSavings * safeMonthlyProduction : 0;
 
-    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost };
+    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost, desgloseActualReal, desglosePremiumReal };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium]);
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium, tcPremiumInput]);
 
   useEffect(() => {
     if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
@@ -1003,7 +1021,7 @@ export default function EditTaylorCurvePage() {
             <div className="mt-6 pt-5 border-t border-slate-100">
               <Label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wide">📦 Escala Comercial</Label>
               <div className="relative">
-                <Input type="number" placeholder="Ej: 1000" className="w-full text-lg font-black text-blue-700 pl-4 pr-16 h-12 bg-slate-50 text-slate-900" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value)} />
+                <Input type="number" placeholder="0" className="w-full text-lg font-black text-blue-700 pl-4 pr-16 h-12 bg-slate-50 text-slate-900" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value)} />
                 <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400">pzs/mes</span>
               </div>
             </div>
@@ -1260,7 +1278,81 @@ export default function EditTaylorCurvePage() {
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                         <XAxis type="number" dataKey="speed" domain={['dataMin', 'dataMax']} label={{ value: 'Velocidad de Corte Vc (m/min)', position: 'bottom', offset: 15 }} tick={{fontSize: 12}} />
                         <YAxis label={{ value: 'Costo Total Relativo', angle: -90, position: 'insideLeft', offset: 0 }} tick={{fontSize: 12}} tickFormatter={(value) => formatCurrency(value).replace('USD ', '$')} />
-                        <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 2, strokeDasharray: '5 5' }} />
+                        <Tooltip 
+                            cursor={{ stroke: '#cbd5e1', strokeWidth: 2, strokeDasharray: '5 5' }} 
+                            content={(props: any) => {
+                                if (props.active && props.payload && props.payload.length) {
+                                    const dataPoint = props.payload[0].payload;
+                                    const { speed, desgloseActual, desglosePremium, costoActual, costoPremium } = dataPoint;
+                                    
+                                    const porcentajeAhorroUnificado = curveDataInfo.actualCostCurrent > 0 
+                                      ? ((curveDataInfo.actualCostCurrent - costoPremium) / curveDataInfo.actualCostCurrent) * 100 
+                                      : 0;
+
+                                    const calculateIncidence = (partCost: number, totalCost: number) => {
+                                      if (!totalCost || totalCost === 0 || isNaN(partCost) || isNaN(totalCost)) return "0.0";
+                                      return ((partCost / totalCost) * 100).toFixed(1); 
+                                    };
+                                    
+                                    return (
+                                      <div className="bg-white p-3 border shadow-lg rounded-md text-xs min-w-[240px]">
+                                        <p className="font-bold border-b pb-1 mb-2 text-slate-800">Vc: {speed} m/min</p>
+                                        
+                                        {costoActual !== undefined && desgloseActual && (
+                                          <div className="space-y-1 border-b border-slate-100 pb-2 mb-2">
+                                            <p className="text-[11px] font-bold text-red-700 uppercase tracking-wide">Competidor: {formatCurrency(costoActual)}</p>
+                                            <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                                              <span>⚙️ Tiempo de Corte: {formatCurrency(desgloseActual.maquina)}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                                              <span>💎 Inserto Puro: {formatCurrency(desgloseActual.inserto)}</span>
+                                               <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desgloseActual.inserto, costoActual)}%)</span>
+                                            </div>
+                                            <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                                              <span>🔴 Costo Paradas: {formatCurrency(desgloseActual.parada)}</span>
+                                            </div>
+                                            {desgloseActual.lote > 0 && (
+                                                <p className="text-[10px] text-amber-700 font-bold mt-1 pt-1 border-t border-slate-50">
+                                                    📦 Insertos para Lote: {desgloseActual.lote} unds.
+                                                </p>
+                                            )}
+                                          </div>
+                                        )}
+
+                                        {costoPremium !== undefined && desglosePremium && (
+                                          <div className="space-y-1">
+                                            <div className="flex items-center justify-between">
+                                              <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wide">SECOCUT: {formatCurrency(costoPremium)}</p>
+                                              {porcentajeAhorroUnificado > 0 && (
+                                                <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                                                  -{porcentajeAhorroUnificado.toFixed(1)}%
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                                              <span>⚙️ Tiempo de Corte: {formatCurrency(desglosePremium.maquina)}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                                              <span>💎 Inserto Puro: {formatCurrency(desglosePremium.inserto)}</span>
+                                               <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desglosePremium.inserto, costoPremium)}%)</span>
+                                            </div>
+                                            <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                                              <span>🔴 Costo Paradas: {formatCurrency(desglosePremium.parada)}</span>
+                                            </div>
+                                            {desglosePremium.lote > 0 && (
+                                                <p className="text-[10px] text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-50">
+                                                    📦 Insertos para Lote: {desglosePremium.lote} unds.
+                                                </p>
+                                            )}
+                                          </div>
+                                        )}
+
+                                      </div>
+                                    );
+                                }
+                                return null;
+                            }} 
+                        />
                         <Legend verticalAlign="top" height={36} />
                         <Line type="monotone" dataKey="costoActual" name="Inserto Competidor" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#ef4444' }} />
                         <Line type="monotone" dataKey="costoPremium" name="Propuesta (Secocut)" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#22c55e' }} />
@@ -1281,19 +1373,29 @@ export default function EditTaylorCurvePage() {
                 </div>
             </CardContent>
         </Card>
+
+        {isFinite(curveDataInfo.monthlySavings) && Number(monthlyProduction) > 0 && (
+          <MonthlySavingsSummary
+            monthlyVolume={Number(monthlyProduction)}
+            compToolCost={curveDataInfo.desgloseActualReal.inserto}
+            secoToolCost={curveDataInfo.desglosePremiumReal.inserto}
+            compMachineCost={curveDataInfo.desgloseActualReal.maquina}
+            secoMachineCost={curveDataInfo.desglosePremiumReal.maquina}
+          />
+        )}
       </div>
 
        {/* EL GRAN REMATE VISUAL - AHORRO MENSUAL */}
-      <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl p-8 text-center shadow-2xl relative overflow-hidden mt-6">
+      <div className={`rounded-xl p-8 text-center shadow-2xl relative overflow-hidden mt-6 bg-gradient-to-r ${curveDataInfo.monthlySavings >= 0 ? 'from-emerald-500 to-green-600' : 'from-red-500 to-rose-600'}`}>
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-black opacity-10 rounded-full blur-2xl"></div>
         
-        <p className="relative z-10 text-green-100 font-bold tracking-widest uppercase text-sm mb-2">💰 Impacto Financiero Proyectado</p>
+        <p className={`relative z-10 font-bold tracking-widest uppercase text-sm mb-2 ${curveDataInfo.monthlySavings >= 0 ? 'text-green-100' : 'text-red-100'}`}>💰 Impacto Financiero Proyectado</p>
         <h2 className="relative z-10 text-5xl md:text-6xl font-black text-white drop-shadow-md mb-3">
-          {formatCurrency(curveDataInfo.monthlySavings)}
+          {curveDataInfo.monthlySavings >= 0 ? '' : '-'}{formatCurrency(Math.abs(curveDataInfo.monthlySavings))}
         </h2>
-        <p className="relative z-10 text-lg text-green-50 font-medium">
-          Ahorro mensual neto al fabricar <span className="font-bold text-white bg-green-700 px-2 py-1 rounded">{formatNumber(Number(monthlyProduction))} piezas</span> con tecnología Secocut.
+        <p className={`relative z-10 text-lg font-medium ${curveDataInfo.monthlySavings >= 0 ? 'text-green-50' : 'text-red-50'}`}>
+          {curveDataInfo.monthlySavings >= 0 ? 'Ahorro mensual neto' : 'Costo adicional mensual'} al fabricar <span className={`font-bold text-white px-2 py-1 rounded ${curveDataInfo.monthlySavings >= 0 ? 'bg-green-700' : 'bg-red-700'}`}>{formatNumber(Number(monthlyProduction))} piezas</span> con tecnología Secocut.
         </p>
       </div>
       
@@ -1618,12 +1720,12 @@ export default function EditTaylorCurvePage() {
                     <td className="p-2 border border-slate-300 text-center">{curveDataInfo.hpPremium.toFixed(1)} HP ({curveDataInfo.loadPremium.toFixed(1)}%)</td>
                   </tr>
                   <tr className="bg-slate-50">
-                    <td className="p-2 border border-slate-300 font-bold text-slate-800">Costo Real por Pieza</td>
-                    <td className="p-2 border border-slate-300 font-bold text-red-600 text-center">{isFinite(curveDataInfo.actualCostCurrent) ? formatCurrency(curveDataInfo.actualCostCurrent) : 'N/A'}</td>
+                    <td className="p-2 border border-slate-300 font-black text-slate-800">Costo Real por Pieza</td>
+                    <td className="p-2 border border-slate-300 font-black text-red-600 text-center text-lg">{isFinite(curveDataInfo.actualCostCurrent) ? formatCurrency(curveDataInfo.actualCostCurrent) : 'N/A'}</td>
                     <td className="p-2 border border-slate-300 text-center">
                       {isFinite(curveDataInfo.actualCostPremium) ? (
                           <div className="flex items-center gap-2 justify-center">
-                              <span className="font-black text-green-800 text-lg">
+                              <span className="font-black text-green-800 text-xl">
                                 {formatCurrency(curveDataInfo.actualCostPremium)}
                               </span>
                           </div>
@@ -1632,19 +1734,39 @@ export default function EditTaylorCurvePage() {
                       )}
                     </td>
                   </tr>
+                  <tr className="text-[10px] text-slate-500 bg-white">
+                    <td className="p-2 border border-slate-300 pl-6">↳ Costo de Máquina</td>
+                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(curveDataInfo.desgloseActualReal.maquina)}</td>
+                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(curveDataInfo.desglosePremiumReal.maquina)}</td>
+                  </tr>
+                  <tr className="text-[10px] text-slate-500 bg-white">
+                    <td className="p-2 border border-slate-300 pl-6">↳ Costo de Inserto Puro</td>
+                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(curveDataInfo.desgloseActualReal.inserto)}</td>
+                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(curveDataInfo.desglosePremiumReal.inserto)}</td>
+                  </tr>
+                  <tr className="text-[10px] text-slate-500 bg-white">
+                    <td className="p-2 border border-slate-300 pl-6">↳ Costo de Paradas</td>
+                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(curveDataInfo.desgloseActualReal.parada)}</td>
+                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(curveDataInfo.desglosePremiumReal.parada)}</td>
+                  </tr>
+                  <tr className="bg-amber-50/40">
+                    <td className="p-2 border border-slate-300 font-bold text-amber-900">📦 Insertos Consumidos (Lote)</td>
+                    <td className="p-2 border border-slate-300 text-center font-black text-amber-700">{curveDataInfo.desgloseActualReal.lote.toFixed(1)} unds.</td>
+                    <td className="p-2 border border-slate-300 text-center font-black text-emerald-700">{curveDataInfo.desglosePremiumReal.lote.toFixed(1)} unds.</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
 
-            <div className="bg-green-50 border-2 border-green-500 rounded-xl p-6 text-center mb-8 relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
-              <p className="text-sm font-bold text-green-700 uppercase tracking-widest mb-2 mt-2">Impacto Anual Proyectado</p>
-              <p className="text-5xl font-black text-green-800 mb-2">
-                {formatCurrency(curveDataInfo.monthlySavings * 12)}
+            <div className={`border-2 rounded-xl p-6 text-center mb-8 relative overflow-hidden ${curveDataInfo.monthlySavings >= 0 ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-500'}`}>
+              <div className={`absolute top-0 left-0 w-full h-2 ${curveDataInfo.monthlySavings >= 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <p className={`text-sm font-bold uppercase tracking-widest mb-2 mt-2 ${curveDataInfo.monthlySavings >= 0 ? 'text-green-700' : 'text-red-700'}`}>Impacto Mensual Proyectado</p>
+              <p className={`text-5xl font-black mb-2 ${curveDataInfo.monthlySavings >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                {curveDataInfo.monthlySavings >= 0 ? '' : '-'}{formatCurrency(Math.abs(curveDataInfo.monthlySavings))}
               </p>
-              <div className="inline-block bg-green-100 px-4 py-2 rounded-full mt-2">
-                <p className="text-sm font-bold text-green-800">
-                  Basado en {formatNumber(Number(monthlyProduction))} piezas/mes • Ahorro mensual: {formatCurrency(curveDataInfo.monthlySavings)}
+              <div className={`inline-block px-4 py-2 rounded-full mt-2 ${curveDataInfo.monthlySavings >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                <p className={`text-sm font-bold ${curveDataInfo.monthlySavings >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                  Basado en {formatNumber(Number(monthlyProduction))} piezas/mes • {curveDataInfo.monthlySavings >= 0 ? 'Ahorro' : 'Costo Extra'} unitario: {formatCurrency(Math.abs(curveDataInfo.realAbsoluteSavings))}
                 </p>
               </div>
             </div>
