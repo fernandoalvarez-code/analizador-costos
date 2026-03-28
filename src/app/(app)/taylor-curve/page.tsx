@@ -1794,7 +1794,53 @@ export default function TaylorCurvePage() {
                 </LineChart>
               </div>
             </div>
+            {/* 3. PROYECCIÓN DE AHORRO MENSUAL EN PDF */}
+            {isFinite(curveDataInfo.monthlySavings) && Number(monthlyProduction) > 0 && (
+              <div className="mt-8">
+                <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">
+                  3. Proyección de Ahorro Mensual (Base: {formatNumber(Number(monthlyProduction))} piezas)
+                </h2>
+                
+                {(() => {
+                  const vol = Number(monthlyProduction) || 0;
+                  const compTool = curveDataInfo.desgloseActualReal.inserto * vol;
+                  const secoTool = curveDataInfo.desglosePremiumReal.inserto * vol;
+                  const toolSavings = compTool - secoTool;
 
+                  const compMach = (curveDataInfo.desgloseActualReal.maquina + curveDataInfo.desgloseActualReal.parada) * vol;
+                  const secoMach = (curveDataInfo.desglosePremiumReal.maquina + curveDataInfo.desglosePremiumReal.parada) * vol;
+                  const machineSavings = compMach - secoMach;
+
+                  const netSavings = toolSavings + machineSavings;
+
+                  return (
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="p-3 border border-slate-200 rounded-lg bg-slate-50">
+                        <p className="text-xs text-slate-500 font-bold mb-1">1. Impacto en Compras</p>
+                        <p className="text-[9px] text-slate-400 leading-tight mb-2">Diferencia en gasto de insertos</p>
+                        <p className={`text-xl font-black tracking-tight ${toolSavings >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                          {toolSavings > 0 ? '+' : ''}{formatCurrency(toolSavings)}
+                        </p>
+                      </div>
+                      <div className="p-3 border border-slate-200 rounded-lg bg-slate-50">
+                        <p className="text-xs text-slate-500 font-bold mb-1">2. Impacto en Producción</p>
+                        <p className="text-[9px] text-slate-400 leading-tight mb-2">Ahorro en horas máquina y operador</p>
+                        <p className={`text-xl font-black tracking-tight ${machineSavings >= 0 ? 'text-emerald-600' : 'text-slate-700'}`}>
+                          {machineSavings > 0 ? '+' : ''}{formatCurrency(machineSavings)}
+                        </p>
+                      </div>
+                      <div className={`p-3 border-2 rounded-lg ${netSavings >= 0 ? 'border-emerald-500 bg-emerald-50' : 'border-red-500 bg-red-50'}`}>
+                        <p className={`text-xs font-bold mb-1 ${netSavings >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>3. AHORRO NETO TOTAL</p>
+                        <p className={`text-[9px] leading-tight mb-2 ${netSavings >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>Impacto financiero final</p>
+                        <p className={`text-2xl font-black tracking-tight ${netSavings >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                          {netSavings > 0 ? '+' : ''}{formatCurrency(netSavings)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
             <div className="mt-auto pt-4 border-t border-slate-300 text-center text-[10px] text-slate-500">
               Documento generado automáticamente por Simulador de Competitividad Secocut SRL.
             </div>
