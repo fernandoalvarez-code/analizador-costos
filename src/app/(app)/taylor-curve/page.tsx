@@ -1031,7 +1031,7 @@ export default function TaylorCurvePage() {
               <div>
                   <Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}</Label>
                   <Input type="number" step="0.01" className="border-red-200 bg-white text-slate-900" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value)} />
-                  {operationType === 'turning' && raActual && (
+                  {raActual && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
                           Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
                       </p>
@@ -1129,7 +1129,7 @@ export default function TaylorCurvePage() {
               <div>
                   <Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}</Label>
                   <Input type="number" step="0.01" className="border-green-200 bg-white text-slate-900" value={feedPremium} onChange={e => setFeedPremium(e.target.value)} />
-                  {operationType === 'turning' && raPropuesta && (
+                  {raPropuesta && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
                           Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
                       </p>
@@ -1284,7 +1284,7 @@ export default function TaylorCurvePage() {
                                             </div>
                                             {desgloseActual.lote > 0 && (
                                                 <p className="text-[10px] text-amber-700 font-bold mt-1 pt-1 border-t border-slate-50">
-                                                    📦 Insertos para Lote: {(desgloseActual.lote || 0).toFixed(1)} unds.
+                                                    📦 Insertos para Lote: {desgloseActual.lote} unds.
                                                 </p>
                                             )}
                                           </div>
@@ -1314,7 +1314,7 @@ export default function TaylorCurvePage() {
                                             </div>
                                             {desglosePremium.lote > 0 && (
                                                 <p className="text-[10px] text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-50">
-                                                    📦 Insertos para Lote: {(desglosePremium.lote || 0).toFixed(1)} unds.
+                                                    📦 Insertos para Lote: {desglosePremium.lote} unds.
                                                 </p>
                                             )}
                                           </div>
