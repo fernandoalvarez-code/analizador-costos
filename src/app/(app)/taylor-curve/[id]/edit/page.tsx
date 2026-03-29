@@ -1019,7 +1019,18 @@ export default function EditTaylorCurvePage() {
                   <Input type="number" step="0.01" className="border-red-200 bg-white text-slate-900" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value)} />
                   {raActual && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
+                          Acabado (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
+                      </p>
+                  )}
+                  {curveDataInfo.qCurrent > 0 && (
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                          Remoción (Q): <span className="text-red-600 font-bold">{curveDataInfo.qCurrent.toFixed(1)} cm³/min</span>
+                      </p>
+                  )}
+                  {curveDataInfo.hmCurrent > 0 && operationType !== 'drilling' && (
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                          {operationType === 'milling' ? 'Espesor (hm): ' : 'Espesor (he): '}
+                          <span className={`font-bold ${curveDataInfo.hmCurrent < 0.05 ? 'text-orange-500' : 'text-red-600'}`}>{curveDataInfo.hmCurrent.toFixed(3)} mm</span>
                       </p>
                   )}
               </div>
@@ -1078,16 +1089,6 @@ export default function EditTaylorCurvePage() {
               <div className="w-full bg-slate-100 rounded-full h-2 mb-1 overflow-hidden"><div className={`h-2 rounded-full transition-all duration-500 ${getLoadColor(curveDataInfo.loadCurrent).bar}`} style={{ width: `${Math.min(curveDataInfo.loadCurrent, 100)}%` }}></div></div>
               <p className={`text-[9px] font-bold text-right uppercase ${getLoadColor(curveDataInfo.loadCurrent).text}`}>{getLoadColor(curveDataInfo.loadCurrent).label}</p>
             </div>
-            <div className="mt-2 bg-white border border-slate-200 p-3 rounded-lg shadow-sm space-y-2 text-xs">
-                <div className="flex justify-between items-center">
-                    <span className="font-bold text-slate-500">Volumen Viruta (Q)</span>
-                    <span className="font-black text-slate-800 text-sm">{curveDataInfo.qCurrent.toFixed(1)} cm³/min</span>
-                </div>
-                <div className="flex justify-between items-center border-t pt-2 mt-2">
-                    <span className="font-bold text-slate-500">Espesor Viruta (hₘ)</span>
-                    <span className="font-black text-slate-800 text-sm">{curveDataInfo.hmCurrent.toFixed(3)} mm</span>
-                </div>
-            </div>
           </div>
 
           {/* 3. PROPUESTA PREMIUM */}
@@ -1128,6 +1129,17 @@ export default function EditTaylorCurvePage() {
                   {raPropuesta && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
                           Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
+                      </p>
+                  )}
+                   {curveDataInfo.qPremium > 0 && (
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                          Remoción (Q): <span className="text-green-600 font-bold">{curveDataInfo.qPremium.toFixed(1)} cm³/min</span>
+                      </p>
+                  )}
+                  {curveDataInfo.hmPremium > 0 && operationType !== 'drilling' && (
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                          {operationType === 'milling' ? 'Espesor (hm): ' : 'Espesor (he): '}
+                          <span className={`font-bold ${curveDataInfo.hmPremium < 0.05 ? 'text-orange-500' : 'text-green-600'}`}>{curveDataInfo.hmPremium.toFixed(3)} mm</span>
                       </p>
                   )}
               </div>
@@ -1185,16 +1197,6 @@ export default function EditTaylorCurvePage() {
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2 mb-1 overflow-hidden"><div className={`h-2 rounded-full transition-all duration-500 ${getLoadColor(curveDataInfo.loadPremium).bar}`} style={{ width: `${Math.min(curveDataInfo.loadPremium, 100)}%` }}></div></div>
               <p className={`text-[9px] font-bold text-right uppercase ${getLoadColor(curveDataInfo.loadPremium).text}`}>{getLoadColor(curveDataInfo.loadPremium).label}</p>
-            </div>
-            <div className="mt-2 bg-white border border-slate-200 p-3 rounded-lg shadow-sm space-y-2 text-xs">
-                 <div className="flex justify-between items-center">
-                    <span className="font-bold text-slate-500">Volumen Viruta (Q)</span>
-                    <span className="font-black text-green-800 text-sm">{curveDataInfo.qPremium.toFixed(1)} cm³/min</span>
-                </div>
-                <div className="flex justify-between items-center border-t pt-2 mt-2">
-                    <span className="font-bold text-slate-500">Espesor Viruta (hₘ)</span>
-                    <span className="font-black text-green-800 text-sm">{curveDataInfo.hmPremium.toFixed(3)} mm</span>
-                </div>
             </div>
              <div className="mt-4 pt-4 border-t border-green-200/50">
                 <Button
@@ -1910,3 +1912,4 @@ export default function EditTaylorCurvePage() {
     </>
   );
 }
+
