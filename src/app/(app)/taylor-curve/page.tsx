@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot, ReferenceLine } from 'recharts';
@@ -164,6 +163,51 @@ const calcularVf = (f: number | string, vc: number | string, d: number | string)
     if (numF <= 0 || numVc <= 0 || numD <= 0) return 0;
     const rpm = (numVc * 1000) / (Math.PI * numD);
     return numF * rpm;
+};
+
+// 1. Tasa de Remoción de Viruta (Q) en cm³/min
+const calcularQ = (opType, ap, ae, f, vc, dc, z) => {
+  const numAp = Number(ap) || 0; const numF = Number(f) || 0; 
+  const numVc = Number(vc) || 0; const numDc = Number(dc) || 0; 
+  const numAe = Number(ae) || 0; const numZ = Number(z) || 1;
+
+  if (opType === 'turning') {
+     return numVc * numAp * numF; // Q Torno
+  } else if (opType === 'milling') {
+     if (numDc === 0) return 0;
+     const rpm = (numVc * 1000) / (Math.PI * numDc);
+     const vf = numF * numZ * rpm;
+     return (numAp * numAe * vf) / 1000; // Q Fresa
+  } else if (opType === 'drilling') {
+     if (numDc === 0) return 0;
+     const rpm = (numVc * 1000) / (Math.PI * numDc);
+     const vf = numF * rpm;
+     return (Math.PI * Math.pow(numDc, 2) * vf) / 4000; // Q Broca
+  }
+  return 0;
+};
+
+// 2. Espesor Medio/Equivalente de Viruta (hm / he) en mm
+const calcularEspesorViruta = (opType, f, ae, dc, ap, toolCode) => {
+   const numF = Number(f) || 0; const numAe = Number(ae) || 0;
+   const numDc = Number(dc) || 0; const numAp = Number(ap) || 0;
+   const re = extraerRadioISO(toolCode) || 0.8; // Radio por defecto
+
+   if (opType === 'milling') {
+      // Efecto de Adelgazamiento de Viruta (Chip Thinning)
+      if (numAe > 0 && numDc > 0 && numAe < (numDc / 2)) {
+         return numF * Math.sqrt(numAe / numDc); 
+      }
+      return numF; // Si el corte es mayor al radio, hm = fz
+   } else if (opType === 'turning') {
+      // Si ap es menor al radio, la viruta adelgaza por la curva de la punta
+      if (numAp > 0 && re > 0 && numAp < re) {
+         return numF * Math.sqrt(numAp / re);
+      }
+      // Asumimos inserto estándar tipo C/W (aprox 95° -> sin(95) ~ 0.996)
+      return numF * 0.996; 
+   }
+   return numF; // Para taladrado u otros
 };
 
 const SurveyField = ({ label }: { label: string }) => (
@@ -756,8 +800,13 @@ export default function TaylorCurvePage() {
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
     const realSavingsPercentage = actualCostCurrent > 0 ? (realAbsoluteSavings / actualCostCurrent) * 100 : 0;
     const monthlySavings = isFinite(realAbsoluteSavings) ? realAbsoluteSavings * safeMonthlyProduction : 0;
+    
+    const qCurrent = calcularQ(operationType, apCurrent, aeCurrent, feedCurrent, vcCurrent, dcCurrent, zCurrent);
+    const qPremium = calcularQ(operationType, apPremium, aePremium, feedPremium, vcPremium, dcPremium, zPremium);
+    const hmCurrent = calcularEspesorViruta(operationType, feedCurrent, aeCurrent, dcCurrent, apCurrent, toolNameCurrent);
+    const hmPremium = calcularEspesorViruta(operationType, feedPremium, aePremium, dcPremium, apPremium, toolNamePremium);
 
-    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost, desgloseActualReal, desglosePremiumReal };
+    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost, desgloseActualReal, desglosePremiumReal, qCurrent, qPremium, hmCurrent, hmPremium };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium, tcPremiumInput]);
 
@@ -1092,6 +1141,16 @@ export default function TaylorCurvePage() {
               <div className="w-full bg-slate-100 rounded-full h-2 mb-1 overflow-hidden"><div className={`h-2 rounded-full transition-all duration-500 ${getLoadColor(curveDataInfo.loadCurrent).bar}`} style={{ width: `${Math.min(curveDataInfo.loadCurrent, 100)}%` }}></div></div>
               <p className={`text-[9px] font-bold text-right uppercase ${getLoadColor(curveDataInfo.loadCurrent).text}`}>{getLoadColor(curveDataInfo.loadCurrent).label}</p>
             </div>
+            <div className="mt-2 bg-white border border-slate-200 p-3 rounded-lg shadow-sm space-y-2 text-xs">
+                <div className="flex justify-between items-center">
+                    <span className="font-bold text-slate-500">Volumen Viruta (Q)</span>
+                    <span className="font-black text-slate-800 text-sm">{curveDataInfo.qCurrent.toFixed(1)} cm³/min</span>
+                </div>
+                <div className="flex justify-between items-center border-t pt-2 mt-2">
+                    <span className="font-bold text-slate-500">Espesor Viruta (hₘ)</span>
+                    <span className="font-black text-slate-800 text-sm">{curveDataInfo.hmCurrent.toFixed(3)} mm</span>
+                </div>
+            </div>
           </div>
 
           {/* 3. PROPUESTA PREMIUM */}
@@ -1190,6 +1249,16 @@ export default function TaylorCurvePage() {
               <div className="w-full bg-slate-100 rounded-full h-2 mb-1 overflow-hidden"><div className={`h-2 rounded-full transition-all duration-500 ${getLoadColor(curveDataInfo.loadPremium).bar}`} style={{ width: `${Math.min(curveDataInfo.loadPremium, 100)}%` }}></div></div>
               <p className={`text-[9px] font-bold text-right uppercase ${getLoadColor(curveDataInfo.loadPremium).text}`}>{getLoadColor(curveDataInfo.loadPremium).label}</p>
             </div>
+            <div className="mt-2 bg-white border border-slate-200 p-3 rounded-lg shadow-sm space-y-2 text-xs">
+                 <div className="flex justify-between items-center">
+                    <span className="font-bold text-slate-500">Volumen Viruta (Q)</span>
+                    <span className="font-black text-green-800 text-sm">{curveDataInfo.qPremium.toFixed(1)} cm³/min</span>
+                </div>
+                <div className="flex justify-between items-center border-t pt-2 mt-2">
+                    <span className="font-bold text-slate-500">Espesor Viruta (hₘ)</span>
+                    <span className="font-black text-green-800 text-sm">{curveDataInfo.hmPremium.toFixed(3)} mm</span>
+                </div>
+            </div>
              <div className="mt-4 pt-4 border-t border-green-200/50">
                 <Button
                     onClick={() => {
@@ -1284,7 +1353,7 @@ export default function TaylorCurvePage() {
                                             </div>
                                             {desgloseActual.lote > 0 && (
                                                 <p className="text-[10px] text-amber-700 font-bold mt-1 pt-1 border-t border-slate-50">
-                                                    📦 Insertos para Lote: {desgloseActual.lote} unds.
+                                                    📦 Insertos para Lote: {(curveDataInfo.desgloseActualReal?.lote || 0).toFixed(1)} unds.
                                                 </p>
                                             )}
                                           </div>
@@ -1314,7 +1383,7 @@ export default function TaylorCurvePage() {
                                             </div>
                                             {desglosePremium.lote > 0 && (
                                                 <p className="text-[10px] text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-50">
-                                                    📦 Insertos para Lote: {desglosePremium.lote} unds.
+                                                    📦 Insertos para Lote: {(curveDataInfo.desglosePremiumReal?.lote || 0).toFixed(1)} unds.
                                                 </p>
                                             )}
                                           </div>
