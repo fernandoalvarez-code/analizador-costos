@@ -166,49 +166,44 @@ const calcularVf = (f: number | string, vc: number | string, d: number | string)
     return numF * rpm;
 };
 
-// 1. Tasa de Remoción de Viruta (Q) en cm³/min
 const calcularQ = (opType, ap, ae, f, vc, dc, z) => {
   const numAp = Number(ap) || 0; const numF = Number(f) || 0; 
   const numVc = Number(vc) || 0; const numDc = Number(dc) || 0; 
   const numAe = Number(ae) || 0; const numZ = Number(z) || 1;
 
   if (opType === 'turning') {
-     return numVc * numAp * numF; // Q Torno
+     return numVc * numAp * numF;
   } else if (opType === 'milling') {
      if (numDc === 0) return 0;
      const rpm = (numVc * 1000) / (Math.PI * numDc);
      const vf = numF * numZ * rpm;
-     return (numAp * numAe * vf) / 1000; // Q Fresa
+     return (numAp * numAe * vf) / 1000;
   } else if (opType === 'drilling') {
      if (numDc === 0) return 0;
      const rpm = (numVc * 1000) / (Math.PI * numDc);
      const vf = numF * rpm;
-     return (Math.PI * Math.pow(numDc, 2) * vf) / 4000; // Q Broca
+     return (Math.PI * Math.pow(numDc, 2) * vf) / 4000;
   }
   return 0;
 };
 
-// 2. Espesor Medio/Equivalente de Viruta (hm / he) en mm
 const calcularEspesorViruta = (opType, f, ae, dc, ap, toolCode) => {
    const numF = Number(f) || 0; const numAe = Number(ae) || 0;
    const numDc = Number(dc) || 0; const numAp = Number(ap) || 0;
-   const re = extraerRadioISO(toolCode) || 0.8; // Radio por defecto
+   const re = extraerRadioISO(toolCode) || 0.8;
 
    if (opType === 'milling') {
-      // Efecto de Adelgazamiento de Viruta (Chip Thinning)
       if (numAe > 0 && numDc > 0 && numAe < (numDc / 2)) {
          return numF * Math.sqrt(numAe / numDc); 
       }
-      return numF; // Si el corte es mayor al radio, hm = fz
+      return numF;
    } else if (opType === 'turning') {
-      // Si ap es menor al radio, la viruta adelgaza por la curva de la punta
       if (numAp > 0 && re > 0 && numAp < re) {
          return numF * Math.sqrt(numAp / re);
       }
-      // Asumimos inserto estándar tipo C/W (aprox 95° -> sin(95) ~ 0.996)
       return numF * 0.996; 
    }
-   return numF; // Para taladrado u otros
+   return numF;
 };
 
 const SurveyField = ({ label }: { label: string }) => (
@@ -233,7 +228,6 @@ export default function TaylorCurvePage() {
   const [lifeModeCurrent, setLifeModeCurrent] = useState<'piezas' | 'minutos'>('piezas');
   const [lifeModePremium, setLifeModePremium] = useState<'piezas' | 'minutos'>('piezas');
 
-  // Competidor
   const [toolNameCurrent, setToolNameCurrent] = useState<string>("");
   const [toolCostCurrent, setToolCostCurrent] = useState<string | number>("");
   const [apCurrent, setApCurrent] = useState<string | number>("");
@@ -246,7 +240,6 @@ export default function TaylorCurvePage() {
   const [dcCurrent, setDcCurrent] = useState<string | number>("");
   const [aeCurrent, setAeCurrent] = useState<string | number>("");
   
-  // Premium
   const [toolNamePremium, setToolNamePremium] = useState<string>("");
   const [toolCostPremium, setToolCostPremium] = useState<string | number>("");
   const [apPremium, setApPremium] = useState<string | number>("");
@@ -259,7 +252,6 @@ export default function TaylorCurvePage() {
   const [dcPremium, setDcPremium] = useState<string | number>("");
   const [aePremium, setAePremium] = useState<string | number>("");
 
-  // Volumen
   const [monthlyProduction, setMonthlyProduction] = useState<string | number>(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
@@ -268,7 +260,6 @@ export default function TaylorCurvePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingSurvey, setIsGeneratingSurvey] = useState(false);
 
-  // Copiloto
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([
@@ -276,7 +267,6 @@ export default function TaylorCurvePage() {
   ]);
   const [isChatLoading, setIsChatLoading] = useState(false);
 
-  // Simulador Taylor
   const [isTaylorModalOpen, setIsTaylorModalOpen] = useState(false);
   const [taylorBase, setTaylorBase] = useState({ vc: 0, feed: 0, pcs: 0, time: 0 });
   const [simulatedVc, setSimulatedVc] = useState(0);
@@ -285,43 +275,30 @@ export default function TaylorCurvePage() {
   const [taylorBaseCost, setTaylorBaseCost] = useState(0);
   const [targetSavings, setTargetSavings] = useState<string | number>('');
 
-  // --- Efecto Inteligente para Autocalcular Tiempo Propuesto ---
   useEffect(() => {
-    // 1. Extraer los valores numéricos seguros de la caja Roja (Base de cálculo)
     const baseTc = Number(tcCurrent);
     const baseVc = Number(vcCurrent);
     const baseFeed = Number(feedCurrent);
     const baseAp = Number(apCurrent);
 
-    // 2. Extraer los valores numéricos seguros de la caja Verde (Propuesta)
     const premVc = Number(vcPremium);
     const premFeed = Number(feedPremium);
     const premAp = Number(apPremium);
 
-    // 3. Solo operamos si el usuario ya llenó el Tiempo Base (Caja Roja) 
-    // y si los parámetros de la caja verde son mayores a cero para evitar dividir por cero.
     if (baseTc > 0 && premVc > 0 && premFeed > 0 && premAp > 0) {
       
-      // Protegemos contra divisiones por cero en la base
       const safeBaseVc = baseVc > 0 ? baseVc : premVc;
       const safeBaseFeed = baseFeed > 0 ? baseFeed : premFeed;
       const safeBaseAp = baseAp > 0 ? baseAp : premAp;
 
-      // 4. Fórmula Universal de Mecanizado: 
-      // El tiempo es inversamente proporcional a la Velocidad, Avance y Profundidad.
       const nuevoTiempoPremium = baseTc * (safeBaseVc / premVc) * (safeBaseFeed / premFeed) * (safeBaseAp / premAp);
 
-      // 5. Actualizamos automáticamente el campo verde "Tiempo Propuesto"
-      // Solo actualizamos si el nuevo tiempo es razonable y diferente al actual para evitar loops
       if (isFinite(nuevoTiempoPremium) && nuevoTiempoPremium > 0) {
-          // Formateamos a 2 decimales para que se vea limpio en el input
           setTcPremiumInput(nuevoTiempoPremium.toFixed(2));
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tcCurrent, vcCurrent, feedCurrent, apCurrent, vcPremium, feedPremium, apPremium]);
 
-  // --- Efecto para auto-calcular tiempo de corte en Taladrado ---
   useEffect(() => {
     if (operationType === 'drilling') {
       const vc = Number(vcCurrent);
@@ -920,10 +897,15 @@ export default function TaylorCurvePage() {
 
   const unidadVidaUtil = lifeModePremium === 'minutos' ? 'minutos' : (operationType === 'drilling' ? 'agujeros' : 'pzas/filo');
 
+  const getHmColorClass = (hm) => {
+    if (hm < 0.05) return "text-orange-500";
+    if (hm > 0.25) return "text-red-600";
+    return "text-emerald-600";
+  };
+
   return (
     <>
       <div className={`container mx-auto space-y-8 pb-16 transition-all duration-300 ${isCopilotOpen ? 'pr-[320px]' : ''}`}>
-      {/* HEADER Y BOTONES DE ACCIÓN */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2">
@@ -933,7 +915,6 @@ export default function TaylorCurvePage() {
           <p className="text-slate-500 text-sm mt-1">Compara la Vc actual vs. la propuesta para demostrar el ahorro real.</p>
         </div>
 
-        {/* BOTONERA ESTILO "SIMULADOR PRINCIPAL" */}
         <div className="flex flex-wrap gap-2 w-full md:w-auto bg-slate-100 p-1.5 rounded-lg border border-slate-200">
           <button
             onClick={() => handleGeneratePDF('download')}
@@ -970,13 +951,10 @@ export default function TaylorCurvePage() {
         </div>
       </div>
 
-      {/* LAYOUT PRINCIPAL: INPUTS ARRIBA, GRÁFICO ABAJO */}
       <div className="space-y-6">
         
-        {/* PANEL DE INPUTS (Horizontal 3 Columnas Simétricas) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           
-          {/* 1. PARÁMETROS GENERALES */}
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
             <h2 className="font-black text-slate-800 text-sm uppercase border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
               🏭 1. Parámetros del Taller
@@ -1036,7 +1014,6 @@ export default function TaylorCurvePage() {
               </div>
             </div>
 
-            {/* Escala Comercial */}
             <div className="mt-6 pt-5 border-t border-slate-100">
               <Label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wide">📦 Escala Comercial</Label>
               <div className="relative">
@@ -1046,7 +1023,6 @@ export default function TaylorCurvePage() {
             </div>
           </div>
 
-          {/* 2. SITUACIÓN ACTUAL (COMPETIDOR) */}
           <div className="bg-red-50/30 p-5 rounded-xl border border-red-100 flex flex-col h-full relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-red-500"></div>
             <h2 className="font-black text-red-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🔴 Condición Actual</h2>
@@ -1084,6 +1060,19 @@ export default function TaylorCurvePage() {
                   {raActual && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
                           Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
+                      </p>
+                  )}
+                  {curveDataInfo.qCurrent > 0 && (
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                          Remoción (Q): <span className="text-red-600 font-bold">{curveDataInfo.qCurrent.toFixed(1)} cm³/min</span>
+                      </p>
+                  )}
+                  {hmActual > 0 && operationType !== 'drilling' && (
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                          {operationType === 'milling' ? 'Espesor (hm): ' : 'Espesor (he): '}
+                          <span className={`font-bold ${getHmColorClass(hmActual)}`}>
+                              {hmActual.toFixed(3)} mm
+                          </span>
                       </p>
                   )}
               </div>
@@ -1144,7 +1133,6 @@ export default function TaylorCurvePage() {
             </div>
           </div>
 
-          {/* 3. PROPUESTA PREMIUM */}
           <div className="bg-green-50/30 p-5 rounded-xl border border-green-200 flex flex-col h-full relative overflow-hidden shadow-[0_0_15px_rgba(34,197,94,0.1)]">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-green-500"></div>
             <h2 className="font-black text-green-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🟢 Propuesta (Secocut)</h2>
@@ -1189,10 +1177,12 @@ export default function TaylorCurvePage() {
                           Remoción (Q): <span className="text-green-600 font-bold">{curveDataInfo.qPremium.toFixed(1)} cm³/min</span>
                       </p>
                   )}
-                  {curveDataInfo.hmPremium > 0 && operationType !== 'drilling' && (
+                  {hmPropuesta > 0 && operationType !== 'drilling' && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
                           {operationType === 'milling' ? 'Espesor (hm): ' : 'Espesor (he): '}
-                          <span className={`font-bold ${curveDataInfo.hmPremium < 0.05 ? 'text-orange-500' : 'text-green-600'}`}>{curveDataInfo.hmPremium.toFixed(3)} mm</span>
+                          <span className={`font-bold ${getHmColorClass(hmPropuesta)}`}>
+                              {hmPropuesta.toFixed(3)} mm
+                          </span>
                       </p>
                   )}
               </div>
@@ -1295,7 +1285,6 @@ export default function TaylorCurvePage() {
           </div>
         </div>
 
-        {/* GRAFICO (Ancho Completo Abajo) */}
         <Card>
             <CardHeader>
                 <CardTitle>Curva de Costo vs. Velocidad</CardTitle>
@@ -1380,7 +1369,6 @@ export default function TaylorCurvePage() {
                                             )}
                                           </div>
                                         )}
-                                        {/* FOOTER COMPARATIVO DE INSERTO */}
                                         {desgloseActual && desglosePremium && costoPremium > 0 && (
                                           (() => {
                                             const diffInserto = desglosePremium.inserto - desgloseActual.inserto;
@@ -1440,8 +1428,7 @@ export default function TaylorCurvePage() {
         )}
       </div>
 
-       {/* EL GRAN REMATE VISUAL - AHORRO MENSUAL */}
-      <div className={`rounded-xl p-8 text-center shadow-2xl relative overflow-hidden mt-6 bg-gradient-to-r ${curveDataInfo.monthlySavings >= 0 ? 'from-emerald-500 to-green-600' : 'from-red-500 to-rose-600'}`}>
+       <div className={`rounded-xl p-8 text-center shadow-2xl relative overflow-hidden mt-6 bg-gradient-to-r ${curveDataInfo.monthlySavings >= 0 ? 'from-emerald-500 to-green-600' : 'from-red-500 to-rose-600'}`}>
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-black opacity-10 rounded-full blur-2xl"></div>
         
@@ -1465,7 +1452,6 @@ export default function TaylorCurvePage() {
         )}
       </div>
 
-      {/* BOTÓN FLOTANTE DEL COPILOTO */}
       <button
         onClick={() => setIsCopilotOpen(!isCopilotOpen)}
         className="fixed bottom-6 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 transition-transform z-50 border-2 border-slate-700"
@@ -1473,7 +1459,6 @@ export default function TaylorCurvePage() {
         <span className="text-2xl">🤖</span>
       </button>
 
-      {/* DRAWER DEL COPILOTO */}
       <div className={`fixed top-0 right-0 h-full w-[320px] bg-white border-l border-slate-200 shadow-2xl transform transition-transform duration-300 ease-in-out z-40 flex flex-col ${isCopilotOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="h-16 border-b border-slate-200 flex items-center justify-between px-4 bg-slate-50">
           <div className="flex items-center gap-2">
@@ -1519,7 +1504,6 @@ export default function TaylorCurvePage() {
         </form>
       </div>
 
-        {/* MODAL DE GUARDADO EN CRM BLINDADO */}
       {isSaveModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
@@ -1561,7 +1545,6 @@ export default function TaylorCurvePage() {
         </div>
       )}
 
-      {/* MODAL SIMULADOR TAYLOR */}
         <Dialog open={isTaylorModalOpen} onOpenChange={(isOpen) => { setIsTaylorModalOpen(isOpen); if (!isOpen) setTargetSavings(''); }}>
             <DialogContent className="max-w-3xl">
                 <DialogHeader>
@@ -1655,7 +1638,6 @@ export default function TaylorCurvePage() {
             </DialogContent>
         </Dialog>
 
-        {/* PLANTILLA OCULTA PARA PDF (Renderizada fuera de pantalla para html2canvas) */}
         <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', zIndex: -1 }}>
           <div id="pdf-pagina-1" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
             
@@ -1855,7 +1837,6 @@ export default function TaylorCurvePage() {
                 </LineChart>
               </div>
             </div>
-            {/* 3. PROYECCIÓN DE AHORRO MENSUAL EN PDF */}
             {isFinite(curveDataInfo.monthlySavings) && Number(monthlyProduction) > 0 && (
               <div className="mt-8">
                 <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">
@@ -1980,3 +1961,4 @@ export default function TaylorCurvePage() {
   );
 }
 
+    
