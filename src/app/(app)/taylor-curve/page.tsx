@@ -902,17 +902,31 @@ export default function TaylorCurvePage() {
     if (hm > 0.25) return "text-red-600";
     return "text-emerald-600";
   };
+  
+  const qActual = calcularQ(operationType, apCurrent, aeCurrent, feedCurrent, vcCurrent, dcCurrent, zCurrent);
+  const hmActual = calcularEspesorViruta(operationType, feedCurrent, aeCurrent, dcCurrent, apCurrent, toolNameCurrent);
+  const qPropuesta = calcularQ(operationType, apPremium, aePremium, feedPremium, vcPremium, dcPremium, zPremium);
+  const hmPropuesta = calcularEspesorViruta(operationType, feedCurrent, aeCurrent, dcCurrent, apCurrent, toolNameCurrent);
 
+  if (isLoading) {
+    return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
+  }
+  
   return (
     <>
       <div className={`container mx-auto space-y-8 pb-16 transition-all duration-300 ${isCopilotOpen ? 'pr-[320px]' : ''}`}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-            <TrendingUp className="text-blue-600 h-7 w-7" />
-            Análisis de Curva de Costos
-          </h1>
-          <p className="text-slate-500 text-sm mt-1">Compara la Vc actual vs. la propuesta para demostrar el ahorro real.</p>
+        <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => router.back()} className="mr-2 h-10 w-10">
+                <ArrowLeft />
+            </Button>
+            <div>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                <TrendingUp className="text-blue-600 h-7 w-7" />
+                Editar Análisis de Costos
+            </h1>
+            <p className="text-slate-500 text-sm mt-1">Ajusta los parámetros para refinar tu análisis.</p>
+            </div>
         </div>
 
         <div className="flex flex-wrap gap-2 w-full md:w-auto bg-slate-100 p-1.5 rounded-lg border border-slate-200">
@@ -1062,9 +1076,9 @@ export default function TaylorCurvePage() {
                           Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
                       </p>
                   )}
-                  {curveDataInfo.qCurrent > 0 && (
+                  {qActual > 0 && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Remoción (Q): <span className="text-red-600 font-bold">{curveDataInfo.qCurrent.toFixed(1)} cm³/min</span>
+                          Remoción (Q): <span className="text-red-600 font-bold">{qActual.toFixed(1)} cm³/min</span>
                       </p>
                   )}
                   {hmActual > 0 && operationType !== 'drilling' && (
@@ -1172,9 +1186,9 @@ export default function TaylorCurvePage() {
                           Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
                       </p>
                   )}
-                  {curveDataInfo.qPremium > 0 && (
+                  {qPropuesta > 0 && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Remoción (Q): <span className="text-green-600 font-bold">{curveDataInfo.qPremium.toFixed(1)} cm³/min</span>
+                          Remoción (Q): <span className="text-green-600 font-bold">{qPropuesta.toFixed(1)} cm³/min</span>
                       </p>
                   )}
                   {hmPropuesta > 0 && operationType !== 'drilling' && (
@@ -1427,19 +1441,6 @@ export default function TaylorCurvePage() {
           />
         )}
       </div>
-
-       <div className={`rounded-xl p-8 text-center shadow-2xl relative overflow-hidden mt-6 bg-gradient-to-r ${curveDataInfo.monthlySavings >= 0 ? 'from-emerald-500 to-green-600' : 'from-red-500 to-rose-600'}`}>
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-black opacity-10 rounded-full blur-2xl"></div>
-        
-        <p className={`relative z-10 font-bold tracking-widest uppercase text-sm mb-2 ${curveDataInfo.monthlySavings >= 0 ? 'text-green-100' : 'text-red-100'}`}>💰 Impacto Financiero Proyectado</p>
-        <h2 className="relative z-10 text-5xl md:text-6xl font-black text-white drop-shadow-md mb-3">
-          {curveDataInfo.monthlySavings >= 0 ? '' : '-'}{formatCurrency(Math.abs(curveDataInfo.monthlySavings))}
-        </h2>
-        <p className={`relative z-10 text-lg font-medium ${curveDataInfo.monthlySavings >= 0 ? 'text-green-50' : 'text-red-50'}`}>
-          {curveDataInfo.monthlySavings >= 0 ? 'Ahorro mensual neto' : 'Costo adicional mensual'} al fabricar <span className={`font-bold text-white px-2 py-1 rounded ${curveDataInfo.monthlySavings >= 0 ? 'bg-green-700' : 'bg-red-700'}`}>{formatNumber(Number(monthlyProduction))} piezas</span> con tecnología Secocut.
-        </p>
-      </div>
       
         {insightText && (
           <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800/30 flex items-start gap-3">
@@ -1504,7 +1505,7 @@ export default function TaylorCurvePage() {
         </form>
       </div>
 
-      {isSaveModalOpen && (
+        {isSaveModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="bg-slate-50 border-b border-slate-200 p-4">
@@ -1643,17 +1644,9 @@ export default function TaylorCurvePage() {
             
             <div className="relative mb-8 pb-4 border-b-2 border-slate-800">
               <div className="flex justify-between items-start mb-8 h-16">
-                {logos.company ? (
-                  <img src={logos.company} alt="Logo Empresa" crossOrigin="anonymous" className="h-full object-contain max-w-[250px] object-left" />
-                ) : (
-                  <div className="h-12 flex items-center justify-center bg-blue-600 text-white font-black px-4 rounded text-lg">SECOCUT</div>
-                )}
+                {logos.company ? <img src={logos.company} alt="Logo Empresa" crossOrigin="anonymous" className="h-full object-contain max-w-[250px] object-left" /> : <div className="h-12 flex items-center justify-center bg-blue-600 text-white font-black px-4 rounded text-lg">SECOCUT</div>}
                 
-                {logos.brand ? (
-                  <img src={logos.brand} alt="Logo Marca" crossOrigin="anonymous" className="h-full object-contain max-w-[200px] object-right" />
-                ) : (
-                  <div className="h-12 flex items-center justify-center text-slate-800 font-black text-3xl">Seco</div>
-                )}
+                {logos.brand ? <img src={logos.brand} alt="Logo Marca" crossOrigin="anonymous" className="h-full object-contain max-w-[200px] object-right" /> : <div className="h-12 flex items-center justify-center text-slate-800 font-black text-3xl">Seco</div>}
               </div>
 
               <div className="text-center mb-10 mt-4">

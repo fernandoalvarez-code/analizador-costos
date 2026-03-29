@@ -840,6 +840,12 @@ export default function EditTaylorCurvePage() {
     return "text-emerald-600";
   };
 
+  const qActual = calcularQ(operationType, apCurrent, aeCurrent, feedCurrent, vcCurrent, dcCurrent, zCurrent);
+  const hmActual = calcularEspesorViruta(operationType, feedCurrent, aeCurrent, dcCurrent, apCurrent, toolNameCurrent);
+
+  const qPropuesta = calcularQ(operationType, apPremium, aePremium, feedPremium, vcPremium, dcPremium, zPremium);
+  const hmPropuesta = calcularEspesorViruta(operationType, feedPremium, aePremium, dcPremium, apPremium, toolNamePremium);
+
   return (
     <>
       <div className={`container mx-auto space-y-8 pb-16 transition-all duration-300 ${isCopilotOpen ? 'pr-[320px]' : ''}`}>
@@ -1004,9 +1010,9 @@ export default function EditTaylorCurvePage() {
                           Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
                       </p>
                   )}
-                  {curveDataInfo.qCurrent > 0 && (
+                  {qActual > 0 && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Remoción (Q): <span className="text-red-600 font-bold">{curveDataInfo.qCurrent.toFixed(1)} cm³/min</span>
+                          Remoción (Q): <span className="text-red-600 font-bold">{qActual.toFixed(1)} cm³/min</span>
                       </p>
                   )}
                   {hmActual > 0 && operationType !== 'drilling' && (
@@ -1114,9 +1120,9 @@ export default function EditTaylorCurvePage() {
                           Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
                       </p>
                   )}
-                  {curveDataInfo.qPremium > 0 && (
+                  {qPropuesta > 0 && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Remoción (Q): <span className="text-green-600 font-bold">{curveDataInfo.qPremium.toFixed(1)} cm³/min</span>
+                          Remoción (Q): <span className="text-green-600 font-bold">{qPropuesta.toFixed(1)} cm³/min</span>
                       </p>
                   )}
                   {hmPropuesta > 0 && operationType !== 'drilling' && (
@@ -1572,17 +1578,9 @@ export default function EditTaylorCurvePage() {
             
             <div className="relative mb-8 pb-4 border-b-2 border-slate-800">
               <div className="flex justify-between items-start mb-8 h-16">
-                {logos.company ? (
-                  <img src={logos.company} alt="Logo Empresa" crossOrigin="anonymous" className="h-full object-contain max-w-[250px] object-left" />
-                ) : (
-                  <div className="h-12 flex items-center justify-center bg-blue-600 text-white font-black px-4 rounded text-lg">SECOCUT</div>
-                )}
+                {logos.company ? <img src={logos.company} alt="Logo Empresa" crossOrigin="anonymous" className="h-full object-contain max-w-[250px] object-left" /> : <div className="h-12 flex items-center justify-center bg-blue-600 text-white font-black px-4 rounded text-lg">SECOCUT</div>}
                 
-                {logos.brand ? (
-                  <img src={logos.brand} alt="Logo Marca" crossOrigin="anonymous" className="h-full object-contain max-w-[200px] object-right" />
-                ) : (
-                  <div className="h-12 flex items-center justify-center text-slate-800 font-black text-3xl">Seco</div>
-                )}
+                {logos.brand ? <img src={logos.brand} alt="Logo Marca" crossOrigin="anonymous" className="h-full object-contain max-w-[200px] object-right" /> : <div className="h-12 flex items-center justify-center text-slate-800 font-black text-3xl">Seco</div>}
               </div>
 
               <div className="text-center mb-10 mt-4">
