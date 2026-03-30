@@ -1,12 +1,13 @@
 
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot, ReferenceLine } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectGroup, SelectLabel, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, Info, Share2, FileText, Wand2, Download } from 'lucide-react';
+import { TrendingUp, Info, Share2, FileText, Wand2, ArrowLeft, Download } from 'lucide-react';
 import { formatCurrency, formatNumber, formatoMinutosYSegundos } from '@/lib/formatters';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -16,7 +17,9 @@ import { db, storage, useUser } from "@/firebase";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { MonthlySavingsSummary } from '@/components/calculator/MonthlySavingsSummary';
+
 
 const MATERIALS = [
   { grupo: "ISO P", nombre: "Acero Bajo Carbono (Ej: 1010, 1020)", kc: 1500, dureza: "150 HB" },
@@ -40,25 +43,48 @@ const TAYLOR_CONSTANTS: Record<string, {n: number, C: number}> = {
   "ISO N": { n: 0.35, C: 900 }, "ISO S": { n: 0.18, C: 130 }, "ISO H": { n: 0.15, C: 120 },
 };
 
-const MATRIZ_ROMPEVIRUTAS: Record<string, any> = {
-  "AL":  { min_f: 0.15, max_f: 0.60, min_ap: 0.5, max_ap: 4.0, desc: "Aluminio" },
-  "FF1": { min_f: 0.05, max_f: 0.30, min_ap: 0.2, max_ap: 3.0, desc: "Súper Acabado" },
-  "F1":  { min_f: 0.10, max_f: 0.50, min_ap: 0.2, max_ap: 3.0, desc: "Fundiciones/Forjados Finos" },
-  "MF2": { min_f: 0.08, max_f: 0.50, min_ap: 0.15, max_ap: 3.0, desc: "Acabado Versátil" },
-  "M3":  { min_f: 0.12, max_f: 0.60, min_ap: 0.2, max_ap: 5.0, desc: "Semidesbaste" },
-  "M5":  { min_f: 0.15, max_f: 0.70, min_ap: 1.0, max_ap: 6.0, desc: "Desbaste" },
-  "RR96": { min_f: 0.50, max_f: 2.20, min_ap: 5.0, max_ap: 24.0, desc: "Desbaste Pesado Ferrocarril" },
-  "RR97": { min_f: 0.50, max_f: 2.20, min_ap: 5.0, max_ap: 24.0, desc: "Desbaste Pesado Ferrocarril" },
-  "UX":  { min_f: 0.05, max_f: 0.40, min_ap: 0.5, max_ap: 4.0, desc: "Piezas Delgadas" },
-  "FF2": { min_f: 0.08, max_f: 0.30, min_ap: 0.2, max_ap: 1.5, desc: "Acabado" },
-  "MF1": { min_f: 0.08, max_f: 0.30, min_ap: 0.2, max_ap: 3.5, desc: "Acabado Inox/Titanio" },
-  "MF4": { min_f: 0.15, max_f: 0.50, desc: "Inox/Superaleaciones" },
-  "MF5": { min_f: 0.20, max_f: 0.80, desc: "Inox/Superaleaciones (Altos Avances)" },
-  "M1":  { min_f: 0.20, max_f: 0.40, min_ap: 1.5, max_ap: 5.0, desc: "Titanio/Inox" },
-  "M4":  { min_f: 0.10, max_f: 0.70, min_ap: 0.2, max_ap: 5.0, desc: "Fundición" },
-  "ME10": { desc: "Geometría Aguda Double Turbo", isDynamic: true, hex_max: 0.20 },
-  "M12":  { desc: "Geometría Universal Double Turbo", isDynamic: true, hex_max: 0.25 },
+const MATRIZ_ROMPEVIRUTAS = {
+  "ME10": { desc: "Geometría Aguda Double Turbo" },
+  "M12":  { desc: "Geometría Universal Double Turbo" }
 };
+
+const CALIDADES_SECO = {
+  "MS2050": { tipo: "PVD", aplicacion: "Inox / Titanio", desc: "Grado de alta tenacidad" }
+};
+
+const dataDoubleTurbo = {
+    "ISO P": {
+        "ME10": { base: 0.14, medio: 0.16, fino: 0.24 },
+        "M12":  { base: 0.16, medio: 0.18, fino: 0.28 }
+    },
+    "ISO M": {
+        "ME10": { base: 0.14, medio: 0.16, fino: 0.24 },
+    },
+    "ISO K": {
+        "M12": { base: 0.17, medio: 0.19, fino: 0.28 }
+    },
+    "ISO S": {
+        "ME10": { base: 0.095, medio: 0.10, fino: 0.12 }
+    }
+};
+
+const calcularFzSugerido = (ae, dc, materialSMG, rompeviruta) => {
+  const ratio = (Number(ae) / Number(dc));
+  if(isNaN(ratio) || ratio <= 0) return null;
+
+  let nivel = "base"; // 100% ae
+  if (ratio <= 0.15) nivel = "fino";    // <=15% ae
+  else if (ratio <= 0.40) nivel = "medio"; // <=40% ae
+
+  const materialData = MATERIALS.find(m => m.nombre === materialSMG);
+  const materialGroup = materialData?.grupo;
+
+  if (!materialGroup || !dataDoubleTurbo[materialGroup] || !dataDoubleTurbo[materialGroup][rompeviruta] || !dataDoubleTurbo[materialGroup][rompeviruta][nivel]) {
+      return null;
+  }
+  return dataDoubleTurbo[materialGroup][rompeviruta][nivel];
+};
+
 
 const extraerRadioISO = (codigoInserto: string): number | null => {
   if (!codigoInserto) return null;
@@ -79,20 +105,6 @@ const analizarRompevirutas = (codigoInserto: string): { esWiper: boolean; tipoCo
     if (sufijo.includes('F') || sufijo.includes('FF')) tipoCorte = 'Terminacion';
     else if (sufijo.includes('R') || sufijo.includes('RR')) tipoCorte = 'Desbaste';
     return { esWiper, tipoCorte, sufijo };
-};
-
-const auditarLimitesRompevirutas = (codigoInserto: string | undefined, avance_f: number | string, ap_mm: number | string): string | null => {
-  if (!codigoInserto || !avance_f || !ap_mm) return null;
-  const { sufijo } = analizarRompevirutas(codigoInserto);
-  if (!sufijo) return null;
-  const chipbreakerKey = Object.keys(MATRIZ_ROMPEVIRUTAS).sort((a, b) => b.length - a.length).find(key => sufijo.includes(key));
-  if (!chipbreakerKey) return null;
-  const limites = MATRIZ_ROMPEVIRUTAS[chipbreakerKey];
-  const numAvance = Number(avance_f);
-  const numAp = Number(ap_mm);
-  if (numAvance < limites.min_f || numAvance > limites.max_f) return `⚠️ Avance (${numAvance}) fuera de rango para ${chipbreakerKey} (${limites.desc}). Rango ideal: ${limites.min_f}-${limites.max_f} mm/rev.`;
-  if (limites.min_ap !== undefined && limites.max_ap !== undefined && (numAp < limites.min_ap || numAp > limites.max_ap)) return `⚠️ Profundidad (${numAp}mm) fuera de rango para ${chipbreakerKey} (${limites.desc}). Rango ideal: ${limites.min_ap}-${limites.max_ap} mm.`;
-  return `✅ Parámetros en rango para rompevirutas ${chipbreakerKey} (${limites.desc}).`;
 };
 
 const auditarParametros = (ap: number | string, avance: number | string, codigoInserto: string): string | null => {
@@ -217,6 +229,7 @@ const SurveyField = ({ label }: { label: string }) => (
 
 export default function TaylorCurvePage() {
   const { user } = useUser();
+  const router = useRouter();
 
   const [logos, setLogos] = useState({ company: '', brand: '' });
 
@@ -276,6 +289,11 @@ export default function TaylorCurvePage() {
   const [simulationResult, setSimulationResult] = useState<{ newPcs: number, newTime: number, newCost: number, newRa: string | null } | null>(null);
   const [taylorBaseCost, setTaylorBaseCost] = useState(0);
   const [targetSavings, setTargetSavings] = useState<string | number>('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
     const baseTc = Number(tcCurrent);
@@ -325,12 +343,10 @@ export default function TaylorCurvePage() {
 
   const warningParamCurrent = auditarParametros(apCurrent, feedCurrent, toolNameCurrent);
   const warningAppCurrent = auditarAplicacion(apCurrent, toolNameCurrent);
-  const chipbreakerAuditCurrent = useMemo(() => auditarLimitesRompevirutas(toolNameCurrent, feedCurrent, apCurrent), [toolNameCurrent, feedCurrent, apCurrent]);
   const warningCurrent = warningParamCurrent || warningAppCurrent;
 
   const warningParamPremium = auditarParametros(apPremium, feedPremium, toolNamePremium);
   const warningAppPremium = auditarAplicacion(apPremium, toolNamePremium);
-  const chipbreakerAuditPremium = useMemo(() => auditarLimitesRompevirutas(toolNamePremium, feedPremium, apPremium), [toolNamePremium, feedPremium, apPremium]);
   const warningPremium = warningParamPremium || warningAppPremium;
 
   const analisisFresaCurrent = useMemo(() => analizarInsertoFresado(toolNameCurrent), [toolNameCurrent]);
@@ -1076,7 +1092,7 @@ export default function TaylorCurvePage() {
                   <Input type="number" step="0.01" className="border-red-200 bg-white text-slate-900" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value)} />
                   {raActual && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
+                          Acabado (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
                       </p>
                   )}
                   {qActual > 0 && (
@@ -1128,11 +1144,7 @@ export default function TaylorCurvePage() {
                 {warningBrocaCurrent}
               </div>
             )}
-            {chipbreakerAuditCurrent && (
-              <div className={`mt-4 p-3 text-xs font-medium rounded-lg ${chipbreakerAuditCurrent.includes('✅') ? 'bg-green-100 border-l-4 border-green-500 text-green-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}>
-                {chipbreakerAuditCurrent}
-              </div>
-            )}
+            
             <div className="mt-6 bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
               <div className="flex justify-between items-center mb-1">
                 <div className="flex items-center gap-2">
@@ -1186,7 +1198,7 @@ export default function TaylorCurvePage() {
                   <Input type="number" step="0.01" className="border-green-200 bg-white text-slate-900" value={feedPremium} onChange={e => setFeedPremium(e.target.value)} />
                   {raPropuesta && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
+                          Acabado (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
                       </p>
                   )}
                   {qPropuesta > 0 && (
@@ -1238,11 +1250,7 @@ export default function TaylorCurvePage() {
                 {warningBrocaPremium}
               </div>
             )}
-            {chipbreakerAuditPremium && (
-              <div className={`mt-4 p-3 text-xs font-medium rounded-lg ${chipbreakerAuditPremium.includes('✅') ? 'bg-green-100 border-l-4 border-green-500 text-green-800' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800'}`}>
-                {chipbreakerAuditPremium}
-              </div>
-            )}
+            
             <div className="mt-6 bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
               <div className="flex justify-between items-center mb-1">
                 <div className="flex items-center gap-2">
@@ -1956,4 +1964,5 @@ export default function TaylorCurvePage() {
     </>
   );
 }
+
 
