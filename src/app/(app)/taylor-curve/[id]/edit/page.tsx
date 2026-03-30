@@ -77,8 +77,8 @@ const MATRIZ_ROMPEVIRUTAS: Record<string, any> = {
   "MF5": { min_f: 0.20, max_f: 0.80, desc: "Inox/Superaleaciones (Altos Avances)" },
   "M1":  { min_f: 0.20, max_f: 0.40, min_ap: 1.5, max_ap: 5.0, desc: "Titanio/Inox" },
   "M4":  { min_f: 0.10, max_f: 0.70, min_ap: 0.2, max_ap: 5.0, desc: "Fundición" },
-  "ME10": { min_f: 0.10, max_f: 0.24, hex_max: 0.20, desc: "Double Turbo - Agudo" },
-  "M12":  { min_f: 0.11, max_f: 0.28, hex_max: 0.25, desc: "Double Turbo - Universal" },
+  "ME10": { desc: "Geometría Aguda Double Turbo", isDynamic: true, hex_max: 0.20 },
+  "M12":  { desc: "Geometría Universal Double Turbo", isDynamic: true, hex_max: 0.25 },
 };
 
 const extraerRadioISO = (codigoInserto: string): number | null => {
@@ -1009,7 +1009,7 @@ export default function EditTaylorCurvePage() {
                   <Input type="number" step="0.01" className="border-red-200 bg-white text-slate-900" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value)} />
                   {raActual && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Acabado (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
+                          Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
                       </p>
                   )}
                   {qActual > 0 && (
@@ -1119,7 +1119,7 @@ export default function EditTaylorCurvePage() {
                   <Input type="number" step="0.01" className="border-green-200 bg-white text-slate-900" value={feedPremium} onChange={e => setFeedPremium(e.target.value)} />
                   {raPropuesta && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Acabado (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
+                          Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
                       </p>
                   )}
                   {qPropuesta > 0 && (
@@ -1890,4 +1890,3 @@ export default function EditTaylorCurvePage() {
   );
 }
 
-    

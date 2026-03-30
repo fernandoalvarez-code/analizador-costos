@@ -56,8 +56,8 @@ const MATRIZ_ROMPEVIRUTAS: Record<string, any> = {
   "MF5": { min_f: 0.20, max_f: 0.80, desc: "Inox/Superaleaciones (Altos Avances)" },
   "M1":  { min_f: 0.20, max_f: 0.40, min_ap: 1.5, max_ap: 5.0, desc: "Titanio/Inox" },
   "M4":  { min_f: 0.10, max_f: 0.70, min_ap: 0.2, max_ap: 5.0, desc: "Fundición" },
-  "ME10": { min_f: 0.10, max_f: 0.24, hex_max: 0.20, desc: "Double Turbo - Agudo" },
-  "M12":  { min_f: 0.11, max_f: 0.28, hex_max: 0.25, desc: "Double Turbo - Universal" },
+  "ME10": { desc: "Geometría Aguda Double Turbo", isDynamic: true, hex_max: 0.20 },
+  "M12":  { desc: "Geometría Universal Double Turbo", isDynamic: true, hex_max: 0.25 },
 };
 
 const extraerRadioISO = (codigoInserto: string): number | null => {
@@ -899,30 +899,37 @@ export default function TaylorCurvePage() {
 
   const unidadVidaUtil = lifeModePremium === 'minutos' ? 'minutos' : (operationType === 'drilling' ? 'agujeros' : 'pzas/filo');
 
-  // --- CÁLCULOS DE VOLUMEN Y ESPESOR DE VIRUTA EN TIEMPO REAL ---
-  const qActual = calcularQ(operationType, apCurrent, aeCurrent, feedCurrent, vcCurrent, dcCurrent, zCurrent);
-  const hmActual = calcularEspesorViruta(operationType, feedCurrent, aeCurrent, dcCurrent, apCurrent, toolNameCurrent);
-
-  const qPropuesta = calcularQ(operationType, apPremium, aePremium, feedPremium, vcPremium, dcPremium, zPremium);
-  const hmPropuesta = calcularEspesorViruta(operationType, feedPremium, aePremium, dcPremium, apPremium, toolNamePremium);
-  
-  // Función para determinar el color del Espesor de Viruta (Semáforo)
   const getHmColorClass = (hm) => {
     if (hm < 0.05) return "text-orange-500";
     if (hm > 0.25) return "text-red-600";
     return "text-emerald-600";
   };
+  
+  const qActual = calcularQ(operationType, apCurrent, aeCurrent, feedCurrent, vcCurrent, dcCurrent, zCurrent);
+  const hmActual = calcularEspesorViruta(operationType, feedCurrent, aeCurrent, dcCurrent, apCurrent, toolNameCurrent);
 
+  const qPropuesta = calcularQ(operationType, apPremium, aePremium, feedPremium, vcPremium, dcPremium, zPremium);
+  const hmPropuesta = calcularEspesorViruta(operationType, feedPremium, aePremium, dcPremium, apPremium, toolNamePremium);
+
+  if (isLoading) {
+    return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
+  }
+  
   return (
     <>
       <div className={`container mx-auto space-y-8 pb-16 transition-all duration-300 ${isCopilotOpen ? 'pr-[320px]' : ''}`}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-            <TrendingUp className="text-blue-600 h-7 w-7" />
-            Análisis de Curva de Costos
-          </h1>
-          <p className="text-slate-500 text-sm mt-1">Compara la Vc actual vs. la propuesta para demostrar el ahorro real.</p>
+        <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => router.back()} className="mr-2 h-10 w-10">
+                <ArrowLeft />
+            </Button>
+            <div>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                <TrendingUp className="text-blue-600 h-7 w-7" />
+                Editar Análisis de Costos
+            </h1>
+            <p className="text-slate-500 text-sm mt-1">Ajusta los parámetros para refinar tu análisis.</p>
+            </div>
         </div>
 
         <div className="flex flex-wrap gap-2 w-full md:w-auto bg-slate-100 p-1.5 rounded-lg border border-slate-200">
@@ -1069,7 +1076,7 @@ export default function TaylorCurvePage() {
                   <Input type="number" step="0.01" className="border-red-200 bg-white text-slate-900" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value)} />
                   {raActual && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Acabado (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
+                          Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
                       </p>
                   )}
                   {qActual > 0 && (
@@ -1179,7 +1186,7 @@ export default function TaylorCurvePage() {
                   <Input type="number" step="0.01" className="border-green-200 bg-white text-slate-900" value={feedPremium} onChange={e => setFeedPremium(e.target.value)} />
                   {raPropuesta && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Acabado (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
+                          Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
                       </p>
                   )}
                   {qPropuesta > 0 && (
@@ -1950,4 +1957,3 @@ export default function TaylorCurvePage() {
   );
 }
 
-    
