@@ -123,7 +123,7 @@ const auditarParametros = (ap: number | "", avance: number | "", codigoInserto: 
   const apNum = Number(ap);
   const avanceNum = Number(avance);
   if (apNum < radio) return `⚠️ Riesgo de Vibración: Tu ap (${apNum}mm) es menor al radio del inserto (${radio}mm). Las fuerzas radiales empujarán la pieza.`;
-  if (avanceNum > (radio * 0.6)) return `⚠️ Avance Excesivo: Un avance de ${avanceNum} mm/rev es muy alto para un radio de ${radio}mm. Generará mal acabado superficial o romperá el filo.`;
+  if (avanceNum > (radio * 0.5)) return `⚠️ Avance Excesivo: Un avance de ${avanceNum} mm/rev es muy alto para un radio de ${radio}mm. Límite sugerido: ${(radio*0.5).toFixed(2)} mm/rev.`;
   return null;
 };
 
@@ -136,7 +136,7 @@ const auditarAplicacion = (ap: number | "", codigoInserto: string): string | nul
   return null;
 };
 
-const calcularRaTeorico = (avance: number | "", codigoInserto: string): string | null => {
+const calcularRaTeorico = (avance: number | string, codigoInserto: string): string | null => {
   const radio = extraerRadioISO(codigoInserto);
   const avanceNum = Number(avance);
   if (!avanceNum || !radio || radio <= 0) return null;
@@ -1007,7 +1007,7 @@ export default function EditTaylorCurvePage() {
                   <Input type="number" step="0.01" className="border-red-200 bg-white text-slate-900" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value)} />
                   {raActual && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Acabado Teórico (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
+                          Acabado (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
                       </p>
                   )}
                   {qActual > 0 && (
@@ -1117,7 +1117,7 @@ export default function EditTaylorCurvePage() {
                   <Input type="number" step="0.01" className="border-green-200 bg-white text-slate-900" value={feedPremium} onChange={e => setFeedPremium(e.target.value)} />
                   {raPropuesta && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Acabado Teórico (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
+                          Acabado (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
                       </p>
                   )}
                   {qPropuesta > 0 && (
