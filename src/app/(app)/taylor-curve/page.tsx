@@ -40,7 +40,7 @@ const TAYLOR_CONSTANTS: Record<string, {n: number, C: number}> = {
   "ISO N": { n: 0.35, C: 900 }, "ISO S": { n: 0.18, C: 130 }, "ISO H": { n: 0.15, C: 120 },
 };
 
-const MATRIZ_ROMPEVIRUTAS: Record<string, {min_f: number, max_f: number, min_ap?: number, max_ap?: number, desc: string}> = {
+const MATRIZ_ROMPEVIRUTAS: Record<string, any> = {
   "AL":  { min_f: 0.15, max_f: 0.60, min_ap: 0.5, max_ap: 4.0, desc: "Aluminio" },
   "FF1": { min_f: 0.05, max_f: 0.30, min_ap: 0.2, max_ap: 3.0, desc: "Súper Acabado" },
   "F1":  { min_f: 0.10, max_f: 0.50, min_ap: 0.2, max_ap: 3.0, desc: "Fundiciones/Forjados Finos" },
@@ -56,6 +56,8 @@ const MATRIZ_ROMPEVIRUTAS: Record<string, {min_f: number, max_f: number, min_ap?
   "MF5": { min_f: 0.20, max_f: 0.80, desc: "Inox/Superaleaciones (Altos Avances)" },
   "M1":  { min_f: 0.20, max_f: 0.40, min_ap: 1.5, max_ap: 5.0, desc: "Titanio/Inox" },
   "M4":  { min_f: 0.10, max_f: 0.70, min_ap: 0.2, max_ap: 5.0, desc: "Fundición" },
+  "ME10": { min_f: 0.10, max_f: 0.24, hex_max: 0.20, desc: "Double Turbo - Agudo" },
+  "M12":  { min_f: 0.11, max_f: 0.28, hex_max: 0.25, desc: "Double Turbo - Universal" },
 };
 
 const extraerRadioISO = (codigoInserto: string): number | null => {
