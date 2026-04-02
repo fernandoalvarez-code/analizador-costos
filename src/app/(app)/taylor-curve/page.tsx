@@ -43,7 +43,7 @@ const TAYLOR_CONSTANTS: Record<string, {n: number, C: number}> = {
   "ISO N": { n: 0.35, C: 900 }, "ISO S": { n: 0.18, C: 130 }, "ISO H": { n: 0.15, C: 120 },
 };
 
-const MATRIZ_ROMPEVIRUTAS = {
+const MATRIZ_ROMPEVIRUTAS: Record<string, any> = {
   "ME10": { desc: "Geometría Aguda Double Turbo" },
   "M12":  { desc: "Geometría Universal Double Turbo" }
 };
@@ -290,6 +290,8 @@ export default function TaylorCurvePage() {
   const [taylorBaseCost, setTaylorBaseCost] = useState(0);
   const [targetSavings, setTargetSavings] = useState<string | number>('');
   const [isLoading, setIsLoading] = useState(true);
+
+  const [hoveredData, setHoveredData] = useState<any | null>(null);
 
   useEffect(() => {
     setIsLoading(false);
@@ -930,6 +932,21 @@ export default function TaylorCurvePage() {
   if (isLoading) {
     return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
   }
+
+  const optimalDataPoint = curveDataInfo.data.find(d => d.speed === curveDataInfo.velocidadOptimaSeco);
+  const dataPoint = hoveredData || optimalDataPoint;
+  
+  let porcentajeAhorroUnificado = 0;
+  if (dataPoint) {
+      porcentajeAhorroUnificado = curveDataInfo.actualCostCurrent > 0 
+        ? ((curveDataInfo.actualCostCurrent - dataPoint.costoPremium) / curveDataInfo.actualCostCurrent) * 100 
+        : 0;
+  }
+
+  const calculateIncidence = (partCost: number, totalCost: number) => {
+    if (!totalCost || totalCost === 0 || isNaN(partCost) || isNaN(totalCost)) return "0.0";
+    return ((partCost / totalCost) * 100).toFixed(1); 
+  };
   
   return (
     <>
@@ -942,9 +959,9 @@ export default function TaylorCurvePage() {
             <div>
             <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2">
                 <TrendingUp className="text-blue-600 h-7 w-7" />
-                Editar Análisis de Costos
+                Análisis de Curva de Costos
             </h1>
-            <p className="text-slate-500 text-sm mt-1">Ajusta los parámetros para refinar tu análisis.</p>
+            <p className="text-slate-500 text-sm mt-1">Simula escenarios para encontrar el punto de máxima rentabilidad.</p>
             </div>
         </div>
 
@@ -1316,110 +1333,21 @@ export default function TaylorCurvePage() {
                 <CardDescription>Los puntos marcan el costo operativo real en la Vc seleccionada.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="h-[400px] w-full">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                <div className="lg:col-span-2 h-[400px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={curveDataInfo.data} margin={{ top: 5, right: 20, left: 10, bottom: 30 }}>
+                    <LineChart 
+                      data={curveDataInfo.data} 
+                      margin={{ top: 5, right: 20, left: 10, bottom: 30 }}
+                      onMouseMove={(e) => { if (e.activePayload && e.activePayload.length > 0) setHoveredData(e.activePayload[0].payload); }}
+                      onMouseLeave={() => setHoveredData(null)}
+                    >
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                         <XAxis type="number" dataKey="speed" domain={['dataMin', 'dataMax']} label={{ value: 'Velocidad de Corte Vc (m/min)', position: 'bottom', offset: 15 }} tick={{fontSize: 12}} />
                         <YAxis label={{ value: 'Costo Total Relativo', angle: -90, position: 'insideLeft', offset: 0 }} tick={{fontSize: 12}} tickFormatter={(value) => formatCurrency(value).replace('USD ', '$')} />
                         <Tooltip 
                             cursor={{ stroke: '#cbd5e1', strokeWidth: 2, strokeDasharray: '5 5' }} 
-                            content={(props: any) => {
-                                if (props.active && props.payload && props.payload.length) {
-                                    const dataPoint = props.payload[0].payload;
-                                    const { speed, desgloseActual, desglosePremium, costoActual, costoPremium } = dataPoint;
-                                    
-                                    const porcentajeAhorroUnificado = curveDataInfo.actualCostCurrent > 0 
-                                      ? ((curveDataInfo.actualCostCurrent - costoPremium) / curveDataInfo.actualCostCurrent) * 100 
-                                      : 0;
-
-                                    const calculateIncidence = (partCost: number, totalCost: number) => {
-                                      if (!totalCost || totalCost === 0 || isNaN(partCost) || isNaN(totalCost)) return "0.0";
-                                      return ((partCost / totalCost) * 100).toFixed(1); 
-                                    };
-                                    
-                                    return (
-                                      <div className="bg-white p-3 border shadow-lg rounded-md text-xs min-w-[240px]">
-                                        <p className="font-bold border-b pb-1 mb-2 text-slate-800">Vc: {speed} m/min</p>
-                                        
-                                        {costoActual !== undefined && desgloseActual && (
-                                          <div className="space-y-1 border-b border-slate-100 pb-2 mb-2">
-                                            <p className="text-[11px] font-bold text-red-700 uppercase tracking-wide">Competidor: {formatCurrency(costoActual)}</p>
-                                            <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                                              <span>⚙️ Tiempo de Corte: {formatCurrency(desgloseActual.maquina)}</span>
-                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desgloseActual.maquina, costoActual)}%)</span>
-                                            </div>
-                                            <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                                              <span>💎 Inserto Puro: {formatCurrency(desgloseActual.inserto)}</span>
-                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desgloseActual.inserto, costoActual)}%)</span>
-                                            </div>
-                                            <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                                              <span>🔴 Costo Paradas: {formatCurrency(desgloseActual.parada)}</span>
-                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desgloseActual.parada, costoActual)}%)</span>
-                                            </div>
-                                            {desgloseActual.lote > 0 && (
-                                                <p className="text-[10px] text-amber-700 font-bold mt-1 pt-1 border-t border-slate-50">
-                                                    📦 Insertos para Lote: {(curveDataInfo.desgloseActualReal?.lote || 0).toFixed(1)} unds.
-                                                </p>
-                                            )}
-                                          </div>
-                                        )}
-
-                                        {costoPremium !== undefined && desglosePremium && (
-                                          <div className="space-y-1">
-                                            <div className="flex items-center justify-between">
-                                              <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wide">SECOCUT: {formatCurrency(costoPremium)}</p>
-                                              {porcentajeAhorroUnificado > 0 && (
-                                                <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                                                  Ahorro {porcentajeAhorroUnificado.toFixed(1)}%
-                                                </span>
-                                              )}
-                                            </div>
-                                            <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                                              <span>⚙️ Tiempo de Corte: {formatCurrency(desglosePremium.maquina)}</span>
-                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desglosePremium.maquina, costoPremium)}%)</span>
-                                            </div>
-                                            <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                                              <span>💎 Inserto Puro: {formatCurrency(desglosePremium.inserto)}</span>
-                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desglosePremium.inserto, costoPremium)}%)</span>
-                                            </div>
-                                            <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                                              <span>🔴 Costo Paradas: {formatCurrency(desglosePremium.parada)}</span>
-                                              <span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(desglosePremium.parada, costoPremium)}%)</span>
-                                            </div>
-                                            {desglosePremium.lote > 0 && (
-                                                <p className="text-[10px] text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-50">
-                                                    📦 Insertos para Lote: {(curveDataInfo.desglosePremiumReal?.lote || 0).toFixed(1)} unds.
-                                                </p>
-                                            )}
-                                          </div>
-                                        )}
-                                        {desgloseActual && desglosePremium && costoPremium > 0 && (
-                                          (() => {
-                                            const diffInserto = desglosePremium.inserto - desgloseActual.inserto;
-                                            const diffPercentage = (Math.abs(diffInserto) / costoPremium) * 100;
-                                            const isMoreExpensive = diffInserto > 0;
-
-                                            return (
-                                              <div className="mt-3 pt-2 border-t border-slate-200/80 bg-slate-50 rounded-b-md -mx-3 -mb-3 px-3 pb-2 text-center">
-                                                <p className="text-[10px] text-slate-600 leading-tight">
-                                                  <span className="font-bold text-slate-700">⚖️ Diferencia de Inserto:</span>{' '}
-                                                  <span className={isMoreExpensive ? 'text-red-600 font-medium' : 'text-emerald-600 font-bold'}>
-                                                    {isMoreExpensive ? '+' : ''}{formatCurrency(diffInserto)}
-                                                  </span>
-                                                </p>
-                                                <p className="text-[9px] text-slate-400 mt-0.5 italic">
-                                                  (Apenas un <span className="font-bold">{diffPercentage.toFixed(1)}%</span> de impacto en la pieza)
-                                                </p>
-                                              </div>
-                                            );
-                                          })()
-                                        )}
-                                      </div>
-                                    );
-                                }
-                                return null;
-                            }} 
+                            content={() => null}
                         />
                         <Legend verticalAlign="top" height={36} />
                         <Line type="monotone" dataKey="costoActual" name="Inserto Competidor" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#ef4444' }} />
@@ -1439,6 +1367,59 @@ export default function TaylorCurvePage() {
                     </LineChart>
                     </ResponsiveContainer>
                 </div>
+                <div className="lg:col-span-1">
+                    <Card className="sticky top-24">
+                        <CardHeader>
+                            <CardTitle className="text-base">Detalles del Punto</CardTitle>
+                            <CardDescription className="text-xs h-4">
+                                {dataPoint ? `Datos para Vc: ${dataPoint.speed} m/min` : "Pasa el mouse sobre el gráfico"}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          {dataPoint ? (
+                             <div className="text-xs min-w-[240px]">
+                                {dataPoint.costoActual !== undefined && dataPoint.desgloseActual && (
+                                  <div className="space-y-1 border-b border-slate-100 pb-2 mb-2">
+                                    <p className="text-[11px] font-bold text-red-700 uppercase tracking-wide">Competidor: {formatCurrency(dataPoint.costoActual)}</p>
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>⚙️ Tiempo de Corte: {formatCurrency(dataPoint.desgloseActual.maquina)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(dataPoint.desgloseActual.maquina, dataPoint.costoActual)}%)</span></div>
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>💎 Inserto Puro: {formatCurrency(dataPoint.desgloseActual.inserto)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(dataPoint.desgloseActual.inserto, dataPoint.costoActual)}%)</span></div>
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>🔴 Costo Paradas: {formatCurrency(dataPoint.desgloseActual.parada)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(dataPoint.desgloseActual.parada, dataPoint.costoActual)}%)</span></div>
+                                    {dataPoint.desgloseActual.lote > 0 && (<p className="text-[10px] text-amber-700 font-bold mt-1 pt-1 border-t border-slate-50">📦 Insertos para Lote: {(curveDataInfo.desgloseActualReal?.lote || 0).toFixed(1)} unds.</p>)}
+                                  </div>
+                                )}
+
+                                {dataPoint.costoPremium !== undefined && dataPoint.desglosePremium && (
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wide">SECOCUT: {formatCurrency(dataPoint.costoPremium)}</p>
+                                      {porcentajeAhorroUnificado > 0 && (<span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded-full">Ahorro {porcentajeAhorroUnificado.toFixed(1)}%</span>)}
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>⚙️ Tiempo de Corte: {formatCurrency(dataPoint.desglosePremium.maquina)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(dataPoint.desglosePremium.maquina, dataPoint.costoPremium)}%)</span></div>
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>💎 Inserto Puro: {formatCurrency(dataPoint.desglosePremium.inserto)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(dataPoint.desglosePremium.inserto, dataPoint.costoPremium)}%)</span></div>
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>🔴 Costo Paradas: {formatCurrency(dataPoint.desglosePremium.parada)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(dataPoint.desglosePremium.parada, dataPoint.costoPremium)}%)</span></div>
+                                    {dataPoint.desglosePremium.lote > 0 && (<p className="text-[10px] text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-50">📦 Insertos para Lote: {(curveDataInfo.desglosePremiumReal?.lote || 0).toFixed(1)} unds.</p>)}
+                                  </div>
+                                )}
+                                {dataPoint.desgloseActual && dataPoint.desglosePremium && dataPoint.costoPremium > 0 && (
+                                  (() => {
+                                    const diffInserto = dataPoint.desglosePremium.inserto - dataPoint.desgloseActual.inserto;
+                                    const diffPercentage = (Math.abs(diffInserto) / dataPoint.costoPremium) * 100;
+                                    const isMoreExpensive = diffInserto > 0;
+                                    return (
+                                      <div className="mt-3 pt-2 border-t border-slate-200/80 bg-slate-50 rounded-b-md -mx-3 -mb-3 px-3 pb-2 text-center"><p className="text-[10px] text-slate-600 leading-tight"><span className="font-bold text-slate-700">⚖️ Diferencia de Inserto:</span>{' '}<span className={isMoreExpensive ? 'text-red-600 font-medium' : 'text-emerald-600 font-bold'}>{isMoreExpensive ? '+' : ''}{formatCurrency(diffInserto)}</span></p><p className="text-[9px] text-slate-400 mt-0.5 italic">(Apenas un <span className="font-bold">{diffPercentage.toFixed(1)}%</span> de impacto en la pieza)</p></div>
+                                    );
+                                  })()
+                                )}
+                              </div>
+                          ) : (
+                            <div className="text-center py-10">
+                               <p className="text-sm text-muted-foreground">Pasa el mouse sobre el gráfico para ver los detalles de cada punto.</p>
+                            </div>
+                          )}
+                        </CardContent>
+                    </Card>
+                </div>
+              </div>
             </CardContent>
         </Card>
 
@@ -1964,6 +1945,7 @@ export default function TaylorCurvePage() {
     </>
   );
 }
+
 
 
 
