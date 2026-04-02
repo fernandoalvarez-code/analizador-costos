@@ -749,7 +749,7 @@ export default function EditTaylorCurvePage() {
     const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
     const costJuego = costPerPunta * safeZPremium;
     
-    const penalidadCambio = costJuego + (safeMachineCostMin * safeToolChangeTime);
+    const penalidadCambio = costJuego + (safeToolChangeTime * safeMachineCostMin);
     
     let costoHerr = 0;
     if (lifeModePremium === 'minutos') {
@@ -1864,8 +1864,3 @@ export default function EditTaylorCurvePage() {
     </>
   );
 }
-
-
-
-
-

@@ -1328,10 +1328,10 @@ export default function TaylorCurvePage() {
                 <div className="lg:col-span-2 h-[400px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                     <LineChart 
-                      data={curveDataInfo.data} 
-                      margin={{ top: 5, right: 20, left: 10, bottom: 30 }}
-                      onMouseMove={(e) => { if (e && e.activePayload && e.activePayload.length > 0) setHoveredData(e.activePayload[0].payload); }}
-                      onMouseLeave={() => setHoveredData(null)}
+                        data={curveDataInfo.data} 
+                        margin={{ top: 5, right: 20, left: 10, bottom: 30 }}
+                        onMouseMove={(e) => { if (e && e.activePayload && e.activePayload.length > 0) setHoveredData(e.activePayload[0].payload); }}
+                        onMouseLeave={() => setHoveredData(null)}
                     >
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                         <XAxis type="number" dataKey="speed" domain={['dataMin', 'dataMax']} label={{ value: 'Velocidad de Corte Vc (m/min)', position: 'bottom', offset: 15 }} tick={{fontSize: 12}} />
@@ -1943,6 +1943,7 @@ export default function TaylorCurvePage() {
     </>
   );
 }
+
 
 
 
