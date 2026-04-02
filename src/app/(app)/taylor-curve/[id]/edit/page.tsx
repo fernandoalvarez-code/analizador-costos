@@ -1292,7 +1292,7 @@ export default function EditTaylorCurvePage() {
                                               <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wide">SECOCUT: {formatCurrency(costoPremium)}</p>
                                               {porcentajeAhorroUnificado > 0 && (
                                                 <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                                                  -{porcentajeAhorroUnificado.toFixed(1)}%
+                                                  Ahorro {porcentajeAhorroUnificado.toFixed(1)}%
                                                 </span>
                                               )}
                                             </div>
@@ -1885,5 +1885,6 @@ export default function EditTaylorCurvePage() {
     </>
   );
 }
+
 
 
