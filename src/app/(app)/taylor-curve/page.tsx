@@ -828,7 +828,7 @@ export default function TaylorCurvePage() {
     const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0;
     const costJuego = costPerPunta * safeZPremium;
     
-    const penalidadCambio = costJuego + (safeMachineCostMin * safeToolChangeTime);
+    const penalidadCambio = costJuego + (safeToolChangeTime * safeMachineCostMin);
     
     let costoHerr = 0;
     if (lifeModePremium === 'minutos') {
@@ -917,37 +917,28 @@ export default function TaylorCurvePage() {
 
   const unidadVidaUtil = lifeModePremium === 'minutos' ? 'minutos' : (operationType === 'drilling' ? 'agujeros' : 'pzas/filo');
 
+  if (isLoading) {
+    return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
+  }
+  
   const getHmColorClass = (hm) => {
     if (hm < 0.05) return "text-orange-500";
     if (hm > 0.25) return "text-red-600";
     return "text-emerald-600";
   };
-  
+
   const qActual = calcularQ(operationType, apCurrent, aeCurrent, feedCurrent, vcCurrent, dcCurrent, zCurrent);
   const hmActual = calcularEspesorViruta(operationType, feedCurrent, aeCurrent, dcCurrent, apCurrent, toolNameCurrent);
 
   const qPropuesta = calcularQ(operationType, apPremium, aePremium, feedPremium, vcPremium, dcPremium, zPremium);
   const hmPropuesta = calcularEspesorViruta(operationType, feedPremium, aePremium, dcPremium, apPremium, toolNamePremium);
 
-  if (isLoading) {
-    return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
-  }
-
-  const optimalDataPoint = curveDataInfo.data.find(d => d.speed === curveDataInfo.velocidadOptimaSeco);
-  const dataPoint = hoveredData || optimalDataPoint;
-  
-  let porcentajeAhorroUnificado = 0;
-  if (dataPoint) {
-      porcentajeAhorroUnificado = curveDataInfo.actualCostCurrent > 0 
-        ? ((curveDataInfo.actualCostCurrent - dataPoint.costoPremium) / curveDataInfo.actualCostCurrent) * 100 
-        : 0;
-  }
-
   const calculateIncidence = (partCost: number, totalCost: number) => {
     if (!totalCost || totalCost === 0 || isNaN(partCost) || isNaN(totalCost)) return "0.0";
     return ((partCost / totalCost) * 100).toFixed(1); 
   };
-  
+
+
   return (
     <>
       <div className={`container mx-auto space-y-8 pb-16 transition-all duration-300 ${isCopilotOpen ? 'pr-[320px]' : ''}`}>
@@ -959,9 +950,9 @@ export default function TaylorCurvePage() {
             <div>
             <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2">
                 <TrendingUp className="text-blue-600 h-7 w-7" />
-                Análisis de Curva de Costos
+                Editar Análisis de Costos
             </h1>
-            <p className="text-slate-500 text-sm mt-1">Simula escenarios para encontrar el punto de máxima rentabilidad.</p>
+            <p className="text-slate-500 text-sm mt-1">Ajusta los parámetros para refinar tu análisis.</p>
             </div>
         </div>
 
@@ -1339,7 +1330,7 @@ export default function TaylorCurvePage() {
                     <LineChart 
                       data={curveDataInfo.data} 
                       margin={{ top: 5, right: 20, left: 10, bottom: 30 }}
-                      onMouseMove={(e) => { if (e.activePayload && e.activePayload.length > 0) setHoveredData(e.activePayload[0].payload); }}
+                      onMouseMove={(e) => { if (e && e.activePayload && e.activePayload.length > 0) setHoveredData(e.activePayload[0].payload); }}
                       onMouseLeave={() => setHoveredData(null)}
                     >
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -1372,38 +1363,45 @@ export default function TaylorCurvePage() {
                         <CardHeader>
                             <CardTitle className="text-base">Detalles del Punto</CardTitle>
                             <CardDescription className="text-xs h-4">
-                                {dataPoint ? `Datos para Vc: ${dataPoint.speed} m/min` : "Pasa el mouse sobre el gráfico"}
+                                {hoveredData ? `Datos para Vc: ${hoveredData.speed} m/min` : "Pasa el mouse sobre el gráfico"}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                          {dataPoint ? (
+                          {hoveredData ? (
                              <div className="text-xs min-w-[240px]">
-                                {dataPoint.costoActual !== undefined && dataPoint.desgloseActual && (
+                                {hoveredData.costoActual !== undefined && hoveredData.desgloseActual && (
                                   <div className="space-y-1 border-b border-slate-100 pb-2 mb-2">
-                                    <p className="text-[11px] font-bold text-red-700 uppercase tracking-wide">Competidor: {formatCurrency(dataPoint.costoActual)}</p>
-                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>⚙️ Tiempo de Corte: {formatCurrency(dataPoint.desgloseActual.maquina)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(dataPoint.desgloseActual.maquina, dataPoint.costoActual)}%)</span></div>
-                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>💎 Inserto Puro: {formatCurrency(dataPoint.desgloseActual.inserto)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(dataPoint.desgloseActual.inserto, dataPoint.costoActual)}%)</span></div>
-                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>🔴 Costo Paradas: {formatCurrency(dataPoint.desgloseActual.parada)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(dataPoint.desgloseActual.parada, dataPoint.costoActual)}%)</span></div>
-                                    {dataPoint.desgloseActual.lote > 0 && (<p className="text-[10px] text-amber-700 font-bold mt-1 pt-1 border-t border-slate-50">📦 Insertos para Lote: {(curveDataInfo.desgloseActualReal?.lote || 0).toFixed(1)} unds.</p>)}
+                                    <p className="text-[11px] font-bold text-red-700 uppercase tracking-wide">Competidor: {formatCurrency(hoveredData.costoActual)}</p>
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>⚙️ Tiempo de Corte: {formatCurrency(hoveredData.desgloseActual.maquina)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(hoveredData.desgloseActual.maquina, hoveredData.costoActual)}%)</span></div>
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>💎 Inserto Puro: {formatCurrency(hoveredData.desgloseActual.inserto)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(hoveredData.desgloseActual.inserto, hoveredData.costoActual)}%)</span></div>
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>🔴 Costo Paradas: {formatCurrency(hoveredData.desgloseActual.parada)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(hoveredData.desgloseActual.parada, hoveredData.costoActual)}%)</span></div>
+                                    {hoveredData.desgloseActual.lote > 0 && (<p className="text-[10px] text-amber-700 font-bold mt-1 pt-1 border-t border-slate-50">📦 Insertos para Lote: {(curveDataInfo.desgloseActualReal?.lote || 0).toFixed(1)} unds.</p>)}
                                   </div>
                                 )}
 
-                                {dataPoint.costoPremium !== undefined && dataPoint.desglosePremium && (
+                                {hoveredData.costoPremium !== undefined && hoveredData.desglosePremium && (
                                   <div className="space-y-1">
                                     <div className="flex items-center justify-between">
-                                      <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wide">SECOCUT: {formatCurrency(dataPoint.costoPremium)}</p>
-                                      {porcentajeAhorroUnificado > 0 && (<span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded-full">Ahorro {porcentajeAhorroUnificado.toFixed(1)}%</span>)}
+                                      <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wide">SECOCUT: {formatCurrency(hoveredData.costoPremium)}</p>
+                                      { (() => {
+                                          const porcentajeAhorro = hoveredData.costoActual > 0 ? ((hoveredData.costoActual - hoveredData.costoPremium) / hoveredData.costoActual) * 100 : 0;
+                                          if (porcentajeAhorro > 0) {
+                                            return <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded-full">Ahorro {porcentajeAhorro.toFixed(1)}%</span>
+                                          }
+                                          return null;
+                                        })()
+                                      }
                                     </div>
-                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>⚙️ Tiempo de Corte: {formatCurrency(dataPoint.desglosePremium.maquina)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(dataPoint.desglosePremium.maquina, dataPoint.costoPremium)}%)</span></div>
-                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>💎 Inserto Puro: {formatCurrency(dataPoint.desglosePremium.inserto)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(dataPoint.desglosePremium.inserto, dataPoint.costoPremium)}%)</span></div>
-                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>🔴 Costo Paradas: {formatCurrency(dataPoint.desglosePremium.parada)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(dataPoint.desglosePremium.parada, dataPoint.costoPremium)}%)</span></div>
-                                    {dataPoint.desglosePremium.lote > 0 && (<p className="text-[10px] text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-50">📦 Insertos para Lote: {(curveDataInfo.desglosePremiumReal?.lote || 0).toFixed(1)} unds.</p>)}
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>⚙️ Tiempo de Corte: {formatCurrency(hoveredData.desglosePremium.maquina)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(hoveredData.desglosePremium.maquina, hoveredData.costoPremium)}%)</span></div>
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>💎 Inserto Puro: {formatCurrency(hoveredData.desglosePremium.inserto)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(hoveredData.desglosePremium.inserto, hoveredData.costoPremium)}%)</span></div>
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>🔴 Costo Paradas: {formatCurrency(hoveredData.desglosePremium.parada)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(hoveredData.desglosePremium.parada, hoveredData.costoPremium)}%)</span></div>
+                                    {hoveredData.desglosePremium.lote > 0 && (<p className="text-[10px] text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-50">📦 Insertos para Lote: {(curveDataInfo.desglosePremiumReal?.lote || 0).toFixed(1)} unds.</p>)}
                                   </div>
                                 )}
-                                {dataPoint.desgloseActual && dataPoint.desglosePremium && dataPoint.costoPremium > 0 && (
+                                {hoveredData.desgloseActual && hoveredData.desglosePremium && hoveredData.costoPremium > 0 && (
                                   (() => {
-                                    const diffInserto = dataPoint.desglosePremium.inserto - dataPoint.desgloseActual.inserto;
-                                    const diffPercentage = (Math.abs(diffInserto) / dataPoint.costoPremium) * 100;
+                                    const diffInserto = hoveredData.desglosePremium.inserto - hoveredData.desgloseActual.inserto;
+                                    const diffPercentage = (Math.abs(diffInserto) / hoveredData.costoPremium) * 100;
                                     const isMoreExpensive = diffInserto > 0;
                                     return (
                                       <div className="mt-3 pt-2 border-t border-slate-200/80 bg-slate-50 rounded-b-md -mx-3 -mb-3 px-3 pb-2 text-center"><p className="text-[10px] text-slate-600 leading-tight"><span className="font-bold text-slate-700">⚖️ Diferencia de Inserto:</span>{' '}<span className={isMoreExpensive ? 'text-red-600 font-medium' : 'text-emerald-600 font-bold'}>{isMoreExpensive ? '+' : ''}{formatCurrency(diffInserto)}</span></p><p className="text-[9px] text-slate-400 mt-0.5 italic">(Apenas un <span className="font-bold">{diffPercentage.toFixed(1)}%</span> de impacto en la pieza)</p></div>
@@ -1413,7 +1411,7 @@ export default function TaylorCurvePage() {
                               </div>
                           ) : (
                             <div className="text-center py-10">
-                               <p className="text-sm text-muted-foreground">Pasa el mouse sobre el gráfico para ver los detalles de cada punto.</p>
+                               <p className="text-sm text-muted-foreground">👈 Pasa el mouse sobre la línea de la gráfica para analizar cada velocidad.</p>
                             </div>
                           )}
                         </CardContent>
@@ -1945,6 +1943,7 @@ export default function TaylorCurvePage() {
     </>
   );
 }
+
 
 
 
