@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import * as z from "zod";
 import React, { useEffect, useState } from "react";
-import { Download, Save, Printer, Loader2, Eye } from "lucide-react";
+import { Download, Save, Printer, Loader2, Eye, Lightbulb, Wand2 } from "lucide-react";
 import { serverTimestamp, setDoc, onSnapshot, Timestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "../ui/textarea";
 import { useFirestore, useUser, collection, doc, storage } from "@/firebase";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useRouter } from "next/navigation";
 import { ImageUploader } from "./image-uploader";
 import { formatCurrency, formatoMinutosYSegundos } from "@/lib/formatters";
@@ -114,6 +115,10 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   const [netSavingsResult, setNetSavingsResult] = useState<NetSavingsResult | null>(null);
   const [detailedResult, setDetailedResult] = useState<DetailedReportResult | null>(initialData?.results || null);
   const [isSaveAlertOpen, setSaveAlertOpen] = useState(false);
+  
+  // Sugerencias IA
+  const [suggestedCuttingData, setSuggestedCuttingData] = useState<{ap: string, fz: string, vc: string, notes: string} | null>(null);
+  const [isFetchingCuttingData, setIsFetchingCuttingData] = useState(false);
   
   // Estados UI
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
@@ -269,7 +274,46 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     detailedForm.setValue("modoVidaB", "piezas");
   }, [diagValues, detailedForm]);
 
-  // --- EFECTO 4: Informe Detallado ---
+  // --- EFECTO 4: IA Sugerencia de Corte ---
+  useEffect(() => {
+    const { material, calidadB, descB } = detailValues;
+    const isReadyForSuggestion = material && material.length > 2 && ((calidadB && calidadB.length > 2) || (descB && descB.length > 2));
+    
+    if (!isReadyForSuggestion) {
+      setSuggestedCuttingData(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsFetchingCuttingData(true);
+      try {
+        const response = await fetch('/api/suggest-cutting-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            material: material,
+            quality: calidadB,
+            toolDesc: descB
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data) {
+            setSuggestedCuttingData(data.data);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching cutting data:", error);
+      } finally {
+        setIsFetchingCuttingData(false);
+      }
+    }, 1200); // 1.2 segundos de debounce
+
+    return () => clearTimeout(timer);
+  }, [detailValues.material, detailValues.calidadB, detailValues.descB]);
+
+  // --- EFECTO 5: Informe Detallado ---
   useEffect(() => {
     const data = detailValues;
     if (!data.machineHourlyRate || !data.piezasAlMes) return;
@@ -715,6 +759,46 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
                                               <p className={`text-xs font-bold mt-2 p-2 rounded-md ${alertaCalidad.includes('❌') ? 'text-red-800 bg-red-100 border border-red-200' : 'text-yellow-800 bg-yellow-100 border border-yellow-200'}`}>
                                                   {alertaCalidad}
                                               </p>
+                                          )}
+
+                                          {isFetchingCuttingData && (
+                                            <div className="flex items-center space-x-2 mt-2 text-muted-foreground text-xs bg-slate-50 p-2 rounded-md border border-slate-100">
+                                              <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
+                                              <span>Consultando parámetros Seco...</span>
+                                            </div>
+                                          )}
+
+                                          {suggestedCuttingData && !isFetchingCuttingData && (
+                                              <Alert className="mt-4 bg-slate-50 border border-slate-200 shadow-sm relative overflow-hidden">
+                                                  <div className="absolute top-0 right-0 p-2 opacity-10">
+                                                    <Wand2 className="h-10 w-10 text-blue-600" />
+                                                  </div>
+                                                  <Wand2 className="h-4 w-4 text-blue-600" />
+                                                  <AlertTitle className="text-sm font-semibold text-slate-800 flex items-center">
+                                                      Sugerencia de Catálogo Seco
+                                                  </AlertTitle>
+                                                  <AlertDescription className="text-xs text-slate-600 mt-2 space-y-2">
+                                                      <div className="grid grid-cols-3 gap-2">
+                                                          <div className="bg-white p-2 rounded border border-slate-200 text-center">
+                                                            <span className="block font-bold text-slate-800 mb-0.5">ap</span>
+                                                            <span className="font-mono text-blue-700">{suggestedCuttingData.ap}</span>
+                                                          </div>
+                                                          <div className="bg-white p-2 rounded border border-slate-200 text-center">
+                                                            <span className="block font-bold text-slate-800 mb-0.5">Avance</span>
+                                                            <span className="font-mono text-blue-700">{suggestedCuttingData.fz}</span>
+                                                          </div>
+                                                          <div className="bg-white p-2 rounded border border-slate-200 text-center">
+                                                            <span className="block font-bold text-slate-800 mb-0.5">Vc</span>
+                                                            <span className="font-mono text-blue-700">{suggestedCuttingData.vc}</span>
+                                                          </div>
+                                                      </div>
+                                                      {suggestedCuttingData.notes && suggestedCuttingData.notes !== "N/A" && (
+                                                          <div className="mt-2 text-[11px] text-slate-500 italic bg-white p-2 rounded border border-slate-100">
+                                                              💡 {suggestedCuttingData.notes}
+                                                          </div>
+                                                      )}
+                                                  </AlertDescription>
+                                              </Alert>
                                           )}
                                       </FormItem>
                                       )}

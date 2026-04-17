@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
-import { db } from "@/firebase";
+import { collection, getDocs, doc as firestoreDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where } from "firebase/firestore";
+import { db, useUser, useDoc, useMemoFirebase } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -13,12 +13,27 @@ export default function HistoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  const { user, loading: userLoading } = useUser();
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return firestoreDoc(db, 'users', user.uid);
+  }, [user]);
+  const { data: userProfile, isLoading: profileLoading } = useDoc<any>(userProfileRef);
+  const isAdmin = userProfile?.role === 'admin';
+
   const fetchSimulations = async () => {
+    if (!user) {
+      if (!userLoading) setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
-      const q = query(collection(db, "analisis_costos"), orderBy("dateCreated", "desc"));
+      const q = isAdmin
+        ? query(collection(db, "simulations"), orderBy("dateCreated", "desc"))
+        : query(collection(db, "simulations"), where("userId", "==", user.uid), orderBy("dateCreated", "desc"));
+        
       const querySnapshot = await getDocs(q);
-      const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const data = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       setSimulations(data);
     } catch (error) {
       console.error("Error fetching history:", error);
@@ -28,8 +43,10 @@ export default function HistoryPage() {
   };
 
   useEffect(() => {
-    fetchSimulations();
-  }, []);
+    if (!userLoading && !profileLoading) {
+      fetchSimulations();
+    }
+  }, [user, userLoading, profileLoading, isAdmin]);
 
   const handleToggleStatus = async (sim: any) => {
     try {
@@ -37,7 +54,7 @@ export default function HistoryPage() {
       const newStatus = sim.status === 'ok' ? 'pending' : 'ok';
       
       // Actualizamos solo en la colección actual del historial
-      await updateDoc(doc(db, "analisis_costos", sim.id), { status: newStatus });
+      await updateDoc(firestoreDoc(db, "simulations", sim.id), { status: newStatus });
       
       // Actualizamos el estado de la UI al instante sin tener que recargar toda la página
       setSimulations(prevSims => 
@@ -53,8 +70,8 @@ export default function HistoryPage() {
     if (!window.confirm(`¿Estás seguro de que deseas eliminar el análisis de "${clientName}"? Esta acción no se puede deshacer.`)) return;
 
     try {
-      // Usamos el nombre de la colección correcta: analisis_costos
-      await deleteDoc(doc(db, "analisis_costos", id));
+      // Usamos el nombre de la colección correcta: simulations
+      await deleteDoc(firestoreDoc(db, "simulations", id));
       
       // Actualizamos el estado visualmente sin tener que recargar toda la página
       setSimulations(prevSims => prevSims.filter(sim => sim.id !== id));

@@ -1,7 +1,20 @@
 import React from 'react';
 
-// Este componente sirve tanto para Torneado como para Fresado
-const ToolComparisonCard = ({ title, competitorData, proposedData }) => {
+interface ComparisonData {
+  totalCostPerComponent: number;
+  machiningCost: number;
+  toolLifeCost: number;
+  toolChangeCost: number;
+  insertsToBuy: number;
+}
+
+interface ToolComparisonCardProps {
+  title: string;
+  competitorData: ComparisonData;
+  proposedData: ComparisonData;
+}
+
+const ToolComparisonCard = ({ title, competitorData, proposedData }: ToolComparisonCardProps) => {
   return (
     <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
       <h3 className="text-xl font-bold text-gray-800 mb-4">{title}</h3>

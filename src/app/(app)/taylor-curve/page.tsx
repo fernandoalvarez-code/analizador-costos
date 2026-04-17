@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectGroup, SelectLabel, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, Info, Share2, FileText, Wand2, ArrowLeft, Download } from 'lucide-react';
+import { TrendingUp, Info, Share2, FileText, Wand2, ArrowLeft, Download, Flame, AlertTriangle } from 'lucide-react';
 import { formatCurrency, formatNumber, formatoMinutosYSegundos } from '@/lib/formatters';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -18,6 +18,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Loader2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { MonthlySavingsSummary } from '@/components/calculator/MonthlySavingsSummary';
 
 
@@ -52,7 +55,7 @@ const CALIDADES_SECO = {
   "MS2050": { tipo: "PVD", aplicacion: "Inox / Titanio", desc: "Grado de alta tenacidad" }
 };
 
-const dataDoubleTurbo = {
+const dataDoubleTurbo: Record<string, Record<string, Record<string, number>>> = {
     "ISO P": {
         "ME10": { base: 0.14, medio: 0.16, fino: 0.24 },
         "M12":  { base: 0.16, medio: 0.18, fino: 0.28 }
@@ -68,7 +71,7 @@ const dataDoubleTurbo = {
     }
 };
 
-const calcularFzSugerido = (ae, dc, materialSMG, rompeviruta) => {
+const calcularFzSugerido = (ae: number | string, dc: number | string, materialSMG: string, rompeviruta: string) => {
   const ratio = (Number(ae) / Number(dc));
   if(isNaN(ratio) || ratio <= 0) return null;
 
@@ -290,8 +293,39 @@ export default function TaylorCurvePage() {
   const [taylorBaseCost, setTaylorBaseCost] = useState(0);
   const [targetSavings, setTargetSavings] = useState<string | number>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isStressTestActive, setIsStressTestActive] = useState(false);
 
   const [hoveredData, setHoveredData] = useState<any | null>(null);
+
+  const [suggestedCuttingData, setSuggestedCuttingData] = useState<{ap: string, fz: string, vc: string, notes: string} | null>(null);
+  const [isFetchingCuttingData, setIsFetchingCuttingData] = useState(false);
+
+  useEffect(() => {
+    const isReadyForSuggestion = materialId && toolNamePremium && toolNamePremium.length > 2;
+    if (!isReadyForSuggestion) {
+      setSuggestedCuttingData(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsFetchingCuttingData(true);
+      try {
+        const response = await fetch('/api/suggest-cutting-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ material: materialId, quality: '', toolDesc: toolNamePremium })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data) setSuggestedCuttingData(data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching cutting data:", error);
+      } finally {
+        setIsFetchingCuttingData(false);
+      }
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [materialId, toolNamePremium]);
 
   useEffect(() => {
     setIsLoading(false);
@@ -707,7 +741,7 @@ export default function TaylorCurvePage() {
     
     const calcCostWithBreakdown = (v: number, isPremium: boolean, feed: number) => {
         const C = isPremium ? constante_C_Seco : constante_C_Competidor;
-        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0, lifePcs: 0 };
+        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0, lifePcs: 0, hpReq: 0 };
     
         const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
         const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
@@ -728,7 +762,28 @@ export default function TaylorCurvePage() {
         const costoParada = piecesPerToolLife > 0 ? (safeToolChangeTime * safeMachineCostMin) / piecesPerToolLife : 0;
         
         const costoTotal = costoMaquina + costoInsertoPuro + costoParada;
-        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada, lifePcs: piecesPerToolLife };
+
+        let hpReq = 0;
+        const toolCode = isPremium ? toolNamePremium : toolNameCurrent;
+        const dc = isPremium ? (Number(dcPremium) || 0.0001) : (Number(dcCurrent) || 0.0001);
+        const ae = isPremium ? (Number(aePremium) || 0) : (Number(aeCurrent) || 0);
+
+        if (operationType === 'turning') {
+            const kw_base = (ap * feed * v * kc) / 60000;
+            hpReq = kw_base * 1.341 * obtenerFactorForma(toolCode) * obtenerFactorIncidencia(toolCode);
+        } else if (operationType === 'milling') {
+            const rpm = (v * 1000) / (Math.PI * dc);
+            const vf = feed * z * rpm;
+            const q = (ap * ae * vf) / 1000;
+            hpReq = ((q * kc) / 60000 * 1.341) / 0.8;
+        } else if (operationType === 'drilling') {
+            const rpm = (v * 1000) / (Math.PI * dc);
+            const vf = feed * rpm;
+            const q = (Math.PI * Math.pow(dc, 2) / 4) * vf / 1000;
+            hpReq = ((q * kc) / 60000 * 1.341) / 0.8;
+        }
+
+        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada, lifePcs: piecesPerToolLife, hpReq };
     };
 
     const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
@@ -747,11 +802,29 @@ export default function TaylorCurvePage() {
     
     let minPremiumCost = Infinity;
     let optimalSpeed = 0;
+    let hpLimitReached = false;
+
+    const limiteTermicoActual = isStressTestActive ? taylorProps.C * 1.05 : null;
 
     const data = sortedSpeeds.map(v => {
         const resActual = calcCostWithBreakdown(v, false, Number(feedCurrent) || 0.0001);
         const resPremium = calcCostWithBreakdown(v, true, Number(feedPremium) || 0.0001);
-        if (resPremium.costoTotal < minPremiumCost && resPremium.costoTotal > 0) { minPremiumCost = resPremium.costoTotal; optimalSpeed = v; }
+        
+        if (isStressTestActive && limiteTermicoActual && v >= limiteTermicoActual) {
+            // Falla térmica catastrófica (colapso de filo)
+            resActual.costoTotal = resActual.costoTotal * Math.pow((v / limiteTermicoActual), 6);
+        }
+        
+        const objHpExcedido = resPremium.hpReq > safeMachinePowerHP;
+
+        // Sólo actualizamos el óptimo si NO excede la potencia de la máquina.
+        if (!objHpExcedido && resPremium.costoTotal < minPremiumCost && resPremium.costoTotal > 0) { 
+            minPremiumCost = resPremium.costoTotal; 
+            optimalSpeed = v; 
+            hpLimitReached = false;
+        } else if (objHpExcedido && resPremium.costoTotal < minPremiumCost) {
+            hpLimitReached = true;
+        }
         
         const multZ_Act = operationType === 'milling' ? (Number(zCurrent)||1) : 1;
         const multZ_Prem = operationType === 'milling' ? (Number(zPremium)||1) : 1;
@@ -804,9 +877,9 @@ export default function TaylorCurvePage() {
     const hmCurrent = calcularEspesorViruta(operationType, feedCurrent, aeCurrent, dcCurrent, apCurrent, toolNameCurrent);
     const hmPremium = calcularEspesorViruta(operationType, feedPremium, aePremium, dcPremium, apPremium, toolNamePremium);
 
-    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost, desgloseActualReal, desglosePremiumReal, qCurrent, qPremium, hmCurrent, hmPremium };
+    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost, limitHpAlert: hpLimitReached, desgloseActualReal, desglosePremiumReal, qCurrent, qPremium, hmCurrent, hmPremium, limiteTermicoActual };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium, tcPremiumInput]);
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium, tcPremiumInput, isStressTestActive]);
 
   useEffect(() => {
     if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
@@ -902,18 +975,25 @@ export default function TaylorCurvePage() {
   const porcentajeAhorroSimulado = taylorBaseCost > 0 && simulationResult ? (((taylorBaseCost - simulationResult.newCost) / taylorBaseCost) * 100) : 0;
   
   const insightText = useMemo(() => {
-      const { velocidadOptimaSeco, costoOptimoSeco } = curveDataInfo;
+      const { velocidadOptimaSeco, costoOptimoSeco, limitHpAlert } = curveDataInfo;
       const numVcCurrent = Number(vcCurrent);
       if (!numVcCurrent || !velocidadOptimaSeco || !costoOptimoSeco) return null;
       
+      let mensajeBase = "";
       if (numVcCurrent < velocidadOptimaSeco) {
-          return `💡 Tu máquina está subutilizada. Si subimos la velocidad de ${numVcCurrent} a ${velocidadOptimaSeco} m/min con el inserto Seco, alcanzarás el costo mínimo absoluto de ${formatCurrency(costoOptimoSeco)} por pieza.`;
+          mensajeBase = `💡 Tu máquina está subutilizada. Si subimos la velocidad de ${numVcCurrent} a ${velocidadOptimaSeco} m/min con el inserto Seco, alcanzarás el costo mínimo absoluto de ${formatCurrency(costoOptimoSeco)} por pieza.`;
       } else if (numVcCurrent > velocidadOptimaSeco + 10) { 
-          return `⚠️ Estás quemando insertos. Bajando la velocidad a ${velocidadOptimaSeco} m/min con Seco, extenderás la vida útil drásticamente y bajarás tu costo a ${formatCurrency(costoOptimoSeco)}.`;
+          mensajeBase = `⚠️ Estás quemando insertos. Bajando la velocidad a ${velocidadOptimaSeco} m/min con Seco, extenderás la vida útil drásticamente y bajarás tu costo a ${formatCurrency(costoOptimoSeco)}.`;
       } else {
-          return `✅ ¡Estás muy cerca del punto óptimo! Mantener la velocidad alrededor de ${velocidadOptimaSeco} m/min te asegura la máxima eficiencia y rentabilidad.`;
+          mensajeBase = `✅ ¡Estás muy cerca del punto óptimo! Mantener la velocidad alrededor de ${velocidadOptimaSeco} m/min te asegura la máxima eficiencia y rentabilidad.`;
       }
-  }, [curveDataInfo, vcCurrent]);
+
+      if (limitHpAlert) {
+          mensajeBase += ` 🔴 Atención: La velocidad teórica más óptima fue limitada porque excedía los ${machinePowerHP} HP de tu máquina.`;
+      }
+
+      return mensajeBase;
+  }, [curveDataInfo, vcCurrent, machinePowerHP]);
 
   const unidadVidaUtil = lifeModePremium === 'minutos' ? 'minutos' : (operationType === 'drilling' ? 'agujeros' : 'pzas/filo');
 
@@ -921,7 +1001,7 @@ export default function TaylorCurvePage() {
     return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
   }
   
-  const getHmColorClass = (hm) => {
+  const getHmColorClass = (hm: number) => {
     if (hm < 0.05) return "text-orange-500";
     if (hm > 0.25) return "text-red-600";
     return "text-emerald-600";
@@ -1183,6 +1263,44 @@ export default function TaylorCurvePage() {
                         {warningFresaPremium}
                     </div>
                 )}
+                {isFetchingCuttingData && (
+                  <div className="flex items-center space-x-2 mt-3 text-green-700 text-xs bg-green-50 p-2 rounded-md border border-green-200">
+                    <Loader2 className="w-3 h-3 animate-spin text-green-600" />
+                    <span>Consultando catálogo Seco...</span>
+                  </div>
+                )}
+                {suggestedCuttingData && !isFetchingCuttingData && (
+                  <Alert className="mt-3 bg-green-50 border border-green-200 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-2 opacity-10">
+                        <Wand2 className="h-10 w-10 text-green-600" />
+                      </div>
+                      <Wand2 className="h-4 w-4 text-green-600" />
+                      <AlertTitle className="text-sm font-semibold text-green-800 flex items-center">
+                          Referencia de Catálogo Seco
+                      </AlertTitle>
+                      <AlertDescription className="text-xs text-green-700 mt-2 space-y-2">
+                          <div className="grid grid-cols-3 gap-2">
+                              <div className="bg-white p-2 rounded border border-green-200 text-center">
+                                <span className="block font-bold text-green-800 mb-0.5">ap</span>
+                                <span className="font-mono text-green-700">{suggestedCuttingData.ap}</span>
+                              </div>
+                              <div className="bg-white p-2 rounded border border-green-200 text-center">
+                                <span className="block font-bold text-green-800 mb-0.5">Avance</span>
+                                <span className="font-mono text-green-700">{suggestedCuttingData.fz}</span>
+                              </div>
+                              <div className="bg-white p-2 rounded border border-green-200 text-center">
+                                <span className="block font-bold text-green-800 mb-0.5">Vc</span>
+                                <span className="font-mono text-green-700">{suggestedCuttingData.vc}</span>
+                              </div>
+                          </div>
+                          {suggestedCuttingData.notes && suggestedCuttingData.notes !== "N/A" && (
+                              <div className="mt-2 text-[11px] text-green-700 italic bg-white p-2 rounded border border-green-100">
+                                  💡 {suggestedCuttingData.notes}
+                              </div>
+                          )}
+                      </AlertDescription>
+                  </Alert>
+                )}
               </div>
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value)} /></div>
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 8" className="border-green-200 bg-white text-slate-900" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value)} /></div>
@@ -1316,6 +1434,19 @@ export default function TaylorCurvePage() {
                 </Button>
             </div>
           </div>
+          
+          <div className="md:col-span-1 border-t border-slate-200 mt-4 pt-4 flex flex-col justify-center">
+              <div className="flex items-center justify-between p-3 rounded-md bg-orange-50 border border-orange-200 shadow-sm">
+                  <div className="flex items-center space-x-2">
+                      <Flame className="h-5 w-5 text-orange-600" />
+                      <div className="flex flex-col">
+                          <Label htmlFor="stress-test" className="text-orange-900 font-bold">Simular Estrés Térmico</Label>
+                          <span className="text-[10px] text-orange-700 leading-tight mt-0.5 max-w-[250px]">Muestra en el gráfico cuándo la herramienta económica sufrirá una inestabilidad catastrófica.</span>
+                      </div>
+                  </div>
+                  <Switch id="stress-test" className="data-[state=checked]:bg-orange-600" checked={isStressTestActive} onCheckedChange={setIsStressTestActive} />
+              </div>
+          </div>
         </div>
 
         <Card>
@@ -1355,6 +1486,16 @@ export default function TaylorCurvePage() {
                             label={{ position: 'insideTopRight', value: '🔥 Óptimo', fill: '#10B981', fontSize: 10, fontWeight: 'bold' }} 
                           />
                         }
+
+                        {isStressTestActive && curveDataInfo.limiteTermicoActual && (
+                          <ReferenceLine
+                            x={curveDataInfo.limiteTermicoActual}
+                            stroke="#ea580c"
+                            strokeWidth={2}
+                            strokeDasharray="6 6"
+                            label={{ position: 'insideTopLeft', value: '⚠️ Falla Térmica Compe.', fill: '#ea580c', fontSize: 11, fontWeight: 'bold' }}
+                          />
+                        )}
                     </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -1817,6 +1958,9 @@ export default function TaylorCurvePage() {
                   <Line type="monotone" dataKey="costoPremium" name="Propuesta (Secocut)" stroke="#22c55e" strokeWidth={3} dot={false} />
                   {isFinite(curveDataInfo.actualCostCurrent) && <ReferenceDot x={Number(vcCurrent)} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />}
                   {isFinite(curveDataInfo.actualCostPremium) && <ReferenceDot x={Number(vcPremium)} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
+                  {isStressTestActive && curveDataInfo.limiteTermicoActual && (
+                    <ReferenceLine x={curveDataInfo.limiteTermicoActual} stroke="#ea580c" strokeWidth={1} strokeDasharray="4 4" label={{ position: 'insideTopLeft', value: '⚠️ Falla Térmica Compe.', fill: '#ea580c', fontSize: 9 }} />
+                  )}
                 </LineChart>
               </div>
             </div>

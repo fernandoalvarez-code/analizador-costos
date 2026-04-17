@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SimulatorSchema } from "@/lib/schemas";
+import * as z from "zod";
 import { useSimulatorCalc } from "@/hooks/use-simulator-calc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

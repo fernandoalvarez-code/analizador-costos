@@ -1,0 +1,16 @@
+
+=== Deploying to 'studio-1546170521-5d9b0'...
+
+i  deploying apphosting
+i  apphosting: Found backend(s) studio
+i  apphosting: Zipped source for backend studio
+i  apphosting: Uploading source for backend studio...
+i  apphosting: Uploaded at gs://firebaseapphosting-sources-390176636803-us-central1/studio--33855-loRJH0Tfu9wg-.zip
+i  apphosting: You may also track the rollout(s) at:
+	https://console.firebase.google.com/project/studio-1546170521-5d9b0/apphosting
+- Starting rollout(s) for backend(s) studio; this may take a few minutes. It's safe to exit now.
+
+⚠  apphosting: Rollout for backend studio failed.
+⬢  apphosting: FirebaseError: Failed to build your app. Please inspect the build logs at https://console.cloud.google.com/cloud-build/builds;region=us-central1/95acc199-1e50-4840-84eb-e5885f6de245?project=390176636803
+
+Error: One or more rollouts failed. Please review the errors above and try again.

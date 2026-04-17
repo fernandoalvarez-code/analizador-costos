@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectGroup, SelectLabel, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, Info, Share2, FileText, Wand2, ArrowLeft, Download } from 'lucide-react';
+import { TrendingUp, Info, Share2, FileText, Wand2, ArrowLeft, Download, Flame, AlertTriangle } from 'lucide-react';
 import { formatCurrency, formatNumber, formatoMinutosYSegundos } from '@/lib/formatters';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { MonthlySavingsSummary } from '@/components/calculator/MonthlySavingsSummary';
 
 
@@ -67,7 +68,7 @@ const CALIDADES_SECO = {
   "MS2050": { tipo: "PVD", aplicacion: "Inox / Titanio", desc: "Grado de alta tenacidad" }
 };
 
-const dataDoubleTurbo = {
+const dataDoubleTurbo: Record<string, Record<string, Record<string, number>>> = {
     "ISO P": {
         "ME10": { base: 0.14, medio: 0.16, fino: 0.24 },
         "M12":  { base: 0.16, medio: 0.18, fino: 0.28 }
@@ -83,7 +84,7 @@ const dataDoubleTurbo = {
     }
 };
 
-const calcularFzSugerido = (ae, dc, materialSMG, rompeviruta) => {
+const calcularFzSugerido = (ae: number | string, dc: number | string, materialSMG: string, rompeviruta: string) => {
   const ratio = (Number(ae) / Number(dc));
   if(isNaN(ratio) || ratio <= 0) return null;
 
@@ -125,7 +126,7 @@ const analizarRompevirutas = (codigoInserto: string): { esWiper: boolean; tipoCo
     return { esWiper, tipoCorte, sufijo };
 };
 
-const auditarParametros = (ap: number | "", avance: number | "", codigoInserto: string): string | null => {
+const auditarParametros = (ap: number | string, avance: number | string, codigoInserto: string): string | null => {
   const radio = extraerRadioISO(codigoInserto);
   if (!radio || !ap || !avance) return null;
   const apNum = Number(ap);
@@ -135,7 +136,7 @@ const auditarParametros = (ap: number | "", avance: number | "", codigoInserto: 
   return null;
 };
 
-const auditarAplicacion = (ap: number | "", codigoInserto: string): string | null => {
+const auditarAplicacion = (ap: number | string, codigoInserto: string): string | null => {
   if (!ap || !codigoInserto) return null;
   const { tipoCorte } = analizarRompevirutas(codigoInserto);
   const apNum = Number(ap);
@@ -181,7 +182,7 @@ const auditarMaterialFresado = (codigoGrado: string, materialSeleccionado: strin
   return null;
 };
 
-const auditarBroca = (diametro?: number | "", profundidad?: number | ""): string | null => {
+const auditarBroca = (diametro?: number | string, profundidad?: number | string): string | null => {
   if (!diametro || !profundidad) return null;
   const numDiametro = Number(diametro);
   const numProfundidad = Number(profundidad);
@@ -198,7 +199,7 @@ const calcularVf = (f: number | string, vc: number | string, d: number | string)
     return numF * rpm;
 };
 
-const calcularQ = (opType, ap, ae, f, vc, dc, z) => {
+const calcularQ = (opType: string, ap: number | string, ae: number | string, f: number | string, vc: number | string, dc: number | string, z: number | string) => {
   const numAp = Number(ap) || 0; const numF = Number(f) || 0; 
   const numVc = Number(vc) || 0; const numDc = Number(dc) || 0; 
   const numAe = Number(ae) || 0; const numZ = Number(z) || 1;
@@ -219,7 +220,7 @@ const calcularQ = (opType, ap, ae, f, vc, dc, z) => {
   return 0;
 };
 
-const calcularEspesorViruta = (opType, f, ae, dc, ap, toolCode) => {
+const calcularEspesorViruta = (opType: string, f: number | string, ae: number | string, dc: number | string, ap: number | string, toolCode: string) => {
    const numF = Number(f) || 0; const numAe = Number(ae) || 0;
    const numDc = Number(dc) || 0; const numAp = Number(ap) || 0;
    const re = extraerRadioISO(toolCode) || 0.8;
@@ -312,6 +313,7 @@ export default function EditTaylorCurvePage() {
   const [targetSavings, setTargetSavings] = useState<string | number>('');
   const [lifeModeCurrent, setLifeModeCurrent] = useState<'piezas' | 'minutos'>('piezas');
   const [lifeModePremium, setLifeModePremium] = useState<'piezas' | 'minutos'>('piezas');
+  const [isStressTestActive, setIsStressTestActive] = useState(false);
 
   const [hoveredData, setHoveredData] = useState<any | null>(null);
 
@@ -533,6 +535,28 @@ export default function EditTaylorCurvePage() {
     finally { setIsGenerating(false); }
   };
 
+  const handleGenerateSurveyPDF = async () => {
+    setIsGeneratingSurvey(true);
+    try {
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const a4Width = 210;
+        const element = document.getElementById('survey-pdf-content');
+        if (!element) throw new Error("Elemento 'survey-pdf-content' no encontrado.");
+        
+        const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL('image/png');
+        const imgHeight = (canvas.height * a4Width) / canvas.width;
+        
+        pdf.addImage(imgData, 'PNG', 0, 0, a4Width, imgHeight);
+        pdf.save(`Planilla_Relevamiento_${operationType}.pdf`);
+    } catch (error) {
+        console.error("Error generando planilla:", error);
+        alert("Error al generar la planilla PDF.");
+    } finally {
+        setIsGeneratingSurvey(false);
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
@@ -628,7 +652,7 @@ export default function EditTaylorCurvePage() {
     
     const calcCostWithBreakdown = (v: number, isPremium: boolean, feed: number) => {
         const C = isPremium ? constante_C_Seco : constante_C_Competidor;
-        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0, lifePcs: 0 };
+        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0, lifePcs: 0, hpReq: 0 };
     
         const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
         const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
@@ -649,7 +673,28 @@ export default function EditTaylorCurvePage() {
         const costoParada = piecesPerToolLife > 0 ? (safeToolChangeTime * safeMachineCostMin) / piecesPerToolLife : 0;
         
         const costoTotal = costoMaquina + costoInsertoPuro + costoParada;
-        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada, lifePcs: piecesPerToolLife };
+
+        let hpReq = 0;
+        const toolCode = isPremium ? toolNamePremium : toolNameCurrent;
+        const dc = isPremium ? (Number(dcPremium) || 0.0001) : (Number(dcCurrent) || 0.0001);
+        const ae = isPremium ? (Number(aePremium) || 0) : (Number(aeCurrent) || 0);
+
+        if (operationType === 'turning') {
+            const kw_base = (ap * feed * v * kc) / 60000;
+            hpReq = kw_base * 1.341 * obtenerFactorForma(toolCode) * obtenerFactorIncidencia(toolCode);
+        } else if (operationType === 'milling') {
+            const rpm = (v * 1000) / (Math.PI * dc);
+            const vf = feed * z * rpm;
+            const q = (ap * ae * vf) / 1000;
+            hpReq = ((q * kc) / 60000 * 1.341) / 0.8;
+        } else if (operationType === 'drilling') {
+            const rpm = (v * 1000) / (Math.PI * dc);
+            const vf = feed * rpm;
+            const q = (Math.PI * Math.pow(dc, 2) / 4) * vf / 1000;
+            hpReq = ((q * kc) / 60000 * 1.341) / 0.8;
+        }
+
+        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada, lifePcs: piecesPerToolLife, hpReq };
     };
 
     const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
@@ -668,11 +713,29 @@ export default function EditTaylorCurvePage() {
     
     let minPremiumCost = Infinity;
     let optimalSpeed = 0;
+    let hpLimitReached = false;
+
+    const limiteTermicoActual = isStressTestActive ? taylorProps.C * 1.05 : null;
 
     const data = sortedSpeeds.map(v => {
         const resActual = calcCostWithBreakdown(v, false, Number(feedCurrent) || 0.0001);
         const resPremium = calcCostWithBreakdown(v, true, Number(feedPremium) || 0.0001);
-        if (resPremium.costoTotal < minPremiumCost && resPremium.costoTotal > 0) { minPremiumCost = resPremium.costoTotal; optimalSpeed = v; }
+        
+        if (isStressTestActive && limiteTermicoActual && v >= limiteTermicoActual) {
+            // Falla térmica catastrófica (colapso de filo)
+            resActual.costoTotal = resActual.costoTotal * Math.pow((v / limiteTermicoActual), 6);
+        }
+        
+        const objHpExcedido = resPremium.hpReq > safeMachinePowerHP;
+
+        // Sólo actualizamos el óptimo si NO excede la potencia de la máquina.
+        if (!objHpExcedido && resPremium.costoTotal < minPremiumCost && resPremium.costoTotal > 0) { 
+            minPremiumCost = resPremium.costoTotal; 
+            optimalSpeed = v; 
+            hpLimitReached = false;
+        } else if (objHpExcedido && resPremium.costoTotal < minPremiumCost) {
+            hpLimitReached = true;
+        }
         
         const multZ_Act = operationType === 'milling' ? (Number(zCurrent)||1) : 1;
         const multZ_Prem = operationType === 'milling' ? (Number(zPremium)||1) : 1;
@@ -725,9 +788,9 @@ export default function EditTaylorCurvePage() {
     const hmCurrent = calcularEspesorViruta(operationType, feedCurrent, aeCurrent, dcCurrent, apCurrent, toolNameCurrent);
     const hmPremium = calcularEspesorViruta(operationType, feedPremium, aePremium, dcPremium, apPremium, toolNamePremium);
 
-    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost, desgloseActualReal, desglosePremiumReal, qCurrent, qPremium, hmCurrent, hmPremium };
+    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost, limitHpAlert: hpLimitReached, desgloseActualReal, desglosePremiumReal, qCurrent, qPremium, hmCurrent, hmPremium, limiteTermicoActual };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium, tcPremiumInput]);
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium, tcPremiumInput, isStressTestActive]);
 
   useEffect(() => {
     if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
@@ -823,18 +886,25 @@ export default function EditTaylorCurvePage() {
   const porcentajeAhorroSimulado = taylorBaseCost > 0 && simulationResult ? (((taylorBaseCost - simulationResult.newCost) / taylorBaseCost) * 100) : 0;
   
   const insightText = useMemo(() => {
-      const { velocidadOptimaSeco, costoOptimoSeco } = curveDataInfo;
+      const { velocidadOptimaSeco, costoOptimoSeco, limitHpAlert } = curveDataInfo;
       const numVcCurrent = Number(vcCurrent);
       if (!numVcCurrent || !velocidadOptimaSeco || !costoOptimoSeco) return null;
       
+      let mensajeBase = "";
       if (numVcCurrent < velocidadOptimaSeco) {
-          return `💡 Tu máquina está subutilizada. Si subimos la velocidad de ${numVcCurrent} a ${velocidadOptimaSeco} m/min con el inserto Seco, alcanzarás el costo mínimo absoluto de ${formatCurrency(costoOptimoSeco)} por pieza.`;
+          mensajeBase = `💡 Tu máquina está subutilizada. Si subimos la velocidad de ${numVcCurrent} a ${velocidadOptimaSeco} m/min con el inserto Seco, alcanzarás el costo mínimo absoluto de ${formatCurrency(costoOptimoSeco)} por pieza.`;
       } else if (numVcCurrent > velocidadOptimaSeco + 10) { 
-          return `⚠️ Estás quemando insertos. Bajando la velocidad a ${velocidadOptimaSeco} m/min con Seco, extenderás la vida útil drásticamente y bajarás tu costo a ${formatCurrency(costoOptimoSeco)}.`;
+          mensajeBase = `⚠️ Estás quemando insertos. Bajando la velocidad a ${velocidadOptimaSeco} m/min con Seco, extenderás la vida útil drásticamente y bajarás tu costo a ${formatCurrency(costoOptimoSeco)}.`;
       } else {
-          return `✅ ¡Estás muy cerca del punto óptimo! Mantener la velocidad alrededor de ${velocidadOptimaSeco} m/min te asegura la máxima eficiencia y rentabilidad.`;
+          mensajeBase = `✅ ¡Estás muy cerca del punto óptimo! Mantener la velocidad alrededor de ${velocidadOptimaSeco} m/min te asegura la máxima eficiencia y rentabilidad.`;
       }
-  }, [curveDataInfo, vcCurrent]);
+
+      if (limitHpAlert) {
+          mensajeBase += ` 🔴 Atención: La velocidad teórica más óptima fue limitada porque excedía los ${machinePowerHP} HP de tu máquina.`;
+      }
+
+      return mensajeBase;
+  }, [curveDataInfo, vcCurrent, machinePowerHP]);
 
   const unidadVidaUtil = lifeModePremium === 'minutos' ? 'minutos' : (operationType === 'drilling' ? 'agujeros' : 'pzas/filo');
 
@@ -842,7 +912,7 @@ export default function EditTaylorCurvePage() {
     return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
   }
   
-  const getHmColorClass = (hm) => {
+  const getHmColorClass = (hm: number) => {
     if (hm < 0.05) return "text-orange-500";
     if (hm > 0.25) return "text-red-600";
     return "text-emerald-600";
@@ -1237,6 +1307,19 @@ export default function EditTaylorCurvePage() {
                 </Button>
             </div>
           </div>
+          
+          <div className="md:col-span-1 border-t border-slate-200 mt-4 pt-4 flex flex-col justify-center">
+              <div className="flex items-center justify-between p-3 rounded-md bg-orange-50 border border-orange-200 shadow-sm">
+                  <div className="flex items-center space-x-2">
+                      <Flame className="h-5 w-5 text-orange-600" />
+                      <div className="flex flex-col">
+                          <Label htmlFor="stress-test" className="text-orange-900 font-bold">Simular Estrés Térmico</Label>
+                          <span className="text-[10px] text-orange-700 leading-tight mt-0.5 max-w-[250px]">Muestra en el gráfico cuándo la herramienta económica sufrirá una inestabilidad catastrófica.</span>
+                      </div>
+                  </div>
+                  <Switch id="stress-test" className="data-[state=checked]:bg-orange-600" checked={isStressTestActive} onCheckedChange={setIsStressTestActive} />
+              </div>
+          </div>
         </div>
 
         <Card>
@@ -1276,6 +1359,16 @@ export default function EditTaylorCurvePage() {
                             label={{ position: 'insideTopRight', value: '🔥 Óptimo', fill: '#10B981', fontSize: 10, fontWeight: 'bold' }} 
                           />
                         }
+
+                        {isStressTestActive && curveDataInfo.limiteTermicoActual && (
+                          <ReferenceLine
+                            x={curveDataInfo.limiteTermicoActual}
+                            stroke="#ea580c"
+                            strokeWidth={2}
+                            strokeDasharray="6 6"
+                            label={{ position: 'insideTopLeft', value: '⚠️ Falla Térmica Compe.', fill: '#ea580c', fontSize: 11, fontWeight: 'bold' }}
+                          />
+                        )}
                     </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -1738,6 +1831,9 @@ export default function EditTaylorCurvePage() {
                   <Line type="monotone" dataKey="costoPremium" name="Propuesta (Secocut)" stroke="#22c55e" strokeWidth={3} dot={false} />
                   {isFinite(curveDataInfo.actualCostCurrent) && <ReferenceDot x={Number(vcCurrent)} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />}
                   {isFinite(curveDataInfo.actualCostPremium) && <ReferenceDot x={Number(vcPremium)} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
+                  {isStressTestActive && curveDataInfo.limiteTermicoActual && (
+                    <ReferenceLine x={curveDataInfo.limiteTermicoActual} stroke="#ea580c" strokeWidth={1} strokeDasharray="4 4" label={{ position: 'insideTopLeft', value: '⚠️ Falla Térmica Compe.', fill: '#ea580c', fontSize: 9 }} />
+                  )}
                 </LineChart>
               </div>
             </div>
