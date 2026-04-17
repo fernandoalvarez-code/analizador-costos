@@ -16,8 +16,7 @@ import {
   getFilteredRowModel,
 } from "@tanstack/react-table";
 import { MoreHorizontal, PlusCircle, Search, Trash2, Eye, ChevronDown, ChevronRight, GripVertical, Edit, Share2 } from "lucide-react";
-import Link from "next/link";
-import { Firestore } from "firebase/firestore";
+import { Firestore, query, where } from "firebase/firestore";
 
 
 import { useCollection, useFirestore, useUser, useMemoFirebase, useDoc, doc, collection, deleteDocumentNonBlocking, User } from "@/firebase";
@@ -440,27 +439,38 @@ const CasesTableWrapper = () => {
   }, []);
 
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
   
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, `users/${user.uid}`);
   }, [firestore, user]);
 
-  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
   const isAdmin = userProfile?.role === 'admin';
 
   const casesCollectionRef = useMemoFirebase(() => {
     if (!firestore) return null;
-    return collection(firestore, `cuttingToolAnalyses`);
-  }, [firestore]);
+    
+    // Si todavía estamos determinando la identidad o el rol, no disparamos la query
+    if (userLoading || profileLoading) return null;
+    
+    // Si no hay usuario cargado (ej. cerrado sesión), devolver null para limpiar
+    if (!user) return null;
+
+    if (isAdmin) {
+      return collection(firestore, `cuttingToolAnalyses`);
+    } else {
+      return query(collection(firestore, `cuttingToolAnalyses`), where("userId", "==", user.uid));
+    }
+  }, [firestore, user, userLoading, profileLoading, isAdmin]);
 
   const { data: casesData, isLoading } = useCollection<CaseData>(casesCollectionRef);
 
   // 2. PROTECCIÓN DE RENDERIZADO
   // Si no está montado en el cliente, devolvemos un Skeleton o null.
-  // Esto evita el error "update on unmounted component".
-  if (!isMounted) {
+  // También mostramos Skeleton si el perfil está cargando para evitar picos visuales.
+  if (!isMounted || userLoading || profileLoading) {
     return (
       <Card>
         <CardContent className="p-4">
@@ -479,7 +489,7 @@ const CasesTableWrapper = () => {
 
   return (
     <CasesTable 
-      casesData={casesData || []} 
+      casesData={!user ? [] : (casesData || [])} 
       isLoading={isLoading} 
       user={user} 
       isAdmin={isAdmin} 
