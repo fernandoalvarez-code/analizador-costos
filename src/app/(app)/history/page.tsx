@@ -22,21 +22,44 @@ export default function HistoryPage() {
   const isAdmin = userProfile?.role === 'admin';
 
   const fetchSimulations = async () => {
+    // 1. Limpiar estado si no hay usuario (previniendo caché de sesión anterior)
     if (!user) {
-      if (!userLoading) setIsLoading(false);
+      if (!userLoading) {
+        setSimulations([]);
+        setIsLoading(false);
+      }
       return;
     }
+    
     setIsLoading(true);
     try {
-      const q = isAdmin
-        ? query(collection(db, "simulations"), orderBy("dateCreated", "desc"))
-        : query(collection(db, "simulations"), where("userId", "==", user.uid), orderBy("dateCreated", "desc"));
+      if (isAdmin) {
+        // Admin: trae todos los documentos ya ordenados desde Firestore
+        const q = query(collection(db, "simulations"), orderBy("dateCreated", "desc"));
+        const querySnapshot = await getDocs(q);
+        const data = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        setSimulations(data);
+      } else {
+        // Usuario Normal: trae solo los suyos.
+        // Hacemos el Where, pero omitimos el orderBy de Firestore para evitar errores 
+        // por falta de Composite Index en la base de datos para usuarios nuevos.
+        const q = query(collection(db, "simulations"), where("userId", "==", user.uid));
+        const querySnapshot = await getDocs(q);
+        const data = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         
-      const querySnapshot = await getDocs(q);
-      const data = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setSimulations(data);
+        // Ordenamos en memoria usando JavaScript (Descendente)
+        data.sort((a: any, b: any) => {
+          const timeA = a.dateCreated?.toMillis?.() || 0;
+          const timeB = b.dateCreated?.toMillis?.() || 0;
+          return timeB - timeA;
+        });
+        
+        setSimulations(data);
+      }
     } catch (error) {
       console.error("Error fetching history:", error);
+      // Limpiamos la tabla en caso de error para no mostrar basura
+      setSimulations([]);
     } finally {
       setIsLoading(false);
     }
