@@ -132,7 +132,7 @@ export default function SettingsPage() {
   }, [firestore, user]);
 
   const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
-  const isAdmin = userProfile?.role === 'admin';
+  const isAdmin = userProfile?.role === 'admin' && user?.email?.endsWith('@secocut.com');
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),

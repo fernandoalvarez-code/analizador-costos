@@ -17,6 +17,8 @@ import { useUser, useDoc, useFirestore, useMemoFirebase, doc } from "@/firebase"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
+import { useRouter } from "next/navigation";
+
 export default function NewSimulatorPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -26,7 +28,18 @@ export default function NewSimulatorPage() {
 
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!userLoading && user) {
+        if (!user.email?.endsWith('@secocut.com')) {
+            router.replace('/history');
+        }
+    }
+  }, [user, userLoading, router]);
+
+  if (userLoading || (user && !user.email?.endsWith('@secocut.com'))) return null;
 
   // --- Hooks para data y estado de conexión ---
   const settingsRef = useMemoFirebase(() => {

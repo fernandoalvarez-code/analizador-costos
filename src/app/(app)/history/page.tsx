@@ -19,7 +19,7 @@ export default function HistoryPage() {
     return firestoreDoc(db, 'users', user.uid);
   }, [user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<any>(userProfileRef);
-  const isAdmin = userProfile?.role === 'admin';
+  const isAdmin = userProfile?.role === 'admin' && user?.email?.endsWith('@secocut.com');
 
   const fetchSimulations = async () => {
     // 1. Limpiar estado si no hay usuario (previniendo caché de sesión anterior)

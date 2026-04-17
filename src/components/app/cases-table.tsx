@@ -448,7 +448,7 @@ const CasesTableWrapper = () => {
   }, [firestore, user]);
 
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
-  const isAdmin = userProfile?.role === 'admin';
+  const isAdmin = userProfile?.role === 'admin' && user?.email?.endsWith('@secocut.com');
 
   const casesCollectionRef = useMemoFirebase(() => {
     if (!firestore) return null;
