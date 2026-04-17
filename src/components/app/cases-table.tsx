@@ -16,6 +16,7 @@ import {
   getFilteredRowModel,
 } from "@tanstack/react-table";
 import { MoreHorizontal, PlusCircle, Search, Trash2, Eye, ChevronDown, ChevronRight, GripVertical, Edit, Share2 } from "lucide-react";
+import Link from "next/link";
 import { Firestore, query, where } from "firebase/firestore";
 
 
