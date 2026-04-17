@@ -1,7 +1,30 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useUser } from "@/firebase";
 import CaseStats from "@/components/app/case-stats";
 import CasesTableWrapper from "@/components/app/cases-table";
 
 export default function DashboardPage() {
+  const { user, loading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user) {
+        const isSecocutEmployee = user.email?.endsWith('@secocut.com');
+        if (!isSecocutEmployee) {
+            router.replace('/history');
+        }
+    }
+  }, [user, loading, router]);
+
+  const isSecocutEmployee = user?.email?.endsWith('@secocut.com');
+  
+  if (loading || !isSecocutEmployee) {
+      return null;
+  }
+
   return (
     <div className="container mx-auto space-y-8">
         <h1 className="text-3xl font-bold tracking-tight font-headline">

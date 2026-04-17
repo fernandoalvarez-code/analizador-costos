@@ -80,6 +80,13 @@ export default function AppHeader() {
   const pathname = usePathname();
   const firestore = useFirestore();
 
+  const isSecocutEmployee = user?.email?.endsWith('@secocut.com') ?? false;
+
+  const filteredMenuItems = menuItems.filter(item => {
+    if (isSecocutEmployee) return true;
+    return ['/history', '/taylor-curve'].includes(item.href);
+  });
+
   const notificationsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, "notifications"), orderBy("createdAt", "desc"), limit(5));
@@ -110,7 +117,7 @@ export default function AppHeader() {
             </Link>
 
             <nav className="hidden md:flex items-center gap-1">
-            {menuItems.map(item => {
+            {filteredMenuItems.map(item => {
                 const isActive = (pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href)));
                 return (
                 <Link 
@@ -230,7 +237,7 @@ export default function AppHeader() {
                       <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold mb-4">
                            <span className="text-xl font-black text-blue-700 tracking-tight uppercase">Secocut <span className="text-slate-800">SRL</span></span>
                       </Link>
-                      {menuItems.map(item => (
+                      {filteredMenuItems.map(item => (
                            <Link 
                               key={item.href}
                               href={item.href} 
