@@ -37,8 +37,9 @@ service cloud.firestore {
      * COLECCIÓN DE ANÁLISIS (CASOS)
      */
     match /cuttingToolAnalyses/{analysisId} {
-      // Cualquiera logueado puede leer (necesario para tu tabla pública interna)
-      allow get, list: if request.auth != null;
+      // Lectura (get, list): Solo si el usuario es admin o es el creador del documento.
+      allow read: if isRequestingUserAdmin() || 
+                    (request.auth != null && resource.data.userId == request.auth.uid);
       
       // Crear: Solo si el userId del documento coincide con el usuario logueado
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
