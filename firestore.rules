@@ -37,21 +37,7 @@ service cloud.firestore {
      * COLECCIÓN DE ANÁLISIS (CASOS)
      */
     match /cuttingToolAnalyses/{analysisId} {
-      // Lectura (get, list): Solo si el usuario es admin o es el creador del documento.
-      allow read: if isRequestingUserAdmin() || 
-                    (request.auth != null && resource.data.userId == request.auth.uid);
-      
-      // Crear: Solo si el userId del documento coincide con el usuario logueado
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      
-      // Actualizar: Dueño o Admin
-      // NOTA: request.resource.data es lo que ENVÍAS, resource.data es lo que YA EXISTE
-      allow update: if isRequestingUserAdmin() || 
-                    (request.auth != null && resource.data.userId == request.auth.uid);
-
-      // Eliminar: Dueño o Admin
-      allow delete: if isRequestingUserAdmin() || 
-                    (request.auth != null && resource.data.userId == request.auth.uid);
+      allow read, write: if request.auth != null;
     }
 
     /**

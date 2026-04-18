@@ -22,43 +22,36 @@ export default function HistoryPage() {
   const isAdmin = userProfile?.role === 'admin' && user?.email?.endsWith('@secocut.com');
 
   const fetchSimulations = async () => {
-    // 1. Limpiar estado si no hay usuario (previniendo caché de sesión anterior)
-    if (!user) {
-      if (!userLoading) {
-        setSimulations([]);
-        setIsLoading(false);
-      }
+    // COMPUERTA ESTRICTA Y EXTREMA
+    if (!user || !user.uid) {
+      setSimulations([]);
+      setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
     try {
-      if (isAdmin) {
-        // Admin: trae todos los documentos ya ordenados desde Firestore
-        const q = query(collection(db, "cuttingToolAnalyses"), orderBy("dateCreated", "desc"));
-        const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        setSimulations(data);
-      } else {
-        // Usuario Normal: trae solo los suyos.
-        // Hacemos el Where, pero omitimos el orderBy de Firestore para evitar errores 
-        // por falta de Composite Index en la base de datos para usuarios nuevos.
-        const q = query(collection(db, "cuttingToolAnalyses"), where("userId", "==", user.uid));
-        const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      console.log("🔒 [HISTORIAL] Disparando query segura para:", user.uid);
+      
+      // Forzamos la query ultra-segura para TODOS (admin o no admin) por ahora
+      const q = query(
+        collection(db, "cuttingToolAnalyses"), 
+        where("userId", "==", user.uid)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const data = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Ordenamos en memoria usando JavaScript (Descendente)
-        data.sort((a: any, b: any) => {
-          const timeA = a.dateCreated?.toMillis?.() || 0;
-          const timeB = b.dateCreated?.toMillis?.() || 0;
-          return timeB - timeA;
-        });
+      // Ordenamos en memoria usando JavaScript (Descendente)
+      data.sort((a: any, b: any) => {
+        const timeA = a.dateCreated?.toMillis?.() || 0;
+        const timeB = b.dateCreated?.toMillis?.() || 0;
+        return timeB - timeA;
+      });
 
-        setSimulations(data);
-      }
+      setSimulations(data);
     } catch (error) {
-      console.error("Error fetching history:", error);
-      // Limpiamos la tabla en caso de error para no mostrar basura
+      console.error("🔥 [HISTORIAL ERROR] Error fetch history:", error);
       setSimulations([]);
     } finally {
       setIsLoading(false);
