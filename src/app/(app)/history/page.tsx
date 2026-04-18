@@ -35,7 +35,7 @@ export default function HistoryPage() {
     try {
       if (isAdmin) {
         // Admin: trae todos los documentos ya ordenados desde Firestore
-        const q = query(collection(db, "simulations"), orderBy("dateCreated", "desc"));
+        const q = query(collection(db, "cuttingToolAnalyses"), orderBy("dateCreated", "desc"));
         const querySnapshot = await getDocs(q);
         const data = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         setSimulations(data);
@@ -43,7 +43,7 @@ export default function HistoryPage() {
         // Usuario Normal: trae solo los suyos.
         // Hacemos el Where, pero omitimos el orderBy de Firestore para evitar errores 
         // por falta de Composite Index en la base de datos para usuarios nuevos.
-        const q = query(collection(db, "simulations"), where("userId", "==", user.uid));
+        const q = query(collection(db, "cuttingToolAnalyses"), where("userId", "==", user.uid));
         const querySnapshot = await getDocs(q);
         const data = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
@@ -77,7 +77,7 @@ export default function HistoryPage() {
       const newStatus = sim.status === 'ok' ? 'pending' : 'ok';
 
       // Actualizamos solo en la colección actual del historial
-      await updateDoc(firestoreDoc(db, "simulations", sim.id), { status: newStatus });
+      await updateDoc(firestoreDoc(db, "cuttingToolAnalyses", sim.id), { status: newStatus });
 
       // Actualizamos el estado de la UI al instante sin tener que recargar toda la página
       setSimulations(prevSims =>
@@ -93,8 +93,8 @@ export default function HistoryPage() {
     if (!window.confirm(`¿Estás seguro de que deseas eliminar el análisis de "${clientName}"? Esta acción no se puede deshacer.`)) return;
 
     try {
-      // Usamos el nombre de la colección correcta: simulations
-      await deleteDoc(firestoreDoc(db, "simulations", id));
+      // Usamos el nombre de la colección correcta: cuttingToolAnalyses
+      await deleteDoc(firestoreDoc(db, "cuttingToolAnalyses", id));
 
       // Actualizamos el estado visualmente sin tener que recargar toda la página
       setSimulations(prevSims => prevSims.filter(sim => sim.id !== id));
