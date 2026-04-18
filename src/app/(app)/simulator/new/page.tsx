@@ -236,18 +236,27 @@ Adjunto el informe PDF completo con el fundamento técnico.`;
 
       const simulationData = {
         userId: user.uid,
+        
+        // --- Campos para la tabla Dashboard (cuttingToolAnalyses) ---
+        name: data.clientName ? `Simulación ${data.clientName}` : "Simulación de Competitividad",
+        cliente: data.clientName || "Sin Cliente",
+        operacion: "Mecanizado General",
+        material: "N/A",
+        roi: 0, // Fallback obligatorio para evitar ruptura en Dashboard
+
+        // --- Campos para la tabla Historial original y comunes ---
         clientName: data.clientName || "Sin Cliente",
-        caseName: "Simulación de Costos",
+        caseName: data.clientName ? `Simulación ${data.clientName}` : "Simulación de Competitividad",
         annualSavings: ahorroPieza,
         pdfUrl: pdfUrl,
-        status: "pending",
+        status: "Pendiente", // Capitalizado para 'CaseData' de casos
         dateCreated: serverTimestamp(),
-        date: serverTimestamp(), // retrocompatibilidad
+        date: serverTimestamp(),
         results: results,
         inputs: data,
       };
 
-      await addDoc(collection(firestore, "simulations"), simulationData);
+      await addDoc(collection(firestore, "cuttingToolAnalyses"), simulationData);
 
       toast({ title: "Simulación Guardada", description: "La simulación ha sido guardada en el historial con su reporte PDF." });
       // Removemos form.reset() para no perder la info en la vista actual tras guardar
