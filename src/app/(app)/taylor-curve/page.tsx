@@ -470,12 +470,23 @@ export default function TaylorCurvePage() {
 
         const docData = {
             userId: user.uid,
+            
+            // --- Campos de la tabla Dashboard (cuttingToolAnalyses) ---
+            name: saveCaseName,
+            cliente: saveClientName || "Sin Cliente",
+            operacion: operationType || "N/A",
+            material: materialId || "N/A",
+            pieza: pieceName || "",
+            roi: 0,
+            status: "Pendiente",
+
+            // --- Campos de la tabla Historial y generales ---
             clientName: saveClientName,
             caseName: saveCaseName,
             annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction) || 0)) * 12,
             pdfUrl: pdfUrl,
-            status: "pending",
             dateCreated: serverTimestamp(),
+            date: serverTimestamp(),
             taylorInputs: {
               operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, profundidadAgujero,
               monthlyProduction, lifeModeCurrent, lifeModePremium,
@@ -484,7 +495,7 @@ export default function TaylorCurvePage() {
             },
         };
         
-        await addDoc(collection(db, "analisis_costos"), docData);
+        await addDoc(collection(db, "cuttingToolAnalyses"), docData);
         
         alert(`Análisis "${saveCaseName}" guardado correctamente.`);
         setIsSaveModalOpen(false);
