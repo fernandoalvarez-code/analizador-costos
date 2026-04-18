@@ -30,7 +30,7 @@ export default function HistoryPage() {
       }
       return;
     }
-    
+
     setIsLoading(true);
     try {
       if (isAdmin) {
@@ -46,14 +46,14 @@ export default function HistoryPage() {
         const q = query(collection(db, "simulations"), where("userId", "==", user.uid));
         const querySnapshot = await getDocs(q);
         const data = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        
+
         // Ordenamos en memoria usando JavaScript (Descendente)
         data.sort((a: any, b: any) => {
           const timeA = a.dateCreated?.toMillis?.() || 0;
           const timeB = b.dateCreated?.toMillis?.() || 0;
           return timeB - timeA;
         });
-        
+
         setSimulations(data);
       }
     } catch (error) {
@@ -75,12 +75,12 @@ export default function HistoryPage() {
     try {
       // Alternamos entre 'ok' y 'pending' (por defecto si no tiene, asume 'pending')
       const newStatus = sim.status === 'ok' ? 'pending' : 'ok';
-      
+
       // Actualizamos solo en la colección actual del historial
       await updateDoc(firestoreDoc(db, "simulations", sim.id), { status: newStatus });
-      
+
       // Actualizamos el estado de la UI al instante sin tener que recargar toda la página
-      setSimulations(prevSims => 
+      setSimulations(prevSims =>
         prevSims.map(s => s.id === sim.id ? { ...s, status: newStatus } : s)
       );
     } catch (error) {
@@ -95,7 +95,7 @@ export default function HistoryPage() {
     try {
       // Usamos el nombre de la colección correcta: simulations
       await deleteDoc(firestoreDoc(db, "simulations", id));
-      
+
       // Actualizamos el estado visualmente sin tener que recargar toda la página
       setSimulations(prevSims => prevSims.filter(sim => sim.id !== id));
       alert("Análisis eliminado correctamente.");
@@ -138,8 +138,8 @@ export default function HistoryPage() {
                       {sim.dateCreated ? new Date(sim.dateCreated.toDate()).toLocaleDateString('es-ES') : 'N/A'}
                     </td>
                     <td className="p-4 font-bold">
-                      <span 
-                        onClick={() => router.push(`/taylor-curve/${sim.id}/edit`)} 
+                      <span
+                        onClick={() => router.push(`/taylor-curve/${sim.id}/edit`)}
                         className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
                         title="Clic para abrir y editar este informe"
                       >
@@ -151,35 +151,34 @@ export default function HistoryPage() {
                       {formatCurrency(sim.annualSavings)}
                     </td>
                     <td className="p-4 flex items-center justify-end gap-2">
-                       <Button 
-                        onClick={() => router.push(`/taylor-curve/${sim.id}/edit`)} 
-                        variant="outline" 
+                      <Button
+                        onClick={() => router.push(`/taylor-curve/${sim.id}/edit`)}
+                        variant="outline"
                         size="sm"
                         className="flex items-center gap-1"
                       >
                         <Edit className="h-3 w-3" /> Editar
                       </Button>
-                      
+
                       {sim.pdfUrl && (
                         <a href={sim.pdfUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-bold transition-colors flex items-center gap-1">
                           📄 PDF
                         </a>
                       )}
-                      
-                      <button 
-                        onClick={() => handleToggleStatus(sim)} 
-                        className={`px-3 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1 shadow-sm border ${
-                          sim.status === 'ok' 
-                            ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200' 
+
+                      <button
+                        onClick={() => handleToggleStatus(sim)}
+                        className={`px-3 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1 shadow-sm border ${sim.status === 'ok'
+                            ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
                             : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'
-                        }`}
+                          }`}
                         title="Haz clic para cambiar el estado"
                       >
                         {sim.status === 'ok' ? '✅ Análisis OK' : '⏳ Pendiente'}
                       </button>
 
-                      <button 
-                        onClick={() => handleDeleteAnalysis(sim.id, sim.clientName)} 
+                      <button
+                        onClick={() => handleDeleteAnalysis(sim.id, sim.clientName)}
                         className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded text-xs font-bold transition-colors flex items-center gap-1 shadow-sm ml-1"
                         title="Eliminar este análisis"
                       >
