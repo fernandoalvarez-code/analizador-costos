@@ -495,13 +495,14 @@ export default function TaylorCurvePage() {
             },
         };
         
-        await addDoc(collection(db, "cuttingToolAnalyses"), docData);
+        const docRef = await addDoc(collection(db, "cuttingToolAnalyses"), docData);
+        console.log("🔥 [TAYLOR] Documento real guardado en Firestore con ID:", docRef.id);
         
         alert(`Análisis "${saveCaseName}" guardado correctamente.`);
         setIsSaveModalOpen(false);
 
     } catch (error) {
-        console.error("Error al guardar en Firebase: ", error);
+        console.error("🔥 [TAYLOR ERROR] Error real de Firebase al guardar:", error);
         alert(`Error al guardar. ${error instanceof Error ? error.message : 'Error desconocido'}`);
     } finally {
         setIsSaving(false);
