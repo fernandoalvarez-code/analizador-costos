@@ -1129,20 +1129,23 @@ export default function TaylorCurvePage() {
                 {operationType === 'drilling' && (
                     <div className="col-span-2">
                         <Label className="block text-xs font-bold text-slate-500 mb-1">Profundidad del Agujero (mm)</Label>
-                        <Input type="number" className="bg-white text-slate-900 border-slate-200" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value)} />
+                        <Input type="number" min="0" className="bg-white text-slate-900 border-slate-200 transition-colors focus:border-blue-400" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value)} />
+                        <p className="text-[9px] text-slate-400 mt-0.5">Ratio L/D</p>
                     </div>
                 )}
                 <div>
                   <Label className="block text-xs font-bold text-blue-700 mb-1">Motor (HP)</Label>
-                  <Input type="number" step="0.5" className="font-bold text-blue-700 bg-blue-50 text-slate-900 border-blue-200" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value)} />
+                  <Input type="number" step="0.5" min="0" className="font-bold text-blue-700 bg-blue-50 text-slate-900 border-blue-200 transition-colors focus:border-blue-400" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value)} />
                 </div>
                  <div>
                   <Label className="block text-xs font-bold text-slate-500 mb-1">Costo Máq. ($/hr)</Label>
-                  <Input type="number" className="bg-white text-slate-900 border-slate-200" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value)} />
+                  <Input type="number" min="0" className="bg-white text-slate-900 border-slate-200 transition-colors focus:border-blue-400" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value)} />
+                  <p className="text-[9px] text-slate-400 mt-0.5">Usual: $30 - $120</p>
                 </div>
                 <div>
                   <Label className="block text-xs font-bold text-slate-500 mb-1">Cambio (min)</Label>
-                  <Input type="number" className="bg-white text-slate-900 border-slate-200" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value)} />
+                  <Input type="number" min="0" step="0.5" className="bg-white text-slate-900 border-slate-200 transition-colors focus:border-blue-400" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value)} />
+                  <p className="text-[9px] text-slate-400 mt-0.5">Rápido: 0.5 - 5 min</p>
                 </div>
               </div>
             </div>
@@ -1150,15 +1153,15 @@ export default function TaylorCurvePage() {
             <div className="mt-6 pt-5 border-t border-slate-100">
               <Label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wide">📦 Escala Comercial</Label>
               <div className="relative">
-                <Input type="number" placeholder="0" className="w-full text-lg font-black text-blue-700 pl-4 pr-16 h-12 bg-slate-50 text-slate-900" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value)} />
+                <Input type="number" min="0" placeholder="0" className="w-full text-lg font-black text-blue-700 pl-4 pr-16 h-12 bg-slate-50 text-slate-900 transition-colors focus:border-blue-400" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value)} />
                 <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400">pzs/mes</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-red-50/30 p-5 rounded-xl border border-red-100 flex flex-col h-full relative overflow-hidden">
+          <div className="bg-red-50/30 p-5 rounded-xl border border-red-100 flex flex-col h-full relative overflow-hidden transition-shadow hover:shadow-md">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-red-500"></div>
-            <h2 className="font-black text-red-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🔴 Condición Actual</h2>
+            <h2 className="font-black text-red-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🔴 Condición Actual (Taller)</h2>
             
             <div className="grid grid-cols-2 gap-4 flex-grow">
               <div className="col-span-2">
@@ -1170,26 +1173,26 @@ export default function TaylorCurvePage() {
                     </div>
                 )}
               </div>
-              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value)} /></div>
-              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 4" className="border-red-200 bg-white text-slate-900" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value)} /></div>
+              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Costo Inserto ($)</Label><Input type="number" min="0" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value)} /></div>
+              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label><Input type="number" min="1" placeholder="Ej: 4" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value)} /></div>
               
               {operationType === 'milling' || operationType === 'drilling' ? (
-                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Dc Fresa (mm)' : 'Dc Broca (mm)'}</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={dcCurrent} onChange={e => setDcCurrent(e.target.value)} /></div>
+                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Dc Fresa (mm)' : 'Dc Broca (mm)'}</Label><Input type="number" min="0" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={dcCurrent} onChange={e => setDcCurrent(e.target.value)} /></div>
               ) : null}
 
               {operationType === 'milling' ? (
                 <>
-                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Ancho (ae) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={aeCurrent} onChange={e => setAeCurrent(e.target.value)} /></div>
-                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div>
-                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={zCurrent} onChange={e => setZCurrent(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Ancho (ae) mm</Label><Input type="number" min="0" step="0.1" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={aeCurrent} onChange={e => setAeCurrent(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. (ap) mm</Label><Input type="number" min="0" step="0.1" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Dientes (Z)</Label><Input type="number" min="1" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={zCurrent} onChange={e => setZCurrent(e.target.value)} /></div>
                 </>
               ) : operationType === 'turning' ? (
-                 <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div>
+                 <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" min="0" step="0.1" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div>
               ) : null}
 
               <div>
                   <Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}</Label>
-                  <Input type="number" step="0.01" className="border-red-200 bg-white text-slate-900" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value)} />
+                  <Input type="number" min="0" step="0.01" className="border-red-200 bg-white text-slate-900 font-mono transition-colors focus:border-red-400" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value)} />
                   {raActual && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
                           Acabado (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
@@ -1210,7 +1213,8 @@ export default function TaylorCurvePage() {
                   )}
               </div>
               
-              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={vcCurrent} onChange={e => setVcCurrent(e.target.value)} /></div>
+              
+              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label><Input type="number" min="0" className="border-red-200 bg-white text-slate-900 font-mono transition-colors focus:border-red-400" value={vcCurrent} onChange={e => setVcCurrent(e.target.value)} /></div>
               
               <div className="col-span-2 grid grid-cols-2 gap-2">
                 <div>
@@ -1225,13 +1229,13 @@ export default function TaylorCurvePage() {
                 </div>
                 <div>
                   <Label className="block text-[10px] font-bold text-red-600 mb-1">Rendimiento</Label>
-                  <Input type="number" className="border-red-200 bg-white text-slate-900 h-9" placeholder="Ej: 120" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value)} />
+                  <Input type="number" min="0" className="border-red-200 bg-white text-slate-900 h-9 transition-colors focus:border-red-400" placeholder="Ej: 120" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value)} />
                 </div>
               </div>
               
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-red-700 mb-1">Tiempo Actual (min decimales)</Label>
-                <Input type="number" step="0.01" className="border-red-300 font-bold bg-white text-slate-900 disabled:bg-slate-100" placeholder="Ej: 7.0" value={tcCurrent} onChange={e => setTcCurrent(e.target.value)} disabled={operationType === 'drilling'} />
+                <Input type="number" min="0" step="0.01" className="border-red-300 font-bold bg-white text-slate-900 disabled:bg-slate-100 font-mono transition-colors focus:border-red-400" placeholder="Ej: 7.0" value={tcCurrent} onChange={e => setTcCurrent(e.target.value)} disabled={operationType === 'drilling'} />
               </div>
             </div>
             {operationType === 'turning' && warningCurrent && (
