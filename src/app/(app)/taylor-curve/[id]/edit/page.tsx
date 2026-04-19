@@ -253,7 +253,7 @@ export default function EditTaylorCurvePage() {
   const params = useParams();
   const id = params.id as string;
 
-  const docRef = useMemoFirebase(() => doc(db, 'analisis_costos', id), [id]);
+  const docRef = useMemoFirebase(() => doc(db, 'cuttingToolAnalyses', id), [id]);
   const { data: initialData, isLoading } = useDoc<any>(docRef);
 
   const [logos, setLogos] = useState({ company: '', brand: '' });
