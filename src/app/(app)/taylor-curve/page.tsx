@@ -1176,15 +1176,15 @@ export default function TaylorCurvePage() {
               <Label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wide">📦 Escala Comercial</Label>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="relative col-span-1 md:col-span-2">
-                  <Input type="number" min="0" placeholder="0" className="w-full text-base font-black text-blue-700 pl-3 pr-14 h-11 bg-slate-50 text-slate-900 transition-colors focus:border-blue-400" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value)} />
+                  <Input type="number" min="0" placeholder="0" className="w-full text-base font-black text-blue-700 pl-3 pr-14 h-11 bg-slate-50 text-slate-900 transition-colors focus:border-blue-400" value={monthlyProduction} onChange={(e) => setMonthlyProduction(e.target.value)} />
                   <span className="absolute right-3 top-3 text-[10px] font-bold text-slate-400 uppercase">Pzs/Mes</span>
                 </div>
                 <div className="relative">
-                  <Input type="number" min="1" max="24" className="w-full text-base font-bold pl-3 pr-12 h-11 bg-white text-slate-900 transition-colors focus:border-blue-400" value={horasPorTurno} onChange={e => setHorasPorTurno(e.target.value)} />
+                  <Input type="number" min="1" max="24" className="w-full text-base font-bold pl-3 pr-12 h-11 bg-white text-slate-900 transition-colors focus:border-blue-400" value={horasPorTurno} onChange={(e) => setHorasPorTurno(e.target.value ? Number(e.target.value) : '')} />
                   <span className="absolute right-3 top-3 text-[10px] font-bold text-slate-400 uppercase">Hrs/Trn</span>
                 </div>
                 <div className="relative">
-                  <Input type="number" min="1" max="5" className="w-full text-base font-bold pl-3 pr-12 h-11 bg-white text-slate-900 transition-colors focus:border-blue-400" value={turnosPorDia} onChange={e => setTurnosPorDia(e.target.value)} />
+                  <Input type="number" min="1" max="5" className="w-full text-base font-bold pl-3 pr-12 h-11 bg-white text-slate-900 transition-colors focus:border-blue-400" value={turnosPorDia} onChange={(e) => setTurnosPorDia(e.target.value ? Number(e.target.value) : '')} />
                   <span className="absolute right-3 top-3 text-[10px] font-bold text-slate-400 uppercase">Trns/Día</span>
                 </div>
               </div>
