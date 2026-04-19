@@ -128,7 +128,11 @@ export default function HistoryPage() {
                 simulations.map((sim) => (
                   <tr key={sim.id} className="hover:bg-slate-50 transition-colors">
                     <td className="p-4 text-slate-600">
-                      {sim.dateCreated ? new Date(sim.dateCreated.toDate()).toLocaleDateString('es-ES') : 'N/A'}
+                      {sim.dateCreated?.toDate 
+                        ? new Date(sim.dateCreated.toDate()).toLocaleDateString('es-ES') 
+                        : sim.dateCreated 
+                          ? new Date(sim.dateCreated).toLocaleDateString('es-ES') 
+                          : 'N/A'}
                     </td>
                     <td className="p-4 font-bold">
                       <span
