@@ -23,8 +23,13 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 
+import { useUser } from '@/firebase';
+
 export default function AppNav() {
   const pathname = usePathname();
+  const { user } = useUser();
+
+  const isSecocutUser = user?.email?.endsWith('@secocut.com') ?? false;
 
   const menuItems = [
     {
@@ -52,12 +57,12 @@ export default function AppNav() {
       label: 'Curva de Costos',
       icon: TrendingUp,
     },
-    // {
-    //   href: '/insights',
-    //   label: 'Perspectivas de IA',
-    //   icon: BrainCircuit,
-    // },
   ];
+
+  const filteredMenuItems = menuItems.filter(item => {
+    if (isSecocutUser) return true;
+    return ['/history', '/taylor-curve'].includes(item.href);
+  });
 
   return (
     <>
@@ -73,7 +78,7 @@ export default function AppNav() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          {menuItems.map(item => (
+          {filteredMenuItems.map(item => (
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild

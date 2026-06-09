@@ -1,0 +1,19 @@
+
+=== Deploying to 'studio-1546170521-5d9b0'...
+
+i  deploying apphosting
+i  apphosting: Found backend(s) studio
+i  apphosting: Zipped source for backend studio
+i  apphosting: Uploading source for backend studio...
+i  apphosting: Uploaded at gs://firebaseapphosting-sources-390176636803-us-central1/studio--3452-kii6egAqHSzg-.zip
+i  apphosting: You may also track the rollout(s) at:
+	https://console.firebase.google.com/project/studio-1546170521-5d9b0/apphosting
+- Starting rollout(s) for backend(s) studio; this may take a few minutes. It's safe to exit now.
+
+✔  apphosting: Rollout for backend studio complete!
+✔  apphosting: Your backend is now deployed at:
+	https://studio--studio-1546170521-5d9b0.us-central1.hosted.app
+
+✔  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/studio-1546170521-5d9b0/overview

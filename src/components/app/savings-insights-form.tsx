@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useFormStatus, useActionState } from "react";
+import { useFormStatus, useFormState } from "react-dom";
 import * as z from "zod";
 import React from "react";
 import { Sparkles } from "lucide-react";
@@ -32,7 +32,7 @@ function SubmitButton() {
 }
 
 export default function SavingsInsightsForm() {
-  const [state, formAction] = useActionState(getSavingsSuggestions, { message: "", error: false });
+  const [state, formAction] = useFormState(getSavingsSuggestions, { message: "", error: false });
 
   const form = useForm<z.infer<typeof SavingsInsightsSchema>>({
     resolver: zodResolver(SavingsInsightsSchema),

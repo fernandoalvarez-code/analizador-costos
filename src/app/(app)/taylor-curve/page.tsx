@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectGroup, SelectLabel, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, Info, Share2, FileText, Wand2, ArrowLeft, Download } from 'lucide-react';
+import { TrendingUp, Info, Share2, FileText, Wand2, ArrowLeft, Download, Flame, AlertTriangle } from 'lucide-react';
 import { formatCurrency, formatNumber, formatoMinutosYSegundos } from '@/lib/formatters';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -18,6 +18,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Loader2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { MonthlySavingsSummary } from '@/components/calculator/MonthlySavingsSummary';
 
 
@@ -52,7 +55,7 @@ const CALIDADES_SECO = {
   "MS2050": { tipo: "PVD", aplicacion: "Inox / Titanio", desc: "Grado de alta tenacidad" }
 };
 
-const dataDoubleTurbo = {
+const dataDoubleTurbo: Record<string, Record<string, Record<string, number>>> = {
     "ISO P": {
         "ME10": { base: 0.14, medio: 0.16, fino: 0.24 },
         "M12":  { base: 0.16, medio: 0.18, fino: 0.28 }
@@ -68,7 +71,7 @@ const dataDoubleTurbo = {
     }
 };
 
-const calcularFzSugerido = (ae, dc, materialSMG, rompeviruta) => {
+const calcularFzSugerido = (ae: number | string, dc: number | string, materialSMG: string, rompeviruta: string) => {
   const ratio = (Number(ae) / Number(dc));
   if(isNaN(ratio) || ratio <= 0) return null;
 
@@ -231,6 +234,8 @@ export default function TaylorCurvePage() {
   const { user } = useUser();
   const router = useRouter();
 
+  const isInternalUser = user?.email?.endsWith('@secocut.com') || false;
+
   const [logos, setLogos] = useState({ company: '', brand: '' });
 
   const [operationType, setOperationType] = useState<'turning' | 'milling' | 'drilling'>('turning');
@@ -268,6 +273,8 @@ export default function TaylorCurvePage() {
   const [aePremium, setAePremium] = useState<string | number>("");
 
   const [monthlyProduction, setMonthlyProduction] = useState<string | number>(0);
+  const [horasPorTurno, setHorasPorTurno] = useState<string | number>(8);
+  const [turnosPorDia, setTurnosPorDia] = useState<string | number>(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [saveCaseName, setSaveCaseName] = useState("");
@@ -290,8 +297,39 @@ export default function TaylorCurvePage() {
   const [taylorBaseCost, setTaylorBaseCost] = useState(0);
   const [targetSavings, setTargetSavings] = useState<string | number>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isStressTestActive, setIsStressTestActive] = useState(false);
 
   const [hoveredData, setHoveredData] = useState<any | null>(null);
+
+  const [suggestedCuttingData, setSuggestedCuttingData] = useState<{ap: string, fz: string, vc: string, notes: string} | null>(null);
+  const [isFetchingCuttingData, setIsFetchingCuttingData] = useState(false);
+
+  useEffect(() => {
+    const isReadyForSuggestion = materialId && toolNamePremium && toolNamePremium.length > 2;
+    if (!isReadyForSuggestion) {
+      setSuggestedCuttingData(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsFetchingCuttingData(true);
+      try {
+        const response = await fetch('/api/suggest-cutting-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ material: materialId, quality: '', toolDesc: toolNamePremium })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data) setSuggestedCuttingData(data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching cutting data:", error);
+      } finally {
+        setIsFetchingCuttingData(false);
+      }
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [materialId, toolNamePremium]);
 
   useEffect(() => {
     setIsLoading(false);
@@ -436,27 +474,39 @@ export default function TaylorCurvePage() {
 
         const docData = {
             userId: user.uid,
+            
+            // --- Campos de la tabla Dashboard (cuttingToolAnalyses) ---
+            name: saveCaseName,
+            cliente: saveClientName || "Sin Cliente",
+            operacion: operationType || "N/A",
+            material: materialId || "N/A",
+            pieza: pieceName || "",
+            roi: 0,
+            status: "Pendiente",
+
+            // --- Campos de la tabla Historial y generales ---
             clientName: saveClientName,
             caseName: saveCaseName,
             annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction) || 0)) * 12,
             pdfUrl: pdfUrl,
-            status: "pending",
             dateCreated: serverTimestamp(),
+            date: serverTimestamp(),
             taylorInputs: {
               operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, profundidadAgujero,
-              monthlyProduction, lifeModeCurrent, lifeModePremium,
+              monthlyProduction, horasPorTurno, turnosPorDia, lifeModeCurrent, lifeModePremium,
               toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrent, zCurrent, edgesCurrent, dcCurrent, aeCurrent,
               toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, tcPremiumInput, zPremium, edgesPremium, dcPremium, aePremium,
             },
         };
         
-        await addDoc(collection(db, "analisis_costos"), docData);
+        const docRef = await addDoc(collection(db, "cuttingToolAnalyses"), docData);
+        console.log("🔥 [TAYLOR] Documento real guardado en Firestore con ID:", docRef.id);
         
         alert(`Análisis "${saveCaseName}" guardado correctamente.`);
         setIsSaveModalOpen(false);
 
     } catch (error) {
-        console.error("Error al guardar en Firebase: ", error);
+        console.error("🔥 [TAYLOR ERROR] Error real de Firebase al guardar:", error);
         alert(`Error al guardar. ${error instanceof Error ? error.message : 'Error desconocido'}`);
     } finally {
         setIsSaving(false);
@@ -707,7 +757,7 @@ export default function TaylorCurvePage() {
     
     const calcCostWithBreakdown = (v: number, isPremium: boolean, feed: number) => {
         const C = isPremium ? constante_C_Seco : constante_C_Competidor;
-        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0, lifePcs: 0 };
+        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0, lifePcs: 0, hpReq: 0 };
     
         const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
         const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
@@ -728,7 +778,28 @@ export default function TaylorCurvePage() {
         const costoParada = piecesPerToolLife > 0 ? (safeToolChangeTime * safeMachineCostMin) / piecesPerToolLife : 0;
         
         const costoTotal = costoMaquina + costoInsertoPuro + costoParada;
-        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada, lifePcs: piecesPerToolLife };
+
+        let hpReq = 0;
+        const toolCode = isPremium ? toolNamePremium : toolNameCurrent;
+        const dc = isPremium ? (Number(dcPremium) || 0.0001) : (Number(dcCurrent) || 0.0001);
+        const ae = isPremium ? (Number(aePremium) || 0) : (Number(aeCurrent) || 0);
+
+        if (operationType === 'turning') {
+            const kw_base = (ap * feed * v * kc) / 60000;
+            hpReq = kw_base * 1.341 * obtenerFactorForma(toolCode) * obtenerFactorIncidencia(toolCode);
+        } else if (operationType === 'milling') {
+            const rpm = (v * 1000) / (Math.PI * dc);
+            const vf = feed * z * rpm;
+            const q = (ap * ae * vf) / 1000;
+            hpReq = ((q * kc) / 60000 * 1.341) / 0.8;
+        } else if (operationType === 'drilling') {
+            const rpm = (v * 1000) / (Math.PI * dc);
+            const vf = feed * rpm;
+            const q = (Math.PI * Math.pow(dc, 2) / 4) * vf / 1000;
+            hpReq = ((q * kc) / 60000 * 1.341) / 0.8;
+        }
+
+        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada, lifePcs: piecesPerToolLife, hpReq };
     };
 
     const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
@@ -747,11 +818,29 @@ export default function TaylorCurvePage() {
     
     let minPremiumCost = Infinity;
     let optimalSpeed = 0;
+    let hpLimitReached = false;
+
+    const limiteTermicoActual = isStressTestActive ? taylorProps.C * 1.05 : null;
 
     const data = sortedSpeeds.map(v => {
         const resActual = calcCostWithBreakdown(v, false, Number(feedCurrent) || 0.0001);
         const resPremium = calcCostWithBreakdown(v, true, Number(feedPremium) || 0.0001);
-        if (resPremium.costoTotal < minPremiumCost && resPremium.costoTotal > 0) { minPremiumCost = resPremium.costoTotal; optimalSpeed = v; }
+        
+        if (isStressTestActive && limiteTermicoActual && v >= limiteTermicoActual) {
+            // Falla térmica catastrófica (colapso de filo)
+            resActual.costoTotal = resActual.costoTotal * Math.pow((v / limiteTermicoActual), 6);
+        }
+        
+        const objHpExcedido = resPremium.hpReq > safeMachinePowerHP;
+
+        // Sólo actualizamos el óptimo si NO excede la potencia de la máquina.
+        if (!objHpExcedido && resPremium.costoTotal < minPremiumCost && resPremium.costoTotal > 0) { 
+            minPremiumCost = resPremium.costoTotal; 
+            optimalSpeed = v; 
+            hpLimitReached = false;
+        } else if (objHpExcedido && resPremium.costoTotal < minPremiumCost) {
+            hpLimitReached = true;
+        }
         
         const multZ_Act = operationType === 'milling' ? (Number(zCurrent)||1) : 1;
         const multZ_Prem = operationType === 'milling' ? (Number(zPremium)||1) : 1;
@@ -804,9 +893,9 @@ export default function TaylorCurvePage() {
     const hmCurrent = calcularEspesorViruta(operationType, feedCurrent, aeCurrent, dcCurrent, apCurrent, toolNameCurrent);
     const hmPremium = calcularEspesorViruta(operationType, feedPremium, aePremium, dcPremium, apPremium, toolNamePremium);
 
-    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost, desgloseActualReal, desglosePremiumReal, qCurrent, qPremium, hmCurrent, hmPremium };
+    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost, limitHpAlert: hpLimitReached, desgloseActualReal, desglosePremiumReal, qCurrent, qPremium, hmCurrent, hmPremium, limiteTermicoActual };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium, tcPremiumInput]);
+  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium, tcPremiumInput, isStressTestActive]);
 
   useEffect(() => {
     if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
@@ -902,18 +991,25 @@ export default function TaylorCurvePage() {
   const porcentajeAhorroSimulado = taylorBaseCost > 0 && simulationResult ? (((taylorBaseCost - simulationResult.newCost) / taylorBaseCost) * 100) : 0;
   
   const insightText = useMemo(() => {
-      const { velocidadOptimaSeco, costoOptimoSeco } = curveDataInfo;
+      const { velocidadOptimaSeco, costoOptimoSeco, limitHpAlert } = curveDataInfo;
       const numVcCurrent = Number(vcCurrent);
       if (!numVcCurrent || !velocidadOptimaSeco || !costoOptimoSeco) return null;
       
+      let mensajeBase = "";
       if (numVcCurrent < velocidadOptimaSeco) {
-          return `💡 Tu máquina está subutilizada. Si subimos la velocidad de ${numVcCurrent} a ${velocidadOptimaSeco} m/min con el inserto Seco, alcanzarás el costo mínimo absoluto de ${formatCurrency(costoOptimoSeco)} por pieza.`;
+          mensajeBase = `💡 Tu máquina está subutilizada. Si subimos la velocidad de ${numVcCurrent} a ${velocidadOptimaSeco} m/min con el inserto Seco, alcanzarás el costo mínimo absoluto de ${formatCurrency(costoOptimoSeco)} por pieza.`;
       } else if (numVcCurrent > velocidadOptimaSeco + 10) { 
-          return `⚠️ Estás quemando insertos. Bajando la velocidad a ${velocidadOptimaSeco} m/min con Seco, extenderás la vida útil drásticamente y bajarás tu costo a ${formatCurrency(costoOptimoSeco)}.`;
+          mensajeBase = `⚠️ Estás quemando insertos. Bajando la velocidad a ${velocidadOptimaSeco} m/min con Seco, extenderás la vida útil drásticamente y bajarás tu costo a ${formatCurrency(costoOptimoSeco)}.`;
       } else {
-          return `✅ ¡Estás muy cerca del punto óptimo! Mantener la velocidad alrededor de ${velocidadOptimaSeco} m/min te asegura la máxima eficiencia y rentabilidad.`;
+          mensajeBase = `✅ ¡Estás muy cerca del punto óptimo! Mantener la velocidad alrededor de ${velocidadOptimaSeco} m/min te asegura la máxima eficiencia y rentabilidad.`;
       }
-  }, [curveDataInfo, vcCurrent]);
+
+      if (limitHpAlert) {
+          mensajeBase += ` 🔴 Atención: La velocidad teórica más óptima fue limitada porque excedía los ${machinePowerHP} HP de tu máquina.`;
+      }
+
+      return mensajeBase;
+  }, [curveDataInfo, vcCurrent, machinePowerHP]);
 
   const unidadVidaUtil = lifeModePremium === 'minutos' ? 'minutos' : (operationType === 'drilling' ? 'agujeros' : 'pzas/filo');
 
@@ -921,7 +1017,7 @@ export default function TaylorCurvePage() {
     return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
   }
   
-  const getHmColorClass = (hm) => {
+  const getHmColorClass = (hm: number) => {
     if (hm < 0.05) return "text-orange-500";
     if (hm > 0.25) return "text-red-600";
     return "text-emerald-600";
@@ -936,6 +1032,14 @@ export default function TaylorCurvePage() {
   const calculateIncidence = (partCost: number, totalCost: number) => {
     if (!totalCost || totalCost === 0 || isNaN(partCost) || isNaN(totalCost)) return "0.0";
     return ((partCost / totalCost) * 100).toFixed(1); 
+  };
+
+  const renderSafeNumber = (value: number | string | undefined | null, decimals: number = 1, suffix: string = '', cssClass: string = '') => {
+      const num = Number(value);
+      if (value === undefined || value === null || isNaN(num) || !isFinite(num) || num < 0) {
+          return <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-[10px] font-bold shadow-sm whitespace-nowrap leading-none"><AlertTriangle className="h-3 w-3" /> Ajustar parámetros</span>;
+      }
+      return <span className={cssClass}>{num.toFixed(decimals)}{suffix ? ` ${suffix}` : ''}</span>;
   };
 
 
@@ -1037,36 +1141,59 @@ export default function TaylorCurvePage() {
                 {operationType === 'drilling' && (
                     <div className="col-span-2">
                         <Label className="block text-xs font-bold text-slate-500 mb-1">Profundidad del Agujero (mm)</Label>
-                        <Input type="number" className="bg-white text-slate-900 border-slate-200" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value)} />
+                        <Input type="number" min="0" className="bg-white text-slate-900 border-slate-200 transition-colors focus:border-blue-400" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value)} />
+                        <p className="text-[9px] text-slate-400 mt-0.5">Ratio L/D</p>
                     </div>
                 )}
                 <div>
                   <Label className="block text-xs font-bold text-blue-700 mb-1">Motor (HP)</Label>
-                  <Input type="number" step="0.5" className="font-bold text-blue-700 bg-blue-50 text-slate-900 border-blue-200" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value)} />
+                  <Input type="number" step="0.5" min="0" className="font-bold text-blue-700 bg-blue-50 text-slate-900 border-blue-200 transition-colors focus:border-blue-400" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value)} />
                 </div>
-                 <div>
-                  <Label className="block text-xs font-bold text-slate-500 mb-1">Costo Máq. ($/hr)</Label>
-                  <Input type="number" className="bg-white text-slate-900 border-slate-200" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value)} />
+                <div className="relative group">
+                  <Label className="block text-xs font-bold text-slate-500 mb-1 flex items-center justify-between">
+                    Costo Máq. ($/hr) {isInternalUser && <Info className="h-3 w-3 text-slate-400 cursor-help" />}
+                  </Label>
+                  <Input type="number" min="0" className="bg-white text-slate-900 border-slate-200 transition-colors focus:border-blue-400" value={machineCostHr} onChange={e => setMachineCostHr(e.target.value)} />
+                  {isInternalUser && (
+                    <>
+                      <p className="text-[9px] text-slate-400 mt-0.5 cursor-help underline decoration-dotted decoration-slate-300">💡 Ref. Industrial</p>
+                      <div className="absolute z-10 hidden group-hover:block w-56 bg-slate-800 text-white text-[10px] p-2 rounded shadow-lg -bottom-14 left-0 pointer-events-none">
+                        <p><b>Torno / Fresadora básica:</b> $30 - $50</p>
+                        <p><b>Centro Mec. (3-5 Ejes):</b> $60 - $120+</p>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div>
                   <Label className="block text-xs font-bold text-slate-500 mb-1">Cambio (min)</Label>
-                  <Input type="number" className="bg-white text-slate-900 border-slate-200" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value)} />
+                  <Input type="number" min="0" step="0.5" className="bg-white text-slate-900 border-slate-200 transition-colors focus:border-blue-400" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value)} />
+                  <p className="text-[9px] text-slate-400 mt-0.5">Rápido: 0.5 - 5 min</p>
                 </div>
               </div>
             </div>
 
             <div className="mt-6 pt-5 border-t border-slate-100">
               <Label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wide">📦 Escala Comercial</Label>
-              <div className="relative">
-                <Input type="number" placeholder="0" className="w-full text-lg font-black text-blue-700 pl-4 pr-16 h-12 bg-slate-50 text-slate-900" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value)} />
-                <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400">pzs/mes</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="relative col-span-1 md:col-span-2">
+                  <Input type="number" min="0" placeholder="0" className="w-full text-base font-black text-blue-700 pl-3 pr-14 h-11 bg-slate-50 text-slate-900 transition-colors focus:border-blue-400" value={monthlyProduction} onChange={(e) => setMonthlyProduction(e.target.value)} />
+                  <span className="absolute right-3 top-3 text-[10px] font-bold text-slate-400 uppercase">Pzs/Mes</span>
+                </div>
+                <div className="relative">
+                  <Input type="number" min="1" max="24" className="w-full text-base font-bold pl-3 pr-12 h-11 bg-white text-slate-900 transition-colors focus:border-blue-400" value={horasPorTurno} onChange={(e) => setHorasPorTurno(e.target.value ? Number(e.target.value) : '')} />
+                  <span className="absolute right-3 top-3 text-[10px] font-bold text-slate-400 uppercase">Hrs/Trn</span>
+                </div>
+                <div className="relative">
+                  <Input type="number" min="1" max="5" className="w-full text-base font-bold pl-3 pr-12 h-11 bg-white text-slate-900 transition-colors focus:border-blue-400" value={turnosPorDia} onChange={(e) => setTurnosPorDia(e.target.value ? Number(e.target.value) : '')} />
+                  <span className="absolute right-3 top-3 text-[10px] font-bold text-slate-400 uppercase">Trns/Día</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-red-50/30 p-5 rounded-xl border border-red-100 flex flex-col h-full relative overflow-hidden">
+          <div className="bg-red-50/50 p-5 rounded-xl border-2 border-red-200 shadow-sm flex flex-col h-full relative overflow-hidden transition-all hover:shadow-md hover:border-red-300">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-red-500"></div>
-            <h2 className="font-black text-red-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🔴 Condición Actual</h2>
+            <h2 className="font-black text-red-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🔴 Condición Actual (Taller)</h2>
             
             <div className="grid grid-cols-2 gap-4 flex-grow">
               <div className="col-span-2">
@@ -1078,47 +1205,68 @@ export default function TaylorCurvePage() {
                     </div>
                 )}
               </div>
-              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value)} /></div>
-              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 4" className="border-red-200 bg-white text-slate-900" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value)} /></div>
+              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Costo Inserto ($)</Label><Input type="number" min="0" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value)} /></div>
+              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label><Input type="number" min="1" placeholder="Ej: 4" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value)} /></div>
               
               {operationType === 'milling' || operationType === 'drilling' ? (
-                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Dc Fresa (mm)' : 'Dc Broca (mm)'}</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={dcCurrent} onChange={e => setDcCurrent(e.target.value)} /></div>
+                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Dc Fresa (mm)' : 'Dc Broca (mm)'}</Label><Input type="number" min="0" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={dcCurrent} onChange={e => setDcCurrent(e.target.value)} /></div>
               ) : null}
 
               {operationType === 'milling' ? (
                 <>
-                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Ancho (ae) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={aeCurrent} onChange={e => setAeCurrent(e.target.value)} /></div>
-                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div>
-                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={zCurrent} onChange={e => setZCurrent(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Ancho (ae) mm</Label><Input type="number" min="0" step="0.1" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={aeCurrent} onChange={e => setAeCurrent(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. (ap) mm</Label><Input type="number" min="0" step="0.1" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Cant. Dientes (Z)</Label><Input type="number" min="1" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={zCurrent} onChange={e => setZCurrent(e.target.value)} /></div>
                 </>
               ) : operationType === 'turning' ? (
-                 <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div>
+                 <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" min="0" step="0.1" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div>
               ) : null}
 
-              <div>
-                  <Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}</Label>
-                  <Input type="number" step="0.01" className="border-red-200 bg-white text-slate-900" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value)} />
+              <div className="relative group">
+                  <Label className="block text-[10px] font-bold text-red-600 mb-1 flex items-center justify-between">
+                    {operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}
+                    {isInternalUser && <Info className="h-3 w-3 text-red-400 cursor-help" />}
+                  </Label>
+                  <Input type="number" min="0" step="0.01" className="border-red-200 bg-white text-slate-900 font-mono transition-colors focus:border-red-400" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value)} />
+                  {isInternalUser && (
+                    <div className="absolute z-20 hidden group-hover:block w-48 bg-slate-800 text-white text-[10px] p-2 rounded shadow-lg top-full mt-1 left-0 pointer-events-none">
+                      <p><b>Desbaste:</b> 0.20 - 0.40 mm/rev</p>
+                      <p><b>Terminación:</b> 0.05 - 0.15 mm/rev</p>
+                      <p className="mt-1 flex items-center text-red-300">⚠️ Límite Max = Radio × 0.5</p>
+                    </div>
+                  )}
                   {raActual && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
                           Acabado (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
                       </p>
                   )}
                   {qActual > 0 && (
-                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Remoción (Q): <span className="text-red-600 font-bold">{qActual.toFixed(1)} cm³/min</span>
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1 flex items-center justify-between">
+                          Remoción (Q): {renderSafeNumber(qActual, 1, 'cm³/min', 'text-red-600 font-bold')}
                       </p>
                   )}
                   {hmActual > 0 && operationType !== 'drilling' && (
-                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1 flex items-center justify-between">
                           {operationType === 'milling' ? 'Espesor (hm): ' : 'Espesor (he): '}
-                          <span className={`font-bold ${getHmColorClass(hmActual)}`}>
-                              {hmActual.toFixed(3)} mm
-                          </span>
+                          {renderSafeNumber(hmActual, 3, 'mm', `font-bold ${getHmColorClass(hmActual)}`)}
                       </p>
                   )}
               </div>
               
-              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={vcCurrent} onChange={e => setVcCurrent(e.target.value)} /></div>
+              
+              <div className="relative group">
+                <Label className="block text-[10px] font-bold text-red-600 mb-1 flex items-center justify-between">
+                  Vc Actual (m/min) {isInternalUser && <Info className="h-3 w-3 text-red-400 cursor-help" />}
+                </Label>
+                <Input type="number" min="0" className="border-red-200 bg-white text-slate-900 font-mono transition-colors focus:border-red-400" value={vcCurrent} onChange={e => setVcCurrent(e.target.value)} />
+                {isInternalUser && (
+                  <div className="absolute z-20 hidden group-hover:block w-52 bg-slate-800 text-white text-[10px] p-2 rounded shadow-lg top-full mt-1 left-0 pointer-events-none">
+                    <p><b>Aceros (P):</b> 150 - 250 m/min</p>
+                    <p><b>Inoxidables (M):</b> 80 - 150 m/min</p>
+                    <p><b>Fundición (K):</b> 200 - 300 m/min</p>
+                  </div>
+                )}
+              </div>
               
               <div className="col-span-2 grid grid-cols-2 gap-2">
                 <div>
@@ -1133,13 +1281,13 @@ export default function TaylorCurvePage() {
                 </div>
                 <div>
                   <Label className="block text-[10px] font-bold text-red-600 mb-1">Rendimiento</Label>
-                  <Input type="number" className="border-red-200 bg-white text-slate-900 h-9" placeholder="Ej: 120" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value)} />
+                  <Input type="number" min="0" className="border-red-200 bg-white text-slate-900 h-9 transition-colors focus:border-red-400" placeholder="Ej: 120" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value)} />
                 </div>
               </div>
               
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-red-700 mb-1">Tiempo Actual (min decimales)</Label>
-                <Input type="number" step="0.01" className="border-red-300 font-bold bg-white text-slate-900 disabled:bg-slate-100" placeholder="Ej: 7.0" value={tcCurrent} onChange={e => setTcCurrent(e.target.value)} disabled={operationType === 'drilling'} />
+                <Input type="number" min="0" step="0.01" className="border-red-300 font-bold bg-white text-slate-900 disabled:bg-slate-100 font-mono transition-colors focus:border-red-400" placeholder="Ej: 7.0" value={tcCurrent} onChange={e => setTcCurrent(e.target.value)} disabled={operationType === 'drilling'} />
               </div>
             </div>
             {operationType === 'turning' && warningCurrent && (
@@ -1160,17 +1308,17 @@ export default function TaylorCurvePage() {
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                     curveDataInfo.loadCurrent > 100 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'
                   }`}>
-                    {curveDataInfo.loadCurrent.toFixed(1)}%
+                    {renderSafeNumber(curveDataInfo.loadCurrent, 1, '%')}
                   </span>
                 </div>
-                <span className={`text-xs font-black ${getLoadColor(curveDataInfo.loadCurrent).text}`}>⚡ {curveDataInfo.hpCurrent.toFixed(1)} HP</span>
+                <span className={`text-xs font-black flex items-center gap-1 ${getLoadColor(curveDataInfo.loadCurrent).text}`}>⚡ {renderSafeNumber(curveDataInfo.hpCurrent, 1, 'HP')}</span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2 mb-1 overflow-hidden"><div className={`h-2 rounded-full transition-all duration-500 ${getLoadColor(curveDataInfo.loadCurrent).bar}`} style={{ width: `${Math.min(curveDataInfo.loadCurrent, 100)}%` }}></div></div>
               <p className={`text-[9px] font-bold text-right uppercase ${getLoadColor(curveDataInfo.loadCurrent).text}`}>{getLoadColor(curveDataInfo.loadCurrent).label}</p>
             </div>
           </div>
 
-          <div className="bg-green-50/30 p-5 rounded-xl border border-green-200 flex flex-col h-full relative overflow-hidden shadow-[0_0_15px_rgba(34,197,94,0.1)]">
+          <div className="bg-gradient-to-br from-green-50/80 to-white p-5 rounded-xl border-2 border-green-500/40 shadow-lg shadow-green-500/10 flex flex-col h-full relative overflow-hidden transition-all hover:shadow-xl hover:shadow-green-500/20">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-green-500"></div>
             <h2 className="font-black text-green-700 text-sm uppercase mb-4 mt-1 flex items-center gap-2">🟢 Propuesta (Secocut)</h2>
             
@@ -1183,48 +1331,107 @@ export default function TaylorCurvePage() {
                         {warningFresaPremium}
                     </div>
                 )}
+                {isInternalUser && isFetchingCuttingData && (
+                  <div className="flex items-center space-x-2 mt-3 text-green-700 text-xs bg-green-50 p-2 rounded-md border border-green-200">
+                    <Loader2 className="w-3 h-3 animate-spin text-green-600" />
+                    <span>Consultando catálogo Seco...</span>
+                  </div>
+                )}
+                {isInternalUser && suggestedCuttingData && !isFetchingCuttingData && (
+                  <Alert className="mt-3 bg-green-50 border border-green-200 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-2 opacity-10">
+                        <Wand2 className="h-10 w-10 text-green-600" />
+                      </div>
+                      <Wand2 className="h-4 w-4 text-green-600" />
+                      <AlertTitle className="text-sm font-semibold text-green-800 flex items-center">
+                          Referencia de Catálogo Seco
+                      </AlertTitle>
+                      <AlertDescription className="text-xs text-green-700 mt-2 space-y-2">
+                          <div className="grid grid-cols-3 gap-2">
+                              <div className="bg-white p-2 rounded border border-green-200 text-center">
+                                <span className="block font-bold text-green-800 mb-0.5">ap</span>
+                                <span className="font-mono text-green-700">{suggestedCuttingData.ap}</span>
+                              </div>
+                              <div className="bg-white p-2 rounded border border-green-200 text-center">
+                                <span className="block font-bold text-green-800 mb-0.5">Avance</span>
+                                <span className="font-mono text-green-700">{suggestedCuttingData.fz}</span>
+                              </div>
+                              <div className="bg-white p-2 rounded border border-green-200 text-center">
+                                <span className="block font-bold text-green-800 mb-0.5">Vc</span>
+                                <span className="font-mono text-green-700">{suggestedCuttingData.vc}</span>
+                              </div>
+                          </div>
+                          {suggestedCuttingData.notes && suggestedCuttingData.notes !== "N/A" && (
+                              <div className="mt-2 text-[11px] text-green-700 italic bg-white p-2 rounded border border-green-100">
+                                  💡 {suggestedCuttingData.notes}
+                              </div>
+                          )}
+                      </AlertDescription>
+                  </Alert>
+                )}
               </div>
-              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value)} /></div>
-              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 8" className="border-green-200 bg-white text-slate-900" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value)} /></div>
+              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Costo Inserto ($)</Label><Input type="number" min="0" className="border-green-200 bg-white text-slate-900 transition-colors focus:border-green-400" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value)} /></div>
+              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label><Input type="number" min="1" placeholder="Ej: 8" className="border-green-200 bg-white text-slate-900 transition-colors focus:border-green-400" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value)} /></div>
               
               {operationType === 'milling' || operationType === 'drilling' ? (
-                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'milling' ? 'Diámetro Fresa (Dc) mm' : 'Diámetro Broca (Dc) mm'}</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={dcPremium} onChange={e => setDcPremium(e.target.value)} /></div>
+                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'milling' ? 'Diámetro Fresa (Dc) mm' : 'Diámetro Broca (Dc) mm'}</Label><Input type="number" min="0" className="border-green-200 bg-white text-slate-900 transition-colors focus:border-green-400" value={dcPremium} onChange={e => setDcPremium(e.target.value)} /></div>
               ) : null}
 
               {operationType === 'milling' ? (
                 <>
-                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Ancho Corte (ae) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white text-slate-900" value={aePremium} onChange={e => setAePremium(e.target.value)} /></div>
-                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white text-slate-900" value={apPremium} onChange={e => setApPremium(e.target.value)} /></div>
-                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Dientes (Z)</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={zPremium} onChange={e => setZPremium(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Ancho Corte (ae) mm</Label><Input type="number" min="0" step="0.1" className="border-green-200 bg-white text-slate-900 transition-colors focus:border-green-400" value={aePremium} onChange={e => setAePremium(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" min="0" step="0.1" className="border-green-200 bg-white text-slate-900 transition-colors focus:border-green-400" value={apPremium} onChange={e => setApPremium(e.target.value)} /></div>
+                  <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Cant. Dientes (Z)</Label><Input type="number" min="1" className="border-green-200 bg-white text-slate-900 transition-colors focus:border-green-400" value={zPremium} onChange={e => setZPremium(e.target.value)} /></div>
                 </>
               ) : operationType === 'turning' ? (
-                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-green-200 bg-white text-slate-900" value={apPremium} onChange={e => setApPremium(e.target.value)} /></div>
+                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Prof. Corte (ap) mm</Label><Input type="number" min="0" step="0.1" className="border-green-200 bg-white text-slate-900 transition-colors focus:border-green-400" value={apPremium} onChange={e => setApPremium(e.target.value)} /></div>
               ) : null }
 
-              <div>
-                  <Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}</Label>
-                  <Input type="number" step="0.01" className="border-green-200 bg-white text-slate-900" value={feedPremium} onChange={e => setFeedPremium(e.target.value)} />
+              <div className="relative group">
+                  <Label className="block text-[10px] font-bold text-green-700 mb-1 flex items-center justify-between">
+                    {operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}
+                    {isInternalUser && <Info className="h-3 w-3 text-green-500 cursor-help" />}
+                  </Label>
+                  <Input type="number" min="0" step="0.01" className="border-green-200 bg-white text-slate-900 font-mono transition-colors focus:border-green-400" value={feedPremium} onChange={e => setFeedPremium(e.target.value)} />
+                  {isInternalUser && (
+                    <div className="absolute z-20 hidden group-hover:block w-48 bg-slate-800 text-white text-[10px] p-2 rounded shadow-lg top-full mt-1 left-0 pointer-events-none">
+                      <p><b>Desbaste:</b> 0.20 - 0.40 mm/rev</p>
+                      <p><b>Terminación:</b> 0.05 - 0.15 mm/rev</p>
+                      <p className="mt-1 flex items-center text-green-300">⚡ Geometrías Wiper: +100% fz</p>
+                    </div>
+                  )}
                   {raPropuesta && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
                           Acabado (Ra): <span className="text-green-600 font-bold">{raPropuesta} µm</span>
                       </p>
                   )}
                   {qPropuesta > 0 && (
-                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                          Remoción (Q): <span className="text-green-600 font-bold">{qPropuesta.toFixed(1)} cm³/min</span>
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1 flex items-center justify-between">
+                          Remoción (Q): {renderSafeNumber(qPropuesta, 1, 'cm³/min', 'text-green-600 font-bold')}
                       </p>
                   )}
                   {hmPropuesta > 0 && operationType !== 'drilling' && (
-                      <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                      <p className="text-[10px] text-slate-500 font-semibold mt-1 flex items-center justify-between">
                           {operationType === 'milling' ? 'Espesor (hm): ' : 'Espesor (he): '}
-                          <span className={`font-bold ${getHmColorClass(hmPropuesta)}`}>
-                              {hmPropuesta.toFixed(3)} mm
-                          </span>
+                          {renderSafeNumber(hmPropuesta, 3, 'mm', `font-bold ${getHmColorClass(hmPropuesta)}`)}
                       </p>
                   )}
               </div>
 
-              <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Vc Propuesta</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={vcPremium} onChange={e => setVcPremium(e.target.value)} /></div>
+              <div className="relative group">
+                <Label className="block text-[10px] font-bold text-green-700 mb-1 flex items-center justify-between">
+                  Vc Propuesta {isInternalUser && <Info className="h-3 w-3 text-green-500 cursor-help" />}
+                </Label>
+                <Input type="number" min="0" className="border-green-200 bg-white text-slate-900 font-mono transition-colors focus:border-green-400" value={vcPremium} onChange={e => setVcPremium(e.target.value)} />
+                {isInternalUser && (
+                  <div className="absolute z-20 hidden group-hover:block w-52 bg-slate-800 text-white text-[10px] p-2 rounded shadow-lg top-full mt-1 left-0 pointer-events-none">
+                    <p className="mb-1 text-green-300">💡 <b>Recomendación Duratomic®</b></p>
+                    <p><b>Aceros (TP):</b> 200 - 350 m/min</p>
+                    <p><b>Fundición (TK):</b> 250 - 450 m/min</p>
+                    <p><b>Inoxidables (TM):</b> 120 - 200 m/min</p>
+                  </div>
+                )}
+              </div>
               
               <div className="col-span-2 grid grid-cols-2 gap-2">
                 <div>
@@ -1239,13 +1446,13 @@ export default function TaylorCurvePage() {
                 </div>
                 <div>
                   <Label className="block text-[10px] font-bold text-green-700 mb-1">Rendimiento</Label>
-                  <Input type="number" className="border-green-200 bg-white text-slate-900 h-9" placeholder="Ej: 120" value={pcsPremium} onChange={e => setPcsPremium(e.target.value)} />
+                  <Input type="number" min="0" className="border-green-200 bg-white text-slate-900 h-9 transition-colors focus:border-green-400" placeholder="Ej: 120" value={pcsPremium} onChange={e => setPcsPremium(e.target.value)} />
                 </div>
               </div>
               
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-green-800 mb-1">Tiempo Propuesto (min decimales)</Label>
-                <Input type="number" step="0.01" className="border-green-400 font-black bg-green-50 text-green-900 shadow-inner h-10 text-lg text-center" placeholder="Ej: 6.36" value={tcPremiumInput} onChange={e => setTcPremiumInput(e.target.value)} />
+                <Input type="number" min="0" step="0.01" className="border-green-400 font-black bg-green-50 text-green-900 shadow-inner h-10 text-lg text-center font-mono transition-colors focus:border-green-400" placeholder="Ej: 6.36" value={tcPremiumInput} onChange={e => setTcPremiumInput(e.target.value)} />
               </div>
             </div>
             {operationType === 'turning' && warningPremium && (
@@ -1266,10 +1473,10 @@ export default function TaylorCurvePage() {
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                     curveDataInfo.loadPremium > 100 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'
                   }`}>
-                    {curveDataInfo.loadPremium.toFixed(1)}%
+                    {renderSafeNumber(curveDataInfo.loadPremium, 1, '%')}
                   </span>
                 </div>
-                <span className={`text-xs font-black ${getLoadColor(curveDataInfo.loadPremium).text}`}>⚡ {curveDataInfo.hpPremium.toFixed(1)} HP</span>
+                <span className={`text-xs font-black flex items-center gap-1 ${getLoadColor(curveDataInfo.loadPremium).text}`}>⚡ {renderSafeNumber(curveDataInfo.hpPremium, 1, 'HP')}</span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2 mb-1 overflow-hidden"><div className={`h-2 rounded-full transition-all duration-500 ${getLoadColor(curveDataInfo.loadPremium).bar}`} style={{ width: `${Math.min(curveDataInfo.loadPremium, 100)}%` }}></div></div>
               <p className={`text-[9px] font-bold text-right uppercase ${getLoadColor(curveDataInfo.loadPremium).text}`}>{getLoadColor(curveDataInfo.loadPremium).label}</p>
@@ -1316,6 +1523,19 @@ export default function TaylorCurvePage() {
                 </Button>
             </div>
           </div>
+          
+          <div className="md:col-span-1 border-t border-slate-200 mt-4 pt-4 flex flex-col justify-center">
+              <div className="flex items-center justify-between p-3 rounded-md bg-orange-50 border border-orange-200 shadow-sm">
+                  <div className="flex items-center space-x-2">
+                      <Flame className="h-5 w-5 text-orange-600" />
+                      <div className="flex flex-col">
+                          <Label htmlFor="stress-test" className="text-orange-900 font-bold">Simular Estrés Térmico</Label>
+                          <span className="text-[10px] text-orange-700 leading-tight mt-0.5 max-w-[250px]">Muestra en el gráfico cuándo la herramienta económica sufrirá una inestabilidad catastrófica.</span>
+                      </div>
+                  </div>
+                  <Switch id="stress-test" className="data-[state=checked]:bg-orange-600" checked={isStressTestActive} onCheckedChange={setIsStressTestActive} />
+              </div>
+          </div>
         </div>
 
         <Card>
@@ -1355,6 +1575,16 @@ export default function TaylorCurvePage() {
                             label={{ position: 'insideTopRight', value: '🔥 Óptimo', fill: '#10B981', fontSize: 10, fontWeight: 'bold' }} 
                           />
                         }
+
+                        {isStressTestActive && curveDataInfo.limiteTermicoActual && (
+                          <ReferenceLine
+                            x={curveDataInfo.limiteTermicoActual}
+                            stroke="#ea580c"
+                            strokeWidth={2}
+                            strokeDasharray="6 6"
+                            label={{ position: 'insideTopLeft', value: '⚠️ Falla Térmica Compe.', fill: '#ea580c', fontSize: 11, fontWeight: 'bold' }}
+                          />
+                        )}
                     </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -1421,14 +1651,28 @@ export default function TaylorCurvePage() {
             </CardContent>
         </Card>
 
-        {isFinite(curveDataInfo.monthlySavings) && Number(monthlyProduction) > 0 && (
-          <MonthlySavingsSummary
-            monthlyVolume={Number(monthlyProduction)}
-            compToolCost={curveDataInfo.desgloseActualReal.inserto}
-            secoToolCost={curveDataInfo.desglosePremiumReal.inserto}
-            compMachineCost={curveDataInfo.desgloseActualReal.maquina + curveDataInfo.desgloseActualReal.parada}
-            secoMachineCost={curveDataInfo.desglosePremiumReal.maquina + curveDataInfo.desglosePremiumReal.parada}
-          />
+        {(!isFinite(curveDataInfo.actualCostCurrent) || !isFinite(curveDataInfo.actualCostPremium) || isNaN(curveDataInfo.monthlySavings)) ? (
+            <Alert variant="destructive" className="mt-6 border-red-500 bg-red-50">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <AlertTitle className="text-red-800 font-bold text-lg">Colapso Técnico / Falla Matemática</AlertTitle>
+                <AlertDescription className="text-red-700 mt-2">
+                    Las condiciones de corte que ingresaste no son sostenibles físicamente (Ej: avance excesivo que rompe el radio, velocidad infinita, o vida útil cero). La ecuación de Taylor está arrojando costos matemáticamente irracionales. Ajusta los parámetros de mecanizado.
+                </AlertDescription>
+            </Alert>
+        ) : (
+          isFinite(curveDataInfo.monthlySavings) && Number(monthlyProduction) > 0 && (
+            <MonthlySavingsSummary
+              monthlyVolume={Number(monthlyProduction)}
+              compToolCost={curveDataInfo.desgloseActualReal.inserto}
+              secoToolCost={curveDataInfo.desglosePremiumReal.inserto}
+              compMachineCost={curveDataInfo.desgloseActualReal.maquina + curveDataInfo.desgloseActualReal.parada}
+              secoMachineCost={curveDataInfo.desglosePremiumReal.maquina + curveDataInfo.desglosePremiumReal.parada}
+              compTime={Number(tcCurrent)}
+              secoTime={Number(tcPremiumInput)}
+              horasPorTurno={Number(horasPorTurno) || 8}
+              turnosPorDia={Number(turnosPorDia) || 1}
+            />
+          )
         )}
       </div>
       
@@ -1443,57 +1687,61 @@ export default function TaylorCurvePage() {
         )}
       </div>
 
-      <button
-        onClick={() => setIsCopilotOpen(!isCopilotOpen)}
-        className="fixed bottom-6 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 transition-transform z-50 border-2 border-slate-700"
-      >
-        <span className="text-2xl">🤖</span>
-      </button>
-
-      <div className={`fixed top-0 right-0 h-full w-[320px] bg-white border-l border-slate-200 shadow-2xl transform transition-transform duration-300 ease-in-out z-40 flex flex-col ${isCopilotOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="h-16 border-b border-slate-200 flex items-center justify-between px-4 bg-slate-50">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🤖</span>
-            <h3 className="font-black text-slate-800 tracking-tight">Copiloto Seco</h3>
-          </div>
-          <button onClick={() => setIsCopilotOpen(false)} className="text-slate-400 hover:text-slate-600">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      {isInternalUser && (
+        <>
+          <button
+            onClick={() => setIsCopilotOpen(!isCopilotOpen)}
+            className="fixed bottom-6 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 transition-transform z-50 border-2 border-slate-700"
+          >
+            <span className="text-2xl">🤖</span>
           </button>
-        </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
-          {chatMessages.map((msg, idx) => (
-            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] rounded-xl p-3 shadow-sm border ${msg.role === 'user' ? 'bg-blue-600 text-white border-blue-700 rounded-tr-none' : 'bg-white text-slate-700 border-slate-200 rounded-tl-none'}`}>
-                {msg.role === 'assistant' ? renderChatMessage(msg.content) : <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
+          <div className={`fixed top-0 right-0 h-full w-[320px] bg-white border-l border-slate-200 shadow-2xl transform transition-transform duration-300 ease-in-out z-40 flex flex-col ${isCopilotOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            <div className="h-16 border-b border-slate-200 flex items-center justify-between px-4 bg-slate-50">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🤖</span>
+                <h3 className="font-black text-slate-800 tracking-tight">Copiloto Seco</h3>
               </div>
+              <button onClick={() => setIsCopilotOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
             </div>
-          ))}
-          {isChatLoading && (
-            <div className="flex justify-start">
-              <div className="bg-white border border-slate-200 rounded-xl rounded-tl-none p-3 shadow-sm text-slate-400 text-sm flex gap-1">
-                <span className="animate-bounce">●</span><span className="animate-bounce delay-100">●</span><span className="animate-bounce delay-200">●</span>
-              </div>
-            </div>
-          )}
-        </div>
 
-        <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-slate-200">
-          <div className="relative">
-            <input
-              type="text"
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Pregúntale al Copiloto..."
-              className="w-full pl-4 pr-14 py-2.5 bg-slate-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm transition-all"
-            />
-            <button type="submit" disabled={!chatInput.trim() || isChatLoading} className="absolute right-2 top-2 text-blue-600 hover:text-blue-800 disabled:opacity-50">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-            </button>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
+              {chatMessages.map((msg, idx) => (
+                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] rounded-xl p-3 shadow-sm border ${msg.role === 'user' ? 'bg-blue-600 text-white border-blue-700 rounded-tr-none' : 'bg-white text-slate-700 border-slate-200 rounded-tl-none'}`}>
+                    {msg.role === 'assistant' ? renderChatMessage(msg.content) : <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
+                  </div>
+                </div>
+              ))}
+              {isChatLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-white border border-slate-200 rounded-xl rounded-tl-none p-3 shadow-sm text-slate-400 text-sm flex gap-1">
+                    <span className="animate-bounce">●</span><span className="animate-bounce delay-100">●</span><span className="animate-bounce delay-200">●</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-slate-200">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Pregúntale al Copiloto..."
+                  className="w-full pl-4 pr-14 py-2.5 bg-slate-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg text-sm transition-all"
+                />
+                <button type="submit" disabled={!chatInput.trim() || isChatLoading} className="absolute right-2 top-2 text-blue-600 hover:text-blue-800 disabled:opacity-50">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
+              </div>
+              <p className="text-[9px] text-center text-slate-400 mt-2">El Copiloto lee automáticamente tus parámetros.</p>
+            </form>
           </div>
-          <p className="text-[9px] text-center text-slate-400 mt-2">El Copiloto lee automáticamente tus parámetros.</p>
-        </form>
-      </div>
+        </>
+      )}
 
         {isSaveModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1817,6 +2065,9 @@ export default function TaylorCurvePage() {
                   <Line type="monotone" dataKey="costoPremium" name="Propuesta (Secocut)" stroke="#22c55e" strokeWidth={3} dot={false} />
                   {isFinite(curveDataInfo.actualCostCurrent) && <ReferenceDot x={Number(vcCurrent)} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />}
                   {isFinite(curveDataInfo.actualCostPremium) && <ReferenceDot x={Number(vcPremium)} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
+                  {isStressTestActive && curveDataInfo.limiteTermicoActual && (
+                    <ReferenceLine x={curveDataInfo.limiteTermicoActual} stroke="#ea580c" strokeWidth={1} strokeDasharray="4 4" label={{ position: 'insideTopLeft', value: '⚠️ Falla Térmica Compe.', fill: '#ea580c', fontSize: 9 }} />
+                  )}
                 </LineChart>
               </div>
             </div>

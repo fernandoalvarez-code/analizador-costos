@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SimulatorSchema } from "@/lib/schemas";
+import * as z from "zod";
 import { useSimulatorCalc } from "@/hooks/use-simulator-calc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,9 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Save, TrendingUp, AlertCircle, Download, Share2, Loader2, Wifi, WifiOff } from "lucide-react";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
-import { useUser, useDoc, useFirestore, useMemoFirebase, doc } from "@/firebase";
+import { useUser, useDoc, useFirestore, useMemoFirebase, doc, storage } from "@/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from "@/hooks/use-toast";
+
+import { useRouter } from "next/navigation";
 
 export default function NewSimulatorPage() {
   const [isSaving, setIsSaving] = useState(false);
@@ -25,7 +29,18 @@ export default function NewSimulatorPage() {
 
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!userLoading && user) {
+        if (!user.email?.endsWith('@secocut.com')) {
+            router.replace('/history');
+        }
+    }
+  }, [user, userLoading, router]);
+
+  if (userLoading || (user && !user.email?.endsWith('@secocut.com'))) return null;
 
   // --- Hooks para data y estado de conexión ---
   const settingsRef = useMemoFirebase(() => {
@@ -103,13 +118,13 @@ export default function NewSimulatorPage() {
     { machineUsdPerHour, toolChangeMin, scrapCostUsdPerPiece }
   );
   
-  const handleDownloadPDF = async () => {
+  const handleDownloadPDF = async (asBlob = false) => {
     setIsPrinting(true);
     const element = document.getElementById('pdf-report-template');
     if (!element) {
         setIsPrinting(false);
         alert("No se pudo encontrar la plantilla del informe.");
-        return;
+        return null;
     }
 
     try {
@@ -126,10 +141,17 @@ export default function NewSimulatorPage() {
             html2canvas:  { scale: 2, useCORS: true, logging: false, windowWidth: 1000 },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
-        await html2pdf().set(opt).from(element).save();
+        
+        if (asBlob) {
+            return await html2pdf().set(opt).from(element).output('blob');
+        } else {
+            await html2pdf().set(opt).from(element).save();
+            return null;
+        }
     } catch (error) {
         console.error("Error generando PDF:", error);
         alert("Hubo un error al generar el PDF.");
+        return null;
     } finally {
         setIsPrinting(false);
     }
@@ -199,20 +221,45 @@ Adjunto el informe PDF completo con el fundamento técnico.`;
 
     setIsSaving(true);
     try {
-      if (!firestore) throw new Error("Firestore no está disponible");
+      if (!firestore || !storage) throw new Error("Firestore o Storage no están disponibles");
       
+      const ahorroPieza = results.chinaCalc.totalCostPerPiece - results.premiumCalc.totalCostPerPiece;
+      const pdfBlob = await handleDownloadPDF(true);
+      let pdfUrl = '';
+
+      if (pdfBlob instanceof Blob) {
+          const storagePath = `analisis_costos_pdfs/${user.uid}_${Date.now()}.pdf`;
+          const storageRef = ref(storage, storagePath);
+          const snapshot = await uploadBytes(storageRef, pdfBlob);
+          pdfUrl = await getDownloadURL(snapshot.ref);
+      }
+
       const simulationData = {
         userId: user.uid,
+        
+        // --- Campos para la tabla Dashboard (cuttingToolAnalyses) ---
+        name: data.clientName ? `Simulación ${data.clientName}` : "Simulación de Competitividad",
+        cliente: data.clientName || "Sin Cliente",
+        operacion: "Mecanizado General",
+        material: "N/A",
+        roi: 0, // Fallback obligatorio para evitar ruptura en Dashboard
+
+        // --- Campos para la tabla Historial original y comunes ---
         clientName: data.clientName || "Sin Cliente",
+        caseName: data.clientName ? `Simulación ${data.clientName}` : "Simulación de Competitividad",
+        annualSavings: ahorroPieza,
+        pdfUrl: pdfUrl,
+        status: "Pendiente", // Capitalizado para 'CaseData' de casos
+        dateCreated: serverTimestamp(),
         date: serverTimestamp(),
         results: results,
         inputs: data,
       };
 
-      await addDoc(collection(firestore, "simulations"), simulationData);
+      await addDoc(collection(firestore, "cuttingToolAnalyses"), simulationData);
 
-      toast({ title: "Simulación Guardada", description: "La simulación ha sido guardada en el historial." });
-      form.reset();
+      toast({ title: "Simulación Guardada", description: "La simulación ha sido guardada en el historial con su reporte PDF." });
+      // Removemos form.reset() para no perder la info en la vista actual tras guardar
     } catch (error: any) {
       console.error("Error guardando en Firebase:", error);
       toast({ variant: 'destructive', title: "Error al Guardar", description: error.message || "No se pudo guardar la simulación online." });
