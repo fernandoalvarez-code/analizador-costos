@@ -27,3 +27,4 @@ File any bugs at https://github.com/firebase/firebase-tools/issues
 This is a NextJS starter in Firebase Studio.
 
 To get started, take a look at src/app/page.tsx.
+<!-- connected to GitHub App Hosting 2026-06-09 -->
