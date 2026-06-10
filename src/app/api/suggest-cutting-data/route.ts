@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-
-export const runtime = 'edge';
+import { initializeAdminApp } from '@/firebase/auth/admin-app';
+import { getAuth } from 'firebase-admin/auth';
 
 export async function POST(req: Request) {
   try {
+    const token = (req.headers.get('authorization') ?? '').replace('Bearer ', '');
+    await initializeAdminApp();
+    await getAuth().verifyIdToken(token);
+
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });

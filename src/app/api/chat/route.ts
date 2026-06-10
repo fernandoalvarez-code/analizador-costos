@@ -1,6 +1,8 @@
 
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { initializeAdminApp } from '@/firebase/auth/admin-app';
+import { getAuth } from 'firebase-admin/auth';
 
 // --- DEFINICIONES DE TIPO PARA ROBUSTEZ ---
 interface ScreenContext {
@@ -36,7 +38,11 @@ interface ChatRequestBody {
 
 export async function POST(req: Request) {
   try {
-    // Inicializar el cliente de OpenAI DENTRO de la petición para evitar 
+    const token = (req.headers.get('authorization') ?? '').replace('Bearer ', '');
+    await initializeAdminApp();
+    await getAuth().verifyIdToken(token);
+
+    // Inicializar el cliente de OpenAI DENTRO de la petición para evitar
     // crashes al momento de construir/desplegar la aplicación en la nube
     // cuando process.env no está completamente hidratado en el top-level.
     const openai = new OpenAI({
