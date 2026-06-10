@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { MonthlySavingsSummary } from '@/components/calculator/MonthlySavingsSummary';
 
@@ -232,6 +233,7 @@ const SurveyField = ({ label }: { label: string }) => (
 
 export default function TaylorCurvePage() {
   const { user } = useUser();
+  const { toast } = useToast();
   const router = useRouter();
 
   const isInternalUser = user?.email?.endsWith('@secocut.com') || false;
@@ -463,6 +465,20 @@ export default function TaylorCurvePage() {
   const handleSaveCase = async () => {
     if (!user) { alert("Debes iniciar sesión para guardar."); return; }
     if (!saveCaseName.trim()) { alert("Por favor, ingresa un nombre para el caso."); return; }
+
+    const camposCriticos = [
+      { nombre: 'Velocidad actual (Vc)',    valor: vcCurrent },
+      { nombre: 'Avance actual',            valor: feedCurrent },
+      { nombre: 'Velocidad propuesta (Vc)', valor: vcPremium },
+      { nombre: 'Avance propuesto',         valor: feedPremium },
+      { nombre: 'Costo de máquina ($/hr)',  valor: machineCostHr },
+      ...(operationType === 'drilling' ? [{ nombre: 'Profundidad de agujero', valor: profundidadAgujero }] : []),
+    ];
+    const campoVacio = camposCriticos.find(c => !(Number(c.valor) > 0));
+    if (campoVacio) {
+      toast({ variant: 'destructive', title: 'Datos incompletos', description: `"${campoVacio.nombre}" debe ser mayor a cero antes de guardar.` });
+      return;
+    }
 
     setIsSaving(true);
     

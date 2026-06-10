@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { MonthlySavingsSummary } from '@/components/calculator/MonthlySavingsSummary';
+import { useToast } from '@/hooks/use-toast';
 
 
 const MATERIALS = [
@@ -249,6 +250,7 @@ const SurveyField = ({ label }: { label: string }) => (
 
 export default function EditTaylorCurvePage() {
   const { user } = useUser();
+  const { toast } = useToast();
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
@@ -456,6 +458,21 @@ export default function EditTaylorCurvePage() {
 
   const handleSaveCase = async () => {
     if (!user || !id) return;
+
+    const camposCriticos = [
+      { nombre: 'Velocidad actual (Vc)',    valor: vcCurrent },
+      { nombre: 'Avance actual',            valor: feedCurrent },
+      { nombre: 'Velocidad propuesta (Vc)', valor: vcPremium },
+      { nombre: 'Avance propuesto',         valor: feedPremium },
+      { nombre: 'Costo de máquina ($/hr)',  valor: machineCostHr },
+      ...(operationType === 'drilling' ? [{ nombre: 'Profundidad de agujero', valor: profundidadAgujero }] : []),
+    ];
+    const campoVacio = camposCriticos.find(c => !(Number(c.valor) > 0));
+    if (campoVacio) {
+      toast({ variant: 'destructive', title: 'Datos incompletos', description: `"${campoVacio.nombre}" debe ser mayor a cero antes de guardar.` });
+      return;
+    }
+
     setIsSaving(true);
     try {
       const pdfBlob = await handleGeneratePDF('blob');
