@@ -267,6 +267,7 @@ export default function TaylorCurvePage() {
   const [vcPremium, setVcPremium] = useState<string | number>("");
   const [pcsPremium, setPcsPremium] = useState<string | number>("");
   const [tcPremiumInput, setTcPremiumInput] = useState<string | number>("");
+  const [tcPremiumManual, setTcPremiumManual] = useState(false);
   const [zPremium, setZPremium] = useState<string | number>("");
   const [edgesPremium, setEdgesPremium] = useState<string | number>("");
   const [dcPremium, setDcPremium] = useState<string | number>("");
@@ -336,6 +337,7 @@ export default function TaylorCurvePage() {
   }, []);
 
   useEffect(() => {
+    if (tcPremiumManual) return;
     const baseTc = Number(tcCurrent);
     const baseVc = Number(vcCurrent);
     const baseFeed = Number(feedCurrent);
@@ -346,7 +348,7 @@ export default function TaylorCurvePage() {
     const premAp = Number(apPremium);
 
     if (baseTc > 0 && premVc > 0 && premFeed > 0 && premAp > 0) {
-      
+
       const safeBaseVc = baseVc > 0 ? baseVc : premVc;
       const safeBaseFeed = baseFeed > 0 ? baseFeed : premFeed;
       const safeBaseAp = baseAp > 0 ? baseAp : premAp;
@@ -357,7 +359,9 @@ export default function TaylorCurvePage() {
           setTcPremiumInput(nuevoTiempoPremium.toFixed(2));
       }
     }
-  }, [tcCurrent, vcCurrent, feedCurrent, apCurrent, vcPremium, feedPremium, apPremium]);
+  }, [tcPremiumManual, tcCurrent, vcCurrent, feedCurrent, apCurrent, vcPremium, feedPremium, apPremium]);
+
+  useEffect(() => { setTcPremiumManual(false); }, [materialId, operationType]);
 
   useEffect(() => {
     if (operationType === 'drilling') {
@@ -1452,7 +1456,7 @@ export default function TaylorCurvePage() {
               
               <div className="col-span-2">
                 <Label className="block text-[10px] font-bold text-green-800 mb-1">Tiempo Propuesto (min decimales)</Label>
-                <Input type="number" min="0" step="0.01" className="border-green-400 font-black bg-green-50 text-green-900 shadow-inner h-10 text-lg text-center font-mono transition-colors focus:border-green-400" placeholder="Ej: 6.36" value={tcPremiumInput} onChange={e => setTcPremiumInput(e.target.value)} />
+                <Input type="number" min="0" step="0.01" className="border-green-400 font-black bg-green-50 text-green-900 shadow-inner h-10 text-lg text-center font-mono transition-colors focus:border-green-400" placeholder="Ej: 6.36" value={tcPremiumInput} onChange={e => { setTcPremiumManual(true); setTcPremiumInput(e.target.value); }} />
               </div>
             </div>
             {operationType === 'turning' && warningPremium && (
