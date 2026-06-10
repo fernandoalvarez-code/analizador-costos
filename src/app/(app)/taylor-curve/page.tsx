@@ -948,12 +948,15 @@ export default function TaylorCurvePage() {
       const costPerPunta = safeEdgesPremium > 0 ? safeToolCostPremium / safeEdgesPremium : 0, costJuego = costPerPunta * safeZPremium;
       const penalidadCambio = costJuego + (safeMachineCostMin * safeToolChangeTime);
 
-      while (costoIterativo > costoObjetivo && vcSimulada < limiteSeguridadVc) {
+      let iteraciones = 0;
+      const MAX_ITERACIONES = 500;
+      while (costoIterativo > costoObjetivo && vcSimulada < limiteSeguridadVc && iteraciones < MAX_ITERACIONES) {
+        iteraciones++;
         vcSimulada++;
         const factorVelocidad = Math.pow((taylorBase.vc / vcSimulada), 3.0);
         const piezasTemp = taylorBase.pcs * factorVelocidad, tiempoTemp = taylorBase.time * (taylorBase.vc / vcSimulada);
         const costCorte = safeMachineCostMin * tiempoTemp;
-        
+
         let costHerr = 0;
         if (lifeModePremium === 'minutos') {
             const pzasTempLife = piezasTemp > 0 ? piezasTemp / tiempoTemp : 0;
@@ -965,7 +968,11 @@ export default function TaylorCurvePage() {
         costoIterativo = costCorte + costHerr;
       }
 
-      if (vcSimulada < limiteSeguridadVc) {
+      if (iteraciones >= MAX_ITERACIONES) {
+        console.warn('[Taylor] Búsqueda de velocidad óptima: límite de 500 iteraciones alcanzado sin convergencia.');
+      }
+
+      if (costoIterativo <= costoObjetivo && vcSimulada < limiteSeguridadVc) {
         setSimulatedVc(vcSimulada);
         setSimulatedFeed(taylorBase.feed);
       } else {
