@@ -29,7 +29,8 @@ service cloud.firestore {
       allow list: if isRequestingUserAdmin();
       
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isRequestingUserAdmin();
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role)
+                   || isRequestingUserAdmin();
       allow delete: if false; 
     }
 
