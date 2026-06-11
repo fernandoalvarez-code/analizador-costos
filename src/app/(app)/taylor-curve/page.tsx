@@ -21,7 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { calcPc, calcMc, checkViability } from '@/lib/machining-physics';
+import { calcRPM, calcVf, calcPc, calcMc, checkViability, calcTcDrilling } from '@/lib/machining-physics';
 import { MATERIALS_ISO } from '@/lib/materials-iso';
 import { getDrillingAlert } from '@/lib/drilling-alerts';
 import { Switch } from '@/components/ui/switch';
@@ -346,6 +346,22 @@ export default function TaylorCurvePage() {
 
   useEffect(() => {
     if (tcPremiumManual) return;
+
+    if (operationType === 'drilling') {
+      const rpm = calcRPM(Number(vcPremium), Number(dcPremium));
+      const vf = calcVf(rpm, Number(feedPremium));
+      const depth = Number(profundidadAgujero);
+      const diam = Number(dcPremium);
+      if (rpm > 0 && vf > 0 && depth > 0 && diam > 0) {
+        const ldRatio = depth / diam;
+        const result = calcTcDrilling(depth, vf, coolantInternal, ldRatio);
+        if (isFinite(result.tcReal) && result.tcReal > 0) {
+          setTcPremiumInput(result.tcReal.toFixed(3));
+        }
+      }
+      return;
+    }
+
     const baseTc = Number(tcCurrent);
     const baseVc = Number(vcCurrent);
     const baseFeed = Number(feedCurrent);
@@ -367,7 +383,7 @@ export default function TaylorCurvePage() {
           setTcPremiumInput(nuevoTiempoPremium.toFixed(2));
       }
     }
-  }, [tcPremiumManual, tcCurrent, vcCurrent, feedCurrent, apCurrent, vcPremium, feedPremium, apPremium]);
+  }, [tcPremiumManual, operationType, tcCurrent, vcCurrent, feedCurrent, apCurrent, vcPremium, feedPremium, apPremium, dcPremium, profundidadAgujero, coolantInternal]);
 
   useEffect(() => { setTcPremiumManual(false); }, [materialId, operationType]);
 
