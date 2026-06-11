@@ -33,6 +33,9 @@ import {
   calcPc,
   calcMc,
   checkViability,
+  calcMcDrilling,
+  calcPcDrilling,
+  calcTcDrilling,
 } from './machining-physics';
 
 // ── Parámetros del caso ───────────────────────────────────────────────────────
@@ -86,3 +89,48 @@ if (viab.reason !== null)  throw new Error('❌ reason debe ser null');
 console.log('✅ viable / reason');
 
 console.log('\n✅ Todos los casos pasaron.');
+
+// ── Caso 2: SUS 316L Ø6.5 mm — Vc=45 m/min, fn=0.13 mm/rev ────────────────
+console.log('\n=== Caso 2: SUS 316L Ø6.5 — Vc=45, fn=0.13 ===\n');
+const SUS_VC    = 45;
+const SUS_FN    = 0.13;
+const SUS_DIAM  = 6.5;
+const SUS_KC    = 2450;
+const SUS_DEPTH = 26;   // L/D = 4 — coolantInternal=true lo anula
+const SUS_RPM   = calcRPM(SUS_VC, SUS_DIAM);
+const SUS_VF    = calcVf(SUS_RPM, SUS_FN);
+const SUS_MC    = calcMcDrilling(SUS_KC, SUS_FN, SUS_DIAM);
+const SUS_PC    = calcPcDrilling(SUS_MC, SUS_RPM);
+const SUS_TC    = calcTcDrilling(SUS_DEPTH, SUS_VF, true, SUS_DEPTH / SUS_DIAM);
+console.log(`RPM  : ${SUS_RPM.toFixed(2)}   (esperado ≈ 2204)`);
+console.log(`Vf   : ${SUS_VF.toFixed(2)} mm/min   (esperado ≈ 286)`);
+console.log(`Mc   : ${SUS_MC.toFixed(3)} Nm`);
+console.log(`Pc   : ${SUS_PC.toFixed(3)} kW`);
+console.log(`tcNet: ${SUS_TC.tcNet.toFixed(3)} min  penalty=${SUS_TC.penaltyApplied}`);
+assertNear('SUS316L RPM', SUS_RPM, 2203.97, 0.001);
+assertNear('SUS316L Vf',  SUS_VF,  286.52,  0.002);
+
+// ── Caso 3: Ti-6Al-4V Ø6.5 mm — Vc=25 m/min, fn=0.10 mm/rev ───────────────
+console.log('\n=== Caso 3: Ti-6Al-4V Ø6.5 — Vc=25, fn=0.10 ===\n');
+const TI_VC    = 25;
+const TI_FN    = 0.10;
+const TI_DIAM  = 6.5;
+const TI_KC    = 2800;
+const TI_DEPTH = 26;   // L/D = 4, coolantInternal=false → critical
+const TI_RPM   = calcRPM(TI_VC, TI_DIAM);
+const TI_VF    = calcVf(TI_RPM, TI_FN);
+const TI_MC    = calcMcDrilling(TI_KC, TI_FN, TI_DIAM);
+const TI_PC    = calcPcDrilling(TI_MC, TI_RPM);
+const TI_TC    = calcTcDrilling(TI_DEPTH, TI_VF, false, TI_DEPTH / TI_DIAM);
+console.log(`RPM  : ${TI_RPM.toFixed(2)}   (esperado ≈ 1224)`);
+console.log(`Vf   : ${TI_VF.toFixed(2)} mm/min   (esperado ≈ 122)`);
+console.log(`Mc   : ${TI_MC.toFixed(3)} Nm`);
+console.log(`Pc   : ${TI_PC.toFixed(3)} kW`);
+console.log(`tcNet: ${TI_TC.tcNet.toFixed(3)} min  factor=${TI_TC.factor}  penalty=${TI_TC.penaltyApplied}`);
+assertNear('Ti6Al4V RPM', TI_RPM, 1224.43, 0.001);
+assertNear('Ti6Al4V Vf',  TI_VF,  122.44,  0.002);
+if (!TI_TC.penaltyApplied) throw new Error('❌ Ti6Al4V L/D>3 debería activar penalización');
+if (TI_TC.factor !== 1.5)  throw new Error('❌ factor debería ser 1.5');
+console.log('✅ Ti6Al4V penaltyApplied / factor 1.5');
+
+console.log('\n✅ Todos los casos (1-3) pasaron.');
