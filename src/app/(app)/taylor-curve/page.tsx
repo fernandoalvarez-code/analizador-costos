@@ -1204,7 +1204,11 @@ export default function TaylorCurvePage() {
                     <div className="col-span-2">
                         <Label className="block text-xs font-bold text-slate-500 mb-1">Profundidad del Agujero (mm)</Label>
                         <Input type="number" min="0" className="bg-white text-slate-900 border-slate-200 transition-colors focus:border-blue-400" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value)} />
-                        <p className="text-[9px] text-slate-400 mt-0.5">Ratio L/D</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">
+                          {Number(profundidadAgujero) > 0 && Number(dcCurrent) > 0
+                            ? `Ratio L/D: ${(Number(profundidadAgujero) / Number(dcCurrent)).toFixed(1)}`
+                            : 'Ratio L/D: —'}
+                        </p>
                     </div>
                 )}
                 {operationType === 'drilling' && (
