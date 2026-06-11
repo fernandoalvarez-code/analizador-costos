@@ -267,7 +267,6 @@ export default function EditTaylorCurvePage() {
   const [toolChangeTime, setToolChangeTime] = useState<string | number>("");
   const [pieceName, setPieceName] = useState<string>("");
   const [machinePowerHP, setMachinePowerHP] = useState<string | number>(15);
-  const [maxPower, setMaxPower] = useState<string | number>(15);
   const [maxTorque, setMaxTorque] = useState<string | number>(200);
   const [machineEfficiency, setMachineEfficiency] = useState<string | number>(0.85);
   const [profundidadAgujero, setProfundidadAgujero] = useState<string | number>("");
@@ -381,7 +380,6 @@ export default function EditTaylorCurvePage() {
         setToolChangeTime(inputs.toolChangeTime || "");
         setPieceName(inputs.pieceName || initialData.caseName || "");
         setMachinePowerHP(inputs.machinePowerHP || 15);
-        setMaxPower(inputs.maxPower || 15);
         setMaxTorque(inputs.maxTorque || 200);
         setMachineEfficiency(inputs.machineEfficiency || 0.85);
         setProfundidadAgujero(inputs.profundidadAgujero || "");
@@ -500,7 +498,7 @@ export default function EditTaylorCurvePage() {
         pdfUrl: pdfUrl,
         dateModified: serverTimestamp(),
         taylorInputs: {
-          operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, maxPower, maxTorque, machineEfficiency, profundidadAgujero,
+          operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, maxTorque, machineEfficiency, profundidadAgujero,
           monthlyProduction, lifeModeCurrent, lifeModePremium,
           toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrent, zCurrent, edgesCurrent, dcCurrent, aeCurrent,
           toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, tcPremiumInput, zPremium, edgesPremium, dcPremium, aePremium,
@@ -829,13 +827,13 @@ export default function EditTaylorCurvePage() {
     const ap = Number(apCurrent);
     const dc = Number(dcCurrent) || 50;
     const eff = Number(machineEfficiency) || 0.85;
-    const pw = Number(maxPower) || 15;
+    const pw = (Number(machinePowerHP) || 15) * 0.7457;
     const tq = Number(maxTorque) || 200;
     if (vc <= 0 || fn <= 0 || ap <= 0) return null;
     const pc = calcPc(kc, ap, fn, vc, eff);
     const mc = calcMc(kc, ap, fn, dc);
     return { ...checkViability(pc, mc, pw, tq), pc, mc };
-  }, [vcCurrent, feedCurrent, apCurrent, dcCurrent, materialId, maxPower, maxTorque, machineEfficiency]);
+  }, [vcCurrent, feedCurrent, apCurrent, dcCurrent, materialId, machinePowerHP, maxTorque, machineEfficiency]);
 
   useEffect(() => {
     if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
@@ -1086,6 +1084,7 @@ export default function EditTaylorCurvePage() {
                 <div>
                   <Label className="block text-xs font-bold text-blue-700 mb-1">Motor (HP)</Label>
                   <Input type="number" step="0.5" className="font-bold text-blue-700 bg-blue-50 text-slate-900 border-blue-200" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value)} />
+                  <p className="text-[9px] text-slate-400 mt-0.5">= {((Number(machinePowerHP) || 0) * 0.7457).toFixed(1)} kW</p>
                 </div>
                  <div>
                   <Label className="block text-xs font-bold text-slate-500 mb-1">Costo Máq. ($/hr)</Label>
@@ -1098,11 +1097,7 @@ export default function EditTaylorCurvePage() {
               </div>
               <div className="mt-3 border-t border-slate-100 pt-3">
                 <Label className="block text-[10px] font-black text-slate-600 mb-2 uppercase tracking-wide">⚡ Capacidad de la Máquina</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <Label className="block text-[10px] font-bold text-slate-500 mb-1">Pot. máx. (kW)</Label>
-                    <Input type="number" min="0" step="0.5" className="bg-white text-slate-900 border-slate-200" value={maxPower} onChange={e => setMaxPower(e.target.value)} />
-                  </div>
+                <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label className="block text-[10px] font-bold text-slate-500 mb-1">Torque máx. (Nm)</Label>
                     <Input type="number" min="0" step="1" className="bg-white text-slate-900 border-slate-200" value={maxTorque} onChange={e => setMaxTorque(e.target.value)} />
