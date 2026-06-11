@@ -5,7 +5,7 @@
  * Rangos de Vc son valores de referencia para condiciones normales (acabado–desbaste).
  */
 
-export type ISOGroup = 'P' | 'M' | 'K' | 'N' | 'S' | 'H';
+export type ISOGroup = 'P' | 'M' | 'M2' | 'K' | 'N' | 'S' | 'S2' | 'H';
 
 export interface MaterialISO {
   id: string;
@@ -102,6 +102,28 @@ export const MATERIALS_ISO: MaterialISO[] = [
     kc_milling: 2700,
     kc_drilling: 3000,
     vcRange: { min: 15, max: 60 },
+  },
+
+  // ── ISO M2 — Inoxidables austeníticos de alta aleación (JIS) ─────────────
+  {
+    id: 'sus316l',
+    name: 'Inox. SUS 316L (JIS)',
+    isoGroup: 'M2',
+    kc_turning: 2200,
+    kc_milling: 2300,
+    kc_drilling: 2450,
+    vcRange: { min: 35, max: 55 },
+  },
+
+  // ── ISO S2 — Titanio ──────────────────────────────────────────────────────
+  {
+    id: 'ti6al4v',
+    name: 'Titanio Ti-6Al-4V Gr.5',
+    isoGroup: 'S2',
+    kc_turning: 2600,
+    kc_milling: 2700,
+    kc_drilling: 2800,
+    vcRange: { min: 20, max: 30 },
   },
 ];
 
