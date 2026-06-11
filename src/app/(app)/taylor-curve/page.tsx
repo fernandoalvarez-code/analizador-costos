@@ -21,6 +21,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { calcPc, calcMc, checkViability } from '@/lib/machining-physics';
+import { MATERIALS_ISO } from '@/lib/materials-iso';
 import { Switch } from '@/components/ui/switch';
 import { MonthlySavingsSummary } from '@/components/calculator/MonthlySavingsSummary';
 
@@ -245,7 +247,10 @@ export default function TaylorCurvePage() {
   const [machineCostHr, setMachineCostHr] = useState<string | number>(35);
   const [toolChangeTime, setToolChangeTime] = useState<string | number>(2);
   const [pieceName, setPieceName] = useState<string>("");
-  const [machinePowerHP, setMachinePowerHP] = useState<string | number>(15); 
+  const [machinePowerHP, setMachinePowerHP] = useState<string | number>(15);
+  const [maxPower, setMaxPower] = useState<string | number>(15);
+  const [maxTorque, setMaxTorque] = useState<string | number>(200);
+  const [machineEfficiency, setMachineEfficiency] = useState<string | number>(0.85);
   const [profundidadAgujero, setProfundidadAgujero] = useState<string | number>("");
   const [lifeModeCurrent, setLifeModeCurrent] = useState<'piezas' | 'minutos'>('piezas');
   const [lifeModePremium, setLifeModePremium] = useState<'piezas' | 'minutos'>('piezas');
@@ -512,7 +517,7 @@ export default function TaylorCurvePage() {
             dateCreated: serverTimestamp(),
             date: serverTimestamp(),
             taylorInputs: {
-              operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, profundidadAgujero,
+              operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, maxPower, maxTorque, machineEfficiency, profundidadAgujero,
               monthlyProduction, horasPorTurno, turnosPorDia, lifeModeCurrent, lifeModePremium,
               toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrent, zCurrent, edgesCurrent, dcCurrent, aeCurrent,
               toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, tcPremiumInput, zPremium, edgesPremium, dcPremium, aePremium,
@@ -917,6 +922,22 @@ export default function TaylorCurvePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium, tcPremiumInput, isStressTestActive]);
 
+  const viabilityCheck = useMemo(() => {
+    const mat = MATERIALS.find(m => m.nombre === materialId);
+    const kc = mat?.kc ?? 1800;
+    const vc = Number(vcCurrent);
+    const fn = Number(feedCurrent);
+    const ap = Number(apCurrent);
+    const dc = Number(dcCurrent) || 50;
+    const eff = Number(machineEfficiency) || 0.85;
+    const pw = Number(maxPower) || 15;
+    const tq = Number(maxTorque) || 200;
+    if (vc <= 0 || fn <= 0 || ap <= 0) return null;
+    const pc = calcPc(kc, ap, fn, vc, eff);
+    const mc = calcMc(kc, ap, fn, dc);
+    return { ...checkViability(pc, mc, pw, tq), pc, mc };
+  }, [vcCurrent, feedCurrent, apCurrent, dcCurrent, materialId, maxPower, maxTorque, machineEfficiency]);
+
   useEffect(() => {
     if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
         setSimulationResult(null);
@@ -1114,7 +1135,7 @@ export default function TaylorCurvePage() {
               setSaveCaseName(pieceName);
               setIsSaveModalOpen(true);
             }}
-            disabled={isSaving}
+            disabled={isSaving || viabilityCheck?.viable === false}
             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md text-sm font-bold shadow-sm transition-all disabled:opacity-50"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
@@ -1195,6 +1216,23 @@ export default function TaylorCurvePage() {
                   <Label className="block text-xs font-bold text-slate-500 mb-1">Cambio (min)</Label>
                   <Input type="number" min="0" step="0.5" className="bg-white text-slate-900 border-slate-200 transition-colors focus:border-blue-400" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value)} />
                   <p className="text-[9px] text-slate-400 mt-0.5">Rápido: 0.5 - 5 min</p>
+                </div>
+              </div>
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                <Label className="block text-[10px] font-black text-slate-600 mb-2 uppercase tracking-wide">⚡ Capacidad de la Máquina</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label className="block text-[10px] font-bold text-slate-500 mb-1">Pot. máx. (kW)</Label>
+                    <Input type="number" min="0" step="0.5" className="bg-white text-slate-900 border-slate-200" value={maxPower} onChange={e => setMaxPower(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="block text-[10px] font-bold text-slate-500 mb-1">Torque máx. (Nm)</Label>
+                    <Input type="number" min="0" step="1" className="bg-white text-slate-900 border-slate-200" value={maxTorque} onChange={e => setMaxTorque(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="block text-[10px] font-bold text-slate-500 mb-1">Eficiencia (η)</Label>
+                    <Input type="number" min="0.1" max="1" step="0.01" className="bg-white text-slate-900 border-slate-200" value={machineEfficiency} onChange={e => setMachineEfficiency(e.target.value)} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1571,6 +1609,17 @@ export default function TaylorCurvePage() {
                 <CardDescription>Los puntos marcan el costo operativo real en la Vc seleccionada.</CardDescription>
             </CardHeader>
             <CardContent>
+              {viabilityCheck && (
+                <div className={`mb-4 px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 ${
+                  viabilityCheck.viable
+                    ? 'bg-green-50 text-green-800 border border-green-200'
+                    : 'bg-red-50 text-red-800 border border-red-200'
+                }`}>
+                  {viabilityCheck.viable
+                    ? `✅ Proceso viable — Pc: ${viabilityCheck.pc.toFixed(1)} kW / Mc: ${viabilityCheck.mc.toFixed(1)} Nm`
+                    : `⚠️ PROCESO INVIABLE — ${viabilityCheck.reason}`}
+                </div>
+              )}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                 <div className="lg:col-span-2 h-[400px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
@@ -1799,9 +1848,9 @@ export default function TaylorCurvePage() {
                 Cancelar
               </button>
               
-              <button 
-                onClick={handleSaveCase} 
-                disabled={isSaving}
+              <button
+                onClick={handleSaveCase}
+                disabled={isSaving || viabilityCheck?.viable === false}
                 className="px-4 py-2 text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm"
               >
                 {isSaving ? '⏳ Guardando...' : 'Guardar Análisis'}
