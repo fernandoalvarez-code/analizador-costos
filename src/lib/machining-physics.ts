@@ -124,3 +124,54 @@ export function checkViability(
   }
   return { viable: true, reason: null };
 }
+
+/**
+ * Torque de corte en taladrado.
+ * Mc = (kc × fn × D²) / 8000
+ * @param kc         Fuerza específica de corte [N/mm²]
+ * @param fn_mm_rev  Avance por revolución [mm/rev]
+ * @param diameter_mm  Diámetro de la mecha [mm]
+ * @returns Torque de corte [Nm]
+ */
+export function calcMcDrilling(
+  kc: number,
+  fn_mm_rev: number,
+  diameter_mm: number,
+): number {
+  return (kc * fn_mm_rev * diameter_mm * diameter_mm) / 8_000;
+}
+
+/**
+ * Potencia de corte en taladrado a partir del torque y RPM.
+ * Pc = (Mc × n) / 9550
+ * @param mc_nm  Torque de corte [Nm]
+ * @param rpm    Velocidad de giro del husillo [rev/min]
+ * @returns Potencia de corte [kW]
+ */
+export function calcPcDrilling(mc_nm: number, rpm: number): number {
+  return (mc_nm * rpm) / 9_550;
+}
+
+/**
+ * Tiempo de corte en taladrado con penalización por refrigeración externa y L/D > 3.
+ * tcNet = depth / Vf  (tiempo sin penalización)
+ * factor 1.5 si !coolantInternal && ldRatio > 3 (picoteo G83 obligatorio), 1.0 si no.
+ * @param depth_mm        Profundidad del agujero [mm]
+ * @param vf_mm_min       Velocidad de avance [mm/min]
+ * @param coolantInternal ¿La mecha tiene refrigeración interna?
+ * @param ldRatio         Relación L/D del agujero (profundidad / diámetro)
+ * @returns { tcNet, tcReal, penaltyApplied, factor }
+ */
+export function calcTcDrilling(
+  depth_mm: number,
+  vf_mm_min: number,
+  coolantInternal: boolean,
+  ldRatio: number,
+): { tcNet: number; tcReal: number; penaltyApplied: boolean; factor: number } {
+  if (vf_mm_min <= 0) return { tcNet: 0, tcReal: 0, penaltyApplied: false, factor: 1.0 };
+  const penaltyApplied = !coolantInternal && ldRatio > 3;
+  const factor = penaltyApplied ? 1.5 : 1.0;
+  const tcNet = depth_mm / vf_mm_min;
+  const tcReal = tcNet * factor;
+  return { tcNet, tcReal, penaltyApplied, factor };
+}
