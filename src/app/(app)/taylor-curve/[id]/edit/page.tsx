@@ -23,6 +23,7 @@ import { MonthlySavingsSummary } from '@/components/calculator/MonthlySavingsSum
 import { useToast } from '@/hooks/use-toast';
 import { calcPc, calcMc, checkViability } from '@/lib/machining-physics';
 import { MATERIALS_ISO } from '@/lib/materials-iso';
+import { getDrillingAlert } from '@/lib/drilling-alerts';
 
 
 const MATERIALS = [
@@ -269,6 +270,7 @@ export default function EditTaylorCurvePage() {
   const [machinePowerHP, setMachinePowerHP] = useState<string | number>(15);
   const [maxTorque, setMaxTorque] = useState<string | number>(200);
   const [machineEfficiency, setMachineEfficiency] = useState<string | number>(0.85);
+  const [coolantInternal, setCoolantInternal] = useState(false);
   const [profundidadAgujero, setProfundidadAgujero] = useState<string | number>("");
   const [isGeneratingSurvey, setIsGeneratingSurvey] = useState(false);
   
@@ -382,6 +384,7 @@ export default function EditTaylorCurvePage() {
         setMachinePowerHP(inputs.machinePowerHP || 15);
         setMaxTorque(inputs.maxTorque || 200);
         setMachineEfficiency(inputs.machineEfficiency || 0.85);
+        setCoolantInternal(inputs.coolantInternal || false);
         setProfundidadAgujero(inputs.profundidadAgujero || "");
         setMonthlyProduction(inputs.monthlyProduction || "");
         
@@ -498,7 +501,7 @@ export default function EditTaylorCurvePage() {
         pdfUrl: pdfUrl,
         dateModified: serverTimestamp(),
         taylorInputs: {
-          operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, maxTorque, machineEfficiency, profundidadAgujero,
+          operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, maxTorque, machineEfficiency, profundidadAgujero, coolantInternal,
           monthlyProduction, lifeModeCurrent, lifeModePremium,
           toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrent, zCurrent, edgesCurrent, dcCurrent, aeCurrent,
           toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, tcPremiumInput, zPremium, edgesPremium, dcPremium, aePremium,
@@ -835,6 +838,19 @@ export default function EditTaylorCurvePage() {
     return { ...checkViability(pc, mc, pw, tq), pc, mc };
   }, [vcCurrent, feedCurrent, apCurrent, dcCurrent, materialId, machinePowerHP, maxTorque, machineEfficiency]);
 
+  const drillingAlert = useMemo(() => {
+    if (operationType !== 'drilling') return null;
+    const depth = Number(profundidadAgujero);
+    const diam = Number(dcCurrent);
+    if (!depth || !diam) return null;
+    return getDrillingAlert({
+      coolantInternal,
+      depth,
+      diameter: diam,
+      materialIsoGroup: MATERIALS.find(m => m.nombre === materialId)?.grupo || '',
+    });
+  }, [operationType, coolantInternal, profundidadAgujero, dcCurrent, materialId]);
+
   useEffect(() => {
     if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
         setSimulationResult(null);
@@ -1080,6 +1096,16 @@ export default function EditTaylorCurvePage() {
                         <Label className="block text-xs font-bold text-slate-500 mb-1">Profundidad del Agujero (mm)</Label>
                         <Input type="number" className="bg-white text-slate-900 border-slate-200" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value)} />
                     </div>
+                )}
+                {operationType === 'drilling' && (
+                  <div className="col-span-2">
+                    <Label className="block text-xs font-bold text-slate-600 mb-1">🔵 Refrigeración Interna de la Mecha</Label>
+                    <div className="flex items-center gap-3 mt-1">
+                      <Switch checked={coolantInternal} onCheckedChange={setCoolantInternal} />
+                      <span className="text-sm font-bold text-slate-700">{coolantInternal ? 'SÍ' : 'NO'}</span>
+                    </div>
+                    <p className="text-[9px] text-slate-400 mt-1">Las mechas Seco con refrigeración interna permiten entrada directa en una sola pasada (G01).</p>
+                  </div>
                 )}
                 <div>
                   <Label className="block text-xs font-bold text-blue-700 mb-1">Motor (HP)</Label>
@@ -1401,6 +1427,20 @@ export default function EditTaylorCurvePage() {
                   {viabilityCheck.viable
                     ? `✅ Proceso viable — Pc: ${viabilityCheck.pc.toFixed(1)} kW / Mc: ${viabilityCheck.mc.toFixed(1)} Nm`
                     : `⚠️ PROCESO INVIABLE — ${viabilityCheck.reason}`}
+                </div>
+              )}
+              {drillingAlert && (
+                <div className={`mb-4 px-4 py-3 rounded-lg border ${
+                  drillingAlert.type === 'critical'
+                    ? 'bg-orange-50 border-orange-200 text-orange-900'
+                    : 'bg-green-50 border-green-200 text-green-900'
+                }`}>
+                  <p className="text-sm font-black mb-2">{drillingAlert.title}</p>
+                  <ul className="space-y-1">
+                    {drillingAlert.lines.map((line, i) => (
+                      <li key={i} className="text-xs leading-snug">• {line}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
