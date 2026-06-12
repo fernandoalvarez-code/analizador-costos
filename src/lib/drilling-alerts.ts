@@ -49,11 +49,11 @@ export function getDrillingAlert(params: DrillingAlertInput): DrillingAlert {
     }
     return {
       type: 'recommended_g83',
-      title: '🔵 Recomendación: Ciclo G83 (Agujero Ciego / Vertical)',
+      title: '🔵 Recomendación: Ciclo G83 (Orientación Horizontal — Evacuación Asistida)',
       lines: [
-        'En agujeros ciegos o verticales hacia abajo, la gravedad acumula viruta en el fondo. El G83 actúa como extractor mecánico retirando la mecha completamente.',
-        'Para Inoxidable y materiales ISO H, usar G83 aunque el agujero sea corto para evitar sobrecalentamiento del filo.',
-        'Orientación horizontal: la viruta cae por gravedad hacia la bandeja. Evaluá usar G73 si el material quiebra bien para reducir tiempo de ciclo hasta un 20%.',
+        'Orientación horizontal: la viruta cae por gravedad hacia la bandeja, mejorando la evacuación natural. En materiales difíciles (Inox, Titanio) el G83 sigue siendo recomendado para garantizar refrigeración al fondo.',
+        'Evaluá usar G73 si el material quiebra bien — podés reducir el tiempo de ciclo hasta un 20% sin comprometer la evacuación.',
+        'No programar G04 (Dwell) en el fondo del agujero en ningún caso.',
       ],
     };
   }
