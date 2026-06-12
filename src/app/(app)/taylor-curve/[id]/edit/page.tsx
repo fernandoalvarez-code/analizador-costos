@@ -1204,7 +1204,7 @@ export default function EditTaylorCurvePage() {
                   <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-2">
                     <Label className="block text-xs font-bold text-slate-600 mb-1">💧 Concentración de Soluble</Label>
                     <div className="flex items-baseline gap-2">
-                      <span className={`text-lg font-black ${COOLANT_COLOR[coolantInfo.group] ?? 'text-slate-700'}`}>
+                      <span className={`text-base font-black whitespace-nowrap ${COOLANT_COLOR[coolantInfo.group] ?? 'text-slate-700'}`}>
                         {coolantInfo.min === 0 ? `máx. ${coolantInfo.max}%` : `${coolantInfo.min}% – ${coolantInfo.max}%`}
                       </span>
                       <span className="text-[10px] text-slate-500 leading-snug">{coolantInfo.note}</span>
