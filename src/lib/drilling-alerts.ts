@@ -14,6 +14,7 @@ export interface DrillingAlert {
 export function getDrillingAlert(params: DrillingAlertInput): DrillingAlert {
   const { coolantInternal, depth, diameter, materialIsoGroup } = params;
   const ldRatio = diameter > 0 ? depth / diameter : 0;
+  const group = materialIsoGroup.replace(/^ISO\s+/i, '');
 
   if (coolantInternal) {
     return {
@@ -29,7 +30,7 @@ export function getDrillingAlert(params: DrillingAlertInput): DrillingAlert {
   }
 
   const CRITICAL_GROUPS = new Set(['M', 'M2', 'S', 'S2']);
-  if (ldRatio > 3 && CRITICAL_GROUPS.has(materialIsoGroup)) {
+  if (ldRatio > 3 && CRITICAL_GROUPS.has(group)) {
     return {
       type: 'critical',
       title: '⚠️ ALERTA CRÍTICA DE PROCESO (Refrigeración Externa Tradicional)',

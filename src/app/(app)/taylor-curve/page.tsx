@@ -351,7 +351,7 @@ export default function TaylorCurvePage() {
       const rpm = calcRPM(Number(vcPremium), Number(dcPremium));
       const vf = calcVf(rpm, Number(feedPremium));
       const depth = Number(profundidadAgujero);
-      const diam = Number(dcPremium);
+      const diam = Number(dcPremium) || Number(dcCurrent);
       if (rpm > 0 && vf > 0 && depth > 0 && diam > 0) {
         const ldRatio = depth / diam;
         const result = calcTcDrilling(depth, vf, coolantInternal, ldRatio);
