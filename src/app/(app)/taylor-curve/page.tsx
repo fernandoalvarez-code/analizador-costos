@@ -1663,9 +1663,12 @@ export default function TaylorCurvePage() {
               )}
               {drillingAlert && (
                 <div className={`mb-4 px-4 py-3 rounded-lg border ${
-                  drillingAlert.type === 'critical'
-                    ? 'bg-orange-50 border-orange-200 text-orange-900'
-                    : 'bg-green-50 border-green-200 text-green-900'
+                  ({
+                    critical_g83:     'bg-red-50 border-red-300 text-red-900',
+                    recommended_g83:  'bg-orange-50 border-orange-200 text-orange-900',
+                    recommended_g73:  'bg-blue-50 border-blue-200 text-blue-900',
+                    optimized:        'bg-green-50 border-green-200 text-green-900',
+                  } as Record<string, string>)[drillingAlert.type ?? ''] ?? 'bg-gray-50 border-gray-200 text-gray-900'
                 }`}>
                   <p className="text-sm font-black mb-2">{drillingAlert.title}</p>
                   <ul className="space-y-1">

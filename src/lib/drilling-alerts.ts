@@ -6,7 +6,7 @@ export interface DrillingAlertInput {
 }
 
 export interface DrillingAlert {
-  type: 'critical' | 'optimized' | null;
+  type: 'critical_g83' | 'recommended_g83' | 'recommended_g73' | 'optimized' | null;
   title: string;
   lines: string[];
 }
@@ -19,29 +19,50 @@ export function getDrillingAlert(params: DrillingAlertInput): DrillingAlert {
   if (coolantInternal) {
     return {
       type: 'optimized',
-      title: '🟢 PROCESO DE ALTA PRODUCTIVIDAD (Optimizado por Seco Tools)',
+      title: '✅ PROCESO OPTIMIZADO — Entrada Directa G01 (Refrigeración Interna)',
       lines: [
-        'Estrategia CNC: Entrada directa en una sola pasada (G01). No use ciclos de picoteo (G83). El picoteo con refrigeración interna arruina el inserto por choque térmico.',
-        'Control de Viruta: La presión interna romperá la viruta y la expulsará de forma continua hacia la boca del agujero.',
-        'Tiempo de Ciclo: Tiempo mínimo real de catálogo. Proceso 100% automatizable.',
-        'Recomendación de Venta: Con mechas Seco de refrigeración interna el cliente reduce el tiempo de máquina a la mitad y el proceso es 100% automatizable.',
+        'Entrada directa en una sola pasada (G01). No usar G83 ni G73 — el picoteo con refrigeración interna genera choques térmicos que destruyen el filo.',
+        'La presión interna expulsa la viruta de forma continua hacia la boca del agujero.',
+        'Ventaja comercial: elimina tiempos muertos, reduce costo por pieza y duplica vida útil del filo.',
       ],
     };
   }
 
-  const CRITICAL_GROUPS = new Set(['M', 'M2', 'S', 'S2']);
-  if (ldRatio > 3 && CRITICAL_GROUPS.has(group)) {
+  if (ldRatio <= 1) return { type: null, title: '', lines: [] };
+
+  const HIGH_RISK = new Set(['M', 'M2', 'S', 'S2', 'H']);
+
+  if (HIGH_RISK.has(group) && ldRatio > 3) {
     return {
-      type: 'critical',
-      title: '⚠️ ALERTA CRÍTICA DE PROCESO (Refrigeración Externa Tradicional)',
+      type: 'critical_g83',
+      title: '⚠️ ALERTA CRÍTICA — Usar Ciclo G83 (Descarga Completa)',
       lines: [
-        'Estrategia CNC Obligatoria: Prohibido entrar en una sola pasada. Programar ciclo G83 (Picoteo con extracción completa) cada 2-3 mm en Titanio o 3-4 mm en Inoxidable.',
-        'PROHIBIDO TEMPORIZAR (G04 / Dwell): En Inoxidable provoca endurecimiento por fricción (work hardening). En Titanio el material se contrae, abraza la mecha y la parte al retomar el movimiento.',
-        'Factor de Costo/Tiempo: El tiempo de ciclo real aumentará entre 40% y 60% por los movimientos de retroceso y aproximación en rápido (G00).',
-        'Direccionamiento: Posicione boquillas externas con máximo caudal apuntando directo a la entrada del agujero.',
+        'Estrategia CNC Obligatoria: Prohibido entrar en una sola pasada. Programar G83 cada 2-3 mm en Titanio/Superaleaciones o 3-4 mm en Inoxidable/H.',
+        'PROHIBIDO G04 (Dwell): En Inoxidable provoca work hardening instantáneo. En Titanio el material abraza la mecha por contracción térmica.',
+        'Factor de Tiempo: El ciclo real aumentará 40-60% por los movimientos de retroceso en rápido (G00).',
+        'Direccionamiento: Boquillas externas con máximo caudal apuntando a la entrada del agujero.',
       ],
     };
   }
 
-  return { type: null, title: '', lines: [] };
+  if (HIGH_RISK.has(group)) {
+    return {
+      type: 'recommended_g83',
+      title: '🔵 Recomendación: Ciclo G83 (Agujero Ciego / Vertical)',
+      lines: [
+        'En agujeros ciegos o verticales hacia abajo, la gravedad acumula viruta en el fondo. El G83 actúa como extractor mecánico retirando la mecha completamente.',
+        'Para Inoxidable y materiales ISO H, usar G83 aunque el agujero sea corto para evitar sobrecalentamiento del filo.',
+      ],
+    };
+  }
+
+  return {
+    type: 'recommended_g73',
+    title: '🟡 Recomendación: Ciclo G73 (Rotura de Viruta — Alta Productividad)',
+    lines: [
+      'Material dócil: la viruta evacúa bien pero puede formar nidos largos. El G73 la rompe con un salto corto sin sacar la mecha, ahorrando tiempo de ciclo.',
+      'Ideal para producción en serie: a diferencia del G83, no pierde tiempo viajando en vacío hacia afuera del agujero.',
+      'En tornos CNC (agujeros horizontales): la viruta cae por gravedad, con romperla es suficiente.',
+    ],
+  };
 }
