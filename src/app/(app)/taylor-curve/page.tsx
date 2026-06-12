@@ -1207,105 +1207,126 @@ export default function TaylorCurvePage() {
             <h2 className="font-black text-slate-800 text-sm uppercase border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
               🏭 1. Parámetros del Taller
             </h2>
-            
-            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 mb-2">
-              <button onClick={() => setOperationType('turning')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'turning' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>🔄 Torneado</button>
-              <button onClick={() => setOperationType('milling')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'milling' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>⚙️ Fresado</button>
-              <button onClick={() => setOperationType('drilling')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'drilling' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>🔩 Taladrado</button>
-            </div>
-            <div className="text-center mb-4">
-                <Button variant="link" size="sm" onClick={handleGenerateSurveyPDF} disabled={isGeneratingSurvey} className="text-slate-600">
-                    <Download className="mr-2 h-4 w-4" />
-                    {isGeneratingSurvey ? 'Generando...' : 'Descargar Planilla de Relevamiento'}
-                </Button>
-            </div>
 
-            
-            <div className="space-y-4 flex-grow">
+            {/* S1 — Operación y Material */}
+            <div className="space-y-3">
+              <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                <button onClick={() => setOperationType('turning')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'turning' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>🔄 Torneado</button>
+                <button onClick={() => setOperationType('milling')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'milling' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>⚙️ Fresado</button>
+                <button onClick={() => setOperationType('drilling')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 ${operationType === 'drilling' ? 'bg-white shadow-sm text-blue-700 border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}>🔩 Taladrado</button>
+              </div>
+              <div className="text-center">
+                <Button variant="link" size="sm" onClick={handleGenerateSurveyPDF} disabled={isGeneratingSurvey} className="text-slate-600">
+                  <Download className="mr-2 h-4 w-4" />
+                  {isGeneratingSurvey ? 'Generando...' : 'Descargar Planilla de Relevamiento'}
+                </Button>
+              </div>
               <div>
                 <Label className="block text-xs font-bold text-slate-500 mb-1">Pieza / Operación</Label>
                 <Input type="text" placeholder="Ej: Eje principal" className="w-full bg-slate-50 text-slate-900" value={pieceName} onChange={e => setPieceName(e.target.value)} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <Label className="block text-xs font-bold text-slate-500 mb-1">Material</Label>
-                  <Select value={materialId} onValueChange={setMaterialId}>
-                    <SelectTrigger className="w-full bg-slate-50 text-slate-900"><SelectValue placeholder="Selecciona un material" /></SelectTrigger>
-                    <SelectContent>
-                        {Object.entries(materialGroups).map(([groupName, materials]) => (
-                            <SelectGroup key={groupName}>
-                                <SelectLabel>{groupName}</SelectLabel>
-                                {materials.map(m => <SelectItem key={m.nombre} value={m.nombre}>{m.nombre}</SelectItem>)}
-                            </SelectGroup>
-                        ))}
-                    </SelectContent>
-                  </Select>
+              <div>
+                <Label className="block text-xs font-bold text-slate-500 mb-1">Material</Label>
+                <Select value={materialId} onValueChange={setMaterialId}>
+                  <SelectTrigger className="w-full bg-slate-50 text-slate-900"><SelectValue placeholder="Selecciona un material" /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(materialGroups).map(([groupName, materials]) => (
+                      <SelectGroup key={groupName}>
+                        <SelectLabel>{groupName}</SelectLabel>
+                        {materials.map(m => <SelectItem key={m.nombre} value={m.nombre}>{m.nombre}</SelectItem>)}
+                      </SelectGroup>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <hr className="border-slate-100 my-3" />
+
+            {/* S2 — Parámetros de la Pieza (taladrado) */}
+            {operationType === 'drilling' && (
+              <>
+                <div className="grid grid-cols-2 gap-3 mb-1">
+                  <div>
+                    <Label className="block text-xs font-bold text-slate-500 mb-1">Profundidad (mm)</Label>
+                    <Input type="number" min="0" className="bg-white text-slate-900 border-slate-200 transition-colors focus:border-blue-400" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="block text-xs font-bold text-slate-500 mb-1">Dc Broca (mm)</Label>
+                    <Input type="number" min="0" className="bg-white text-slate-900 border-slate-200 transition-colors focus:border-blue-400" value={dcCurrent} onChange={e => setDcCurrent(e.target.value)} />
+                  </div>
                 </div>
-                {operationType === 'drilling' && (
-                    <div className="col-span-2">
-                        <Label className="block text-xs font-bold text-slate-500 mb-1">Profundidad del Agujero (mm)</Label>
-                        <Input type="number" min="0" className="bg-white text-slate-900 border-slate-200 transition-colors focus:border-blue-400" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value)} />
-                        <p className="text-[9px] text-slate-400 mt-0.5">
-                          {Number(profundidadAgujero) > 0 && Number(dcCurrent) > 0
-                            ? `Ratio L/D: ${(Number(profundidadAgujero) / Number(dcCurrent)).toFixed(1)}`
-                            : 'Ratio L/D: —'}
-                        </p>
-                    </div>
-                )}
-                {operationType === 'drilling' && (
-                  <div className="col-span-2">
-                    <Label className="block text-xs font-bold text-slate-600 mb-1">🔵 Refrigeración Interna de la Mecha</Label>
-                    <div className="flex items-center gap-3 mt-1">
+                <p className="text-[9px] text-slate-400 mb-2">
+                  {Number(profundidadAgujero) > 0 && Number(dcCurrent) > 0
+                    ? `Ratio L/D: ${(Number(profundidadAgujero) / Number(dcCurrent)).toFixed(1)}`
+                    : 'Ratio L/D: —'}
+                </p>
+                <hr className="border-slate-100 my-2" />
+              </>
+            )}
+
+            {/* S3 — Proceso de Corte (taladrado) */}
+            {operationType === 'drilling' && (
+              <>
+                <div className="grid grid-cols-2 gap-3 mb-2">
+                  <div>
+                    <Label className="block text-xs font-bold text-slate-600 mb-1">🔵 Refrigeración</Label>
+                    <div className="flex items-center gap-2 mt-1">
                       <Switch checked={coolantInternal} onCheckedChange={setCoolantInternal} />
                       <span className="text-sm font-bold text-slate-700">{coolantInternal ? 'SÍ' : 'NO'}</span>
                     </div>
-                    <p className="text-[9px] text-slate-400 mt-1">Las mechas Seco con refrigeración interna permiten entrada directa en una sola pasada (G01).</p>
+                    <p className="text-[9px] text-slate-400 mt-1">G01 directo con mecha Seco.</p>
                   </div>
-                )}
-                {operationType === 'drilling' && (
-                  <div className="col-span-2">
-                    <Label className="block text-xs font-bold text-slate-600 mb-1">⬇️ Orientación del Perforado</Label>
-                    <div className="flex gap-2 mt-1">
+                  <div>
+                    <Label className="block text-xs font-bold text-slate-600 mb-1">⬇️ Orientación</Label>
+                    <div className="flex gap-1 mt-1">
                       <button
                         type="button"
                         onClick={() => setDrillingOrientation('vertical')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded border transition-colors ${
+                        className={`flex-1 py-1 text-xs font-bold rounded border transition-colors ${
                           drillingOrientation === 'vertical'
                             ? 'bg-blue-600 text-white border-blue-600'
                             : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
                         }`}
                       >
-                        Vertical ⬇️
+                        Vert. ⬇️
                       </button>
                       <button
                         type="button"
                         onClick={() => setDrillingOrientation('horizontal')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded border transition-colors ${
+                        className={`flex-1 py-1 text-xs font-bold rounded border transition-colors ${
                           drillingOrientation === 'horizontal'
                             ? 'bg-blue-600 text-white border-blue-600'
                             : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
                         }`}
                       >
-                        Horizontal ▶
+                        Horiz. ▶
                       </button>
                     </div>
                     <p className="text-[9px] text-slate-400 mt-1">
-                      {drillingOrientation === 'vertical'
-                        ? 'La gravedad acumula viruta en el fondo. Requiere G83 en materiales difíciles.'
-                        : 'La viruta cae por gravedad. Mejor evacuación natural.'}
+                      {drillingOrientation === 'vertical' ? 'Viruta se acumula al fondo.' : 'Viruta cae por gravedad.'}
                     </p>
                   </div>
-                )}
-                {operationType === 'drilling' && coolantInfo && (
-                  <div className="col-span-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-                    <Label className="block text-xs font-bold text-slate-600 mb-1">💧 Concentración de Soluble Recomendada</Label>
-                    <p className={`text-2xl font-black leading-none mb-1 ${COOLANT_COLOR[coolantInfo.group] ?? 'text-slate-700'}`}>
-                      {coolantInfo.min === 0 ? `máx. ${coolantInfo.max}%` : `${coolantInfo.min}% – ${coolantInfo.max}%`}
-                    </p>
-                    <p className="text-[10px] text-slate-600 leading-snug mb-1">{coolantInfo.note}</p>
-                    <p className="text-[9px] text-slate-400">⚠️ Si la mecha dura menos de lo esperado, verificá la concentración con un refractómetro.</p>
+                </div>
+                {coolantInfo && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-2">
+                    <Label className="block text-xs font-bold text-slate-600 mb-1">💧 Concentración de Soluble</Label>
+                    <div className="flex items-baseline gap-2">
+                      <span className={`text-lg font-black ${COOLANT_COLOR[coolantInfo.group] ?? 'text-slate-700'}`}>
+                        {coolantInfo.min === 0 ? `máx. ${coolantInfo.max}%` : `${coolantInfo.min}% – ${coolantInfo.max}%`}
+                      </span>
+                      <span className="text-[10px] text-slate-500 leading-snug">{coolantInfo.note}</span>
+                    </div>
+                    <p className="text-[9px] text-slate-400 mt-0.5">⚠️ Verificá con refractómetro.</p>
                   </div>
                 )}
+                <hr className="border-slate-100 my-2" />
+              </>
+            )}
+
+            {/* S4 — Parámetros de la Máquina */}
+            <div className="flex-grow">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="block text-xs font-bold text-blue-700 mb-1">Motor (HP)</Label>
                   <Input type="number" step="0.5" min="0" className="font-bold text-blue-700 bg-blue-50 text-slate-900 border-blue-200 transition-colors focus:border-blue-400" value={machinePowerHP} onChange={e => setMachinePowerHP(e.target.value)} />
@@ -1331,23 +1352,21 @@ export default function TaylorCurvePage() {
                   <Input type="number" min="0" step="0.5" className="bg-white text-slate-900 border-slate-200 transition-colors focus:border-blue-400" value={toolChangeTime} onChange={e => setToolChangeTime(e.target.value)} />
                   <p className="text-[9px] text-slate-400 mt-0.5">Rápido: 0.5 - 5 min</p>
                 </div>
-              </div>
-              <div className="mt-3 border-t border-slate-100 pt-3">
-                <Label className="block text-[10px] font-black text-slate-600 mb-2 uppercase tracking-wide">⚡ Capacidad de la Máquina</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="block text-[10px] font-bold text-slate-500 mb-1">Torque máx. (Nm)</Label>
-                    <Input type="number" min="0" step="1" className="bg-white text-slate-900 border-slate-200" value={maxTorque} onChange={e => setMaxTorque(e.target.value)} />
-                  </div>
-                  <div>
-                    <Label className="block text-[10px] font-bold text-slate-500 mb-1">Eficiencia (η)</Label>
-                    <Input type="number" min="0.1" max="1" step="0.01" className="bg-white text-slate-900 border-slate-200" value={machineEfficiency} onChange={e => setMachineEfficiency(e.target.value)} />
-                  </div>
+                <div>
+                  <Label className="block text-[10px] font-bold text-slate-500 mb-1">Torque máx. (Nm)</Label>
+                  <Input type="number" min="0" step="1" className="bg-white text-slate-900 border-slate-200" value={maxTorque} onChange={e => setMaxTorque(e.target.value)} />
                 </div>
+              </div>
+              <div className="mt-2">
+                <Label className="block text-[10px] font-bold text-slate-500 mb-1">Eficiencia (η)</Label>
+                <Input type="number" min="0.1" max="1" step="0.01" className="bg-white text-slate-900 border-slate-200" value={machineEfficiency} onChange={e => setMachineEfficiency(e.target.value)} />
               </div>
             </div>
 
-            <div className="mt-6 pt-5 border-t border-slate-100">
+            <hr className="border-slate-100 my-3" />
+
+            {/* S5 — Escala Comercial */}
+            <div>
               <Label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wide">📦 Escala Comercial</Label>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="relative col-span-1 md:col-span-2">
