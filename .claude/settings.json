@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git commit *)",
+      "Bash(npx tsc *)",
+      "Bash(git -C \"/Users/fernandoalvarez/Downloads/project\" log --oneline -5)",
+      "Bash(git -C \"/Users/fernandoalvarez/Downloads/project\" add .)"
+    ]
+  }
+}

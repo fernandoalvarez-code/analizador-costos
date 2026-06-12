@@ -266,6 +266,21 @@ const DRILLING_ALERT_STYLES: Record<string, string> = {
   optimized:       'bg-green-50 border-green-200 text-green-900',
 };
 
+function getDrillingVcRange(isoGroup: string): { min: number; max: number } {
+  const group = isoGroup.replace(/^ISO\s+/i, '').trim();
+  const MAP: Record<string, { min: number; max: number }> = {
+    P:  { min: 80,  max: 200 },
+    M:  { min: 30,  max: 80  },
+    M2: { min: 30,  max: 80  },
+    K:  { min: 60,  max: 150 },
+    N:  { min: 100, max: 300 },
+    S:  { min: 20,  max: 50  },
+    S2: { min: 20,  max: 50  },
+    H:  { min: 40,  max: 80  },
+  };
+  return MAP[group] ?? { min: 60, max: 200 };
+}
+
 export default function EditTaylorCurvePage() {
   const { user } = useUser();
   const { toast } = useToast();
@@ -1185,8 +1200,13 @@ export default function EditTaylorCurvePage() {
                     <Input type="number" min="0" className="bg-white text-slate-900 border-slate-200 transition-colors focus:border-blue-400" value={profundidadAgujero} onChange={e => setProfundidadAgujero(e.target.value)} />
                   </div>
                   <div>
-                    <Label className="block text-xs font-bold text-slate-500 mb-1">Dc Broca (mm)</Label>
+                    <Label className="block text-xs font-bold text-slate-500 mb-1">Dc Actual (mm)</Label>
                     <Input type="number" min="0" className="bg-white text-slate-900 border-slate-200 transition-colors focus:border-blue-400" value={dcCurrent} onChange={e => setDcCurrent(e.target.value)} />
+                  </div>
+                  <div />
+                  <div>
+                    <Label className="block text-xs font-bold text-slate-500 mb-1">Dc Propuesta (mm)</Label>
+                    <Input type="number" min="0" className="bg-white text-slate-900 border-slate-200 transition-colors focus:border-green-400" value={dcPremium} onChange={e => setDcPremium(e.target.value)} />
                   </div>
                 </div>
                 <p className="text-[9px] text-slate-400 mb-2">
@@ -1313,8 +1333,8 @@ export default function EditTaylorCurvePage() {
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value)} /></div>
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 4" className="border-red-200 bg-white text-slate-900" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value)} /></div>
               
-              {operationType === 'milling' || operationType === 'drilling' ? (
-                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Dc Fresa (mm)' : 'Dc Broca (mm)'}</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={dcCurrent} onChange={e => setDcCurrent(e.target.value)} /></div>
+              {operationType === 'milling' ? (
+                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Dc Fresa (mm)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={dcCurrent} onChange={e => setDcCurrent(e.target.value)} /></div>
               ) : null}
 
               {operationType === 'milling' ? (
@@ -1327,9 +1347,14 @@ export default function EditTaylorCurvePage() {
                  <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Prof. Corte (ap) mm</Label><Input type="number" step="0.1" className="border-red-200 bg-white text-slate-900" value={apCurrent} onChange={e => setApCurrent(e.target.value)} /></div>
               ) : null}
 
-              <div>
+              <div className="relative group">
                   <Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'turning' ? 'Avance (mm/rev)' : operationType === 'milling' ? 'Avance (mm/z)' : 'Avance (mm/rev)'}</Label>
                   <Input type="number" step="0.01" className="border-red-200 bg-white text-slate-900" value={feedCurrent} onChange={e => setFeedCurrent(e.target.value)} />
+                  {operationType === 'drilling' && (
+                    <div className="absolute z-20 hidden group-hover:block w-48 bg-slate-800 text-white text-[10px] p-2 rounded shadow-lg top-full mt-1 left-0 pointer-events-none">
+                      <p>Rango recomendado para taladrado: 0.10 – 0.35 mm/rev</p>
+                    </div>
+                  )}
                   {raActual && (
                       <p className="text-[10px] text-slate-500 font-semibold mt-1">
                           Acabado (Ra): <span className="text-red-600 font-bold">{raActual} µm</span>
@@ -1350,7 +1375,15 @@ export default function EditTaylorCurvePage() {
                   )}
               </div>
               
-              <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label><Input type="number" className="border-red-200 bg-white text-slate-900" value={vcCurrent} onChange={e => setVcCurrent(e.target.value)} /></div>
+              <div className="relative group">
+                <Label className="block text-[10px] font-bold text-red-600 mb-1">Vc Actual (m/min)</Label>
+                <Input type="number" className="border-red-200 bg-white text-slate-900" value={vcCurrent} onChange={e => setVcCurrent(e.target.value)} />
+                {operationType === 'drilling' && (
+                  <div className="absolute z-20 hidden group-hover:block w-52 bg-slate-800 text-white text-[10px] p-2 rounded shadow-lg top-full mt-1 left-0 pointer-events-none">
+                    <p>Rango recomendado ({MATERIALS.find(m => m.nombre === materialId)?.grupo || 'ISO P'}): {getDrillingVcRange(MATERIALS.find(m => m.nombre === materialId)?.grupo || '').min} – {getDrillingVcRange(MATERIALS.find(m => m.nombre === materialId)?.grupo || '').max} m/min</p>
+                  </div>
+                )}
+              </div>
               
               <div className="col-span-2 grid grid-cols-2 gap-2">
                 <div>
@@ -1419,8 +1452,8 @@ export default function EditTaylorCurvePage() {
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Costo Inserto ($)</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value)} /></div>
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label><Input type="number" placeholder="Ej: 8" className="border-green-200 bg-white text-slate-900" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value)} /></div>
               
-              {operationType === 'milling' || operationType === 'drilling' ? (
-                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'milling' ? 'Diámetro Fresa (Dc) mm' : 'Diámetro Broca (Dc) mm'}</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={dcPremium} onChange={e => setDcPremium(e.target.value)} /></div>
+              {operationType === 'milling' ? (
+                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Diámetro Fresa (Dc) mm</Label><Input type="number" className="border-green-200 bg-white text-slate-900" value={dcPremium} onChange={e => setDcPremium(e.target.value)} /></div>
               ) : null}
 
               {operationType === 'milling' ? (
