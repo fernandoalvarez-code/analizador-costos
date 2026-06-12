@@ -957,7 +957,12 @@ export default function TaylorCurvePage() {
 
   const viabilityCheck = useMemo(() => {
     const mat = MATERIALS.find(m => m.nombre === materialId);
-    const kc = mat?.kc ?? 1800;
+    const group = (mat?.grupo || '').replace(/^ISO\s+/i, '');
+    const kcIsoMilling = MATERIALS_ISO.filter(m => m.isoGroup === group);
+    const kcMilling = kcIsoMilling.length
+      ? Math.round(kcIsoMilling.reduce((s, m) => s + m.kc_milling, 0) / kcIsoMilling.length)
+      : (mat?.kc ?? 1800);
+    const kc = operationType === 'milling' ? kcMilling : (mat?.kc ?? 1800);
     const vc = Number(vcCurrent);
     const fn = Number(feedCurrent);
     const ap = Number(apCurrent);
@@ -966,10 +971,19 @@ export default function TaylorCurvePage() {
     const pw = (Number(machinePowerHP) || 15) * 0.7457;
     const tq = Number(maxTorque) || 200;
     if (vc <= 0 || fn <= 0 || ap <= 0) return null;
+    if (operationType === 'milling') {
+      const rpm = calcRPM(vc, dc);
+      const vf = calcVf(rpm, fn) * (Number(zCurrent) || 1);
+      const Q = (ap * (Number(aeCurrent) || 0) * vf) / 1000;
+      if (Q <= 0) return null;
+      const pcMilling = (Q * kc) / 60000;
+      const mc = calcMc(kc, ap, fn, dc);
+      return { ...checkViability(pcMilling, mc, pw, tq), pc: pcMilling, mc };
+    }
     const pc = calcPc(kc, ap, fn, vc, eff);
     const mc = calcMc(kc, ap, fn, dc);
     return { ...checkViability(pc, mc, pw, tq), pc, mc };
-  }, [vcCurrent, feedCurrent, apCurrent, dcCurrent, materialId, machinePowerHP, maxTorque, machineEfficiency]);
+  }, [vcCurrent, feedCurrent, apCurrent, dcCurrent, materialId, machinePowerHP, maxTorque, machineEfficiency, operationType, zCurrent, aeCurrent]);
 
   const drillingAlert = useMemo(() => {
     if (operationType !== 'drilling') return null;
@@ -994,6 +1008,7 @@ export default function TaylorCurvePage() {
   }, [operationType, materialId]);
 
   const vcLimitMachine = useMemo(() => {
+    if (operationType === 'milling') return null;
     const maxPowerKw = (Number(machinePowerHP) || 15) * 0.7457;
     const kc = MATERIALS.find(m => m.nombre === materialId)?.kc || 1800;
     const ap = Number(apCurrent) || 1;
@@ -1001,7 +1016,23 @@ export default function TaylorCurvePage() {
     const eta = Number(machineEfficiency) || 0.85;
     const vcLimit = (maxPowerKw * 60000 * eta) / (kc * ap * fn);
     return Math.round(vcLimit);
-  }, [machinePowerHP, materialId, apCurrent, feedCurrent, machineEfficiency]);
+  }, [operationType, machinePowerHP, materialId, apCurrent, feedCurrent, machineEfficiency]);
+
+  const vfLimitMachine = useMemo(() => {
+    if (operationType !== 'milling') return null;
+    const maxPowerKw = (Number(machinePowerHP) || 15) * 0.7457;
+    const mat = MATERIALS.find(m => m.nombre === materialId);
+    const group = (mat?.grupo || '').replace(/^ISO\s+/i, '');
+    const kcIsoMilling = MATERIALS_ISO.filter(m => m.isoGroup === group);
+    const kc = kcIsoMilling.length
+      ? Math.round(kcIsoMilling.reduce((s, m) => s + m.kc_milling, 0) / kcIsoMilling.length)
+      : (mat?.kc ?? 1800);
+    const ap = Number(apCurrent) || 1;
+    const ae = Number(aeCurrent) || 1;
+    const eta = Number(machineEfficiency) || 0.85;
+    const vfMax = (maxPowerKw * 60000 * eta * 1000) / (kc * ap * ae);
+    return Math.round(vfMax);
+  }, [operationType, machinePowerHP, materialId, apCurrent, aeCurrent, machineEfficiency]);
 
   useEffect(() => {
     if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
@@ -1757,6 +1788,13 @@ export default function TaylorCurvePage() {
                   {viabilityCheck.viable
                     ? `✅ Proceso viable — Pc: ${viabilityCheck.pc.toFixed(1)} kW / Mc: ${viabilityCheck.mc.toFixed(1)} Nm`
                     : `⚠️ PROCESO INVIABLE — ${viabilityCheck.reason}`}
+                </div>
+              )}
+              {operationType === 'milling' && vfLimitMachine !== null && vfLimitMachine > 0 && (
+                <div className="mb-4 px-4 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-800 border border-blue-200">
+                  ⚙️ Avance de mesa máximo recomendado:{' '}
+                  <strong>{vfLimitMachine} mm/min</strong>{' '}
+                  (limitado por potencia del motor)
                 </div>
               )}
               {drillingAlert && (
