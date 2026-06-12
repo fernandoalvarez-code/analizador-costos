@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { calcRPM, calcVf, calcPc, calcMc, checkViability, calcTcDrilling } from '@/lib/machining-physics';
 import { MATERIALS_ISO } from '@/lib/materials-iso';
 import { getDrillingAlert } from '@/lib/drilling-alerts';
+import { getCoolantConcentration } from '@/lib/coolant-concentration';
 
 
 const MATERIALS = [
@@ -251,6 +252,13 @@ const SurveyField = ({ label }: { label: string }) => (
 );
 
 
+const COOLANT_COLOR: Record<string, string> = {
+  P: 'text-green-700', K: 'text-green-700',
+  N: 'text-yellow-700', M: 'text-yellow-700', M2: 'text-yellow-700',
+  S: 'text-red-700', S2: 'text-red-700',
+  H: 'text-orange-700',
+};
+
 const DRILLING_ALERT_STYLES: Record<string, string> = {
   critical_g83:    'bg-red-50 border-red-300 text-red-900',
   recommended_g83: 'bg-orange-50 border-orange-200 text-orange-900',
@@ -278,6 +286,7 @@ export default function EditTaylorCurvePage() {
   const [maxTorque, setMaxTorque] = useState<string | number>(200);
   const [machineEfficiency, setMachineEfficiency] = useState<string | number>(0.85);
   const [coolantInternal, setCoolantInternal] = useState(false);
+  const [drillingOrientation, setDrillingOrientation] = useState<'vertical' | 'horizontal'>('vertical');
   const [profundidadAgujero, setProfundidadAgujero] = useState<string | number>("");
   const [isGeneratingSurvey, setIsGeneratingSurvey] = useState(false);
   
@@ -408,6 +417,7 @@ export default function EditTaylorCurvePage() {
         setMaxTorque(inputs.maxTorque || 200);
         setMachineEfficiency(inputs.machineEfficiency || 0.85);
         setCoolantInternal(inputs.coolantInternal || false);
+        setDrillingOrientation(inputs.drillingOrientation || 'vertical');
         setProfundidadAgujero(inputs.profundidadAgujero || "");
         setMonthlyProduction(inputs.monthlyProduction || "");
         
@@ -524,7 +534,7 @@ export default function EditTaylorCurvePage() {
         pdfUrl: pdfUrl,
         dateModified: serverTimestamp(),
         taylorInputs: {
-          operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, maxTorque, machineEfficiency, profundidadAgujero, coolantInternal,
+          operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, maxTorque, machineEfficiency, profundidadAgujero, coolantInternal, drillingOrientation,
           monthlyProduction, lifeModeCurrent, lifeModePremium,
           toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrent, zCurrent, edgesCurrent, dcCurrent, aeCurrent,
           toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, tcPremiumInput, zPremium, edgesPremium, dcPremium, aePremium,
@@ -871,8 +881,17 @@ export default function EditTaylorCurvePage() {
       depth,
       diameter: diam,
       materialIsoGroup: MATERIALS.find(m => m.nombre === materialId)?.grupo || '',
+      orientation: drillingOrientation,
     });
-  }, [operationType, coolantInternal, profundidadAgujero, dcCurrent, materialId]);
+  }, [operationType, coolantInternal, profundidadAgujero, dcCurrent, materialId, drillingOrientation]);
+
+  const coolantInfo = useMemo(() => {
+    if (operationType !== 'drilling') return null;
+    const grupo = MATERIALS.find(m => m.nombre === materialId)?.grupo || '';
+    const conc = getCoolantConcentration(grupo);
+    if (!conc) return null;
+    return { ...conc, group: grupo.replace(/^ISO\s+/i, '') };
+  }, [operationType, materialId]);
 
   useEffect(() => {
     if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
@@ -1133,6 +1152,50 @@ export default function EditTaylorCurvePage() {
                       <span className="text-sm font-bold text-slate-700">{coolantInternal ? 'SÍ' : 'NO'}</span>
                     </div>
                     <p className="text-[9px] text-slate-400 mt-1">Las mechas Seco con refrigeración interna permiten entrada directa en una sola pasada (G01).</p>
+                  </div>
+                )}
+                {operationType === 'drilling' && (
+                  <div className="col-span-2">
+                    <Label className="block text-xs font-bold text-slate-600 mb-1">⬇️ Orientación del Perforado</Label>
+                    <div className="flex gap-2 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => setDrillingOrientation('vertical')}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded border transition-colors ${
+                          drillingOrientation === 'vertical'
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                        }`}
+                      >
+                        Vertical ⬇️
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDrillingOrientation('horizontal')}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded border transition-colors ${
+                          drillingOrientation === 'horizontal'
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                        }`}
+                      >
+                        Horizontal ▶
+                      </button>
+                    </div>
+                    <p className="text-[9px] text-slate-400 mt-1">
+                      {drillingOrientation === 'vertical'
+                        ? 'La gravedad acumula viruta en el fondo. Requiere G83 en materiales difíciles.'
+                        : 'La viruta cae por gravedad. Mejor evacuación natural.'}
+                    </p>
+                  </div>
+                )}
+                {operationType === 'drilling' && coolantInfo && (
+                  <div className="col-span-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                    <Label className="block text-xs font-bold text-slate-600 mb-1">💧 Concentración de Soluble Recomendada</Label>
+                    <p className={`text-2xl font-black leading-none mb-1 ${COOLANT_COLOR[coolantInfo.group] ?? 'text-slate-700'}`}>
+                      {coolantInfo.min === 0 ? `máx. ${coolantInfo.max}%` : `${coolantInfo.min}% – ${coolantInfo.max}%`}
+                    </p>
+                    <p className="text-[10px] text-slate-600 leading-snug mb-1">{coolantInfo.note}</p>
+                    <p className="text-[9px] text-slate-400">⚠️ Si la mecha dura menos de lo esperado, verificá la concentración con un refractómetro.</p>
                   </div>
                 )}
                 <div>

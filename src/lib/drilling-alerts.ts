@@ -3,6 +3,7 @@ export interface DrillingAlertInput {
   depth: number;
   diameter: number;
   materialIsoGroup: string;
+  orientation: 'vertical' | 'horizontal';
 }
 
 export interface DrillingAlert {
@@ -12,7 +13,7 @@ export interface DrillingAlert {
 }
 
 export function getDrillingAlert(params: DrillingAlertInput): DrillingAlert {
-  const { coolantInternal, depth, diameter, materialIsoGroup } = params;
+  const { coolantInternal, depth, diameter, materialIsoGroup, orientation } = params;
   const ldRatio = diameter > 0 ? depth / diameter : 0;
   const group = materialIsoGroup.replace(/^ISO\s+/i, '');
 
@@ -33,14 +34,26 @@ export function getDrillingAlert(params: DrillingAlertInput): DrillingAlert {
   const HIGH_RISK = new Set(['M', 'M2', 'S', 'S2', 'H']);
 
   if (HIGH_RISK.has(group) && ldRatio > 3) {
+    if (orientation === 'vertical') {
+      return {
+        type: 'critical_g83',
+        title: '⚠️ ALERTA CRÍTICA — Usar Ciclo G83 (Descarga Completa)',
+        lines: [
+          'Estrategia CNC Obligatoria: Prohibido entrar en una sola pasada. Programar G83 cada 2-3 mm en Titanio/Superaleaciones o 3-4 mm en Inoxidable/H.',
+          'PROHIBIDO G04 (Dwell): En Inoxidable provoca work hardening instantáneo. En Titanio el material abraza la mecha por contracción térmica.',
+          'Orientación vertical: la gravedad acumula viruta en el fondo. El G83 actúa como extractor mecánico — sin él el agujero se tapa.',
+          'Factor de Tiempo: El ciclo real aumentará 40-60% por los movimientos de retroceso en rápido (G00).',
+          'Direccionamiento: Boquillas externas con máximo caudal apuntando a la entrada del agujero.',
+        ],
+      };
+    }
     return {
-      type: 'critical_g83',
-      title: '⚠️ ALERTA CRÍTICA — Usar Ciclo G83 (Descarga Completa)',
+      type: 'recommended_g83',
+      title: '🔵 Recomendación: Ciclo G83 (Agujero Ciego / Vertical)',
       lines: [
-        'Estrategia CNC Obligatoria: Prohibido entrar en una sola pasada. Programar G83 cada 2-3 mm en Titanio/Superaleaciones o 3-4 mm en Inoxidable/H.',
-        'PROHIBIDO G04 (Dwell): En Inoxidable provoca work hardening instantáneo. En Titanio el material abraza la mecha por contracción térmica.',
-        'Factor de Tiempo: El ciclo real aumentará 40-60% por los movimientos de retroceso en rápido (G00).',
-        'Direccionamiento: Boquillas externas con máximo caudal apuntando a la entrada del agujero.',
+        'En agujeros ciegos o verticales hacia abajo, la gravedad acumula viruta en el fondo. El G83 actúa como extractor mecánico retirando la mecha completamente.',
+        'Para Inoxidable y materiales ISO H, usar G83 aunque el agujero sea corto para evitar sobrecalentamiento del filo.',
+        'Orientación horizontal: la viruta cae por gravedad hacia la bandeja. Evaluá usar G73 si el material quiebra bien para reducir tiempo de ciclo hasta un 20%.',
       ],
     };
   }
