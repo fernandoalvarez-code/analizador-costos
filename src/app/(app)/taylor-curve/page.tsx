@@ -993,6 +993,16 @@ export default function TaylorCurvePage() {
     return { ...conc, group: grupo.replace(/^ISO\s+/i, '') };
   }, [operationType, materialId]);
 
+  const vcLimitMachine = useMemo(() => {
+    const maxPowerKw = (Number(machinePowerHP) || 15) * 0.7457;
+    const kc = MATERIALS.find(m => m.nombre === materialId)?.kc || 1800;
+    const ap = Number(apCurrent) || 1;
+    const fn = Number(feedCurrent) || 0.1;
+    const eta = Number(machineEfficiency) || 0.85;
+    const vcLimit = (maxPowerKw * 60000 * eta) / (kc * ap * fn);
+    return Math.round(vcLimit);
+  }, [machinePowerHP, materialId, apCurrent, feedCurrent, machineEfficiency]);
+
   useEffect(() => {
     if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
         setSimulationResult(null);
@@ -1785,13 +1795,23 @@ export default function TaylorCurvePage() {
                         {isFinite(curveDataInfo.actualCostPremium) && <ReferenceDot x={Number(vcPremium)} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
                         
                         {curveDataInfo.velocidadOptimaSeco > 0 &&
-                          <ReferenceLine 
-                            x={curveDataInfo.velocidadOptimaSeco} 
-                            stroke="#10B981" 
-                            strokeDasharray="4 4" 
-                            label={{ position: 'insideTopRight', value: '🔥 Óptimo', fill: '#10B981', fontSize: 10, fontWeight: 'bold' }} 
+                          <ReferenceLine
+                            x={curveDataInfo.velocidadOptimaSeco}
+                            stroke="#10B981"
+                            strokeDasharray="4 4"
+                            label={{ position: 'insideTopRight', value: '🔥 Óptimo', fill: '#10B981', fontSize: 10, fontWeight: 'bold' }}
                           />
                         }
+
+                        {vcLimitMachine > 0 && vcLimitMachine < 800 && (
+                          <ReferenceLine
+                            x={vcLimitMachine}
+                            stroke="#ef4444"
+                            strokeWidth={2}
+                            strokeDasharray="6 3"
+                            label={{ value: `Límite motor: ${vcLimitMachine} m/min`, position: 'insideTopRight', fill: '#ef4444', fontSize: 11 }}
+                          />
+                        )}
 
                         {isStressTestActive && curveDataInfo.limiteTermicoActual && (
                           <ReferenceLine
