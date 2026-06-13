@@ -64,7 +64,13 @@ export default function AgentChat({
 
   const getToken = useCallback(async (): Promise<string | null> => {
     if (!user) return null;
-    return user.getIdToken();
+    try {
+      const token = await user.getIdToken(true); // force refresh
+      return token;
+    } catch (e) {
+      console.error('[AgentChat] getIdToken error:', e);
+      return null;
+    }
   }, [user]);
 
   const sendMessage = useCallback(async () => {
@@ -82,6 +88,7 @@ export default function AgentChat({
 
     try {
       const token = await getToken();
+      console.log('[AgentChat] token preview:', token?.slice(0, 20));
       if (!token) {
         setError('Necesitás estar logueado para usar el asistente.');
         setIsLoading(false);
