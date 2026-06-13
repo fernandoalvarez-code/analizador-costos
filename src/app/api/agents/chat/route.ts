@@ -146,6 +146,8 @@ export async function POST(req: NextRequest) {
 
   let assistantReply = '';
   try {
+    console.log('[agents/chat] About to fetch Anthropic, URL:', ANTHROPIC_API_URL);
+    console.log('[agents/chat] API key starts with:', process.env.ANTHROPIC_API_KEY?.substring(0, 10));
     const res = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',
       headers: {
