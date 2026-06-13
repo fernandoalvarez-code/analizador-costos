@@ -14,6 +14,7 @@ import {
   Calculator,
   History,
   TrendingUp,
+  Bot,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -62,6 +63,11 @@ const menuItems = [
       href: '/taylor-curve',
       label: 'Curva de Costos',
       icon: TrendingUp,
+    },
+    {
+      href: '/admin/agents/test',
+      label: 'Agentes IA',
+      icon: Bot,
     },
 ];
 
