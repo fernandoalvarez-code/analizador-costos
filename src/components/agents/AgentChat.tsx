@@ -99,10 +99,15 @@ export default function AgentChat({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ agentSlug, message: text, sessionId }),
       });
+
+      // Debug temporal
+      console.log('[AgentChat] response status:', res.status);
+      console.log('[AgentChat] token length:', token?.length);
+      console.log('[AgentChat] token start:', token?.substring(0, 30));
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

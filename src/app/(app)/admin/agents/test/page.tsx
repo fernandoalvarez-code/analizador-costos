@@ -38,22 +38,27 @@ export default function AgentTestPage() {
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        {agents.map((agent) => (
-          <button key={agent.id}
-            onClick={() => setSelected(agent)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-colors ${
-              selected?.id === agent.id
-                ? 'border-gray-900 bg-gray-900 text-white'
-                : 'border-gray-200 text-gray-600 hover:border-gray-400'
-            }`}>
-            <span
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ backgroundColor: agent.color }}
-            />
-            {agent.name}
-            {!agent.isActive && <span className="text-xs opacity-50">(inactivo)</span>}
-          </button>
-        ))}
+        {agents.map((agent) => {
+          const isSelected = selected?.id === agent.id;
+          const btnClass = isSelected
+            ? 'flex items-center gap-2 px-4 py-2 rounded-lg border text-sm border-gray-900 bg-gray-900 text-white'
+            : 'flex items-center gap-2 px-4 py-2 rounded-lg border text-sm border-gray-200 text-gray-600 hover:border-gray-400';
+          return (
+            <button
+              key={agent.id}
+              type="button"
+              onClick={() => setSelected(agent)}
+              className={btnClass}
+            >
+              <span
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: agent.color }}
+              />
+              {agent.name}
+              {!agent.isActive && <span className="text-xs opacity-50">(inactivo)</span>}
+            </button>
+          );
+        })}
       </div>
 
       {selected && (
