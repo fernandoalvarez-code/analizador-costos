@@ -29,7 +29,6 @@ function extractKeywords(text: string): string[] {
 
 export async function POST(req: NextRequest) {
   // ── Auth ──────────────────────────────────────────────
-  // Auth temporal simplificada para debug
   const token = (req.headers.get('authorization') ?? '').replace('Bearer ', '');
   if (!token) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -42,11 +41,8 @@ export async function POST(req: NextRequest) {
     const decoded = await getAuth().verifyIdToken(token);
     uid = decoded.uid;
     userEmail = decoded.email ?? '';
-  } catch (e) {
-    console.error('[agents/chat] verifyIdToken error:', e);
-    // TEMPORAL: bypass auth para debug
-    uid = 'debug-user';
-    userEmail = 'debug@secocut.com';
+  } catch {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
 
   // ── Body ──────────────────────────────────────────────
@@ -65,9 +61,8 @@ export async function POST(req: NextRequest) {
   let agent;
   try {
     agent = await getAgentBySlug(agentSlug);
-  } catch (e) {
-    console.error('[agents/chat] getAgentBySlug error:', e);
-    return NextResponse.json({ error: 'Error al cargar agente', detail: String(e) }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Error al cargar agente' }, { status: 500 });
   }
   if (!agent) {
     return NextResponse.json({ error: `Agente "${agentSlug}" no encontrado` }, { status: 404 });
@@ -132,8 +127,6 @@ export async function POST(req: NextRequest) {
     knowledgeContext;
 
   // ── Llamar a Claude ───────────────────────────────────
-  console.log('[agents/chat] ENV CHECK - ANTHROPIC_API_KEY:', !!process.env.ANTHROPIC_API_KEY);
-  console.log('[agents/chat] ENV CHECK - agent slug:', agentSlug);
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: 'API key no configurada' }, { status: 500 });
@@ -146,8 +139,6 @@ export async function POST(req: NextRequest) {
 
   let assistantReply = '';
   try {
-    console.log('[agents/chat] About to fetch Anthropic, URL:', ANTHROPIC_API_URL);
-    console.log('[agents/chat] API key starts with:', process.env.ANTHROPIC_API_KEY?.substring(0, 10));
     const res = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',
       headers: {
@@ -166,18 +157,13 @@ export async function POST(req: NextRequest) {
     if (!res.ok) {
       const err = await res.text();
       console.error('[agents/chat] Anthropic error:', err);
-      return NextResponse.json({ error: 'Error al contactar el modelo', detail: err }, { status: 502 });
+      return NextResponse.json({ error: 'Error al contactar el modelo' }, { status: 502 });
     }
 
     const data = await res.json();
     assistantReply = data.content?.[0]?.text ?? '';
-  } catch (e) {
-    const errMsg = e instanceof Error ? e.message : String(e);
-    console.error('[agents/chat] fetch error:', errMsg);
-    return NextResponse.json({
-      error: 'Error al contactar el modelo',
-      detail: errMsg
-    }, { status: 502 });
+  } catch {
+    return NextResponse.json({ error: 'Error al contactar el modelo' }, { status: 502 });
   }
 
   // ── Persistir en Firestore ────────────────────────────
