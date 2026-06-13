@@ -37,8 +37,8 @@ export async function POST(req: NextRequest) {
   let uid: string;
   let userEmail: string;
   try {
-    const adminApp = await initializeAdminApp();
-    const decoded = await getAuth(adminApp).verifyIdToken(token);
+    await initializeAdminApp();
+    const decoded = await getAuth().verifyIdToken(token);
     uid = decoded.uid;
     userEmail = decoded.email ?? '';
   } catch {
