@@ -11,8 +11,8 @@ function toDate(val: FirebaseFirestore.Timestamp | Date | undefined): Date {
 }
 
 async function getDb() {
-  await initializeAdminApp();
-  return getFirestore();
+  const app = await initializeAdminApp();
+  return getFirestore(app);
 }
 
 export async function getAgentBySlugAdmin(slug: string): Promise<Agent | null> {
