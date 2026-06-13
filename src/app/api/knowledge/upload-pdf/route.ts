@@ -3,10 +3,14 @@ import { initializeAdminApp } from '@/firebase/auth/admin-app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
-export const maxDuration = 60; // PDF processing puede tardar
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
+// Límite de 25MB por chunk para no superar el límite de App Hosting
+const MAX_CHUNK_SIZE = 25 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
-  // Auth — solo @secocut.com
+  // Auth
   const token = (req.headers.get('authorization') ?? '').replace('Bearer ', '');
   if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
@@ -23,17 +27,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Sin permisos' }, { status: 403 });
   }
 
-  // Leer el form data
   const formData = await req.formData();
   const file = formData.get('file') as File | null;
   const category = (formData.get('category') as string) || 'catalogo';
   const tags = ((formData.get('tags') as string) || '').split(',').map(t => t.trim()).filter(Boolean);
+  const chunkIndex = parseInt((formData.get('chunkIndex') as string) || '0');
+  const totalChunks = parseInt((formData.get('totalChunks') as string) || '1');
+  const fileName = (formData.get('fileName') as string) || file?.name || 'unknown.pdf';
 
-  if (!file || file.type !== 'application/pdf') {
-    return NextResponse.json({ error: 'Se requiere un archivo PDF' }, { status: 400 });
-  }
+  if (!file) return NextResponse.json({ error: 'Se requiere archivo' }, { status: 400 });
 
-  // Extraer texto del PDF usando pdf-parse
+  // Extraer texto
   let pdfParse: (buffer: Buffer) => Promise<{ text: string; numpages: number }>;
   try {
     pdfParse = (await import('pdf-parse')).default;
@@ -42,62 +46,70 @@ export async function POST(req: NextRequest) {
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const { text, numpages } = await pdfParse(buffer);
 
-  if (!text || text.trim().length < 50) {
-    return NextResponse.json({ error: 'No se pudo extraer texto del PDF' }, { status: 400 });
+  let text = '';
+  let numpages = 0;
+  try {
+    const result = await pdfParse(buffer);
+    text = result.text;
+    numpages = result.numpages;
+  } catch (e) {
+    return NextResponse.json({ error: 'Error al parsear PDF: ' + String(e) }, { status: 400 });
   }
 
-  // Fragmentar el texto en chunks de ~1500 chars respetando párrafos
-  const chunks = splitIntoChunks(text, 1500);
+  if (!text || text.trim().length < 50) {
+    return NextResponse.json({
+      success: true,
+      chunks: 0,
+      message: `Parte ${chunkIndex + 1}/${totalChunks} sin texto extraíble — omitida`,
+    });
+  }
 
-  // Guardar cada chunk como entrada de conocimiento
+  // Fragmentar en chunks de conocimiento
+  const knowledgeChunks = splitIntoChunks(text, 1500);
+
   const adminApp = await initializeAdminApp();
   const db = getFirestore(adminApp);
   const batch = db.batch();
   const entriesRef = db.collection('knowledge_entries');
 
-  const createdIds: string[] = [];
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i].trim();
-    if (chunk.length < 50) continue; // saltar chunks muy cortos
+  let count = 0;
+  for (let i = 0; i < knowledgeChunks.length; i++) {
+    const chunk = knowledgeChunks[i].trim();
+    if (chunk.length < 50) continue;
     const ref = entriesRef.doc();
     batch.set(ref, {
-      title: `${file.name} — parte ${i + 1} de ${chunks.length}`,
+      title: `${fileName} — parte ${chunkIndex + 1}/${totalChunks}, fragmento ${i + 1}`,
       category,
       content: chunk,
       sourceType: 'pdf',
-      sourceFileName: file.name,
-      tags: [...tags, 'pdf', file.name.replace('.pdf', '').toLowerCase().replace(/\s+/g, '-')],
+      sourceFileName: fileName,
+      tags: [...tags, 'pdf', fileName.replace('.pdf', '').toLowerCase().replace(/\s+/g, '-')],
       isActive: true,
       createdBy: userEmail,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    createdIds.push(ref.id);
+    count++;
   }
 
   await batch.commit();
 
   return NextResponse.json({
     success: true,
-    fileName: file.name,
     pages: numpages,
-    chunks: createdIds.length,
-    message: `PDF procesado: ${createdIds.length} entradas creadas en la base de conocimiento`,
+    chunks: count,
+    chunkIndex,
+    totalChunks,
+    message: `Parte ${chunkIndex + 1}/${totalChunks}: ${count} fragmentos guardados (${numpages} páginas)`,
   });
 }
 
 function splitIntoChunks(text: string, maxChars: number): string[] {
-  const cleaned = text
-    .replace(/\r\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-
+  const cleaned = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
   const paragraphs = cleaned.split('\n\n');
   const chunks: string[] = [];
   let current = '';
-
   for (const para of paragraphs) {
     if ((current + '\n\n' + para).length > maxChars && current.length > 0) {
       chunks.push(current);
@@ -106,7 +118,6 @@ function splitIntoChunks(text: string, maxChars: number): string[] {
       current = current ? current + '\n\n' + para : para;
     }
   }
-
   if (current) chunks.push(current);
   return chunks;
 }

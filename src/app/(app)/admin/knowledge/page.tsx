@@ -184,21 +184,40 @@ function PdfUploadModal({
 
     try {
       const token = await user.getIdToken(true);
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('category', category);
-      formData.append('tags', tagInput);
+      const CHUNK_SIZE = 20 * 1024 * 1024; // 20MB por parte
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+      let totalFragments = 0;
 
-      const res = await fetch('/api/knowledge/upload-pdf', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, file.size);
+        const blob = file.slice(start, end);
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Error al procesar el PDF');
-      setResult(data.message);
-      setTimeout(() => { onSuccess(); onClose(); }, 2000);
+        const chunkFile = new File([blob], file.name, { type: 'application/pdf' });
+
+        setResult(`Procesando parte ${i + 1} de ${totalChunks}...`);
+
+        const formData = new FormData();
+        formData.append('file', chunkFile);
+        formData.append('category', category);
+        formData.append('tags', tagInput);
+        formData.append('chunkIndex', String(i));
+        formData.append('totalChunks', String(totalChunks));
+        formData.append('fileName', file.name);
+
+        const res = await fetch('/api/knowledge/upload-pdf', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? `Error en parte ${i + 1}`);
+        totalFragments += data.chunks ?? 0;
+      }
+
+      setResult(`✓ PDF procesado completo: ${totalFragments} fragmentos guardados en la base de conocimiento`);
+      setTimeout(() => { onSuccess(); onClose(); }, 3000);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Error inesperado');
     } finally {
