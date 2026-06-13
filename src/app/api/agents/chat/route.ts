@@ -164,16 +164,18 @@ export async function POST(req: NextRequest) {
     if (!res.ok) {
       const err = await res.text();
       console.error('[agents/chat] Anthropic error:', err);
-      return NextResponse.json({ error: 'Error al contactar el modelo' }, { status: 502 });
+      return NextResponse.json({ error: 'Error al contactar el modelo', detail: err }, { status: 502 });
     }
 
     const data = await res.json();
     assistantReply = data.content?.[0]?.text ?? '';
   } catch (e) {
-    console.error('[agents/chat] fetch error:', e);
-    console.error('[agents/chat] ANTHROPIC_API_KEY present:', !!process.env.ANTHROPIC_API_KEY);
-    console.error('[agents/chat] ANTHROPIC_API_KEY length:', process.env.ANTHROPIC_API_KEY?.length);
-    return NextResponse.json({ error: 'Error de conexión con el modelo' }, { status: 502 });
+    const errMsg = e instanceof Error ? e.message : String(e);
+    console.error('[agents/chat] fetch error:', errMsg);
+    return NextResponse.json({
+      error: 'Error al contactar el modelo',
+      detail: errMsg
+    }, { status: 502 });
   }
 
   // ── Persistir en Firestore ────────────────────────────
