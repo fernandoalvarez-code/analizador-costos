@@ -88,7 +88,6 @@ export default function AgentChat({
 
     try {
       const token = await getToken();
-      console.log('[AgentChat] token preview:', token?.slice(0, 20));
       if (!token) {
         setError('Necesitás estar logueado para usar el asistente.');
         setIsLoading(false);
@@ -103,11 +102,6 @@ export default function AgentChat({
         },
         body: JSON.stringify({ agentSlug, message: text, sessionId }),
       });
-
-      // Debug temporal
-      console.log('[AgentChat] response status:', res.status);
-      console.log('[AgentChat] token length:', token?.length);
-      console.log('[AgentChat] token start:', token?.substring(0, 30));
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
