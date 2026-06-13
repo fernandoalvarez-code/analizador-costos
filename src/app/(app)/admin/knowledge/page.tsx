@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, FileText, Trash2, Tag, Upload } from 'lucide-react';
+import { Plus, FileText, Trash2, Tag, Upload, Link } from 'lucide-react';
 import { FileText as FilePdf } from 'lucide-react';
 import { useUser } from '@/firebase';
 import {
@@ -16,6 +16,7 @@ import type { KnowledgeEntry, KnowledgeEntryInput } from '@/lib/agents/types';
 const CARD = 'rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-2';
 const BTN_PRIMARY = 'flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium transition-colors';
 const BTN_SECONDARY = 'flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors';
+const BTN_OUTLINE = 'flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors';
 const BTN_DANGER = 'p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors';
 const INPUT = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-orange-400 bg-white';
 const LABEL = 'text-xs font-medium text-gray-600 mb-1 block';
@@ -137,6 +138,110 @@ function EntryModal({
           <button onClick={handleSave} disabled={saving}
             className="flex-1 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium transition-colors disabled:opacity-50">
             {saving ? 'Guardando...' : 'Guardar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UrlImportModal({
+  onSuccess,
+  onClose,
+}: {
+  onSuccess: () => void;
+  onClose: () => void;
+}) {
+  const { user } = useUser();
+  const [url, setUrl] = useState('');
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('catalogo');
+  const [tagInput, setTagInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleImport = async () => {
+    if (!url || !user) return;
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const token = await user.getIdToken(true);
+      const res = await fetch('/api/knowledge/upload-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ url, title, category, tags: tagInput }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Error al procesar la URL');
+      setResult(data.message);
+      setTimeout(() => { onSuccess(); onClose(); }, 2500);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error inesperado');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-lg p-6 flex flex-col gap-4">
+        <h2 className="text-base font-medium text-gray-900">Importar desde URL</h2>
+        <p className="text-xs text-gray-500">
+          Pegá el link de cualquier página de secotools.com y el sistema extrae el contenido automáticamente.
+        </p>
+
+        <div>
+          <label className={LABEL}>URL</label>
+          <input className={INPUT} value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://www.secotools.com/article/..." />
+        </div>
+
+        <div>
+          <label className={LABEL}>Título (opcional — si no, se detecta automático)</label>
+          <input className={INPUT} value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Catálogo Threading SECO" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={LABEL}>Categoría</label>
+            <select className={INPUT} value={category}
+              onChange={(e) => setCategory(e.target.value)}>
+              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={LABEL}>Tags (separados por coma)</label>
+            <input className={INPUT} value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              placeholder="roscado, threading" />
+          </div>
+        </div>
+
+        {error && (
+          <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+        )}
+        {result && (
+          <p className="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2">✓ {result}</p>
+        )}
+
+        <div className="flex gap-3 pt-2">
+          <button onClick={onClose} disabled={loading}
+            className="flex-1 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50">
+            Cancelar
+          </button>
+          <button onClick={handleImport} disabled={!url || loading}
+            className="flex-1 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium transition-colors disabled:opacity-50">
+            {loading ? 'Importando...' : 'Importar contenido'}
           </button>
         </div>
       </div>
@@ -304,6 +409,7 @@ export default function AdminKnowledgePage() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [pdfModal, setPdfModal] = useState(false);
+  const [urlModal, setUrlModal] = useState(false);
   const [filterCat, setFilterCat] = useState<string>('');
 
   const isAdmin = user?.email?.endsWith('@secocut.com') ?? false;
@@ -350,6 +456,9 @@ export default function AdminKnowledgePage() {
           <p className="text-sm text-gray-500 mt-0.5">{entries.length} entradas</p>
         </div>
         <div className="flex gap-2">
+          <button onClick={() => setUrlModal(true)} className={BTN_OUTLINE}>
+            <Link size={16} /> Importar URL
+          </button>
           <button onClick={() => setPdfModal(true)} className={BTN_SECONDARY}>
             <Upload size={16} /> Subir PDF
           </button>
@@ -427,6 +536,9 @@ export default function AdminKnowledgePage() {
       )}
       {pdfModal && (
         <PdfUploadModal onSuccess={load} onClose={() => setPdfModal(false)} />
+      )}
+      {urlModal && (
+        <UrlImportModal onSuccess={load} onClose={() => setUrlModal(false)} />
       )}
     </div>
   );
