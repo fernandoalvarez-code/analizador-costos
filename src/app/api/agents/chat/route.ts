@@ -62,7 +62,13 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Cargar agente ─────────────────────────────────────
-  const agent = await getAgentBySlug(agentSlug);
+  let agent;
+  try {
+    agent = await getAgentBySlug(agentSlug);
+  } catch (e) {
+    console.error('[agents/chat] getAgentBySlug error:', e);
+    return NextResponse.json({ error: 'Error al cargar agente', detail: String(e) }, { status: 500 });
+  }
   if (!agent) {
     return NextResponse.json({ error: `Agente "${agentSlug}" no encontrado` }, { status: 404 });
   }
