@@ -126,6 +126,8 @@ export async function POST(req: NextRequest) {
     knowledgeContext;
 
   // ── Llamar a Claude ───────────────────────────────────
+  console.log('[agents/chat] ENV CHECK - ANTHROPIC_API_KEY:', !!process.env.ANTHROPIC_API_KEY);
+  console.log('[agents/chat] ENV CHECK - agent slug:', agentSlug);
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: 'API key no configurada' }, { status: 500 });
@@ -163,6 +165,8 @@ export async function POST(req: NextRequest) {
     assistantReply = data.content?.[0]?.text ?? '';
   } catch (e) {
     console.error('[agents/chat] fetch error:', e);
+    console.error('[agents/chat] ANTHROPIC_API_KEY present:', !!process.env.ANTHROPIC_API_KEY);
+    console.error('[agents/chat] ANTHROPIC_API_KEY length:', process.env.ANTHROPIC_API_KEY?.length);
     return NextResponse.json({ error: 'Error de conexión con el modelo' }, { status: 502 });
   }
 
