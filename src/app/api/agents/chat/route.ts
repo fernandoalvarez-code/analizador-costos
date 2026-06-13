@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
 import { initializeAdminApp } from '@/firebase/auth/admin-app';
 import {
-  getAgentBySlug,
-  createChatSession,
-  appendMessage,
-  getChatSession,
-  searchKnowledgeByTags,
-} from '@/lib/agents/firestore';
+  getAgentBySlugAdmin as getAgentBySlug,
+  searchKnowledgeByTagsAdmin as searchKnowledgeByTags,
+  createChatSessionAdmin as createChatSession,
+  appendMessageAdmin as appendMessage,
+  getChatSessionAdmin as getChatSession,
+} from '@/lib/agents/firestore-admin';
 import type { ChatMessage } from '@/lib/agents/types';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
