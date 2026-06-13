@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, FileText, Trash2, Tag } from 'lucide-react';
+import { Plus, FileText, Trash2, Tag, Upload } from 'lucide-react';
+import { FileText as FilePdf } from 'lucide-react';
 import { useUser } from '@/firebase';
 import {
   listKnowledgeEntries,
@@ -14,9 +15,12 @@ import type { KnowledgeEntry, KnowledgeEntryInput } from '@/lib/agents/types';
 // ── Tailwind consts ───────────────────────────────────
 const CARD = 'rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-2';
 const BTN_PRIMARY = 'flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium transition-colors';
+const BTN_SECONDARY = 'flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors';
 const BTN_DANGER = 'p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors';
 const INPUT = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-orange-400 bg-white';
 const LABEL = 'text-xs font-medium text-gray-600 mb-1 block';
+const UPLOAD_ZONE = 'border-2 border-dashed border-gray-200 rounded-xl p-8 text-center cursor-pointer hover:border-orange-300 hover:bg-orange-50 transition-colors';
+const UPLOAD_ZONE_ACTIVE = 'border-2 border-dashed border-orange-400 rounded-xl p-8 text-center bg-orange-50';
 
 const CATEGORIES = ['catalogo', 'parametros', 'precios', 'faq', 'politicas'];
 const SOURCE_TYPES: Array<{ value: KnowledgeEntryInput['sourceType']; label: string }> = [
@@ -140,11 +144,147 @@ function EntryModal({
   );
 }
 
+function PdfUploadModal({
+  onSuccess,
+  onClose,
+}: {
+  onSuccess: () => void;
+  onClose: () => void;
+}) {
+  const { user } = useUser();
+  const [file, setFile] = useState<File | null>(null);
+  const [category, setCategory] = useState('catalogo');
+  const [tagInput, setTagInput] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const handleFile = (f: File) => {
+    if (f.type !== 'application/pdf') {
+      setError('Solo se aceptan archivos PDF');
+      return;
+    }
+    setFile(f);
+    setError(null);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  };
+
+  const handleUpload = async () => {
+    if (!file || !user) return;
+    setUploading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const token = await user.getIdToken(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('category', category);
+      formData.append('tags', tagInput);
+
+      const res = await fetch('/api/knowledge/upload-pdf', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Error al procesar el PDF');
+      setResult(data.message);
+      setTimeout(() => { onSuccess(); onClose(); }, 2000);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error inesperado');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-lg p-6 flex flex-col gap-4">
+        <h2 className="text-base font-medium text-gray-900">Subir catálogo PDF</h2>
+
+        <div
+          className={dragging ? UPLOAD_ZONE_ACTIVE : UPLOAD_ZONE}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => document.getElementById('pdf-input')?.click()}
+        >
+          <input
+            id="pdf-input"
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }}
+          />
+          {file ? (
+            <div className="flex items-center justify-center gap-3">
+              <FilePdf size={24} className="text-orange-500" />
+              <div className="text-left">
+                <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                <p className="text-xs text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <Upload size={28} className="text-gray-400" />
+              <p className="text-sm text-gray-600">Arrastrá el PDF acá o hacé click para seleccionar</p>
+              <p className="text-xs text-gray-400">Solo archivos .pdf</p>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={LABEL}>Categoría</label>
+            <select className={INPUT} value={category} onChange={(e) => setCategory(e.target.value)}>
+              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={LABEL}>Tags adicionales (separados por coma)</label>
+            <input className={INPUT} value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              placeholder="fresado, aluminio, iso-n" />
+          </div>
+        </div>
+
+        {error && (
+          <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+        )}
+        {result && (
+          <p className="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2">{result}</p>
+        )}
+
+        <div className="flex gap-3 pt-2">
+          <button onClick={onClose} disabled={uploading}
+            className="flex-1 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50">
+            Cancelar
+          </button>
+          <button onClick={handleUpload} disabled={!file || uploading}
+            className="flex-1 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium transition-colors disabled:opacity-50">
+            {uploading ? 'Procesando PDF...' : 'Subir y procesar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminKnowledgePage() {
   const { user } = useUser();
   const [entries, setEntries] = useState<KnowledgeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
+  const [pdfModal, setPdfModal] = useState(false);
   const [filterCat, setFilterCat] = useState<string>('');
 
   const isAdmin = user?.email?.endsWith('@secocut.com') ?? false;
@@ -190,9 +330,14 @@ export default function AdminKnowledgePage() {
           <h1 className="text-xl font-medium text-gray-900">Base de conocimiento</h1>
           <p className="text-sm text-gray-500 mt-0.5">{entries.length} entradas</p>
         </div>
-        <button onClick={() => setModal(true)} className={BTN_PRIMARY}>
-          <Plus size={16} /> Nueva entrada
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setPdfModal(true)} className={BTN_SECONDARY}>
+            <Upload size={16} /> Subir PDF
+          </button>
+          <button onClick={() => setModal(true)} className={BTN_PRIMARY}>
+            <Plus size={16} /> Nueva entrada
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-2 flex-wrap">
@@ -260,6 +405,9 @@ export default function AdminKnowledgePage() {
 
       {modal && (
         <EntryModal onSave={handleCreate} onClose={() => setModal(false)} />
+      )}
+      {pdfModal && (
+        <PdfUploadModal onSuccess={load} onClose={() => setPdfModal(false)} />
       )}
     </div>
   );

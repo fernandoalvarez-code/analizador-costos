@@ -1,88 +1,75 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Verifica si el usuario es admin leyendo su documento en la colección 'users'.
-     * CAMBIO IMPORTANTE: Ahora lee la BD en lugar del token (claims), alineándose con tu frontend.
-     */
     function isRequestingUserAdmin() {
-      // Opción A: Lectura de base de datos (Sincronizado con tu React)
-      return request.auth != null && 
+      return request.auth != null &&
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Función auxiliar para verificar propiedad
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
-    
-    /**
-     * COLECCIÓN DE USUARIOS
-     * Se permite leer para evitar errores de UI, pero solo el dueño edita.
-     */
+
+    function isSecucutEmail() {
+      return request.auth != null &&
+             request.auth.token.email.matches('.*@secocut\\.com');
+    }
+
     match /users/{userId} {
       allow get: if request.auth != null;
-      // Permitimos list solo a admins para paneles de administración
       allow list: if isRequestingUserAdmin();
-      
       allow create: if isOwner(userId);
       allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role)
                    || isRequestingUserAdmin();
-      allow delete: if false; 
+      allow delete: if false;
     }
 
-    /**
-     * COLECCIÓN DE ANÁLISIS (CASOS)
-     */
     match /cuttingToolAnalyses/{analysisId} {
       allow read, write: if request.auth != null;
     }
 
-    /**
-     * COLECCIÓN DE SIMULACIONES
-     */
     match /simulations/{simulationId} {
-      // Lectura: Solo el dueño del documento o un administrador (vía custom claim)
       allow read: if request.auth != null && (resource.data.userId == request.auth.uid || request.auth.token.admin == true);
-      
-      // Creación: Solo si el userId del documento es igual al del usuario que lo crea, o es admin
       allow create: if request.auth != null && (request.resource.data.userId == request.auth.uid || request.auth.token.admin == true);
-      
-      // Actualizar / Eliminar: Solo el dueño original del documento o un administrador
       allow update, delete: if request.auth != null && (resource.data.userId == request.auth.uid || request.auth.token.admin == true);
     }
 
-    /**
-     * COLECCIÓN DE ANÁLISIS DE COSTOS (HISTORIAL)
-     * Reglas para la colección donde se guardan las simulaciones de la Curva de Costos.
-     */
-     match /analisis_costos/{analisisId} {
-        allow get, list: if request.auth != null;
-        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-        allow update: if request.auth != null && (isOwner(resource.data.userId) || isRequestingUserAdmin());
-        allow delete: if request.auth != null && (isOwner(resource.data.userId) || isRequestingUserAdmin());
+    match /analisis_costos/{analisisId} {
+      allow get, list: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && (isOwner(resource.data.userId) || isRequestingUserAdmin());
+      allow delete: if request.auth != null && (isOwner(resource.data.userId) || isRequestingUserAdmin());
     }
 
-    /**
-     * NOTIFICACIONES
-     */
     match /notifications/{notificationId} {
-        allow read: if request.auth != null;
-        allow create: if isRequestingUserAdmin(); // O puedes permitir a usuarios si es necesario
-        allow update, delete: if isRequestingUserAdmin();
+      allow read: if request.auth != null;
+      allow create: if isRequestingUserAdmin();
+      allow update, delete: if isRequestingUserAdmin();
     }
 
-    /**
-     * CONFIGURACIÓN GENERAL (LOGOS)
-     */
     match /settings/{settingId} {
-        // Cualquiera puede leer los logos para mostrarlos en los informes
-        allow read: if request.auth != null;
-        // Solo los admins pueden cambiar los logos
-        allow write: if isRequestingUserAdmin();
+      allow read: if request.auth != null;
+      allow write: if isRequestingUserAdmin();
     }
+
+    // ── Agentes IA ────────────────────────────────────
+    match /ai_agents/{agentId} {
+      allow read: if request.auth != null;
+      allow write: if isSecucutEmail() || isRequestingUserAdmin();
+    }
+
+    match /knowledge_entries/{entryId} {
+      allow read: if request.auth != null;
+      allow write: if isSecucutEmail() || isRequestingUserAdmin();
+    }
+
+    match /chat_sessions/{sessionId} {
+      allow create: if request.auth != null;
+      allow read, update: if request.auth != null &&
+        (isOwner(resource.data.userId) || isSecucutEmail() || isRequestingUserAdmin());
+    }
+
   }
 }
