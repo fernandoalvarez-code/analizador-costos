@@ -7,11 +7,7 @@ import pdfParse from 'pdf-parse';
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
-// Límite de 25MB por chunk para no superar el límite de App Hosting
-const MAX_CHUNK_SIZE = 25 * 1024 * 1024;
-
 export async function POST(req: NextRequest) {
-  // Auth
   const token = (req.headers.get('authorization') ?? '').replace('Bearer ', '');
   if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
@@ -38,7 +34,6 @@ export async function POST(req: NextRequest) {
 
   if (!file) return NextResponse.json({ error: 'Se requiere archivo' }, { status: 400 });
 
-  // Extraer texto
   const buffer = Buffer.from(await file.arrayBuffer());
 
   let text = '';
@@ -55,11 +50,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       chunks: 0,
-      message: `Parte ${chunkIndex + 1}/${totalChunks} sin texto extraíble — omitida`,
+      message: `Parte ${chunkIndex + 1}/${totalChunks} sin texto extraíble — omitida`
     });
   }
 
-  // Fragmentar en chunks de conocimiento
   const knowledgeChunks = splitIntoChunks(text, 1500);
 
   const adminApp = await initializeAdminApp();
