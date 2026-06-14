@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Loader2, Bot, User, AlertCircle } from 'lucide-react';
 import { useUser } from '@/firebase';
+import ReactMarkdown from 'react-markdown';
 
 // ── Tailwind consts (nivel módulo — evita purge) ──────
 const BUBBLE_BASE = 'rounded-2xl px-4 py-3 text-sm leading-relaxed max-w-[80%]';
@@ -186,16 +187,48 @@ export default function AgentChat({
               {msg.role === 'user' ? <User size={14} /> : <Bot size={14} />}
             </div>
             <div className={msg.role === 'user' ? BUBBLE_USER : BUBBLE_AI}>
-              {msg.content.split('\n').map((line, j) => {
-                const boldLine = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                return (
-                  <p
-                    key={j}
-                    className={j > 0 ? 'mt-1' : ''}
-                    dangerouslySetInnerHTML={{ __html: boldLine }}
-                  />
-                );
-              })}
+              <ReactMarkdown
+                components={{
+                  h2: ({ children }) => (
+                    <p className="font-semibold text-sm mt-2 mb-1">{children}</p>
+                  ),
+                  h3: ({ children }) => (
+                    <p className="font-medium text-sm mt-1">{children}</p>
+                  ),
+                  p: ({ children }) => (
+                    <p className="mb-1 last:mb-0">{children}</p>
+                  ),
+                  strong: ({ children }) => (
+                    <strong className="font-semibold">{children}</strong>
+                  ),
+                  ul: ({ children }) => (
+                    <ul className="list-disc list-inside mt-1 mb-1 space-y-0.5">{children}</ul>
+                  ),
+                  ol: ({ children }) => (
+                    <ol className="list-decimal list-inside mt-1 mb-1 space-y-0.5">{children}</ol>
+                  ),
+                  li: ({ children }) => (
+                    <li className="text-sm">{children}</li>
+                  ),
+                  table: ({ children }) => (
+                    <div className="overflow-x-auto mt-2 mb-2">
+                      <table className="text-xs border-collapse w-full">{children}</table>
+                    </div>
+                  ),
+                  thead: ({ children }) => (
+                    <thead className="bg-gray-200">{children}</thead>
+                  ),
+                  th: ({ children }) => (
+                    <th className="border border-gray-300 px-2 py-1 text-left font-medium">{children}</th>
+                  ),
+                  td: ({ children }) => (
+                    <td className="border border-gray-300 px-2 py-1">{children}</td>
+                  ),
+                  hr: () => <hr className="my-2 border-gray-200" />,
+                }}
+              >
+                {msg.content}
+              </ReactMarkdown>
             </div>
           </div>
         ))}
