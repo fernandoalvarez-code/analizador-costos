@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { initializeAdminApp } from '@/firebase/auth/admin-app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import { PDFParse } from 'pdf-parse';
+import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -39,10 +39,9 @@ export async function POST(req: NextRequest) {
   let text = '';
   let numpages = 0;
   try {
-    const parser = new PDFParse({ data: new Uint8Array(buffer) });
-    const result = await parser.getText();
+    const result = await pdfParse(buffer);
     text = result.text;
-    numpages = result.total;
+    numpages = result.numpages;
   } catch (e) {
     return NextResponse.json({ error: 'Error al parsear PDF: ' + String(e) }, { status: 400 });
   }
