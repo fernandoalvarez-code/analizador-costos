@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { initializeAdminApp } from '@/firebase/auth/admin-app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import pdfParse from 'pdf-parse';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -38,13 +39,6 @@ export async function POST(req: NextRequest) {
   if (!file) return NextResponse.json({ error: 'Se requiere archivo' }, { status: 400 });
 
   // Extraer texto
-  let pdfParse: (buffer: Buffer) => Promise<{ text: string; numpages: number }>;
-  try {
-    pdfParse = (await import('pdf-parse')).default;
-  } catch {
-    return NextResponse.json({ error: 'pdf-parse no instalado' }, { status: 500 });
-  }
-
   const buffer = Buffer.from(await file.arrayBuffer());
 
   let text = '';
