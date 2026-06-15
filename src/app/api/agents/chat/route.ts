@@ -152,6 +152,13 @@ export async function POST(req: NextRequest) {
         max_tokens: 1024,
         system: systemPrompt,
         messages: anthropicMessages,
+        tools: agentSlug === 'tecnico' ? [
+          {
+            type: 'web_search_20250305',
+            name: 'web_search',
+            max_uses: 3,
+          }
+        ] : undefined,
       }),
     });
 
@@ -162,7 +169,13 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await res.json();
-    assistantReply = data.content?.[0]?.text ?? '';
+    // El web search devuelve bloques server_tool_use / web_search_tool_result
+    // intercalados con el texto, así que juntamos todos los bloques de texto.
+    assistantReply = (data.content ?? [])
+      .filter((b: { type: string }) => b.type === 'text')
+      .map((b: { text: string }) => b.text)
+      .join('\n')
+      .trim();
   } catch {
     return NextResponse.json({ error: 'Error al contactar el modelo' }, { status: 502 });
   }
