@@ -47,10 +47,11 @@ export async function POST(req: NextRequest) {
 
   // ── Body ──────────────────────────────────────────────
   const body = await req.json();
-  const { agentSlug, message, sessionId } = body as {
+  const { agentSlug, message, sessionId, image } = body as {
     agentSlug: string;
     message: string;
     sessionId: string | null;
+    image: { base64: string; mediaType: string } | null;
   };
 
   if (!agentSlug || !message) {
@@ -133,9 +134,16 @@ export async function POST(req: NextRequest) {
   }
 
   const recentHistory = history.slice(-10);
+  const userContent = image
+    ? [
+        { type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.base64 } },
+        { type: 'text', text: message },
+      ]
+    : message;
+
   const anthropicMessages = [
     ...recentHistory.map((m) => ({ role: m.role, content: m.content })),
-    { role: 'user' as const, content: message },
+    { role: 'user' as const, content: userContent },
   ];
 
   let assistantReply = '';

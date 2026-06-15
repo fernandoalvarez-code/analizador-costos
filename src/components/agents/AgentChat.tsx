@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Bot, User, AlertCircle } from 'lucide-react';
+import { Send, Loader2, Bot, User, AlertCircle, Paperclip, X } from 'lucide-react';
 import { useUser } from '@/firebase';
 import ReactMarkdown from 'react-markdown';
 
@@ -15,9 +15,9 @@ const ROW_AI      = `${ROW_BASE} flex-row`;
 const AVATAR_BASE = 'w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-medium';
 const AVATAR_USER = `${AVATAR_BASE} bg-orange-500 text-white`;
 const AVATAR_AI   = `${AVATAR_BASE} bg-gray-900 text-white`;
-const INPUT_AREA  = 'flex gap-2 items-end p-3 border-t border-gray-200 bg-white';
-const SEND_BTN_ON  = 'w-9 h-9 rounded-full bg-orange-500 hover:bg-orange-600 flex items-center justify-center flex-shrink-0 transition-colors';
+const SEND_BTN_ON  ='w-9 h-9 rounded-full bg-orange-500 hover:bg-orange-600 flex items-center justify-center flex-shrink-0 transition-colors';
 const SEND_BTN_OFF = 'w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0 cursor-not-allowed';
+const ATTACH_BTN = 'w-9 h-9 rounded-full border border-gray-200 hover:bg-gray-50 flex items-center justify-center flex-shrink-0 transition-colors cursor-pointer';
 
 // ── Tipos locales ─────────────────────────────────────
 interface Message {
@@ -49,8 +49,10 @@ export default function AgentChat({
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [image, setImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -61,6 +63,18 @@ export default function AgentChat({
     const el = e.target;
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(',')[1];
+      setImage({ base64, mediaType: file.type, preview: reader.result as string });
+    };
+    reader.readAsDataURL(file);
   };
 
   const getToken = useCallback(async (): Promise<string | null> => {
@@ -85,6 +99,7 @@ export default function AgentChat({
     }
 
     setMessages((prev) => [...prev, { role: 'user', content: text }]);
+    setImage(null);
     setIsLoading(true);
 
     try {
@@ -101,7 +116,12 @@ export default function AgentChat({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ agentSlug, message: text, sessionId }),
+        body: JSON.stringify({
+          agentSlug,
+          message: text,
+          sessionId,
+          image: image ? { base64: image.base64, mediaType: image.mediaType } : null,
+        }),
       });
 
       if (!res.ok) {
@@ -121,7 +141,7 @@ export default function AgentChat({
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, sessionId, agentSlug, getToken]);
+  }, [input, isLoading, sessionId, agentSlug, getToken, image]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -255,25 +275,53 @@ export default function AgentChat({
       </div>
 
       {/* Input */}
-      <div className={INPUT_AREA}>
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          rows={1}
-          className="flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm px-3 py-2 outline-none focus:border-orange-400 placeholder-gray-400 transition-colors"
-          style={{ minHeight: '38px', maxHeight: '120px' }}
+      <div className="p-3 border-t border-gray-200 bg-white">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageChange}
         />
-        <button
-          onClick={sendMessage}
-          disabled={!canSend}
-          className={canSend ? SEND_BTN_ON : SEND_BTN_OFF}
-          aria-label="Enviar"
-        >
-          <Send size={15} className="text-white" />
-        </button>
+        {image && (
+          <div className="relative inline-block mb-2">
+            <img src={image.preview} alt="adjunto" className="h-16 w-16 object-cover rounded-lg border border-gray-200" />
+            <button
+              onClick={() => setImage(null)}
+              className="absolute -top-1 -right-1 w-4 h-4 bg-gray-800 rounded-full flex items-center justify-center"
+            >
+              <X size={10} className="text-white" />
+            </button>
+          </div>
+        )}
+        <div className="flex gap-2 items-end">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className={ATTACH_BTN}
+            title="Adjuntar foto o plano"
+          >
+            <Paperclip size={15} className="text-gray-500" />
+          </button>
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            rows={1}
+            className="flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm px-3 py-2 outline-none focus:border-orange-400 placeholder-gray-400 transition-colors"
+            style={{ minHeight: '38px', maxHeight: '120px' }}
+          />
+          <button
+            onClick={sendMessage}
+            disabled={!canSend}
+            className={canSend ? SEND_BTN_ON : SEND_BTN_OFF}
+            aria-label="Enviar"
+          >
+            <Send size={15} className="text-white" />
+          </button>
+        </div>
       </div>
     </div>
   );
