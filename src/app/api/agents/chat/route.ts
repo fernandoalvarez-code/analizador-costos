@@ -118,14 +118,15 @@ export async function POST(req: NextRequest) {
       ? 'formal y profesional.'
       : 'cercano y directo, como un colega que conoce el tema.';
 
-  const systemPrompt =
+  // Parte ESTABLE del system prompt (cacheable). El knowledgeContext es
+  // volátil (cambia por consulta), así que va en un bloque aparte sin cache.
+  const baseSystemPrompt =
     agent.systemPrompt +
     '\n\nEres el asistente de SECOCUT, representante de SECOTOOLS en Argentina. ' +
     'Respondé siempre en español rioplatense. ' +
     `Sé ${toneInstruction} ` +
     'Nunca inventes números de catálogo, precios exactos ni especificaciones que no tenés. ' +
-    'Si no sabés algo específico, decí que el equipo de SECOCUT puede confirmar.' +
-    knowledgeContext;
+    'Si no sabés algo específico, decí que el equipo de SECOCUT puede confirmar.';
 
   // ── Llamar a Claude ───────────────────────────────────
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -154,11 +155,21 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'prompt-caching-2024-07-31',
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        system: systemPrompt,
+        max_tokens: 800,
+        system: [
+          {
+            type: 'text',
+            text: baseSystemPrompt,
+            cache_control: { type: 'ephemeral' },
+          },
+          ...(knowledgeContext
+            ? [{ type: 'text', text: knowledgeContext }]
+            : []),
+        ],
         messages: anthropicMessages,
         tools: agentSlug === 'tecnico' ? [
           {
