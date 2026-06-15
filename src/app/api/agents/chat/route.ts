@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
       );
 
       if (relevant.length > 0) {
-        const top = relevant.slice(0, 4);
+        const top = relevant.slice(0, 2);
         knowledgeContext =
           '\n\n--- INFORMACIÓN DE REFERENCIA (base de conocimiento SECOCUT) ---\n' +
           top
@@ -132,8 +132,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'API key no configurada' }, { status: 500 });
   }
 
+  const recentHistory = history.slice(-10);
   const anthropicMessages = [
-    ...history.map((m) => ({ role: m.role, content: m.content })),
+    ...recentHistory.map((m) => ({ role: m.role, content: m.content })),
     { role: 'user' as const, content: message },
   ];
 
