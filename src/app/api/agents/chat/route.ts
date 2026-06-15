@@ -148,7 +148,6 @@ export async function POST(req: NextRequest) {
   ];
 
   let assistantReply = '';
-  let debugUsage: unknown = null; // TEMPORAL — BORRAR (test de prompt caching)
   try {
     const res = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',
@@ -196,7 +195,6 @@ export async function POST(req: NextRequest) {
       .map((b: { text: string }) => b.text)
       .join('\n')
       .trim();
-    debugUsage = data.usage ?? null; // TEMPORAL — BORRAR
   } catch {
     return NextResponse.json({ error: 'Error al contactar el modelo' }, { status: 502 });
   }
@@ -225,6 +223,5 @@ export async function POST(req: NextRequest) {
     sessionId: currentSessionId,
     agentName: agent.name,
     contextUsed: usedEntryIds.length > 0,
-    _usage: debugUsage, // TEMPORAL — BORRAR
   });
 }
