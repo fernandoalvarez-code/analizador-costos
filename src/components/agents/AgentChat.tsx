@@ -51,6 +51,8 @@ export default function AgentChat({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [image, setImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportContent, setReportContent] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -145,34 +147,90 @@ export default function AgentChat({
   }, [input, isLoading, sessionId, agentSlug, getToken, image]);
 
   const downloadReport = useCallback(async () => {
-    if (messages.length === 0) return;
+    if (messages.length === 0 || isLoading) return;
 
-    const element = document.getElementById('agente-tecnico-informe');
-    if (!element) return;
+    // Paso 1: pedir resumen ejecutivo al agente
+    const reportPrompt = `Generá un INFORME TÉCNICO EJECUTIVO en base a esta conversación.
+El informe debe tener exactamente esta estructura:
 
-    const { default: html2canvas } = await import('html2canvas');
-    const { default: jsPDF } = await import('jspdf');
+**RESUMEN DE LA CONSULTA**
+[Una o dos oraciones describiendo el problema o consulta]
 
-    const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = 210;
-    const imgHeight = (canvas.height * pageWidth) / canvas.width;
+**DIAGNÓSTICO**
+[Causa raíz identificada, máximo 3 puntos]
 
-    let heightLeft = imgHeight;
-    let position = 0;
-    pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight);
-    heightLeft -= 297;
+**SOLUCIÓN RECOMENDADA**
+[Herramienta/s SECO sugerida/s con criterios de selección]
 
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
+**PARÁMETROS PROPUESTOS**
+[Tabla con Vc, fn/fz, ap, ae — solo si aplica]
+
+**MEJORA ESTIMADA**
+[Beneficio esperado en productividad, vida de herramienta o costo]
+
+**PRÓXIMOS PASOS**
+[1-2 acciones concretas]
+
+Sé conciso. Máximo una página A4.`;
+
+    setIsGeneratingReport(true);
+
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      const res = await fetch('/api/agents/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          agentSlug,
+          message: reportPrompt,
+          sessionId,
+          image: null,
+        }),
+      });
+
+      const data = await res.json();
+      const reportText = data.reply ?? '';
+
+      // Paso 2: generar PDF con el resumen
+      setReportContent(reportText);
+
+      // Esperar un tick para que el DOM se actualice
+      await new Promise((r) => setTimeout(r, 100));
+
+      const element = document.getElementById('agente-tecnico-informe');
+      if (!element) return;
+
+      const { default: html2canvas } = await import('html2canvas');
+      const { default: jsPDF } = await import('jspdf');
+
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = 210;
+      const imgHeight = (canvas.height * pageWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
       pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight);
       heightLeft -= 297;
-    }
 
-    pdf.save(`informe-tecnico-secocut-${new Date().toISOString().slice(0, 10)}.pdf`);
-  }, [messages]);
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight);
+        heightLeft -= 297;
+      }
+
+      pdf.save(`informe-tecnico-secocut-${new Date().toISOString().slice(0, 10)}.pdf`);
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  }, [messages, isLoading, agentSlug, sessionId, getToken]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -207,8 +265,9 @@ export default function AgentChat({
         {messages.length > 0 && (
           <div className="flex items-center gap-2">
             {agentSlug === 'tecnico' && (
-              <button onClick={downloadReport} className={BTN_REPORT} title="Descargar informe PDF">
-                <FileText size={14} /> Descargar PDF
+              <button onClick={downloadReport} disabled={isGeneratingReport} className={BTN_REPORT} title="Descargar informe PDF">
+                <FileText size={14} />
+                {isGeneratingReport ? 'Generando...' : 'Descargar PDF'}
               </button>
             )}
             <button
@@ -362,9 +421,8 @@ export default function AgentChat({
         </div>
       </div>
 
-      {/* Informe PDF oculto — se captura con html2canvas */}
+      {/* Informe PDF oculto — se captura con html2canvas (resumen ejecutivo) */}
       <div id="agente-tecnico-informe" className="fixed -left-[9999px] top-0 w-[794px] bg-white p-10 font-sans text-sm">
-        {/* Header */}
         <div className="flex items-center justify-between border-b-2 border-gray-800 pb-4 mb-6">
           <div>
             <h1 className="text-xl font-black text-gray-900">INFORME TÉCNICO</h1>
@@ -372,26 +430,14 @@ export default function AgentChat({
           </div>
           <div className="text-right text-xs text-gray-400">
             <p>{new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-            <p className="font-medium text-gray-600">Agente Técnico IA</p>
           </div>
         </div>
-
-        {/* Contenido — conversación procesada */}
-        <div className="space-y-4">
-          {messages.map((msg, i) => (
-            <div key={i} className={msg.role === 'assistant' ? 'bg-gray-50 rounded-lg p-3' : 'pl-2 border-l-2 border-orange-400'}>
-              <p className="text-xs font-bold mb-1 text-gray-500">
-                {msg.role === 'assistant' ? '🔧 SECOCUT Técnico' : '👤 Consulta'}
-              </p>
-              <p className="text-xs text-gray-700 whitespace-pre-wrap">{msg.content}</p>
-            </div>
-          ))}
+        <div className="whitespace-pre-wrap text-xs text-gray-700 leading-relaxed">
+          {reportContent}
         </div>
-
-        {/* Footer */}
         <div className="mt-8 pt-4 border-t border-gray-200 text-xs text-gray-400 flex justify-between">
           <span>SECOCUT SRL · ventas@secocut.com</span>
-          <span>Generado por Agente Técnico IA · {new Date().toLocaleDateString('es-AR')}</span>
+          <span>{new Date().toLocaleDateString('es-AR')}</span>
         </div>
       </div>
     </div>
