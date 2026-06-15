@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Bot, User, AlertCircle, Paperclip, X } from 'lucide-react';
+import { Send, Loader2, Bot, User, AlertCircle, Paperclip, X, FileText } from 'lucide-react';
 import { useUser } from '@/firebase';
 import ReactMarkdown from 'react-markdown';
 
@@ -18,6 +18,7 @@ const AVATAR_AI   = `${AVATAR_BASE} bg-gray-900 text-white`;
 const SEND_BTN_ON  ='w-9 h-9 rounded-full bg-orange-500 hover:bg-orange-600 flex items-center justify-center flex-shrink-0 transition-colors';
 const SEND_BTN_OFF = 'w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0 cursor-not-allowed';
 const ATTACH_BTN = 'w-9 h-9 rounded-full border border-gray-200 hover:bg-gray-50 flex items-center justify-center flex-shrink-0 transition-colors cursor-pointer';
+const BTN_REPORT = 'flex items-center gap-1 text-white/80 hover:text-white text-xs border border-white/30 rounded-md px-2 py-1 transition-colors';
 
 // ── Tipos locales ─────────────────────────────────────
 interface Message {
@@ -143,6 +144,36 @@ export default function AgentChat({
     }
   }, [input, isLoading, sessionId, agentSlug, getToken, image]);
 
+  const downloadReport = useCallback(async () => {
+    if (messages.length === 0) return;
+
+    const element = document.getElementById('agente-tecnico-informe');
+    if (!element) return;
+
+    const { default: html2canvas } = await import('html2canvas');
+    const { default: jsPDF } = await import('jspdf');
+
+    const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = 210;
+    const imgHeight = (canvas.height * pageWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+    pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight);
+    heightLeft -= 297;
+
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight);
+      heightLeft -= 297;
+    }
+
+    pdf.save(`informe-tecnico-secocut-${new Date().toISOString().slice(0, 10)}.pdf`);
+  }, [messages]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -174,13 +205,20 @@ export default function AgentChat({
           <p className="text-white/60 text-xs mt-0.5">SECOCUT · IA</p>
         </div>
         {messages.length > 0 && (
-          <button
-            onClick={resetSession}
-            className="text-white/60 hover:text-white text-xs transition-colors"
-            title="Nueva conversación"
-          >
-            Nueva conversación
-          </button>
+          <div className="flex items-center gap-2">
+            {agentSlug === 'tecnico' && (
+              <button onClick={downloadReport} className={BTN_REPORT} title="Descargar informe PDF">
+                <FileText size={14} /> Descargar PDF
+              </button>
+            )}
+            <button
+              onClick={resetSession}
+              className="text-white/60 hover:text-white text-xs transition-colors"
+              title="Nueva conversación"
+            >
+              Nueva conversación
+            </button>
+          </div>
         )}
       </div>
 
@@ -321,6 +359,39 @@ export default function AgentChat({
           >
             <Send size={15} className="text-white" />
           </button>
+        </div>
+      </div>
+
+      {/* Informe PDF oculto — se captura con html2canvas */}
+      <div id="agente-tecnico-informe" className="fixed -left-[9999px] top-0 w-[794px] bg-white p-10 font-sans text-sm">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b-2 border-gray-800 pb-4 mb-6">
+          <div>
+            <h1 className="text-xl font-black text-gray-900">INFORME TÉCNICO</h1>
+            <p className="text-xs text-gray-500 mt-0.5">SECOCUT SRL · Representante SECO Tools Argentina</p>
+          </div>
+          <div className="text-right text-xs text-gray-400">
+            <p>{new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+            <p className="font-medium text-gray-600">Agente Técnico IA</p>
+          </div>
+        </div>
+
+        {/* Contenido — conversación procesada */}
+        <div className="space-y-4">
+          {messages.map((msg, i) => (
+            <div key={i} className={msg.role === 'assistant' ? 'bg-gray-50 rounded-lg p-3' : 'pl-2 border-l-2 border-orange-400'}>
+              <p className="text-xs font-bold mb-1 text-gray-500">
+                {msg.role === 'assistant' ? '🔧 SECOCUT Técnico' : '👤 Consulta'}
+              </p>
+              <p className="text-xs text-gray-700 whitespace-pre-wrap">{msg.content}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-8 pt-4 border-t border-gray-200 text-xs text-gray-400 flex justify-between">
+          <span>SECOCUT SRL · ventas@secocut.com</span>
+          <span>Generado por Agente Técnico IA · {new Date().toLocaleDateString('es-AR')}</span>
         </div>
       </div>
     </div>
