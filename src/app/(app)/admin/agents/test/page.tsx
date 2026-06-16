@@ -2,23 +2,33 @@
 
 import { useState, useEffect } from 'react';
 import { useUser } from '@/firebase';
-import { listAgents } from '@/lib/agents/firestore';
-import type { Agent } from '@/lib/agents/types';
+import { listAgents, listUserSessions } from '@/lib/agents/firestore';
+import type { Agent, ChatSession } from '@/lib/agents/types';
 import AgentChat from '@/components/agents/AgentChat';
 
 export default function AgentTestPage() {
   const { user } = useUser();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selected, setSelected] = useState<Agent | null>(null);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
 
   const isAdmin = user?.email?.endsWith('@secocut.com') ?? false;
 
   useEffect(() => {
     listAgents(false).then((list) => {
-      setAgents(list);
-      if (list.length > 0) setSelected(list[0]);
+      const order = ['tecnico', 'comercial', 'vendedor'];
+      const sorted = list.sort((a, b) => order.indexOf(a.slug) - order.indexOf(b.slug));
+      setAgents(sorted);
+      if (sorted.length > 0) setSelected(sorted[0]);
     });
   }, []);
+
+  useEffect(() => {
+    if (!selected || !user) return;
+    listUserSessions(user.uid, selected.id)
+      .then((list) => setSessions(list.slice(0, 5)))
+      .catch(() => setSessions([]));
+  }, [selected, user]);
 
   if (!isAdmin) {
     return (
@@ -61,13 +71,35 @@ export default function AgentTestPage() {
         })}
       </div>
 
+      {sessions.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <p className="text-xs font-medium text-gray-500 mb-1">Últimas conversaciones</p>
+          <div className="flex gap-2 flex-wrap">
+            {sessions.map((session) => (
+              <button
+                key={session.id}
+                onClick={() => setSelected((prev) => ({ ...prev! }))}
+                className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-gray-400 hover:bg-gray-50 transition-colors text-left"
+              >
+                <span className="block text-gray-400 text-[10px]">
+                  {new Date(session.updatedAt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <span className="line-clamp-1">
+                  {session.messages[0]?.content?.slice(0, 50) ?? 'Conversación'}...
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {selected && (
         <AgentChat
           key={selected.id}
           agentSlug={selected.slug}
           agentName={selected.name}
           agentColor={selected.color}
-          height="h-[560px]"
+          height="h-[calc(100vh-280px)]"
           placeholder={`Consultá al agente ${selected.name.toLowerCase()}...`}
         />
       )}
