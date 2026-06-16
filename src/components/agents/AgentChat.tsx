@@ -53,7 +53,7 @@ export default function AgentChat({
   const [error, setError] = useState<string | null>(null);
   const [image, setImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  const [reportContent, setReportContent] = useState('');
+  const [reportHtml, setReportHtml] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -197,11 +197,21 @@ Sé conciso. Máximo una página A4.`;
       const data = await res.json();
       const reportText = data.reply ?? '';
 
-      // Paso 2: generar PDF con el resumen
-      setReportContent(reportText);
+      // Paso 2: convertir markdown → HTML puro (no depende del render de React)
+      const { unified } = await import('unified');
+      const { default: remarkParse } = await import('remark-parse');
+      const { default: remarkHtml } = await import('remark-html');
 
-      // Esperar un tick para que el DOM se actualice
-      await new Promise((r) => setTimeout(r, 100));
+      const file = await unified()
+        .use(remarkParse)
+        .use(remarkGfm)
+        .use(remarkHtml)
+        .process(reportText);
+
+      setReportHtml(String(file));
+
+      // Esperar a que el DOM se actualice antes de capturar
+      await new Promise((r) => setTimeout(r, 200));
 
       const element = document.getElementById('agente-tecnico-informe');
       if (!element) return;
@@ -437,36 +447,16 @@ Sé conciso. Máximo una página A4.`;
             <p>{new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
           </div>
         </div>
-        <div className="text-xs text-gray-700 leading-relaxed prose prose-sm max-w-none">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              table: ({ children }) => (
-                <table className="text-xs border-collapse w-full my-2">{children}</table>
-              ),
-              thead: ({ children }) => (
-                <thead className="bg-gray-100">{children}</thead>
-              ),
-              th: ({ children }) => (
-                <th className="border border-gray-300 px-3 py-1.5 text-left font-semibold">{children}</th>
-              ),
-              td: ({ children }) => (
-                <td className="border border-gray-300 px-3 py-1.5">{children}</td>
-              ),
-              tr: ({ children }) => (
-                <tr className="even:bg-gray-50">{children}</tr>
-              ),
-              h2: ({ children }) => (
-                <h2 className="font-bold text-sm mt-4 mb-1 text-gray-900">{children}</h2>
-              ),
-              strong: ({ children }) => (
-                <strong className="font-semibold">{children}</strong>
-              ),
-            }}
-          >
-            {reportContent}
-          </ReactMarkdown>
-        </div>
+        <div
+          className="text-xs text-gray-700 leading-relaxed prose prose-sm max-w-none
+            [&_table]:w-full [&_table]:border-collapse [&_table]:my-2
+            [&_th]:border [&_th]:border-gray-300 [&_th]:px-3 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-semibold [&_th]:bg-gray-100
+            [&_td]:border [&_td]:border-gray-300 [&_td]:px-3 [&_td]:py-1.5
+            [&_tr:nth-child(even)]:bg-gray-50
+            [&_h2]:font-bold [&_h2]:text-sm [&_h2]:mt-4 [&_h2]:mb-1
+            [&_strong]:font-semibold [&_hr]:my-3 [&_hr]:border-gray-200"
+          dangerouslySetInnerHTML={{ __html: reportHtml }}
+        />
         <div className="mt-8 pt-4 border-t border-gray-200 text-xs text-gray-400 flex justify-between">
           <span>SECOCUT SRL · ventas@secocut.com</span>
           <span>{new Date().toLocaleDateString('es-AR')}</span>
