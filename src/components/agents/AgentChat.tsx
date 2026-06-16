@@ -211,7 +211,7 @@ Sé conciso. Máximo una página A4.`;
       setReportHtml(String(file));
 
       // Esperar a que el DOM se actualice antes de capturar
-      await new Promise((r) => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 500));
 
       const element = document.getElementById('agente-tecnico-informe');
       if (!element) return;
@@ -219,22 +219,31 @@ Sé conciso. Máximo una página A4.`;
       const { default: html2canvas } = await import('html2canvas');
       const { default: jsPDF } = await import('jspdf');
 
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        windowWidth: 794,
+        scrollY: 0,
+      });
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = 210;
-      const imgHeight = (canvas.height * pageWidth) / canvas.width;
+      const pageHeight = 297;
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
       let heightLeft = imgHeight;
       let position = 0;
-      pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight);
-      heightLeft -= 297;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
 
       while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
+        position -= pageHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight);
-        heightLeft -= 297;
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
       }
 
       pdf.save(`informe-tecnico-secocut-${new Date().toISOString().slice(0, 10)}.pdf`);
