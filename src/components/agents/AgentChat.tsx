@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Loader2, Bot, User, AlertCircle, Paperclip, X, FileText } from 'lucide-react';
 import { useUser } from '@/firebase';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // ── Tailwind consts (nivel módulo — evita purge) ──────
 const BUBBLE_BASE = 'rounded-2xl px-4 py-3 text-sm leading-relaxed max-w-[80%]';
@@ -305,6 +306,7 @@ Sé conciso. Máximo una página A4.`;
             </div>
             <div className={msg.role === 'user' ? BUBBLE_USER : BUBBLE_AI}>
               <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
                 components={{
                   h2: ({ children }) => (
                     <p className="font-semibold text-sm mt-2 mb-1">{children}</p>
@@ -328,18 +330,21 @@ Sé conciso. Máximo una página A4.`;
                     <li className="text-sm">{children}</li>
                   ),
                   table: ({ children }) => (
-                    <div className="overflow-x-auto mt-2 mb-2">
+                    <div className="overflow-x-auto my-2">
                       <table className="text-xs border-collapse w-full">{children}</table>
                     </div>
                   ),
                   thead: ({ children }) => (
-                    <thead className="bg-gray-200">{children}</thead>
+                    <thead className="bg-gray-100">{children}</thead>
                   ),
                   th: ({ children }) => (
-                    <th className="border border-gray-300 px-2 py-1 text-left font-medium">{children}</th>
+                    <th className="border border-gray-300 px-3 py-1.5 text-left font-semibold">{children}</th>
                   ),
                   td: ({ children }) => (
-                    <td className="border border-gray-300 px-2 py-1">{children}</td>
+                    <td className="border border-gray-300 px-3 py-1.5">{children}</td>
+                  ),
+                  tr: ({ children }) => (
+                    <tr className="even:bg-gray-50">{children}</tr>
                   ),
                   hr: () => <hr className="my-2 border-gray-200" />,
                 }}
