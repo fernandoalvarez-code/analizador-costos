@@ -437,8 +437,35 @@ Sé conciso. Máximo una página A4.`;
             <p>{new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
           </div>
         </div>
-        <div className="whitespace-pre-wrap text-xs text-gray-700 leading-relaxed">
-          {reportContent}
+        <div className="text-xs text-gray-700 leading-relaxed prose prose-sm max-w-none">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              table: ({ children }) => (
+                <table className="text-xs border-collapse w-full my-2">{children}</table>
+              ),
+              thead: ({ children }) => (
+                <thead className="bg-gray-100">{children}</thead>
+              ),
+              th: ({ children }) => (
+                <th className="border border-gray-300 px-3 py-1.5 text-left font-semibold">{children}</th>
+              ),
+              td: ({ children }) => (
+                <td className="border border-gray-300 px-3 py-1.5">{children}</td>
+              ),
+              tr: ({ children }) => (
+                <tr className="even:bg-gray-50">{children}</tr>
+              ),
+              h2: ({ children }) => (
+                <h2 className="font-bold text-sm mt-4 mb-1 text-gray-900">{children}</h2>
+              ),
+              strong: ({ children }) => (
+                <strong className="font-semibold">{children}</strong>
+              ),
+            }}
+          >
+            {reportContent}
+          </ReactMarkdown>
         </div>
         <div className="mt-8 pt-4 border-t border-gray-200 text-xs text-gray-400 flex justify-between">
           <span>SECOCUT SRL · ventas@secocut.com</span>
