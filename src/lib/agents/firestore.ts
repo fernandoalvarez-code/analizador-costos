@@ -192,16 +192,19 @@ export async function listUserSessions(
   userId: string,
   agentId?: string
 ): Promise<ChatSession[]> {
+  // Solo filtros de igualdad (sin orderBy) para no requerir índice compuesto;
+  // ordenamos por updatedAt desc en JS.
   const constraints = [
     where('userId', '==', userId),
     ...(agentId ? [where('agentId', '==', agentId)] : []),
-    orderBy('updatedAt', 'desc'),
   ];
   const snap = await getDocs(query(collection(db, 'chat_sessions'), ...constraints));
-  return snap.docs.map((d) => ({
-    ...d.data(),
-    id: d.id,
-    createdAt: toDate(d.data().createdAt),
-    updatedAt: toDate(d.data().updatedAt),
-  })) as ChatSession[];
+  return snap.docs
+    .map((d) => ({
+      ...d.data(),
+      id: d.id,
+      createdAt: toDate(d.data().createdAt),
+      updatedAt: toDate(d.data().updatedAt),
+    }) as ChatSession)
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 }

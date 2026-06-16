@@ -28,7 +28,10 @@ export default function AgentTestPage() {
     if (!selected || !user) return;
     listUserSessions(user.uid, selected.id)
       .then((list) => setSessions(list.slice(0, 5)))
-      .catch(() => setSessions([]));
+      .catch((e) => {
+        console.error('[test] listUserSessions:', e);
+        setSessions([]);
+      });
   }, [selected, user]);
 
   if (!isAdmin) {
