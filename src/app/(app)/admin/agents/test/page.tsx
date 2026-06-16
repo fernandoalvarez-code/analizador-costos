@@ -11,6 +11,7 @@ export default function AgentTestPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selected, setSelected] = useState<Agent | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   const isAdmin = user?.email?.endsWith('@secocut.com') ?? false;
 
@@ -57,7 +58,7 @@ export default function AgentTestPage() {
             <button
               key={agent.id}
               type="button"
-              onClick={() => setSelected(agent)}
+              onClick={() => { setSelected(agent); setSelectedSessionId(null); }}
               className={btnClass}
             >
               <span
@@ -78,7 +79,7 @@ export default function AgentTestPage() {
             {sessions.map((session) => (
               <button
                 key={session.id}
-                onClick={() => setSelected((prev) => ({ ...prev! }))}
+                onClick={() => setSelectedSessionId(session.id)}
                 className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-gray-400 hover:bg-gray-50 transition-colors text-left"
               >
                 <span className="block text-gray-400 text-[10px]">
@@ -95,11 +96,12 @@ export default function AgentTestPage() {
 
       {selected && (
         <AgentChat
-          key={selected.id}
+          key={selectedSessionId ?? selected.id}
           agentSlug={selected.slug}
           agentName={selected.name}
           agentColor={selected.color}
           height="h-[calc(100vh-280px)]"
+          initialSessionId={selectedSessionId}
           placeholder={`Consultá al agente ${selected.name.toLowerCase()}...`}
         />
       )}

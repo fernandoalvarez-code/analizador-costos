@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Loader2, Bot, User, AlertCircle, Paperclip, X, FileText } from 'lucide-react';
 import { useUser } from '@/firebase';
+import { getChatSession } from '@/lib/agents/firestore';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -34,6 +35,7 @@ interface AgentChatProps {
   placeholder?: string;
   className?: string;
   height?: string;
+  initialSessionId?: string | null;
 }
 
 // ── Componente ────────────────────────────────────────
@@ -44,6 +46,7 @@ export default function AgentChat({
   placeholder = 'Escribí tu consulta...',
   className = '',
   height = 'h-[520px]',
+  initialSessionId = null,
 }: AgentChatProps) {
   const { user } = useUser();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -61,6 +64,16 @@ export default function AgentChat({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
+
+  // Cargar una sesión existente si se pasa initialSessionId
+  useEffect(() => {
+    if (!initialSessionId) return;
+    getChatSession(initialSessionId).then((session) => {
+      if (!session) return;
+      setMessages(session.messages.map((m) => ({ role: m.role, content: m.content })));
+      setSessionId(initialSessionId);
+    });
+  }, [initialSessionId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
