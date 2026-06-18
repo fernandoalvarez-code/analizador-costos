@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Bot, User, AlertCircle, Paperclip, X, FileText } from 'lucide-react';
+import { Send, Loader2, Bot, User, AlertCircle, Paperclip, X, FileText, Plus } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { getChatSession } from '@/lib/agents/firestore';
 import ReactMarkdown from 'react-markdown';
@@ -300,15 +300,16 @@ Sé conciso. Máximo una página A4.`;
             {agentSlug === 'tecnico' && (
               <button onClick={downloadReport} disabled={isGeneratingReport} className={BTN_REPORT} title="Descargar informe PDF">
                 <FileText size={14} />
-                {isGeneratingReport ? 'Generando...' : 'Descargar PDF'}
+                <span className="hidden sm:inline">{isGeneratingReport ? 'Generando...' : 'Descargar PDF'}</span>
               </button>
             )}
             <button
               onClick={resetSession}
-              className="text-white/60 hover:text-white text-xs transition-colors"
+              className="flex items-center gap-1 text-white/60 hover:text-white text-xs transition-colors"
               title="Nueva conversación"
             >
-              Nueva conversación
+              <Plus size={14} />
+              <span className="hidden sm:inline">Nueva conversación</span>
             </button>
           </div>
         )}

@@ -103,7 +103,7 @@ export default function AgentTestPage() {
           agentSlug={selected.slug}
           agentName={selected.name}
           agentColor={selected.color}
-          height="h-[calc(100vh-280px)]"
+          height="h-[60vh] md:h-[calc(100vh-280px)]"
           initialSessionId={selectedSessionId}
           placeholder={`Consultá al agente ${selected.name.toLowerCase()}...`}
         />

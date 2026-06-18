@@ -147,7 +147,7 @@ export default function HistoryPage() {
                     <td className="p-4 font-black text-emerald-600">
                       {formatCurrency(sim.annualSavings)}
                     </td>
-                    <td className="p-4 flex items-center justify-end gap-2">
+                    <td className="p-4 flex flex-wrap items-center justify-end gap-2">
                       <Button
                         onClick={() => router.push(`/taylor-curve/${sim.id}/edit`)}
                         variant="outline"
