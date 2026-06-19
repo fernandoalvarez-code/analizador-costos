@@ -1,5 +1,6 @@
 // TEMPORAL — BORRAR después de verificar emails del staff.
-// Marca emailVerified=true para el usuario que llama (auth + dominio @secocut.com).
+// Verifica (emailVerified=true) a TODOS los usuarios @secocut.com de una vez.
+// Solo accesible con un token @secocut.com válido.
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeAdminApp } from '@/firebase/auth/admin-app';
 import { getAuth } from 'firebase-admin/auth';
@@ -18,9 +19,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Sin permisos' }, { status: 403 });
     }
 
-    await getAuth(adminApp).updateUser(decoded.uid, { emailVerified: true });
+    // Listar todos los usuarios y verificar los @secocut.com
+    const auth = getAuth(adminApp);
+    const listResult = await auth.listUsers(1000);
+    const secocutUsers = listResult.users.filter((u) => u.email?.endsWith('@secocut.com'));
 
-    return NextResponse.json({ success: true, message: `Email verificado para ${decoded.email}` });
+    const results = [];
+    for (const user of secocutUsers) {
+      if (!user.emailVerified) {
+        await auth.updateUser(user.uid, { emailVerified: true });
+        results.push({ email: user.email, status: 'verificado ahora' });
+      } else {
+        results.push({ email: user.email, status: 'ya estaba verificado' });
+      }
+    }
+
+    return NextResponse.json({ success: true, results });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
