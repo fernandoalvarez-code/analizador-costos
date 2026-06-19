@@ -13,18 +13,23 @@ import type { ChatMessage } from '@/lib/agents/types';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
 // Extrae keywords simples del último mensaje del usuario para buscar en KB
+// Quita acentos para que stopwords y matching no dependan de tildes
+function stripAccents(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 function extractKeywords(text: string): string[] {
   const stopWords = new Set([
     'que', 'cual', 'como', 'para', 'con', 'una', 'uno', 'los', 'las',
-    'del', 'por', 'más', 'sobre', 'hay', 'tiene', 'tengo', 'quiero',
+    'del', 'por', 'mas', 'sobre', 'hay', 'tiene', 'tengo', 'quiero',
     'puedo', 'puede', 'usar', 'the', 'and', 'for', 'are',
+    'programo', 'profundo', 'necesito', 'podes',
   ]);
-  return text
-    .toLowerCase()
-    .replace(/[^a-záéíóúüñ0-9\s-]/g, '')
+  return stripAccents(text.toLowerCase())
+    .replace(/[^a-z0-9\s-]/g, '')
     .split(/\s+/)
     .filter((w) => w.length > 3 && !stopWords.has(w))
-    .slice(0, 6);
+    .slice(0, 10);
 }
 
 export async function POST(req: NextRequest) {
@@ -89,14 +94,22 @@ export async function POST(req: NextRequest) {
   if (keywords.length > 0) {
     try {
       const entries = await searchKnowledgeByTags(keywords);
-      const relevant = entries.filter(
-        (e) =>
-          agent.knowledgeCategories.length === 0 ||
-          agent.knowledgeCategories.includes(e.category)
-      );
+      const relevant = entries
+        .filter((e) => agent.knowledgeCategories.length === 0 || agent.knowledgeCategories.includes(e.category))
+        .map((e) => {
+          // Puntuar por coincidencia de keywords con tags + título (más peso al título)
+          const titleLower = e.title.toLowerCase();
+          const tagMatches = e.tags.filter((t) => keywords.includes(t.toLowerCase())).length;
+          const titleMatches = keywords.filter((k) => titleLower.includes(k)).length;
+          const score = tagMatches * 2 + titleMatches * 3;
+          return { entry: e, score };
+        })
+        .filter((x) => x.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .map((x) => x.entry);
 
       if (relevant.length > 0) {
-        const top = relevant.slice(0, 2);
+        const top = relevant.slice(0, 4);
         knowledgeContext =
           '\n\n--- INFORMACIÓN DE REFERENCIA (base de conocimiento SECOCUT) ---\n' +
           top
