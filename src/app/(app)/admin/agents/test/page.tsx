@@ -27,7 +27,7 @@ export default function AgentTestPage() {
   useEffect(() => {
     if (!selected || !user) return;
     listUserSessions(user.uid, selected.id)
-      .then((list) => setSessions(list.slice(0, 5)))
+      .then((list) => setSessions(list.slice(0, 8)))
       .catch((e) => {
         console.error('[test] listUserSessions:', e);
         setSessions([]);
@@ -43,7 +43,7 @@ export default function AgentTestPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 flex flex-col gap-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col gap-4">
       <div>
         <h1 className="text-xl font-medium text-gray-900">Probar agentes</h1>
         <p className="text-sm text-gray-500 mt-0.5">
@@ -75,39 +75,65 @@ export default function AgentTestPage() {
         })}
       </div>
 
-      {sessions.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <p className="text-xs font-medium text-gray-500 mb-1">Últimas conversaciones</p>
-          <div className="flex gap-2 flex-wrap">
-            {sessions.map((session) => (
-              <button
-                key={session.id}
-                onClick={() => setSelectedSessionId(session.id)}
-                className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-gray-400 hover:bg-gray-50 transition-colors text-left"
-              >
-                <span className="block text-gray-400 text-[10px]">
-                  {new Date(session.updatedAt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                </span>
-                <span className="line-clamp-1">
-                  {session.messages[0]?.content?.slice(0, 50) ?? 'Conversación'}...
-                </span>
-              </button>
-            ))}
+      {/* Layout dos columnas: historial al costado + chat grande */}
+      <div className="flex flex-col md:flex-row gap-4">
+        {/* Sidebar de historial */}
+        <aside className="md:w-64 flex-shrink-0 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Conversaciones</p>
+            <button
+              onClick={() => setSelectedSessionId(null)}
+              className="text-xs font-medium text-orange-600 hover:text-orange-700 transition-colors"
+            >
+              + Nueva
+            </button>
           </div>
-        </div>
-      )}
 
-      {selected && (
-        <AgentChat
-          key={selectedSessionId ?? selected.id}
-          agentSlug={selected.slug}
-          agentName={selected.name}
-          agentColor={selected.color}
-          height="h-[60vh] md:h-[calc(100vh-280px)]"
-          initialSessionId={selectedSessionId}
-          placeholder={`Consultá al agente ${selected.name.toLowerCase()}...`}
-        />
-      )}
+          {sessions.length === 0 ? (
+            <p className="text-xs text-gray-400 py-2">Sin conversaciones previas.</p>
+          ) : (
+            <div className="flex flex-col gap-1 md:max-h-[calc(100vh-220px)] md:overflow-y-auto md:pr-1">
+              {sessions.map((session) => {
+                const active = selectedSessionId === session.id;
+                return (
+                  <button
+                    key={session.id}
+                    onClick={() => setSelectedSessionId(session.id)}
+                    className={`text-left px-3 py-2 rounded-lg border transition-colors ${
+                      active
+                        ? 'border-orange-300 bg-orange-50'
+                        : 'border-gray-200 hover:border-gray-400 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="block text-gray-400 text-[10px]">
+                      {new Date(session.updatedAt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <span className="block text-xs text-gray-700 line-clamp-2">
+                      {session.messages[0]?.content?.slice(0, 60) ?? 'Conversación'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </aside>
+
+        {/* Chat — ocupa el resto del ancho */}
+        <div className="flex-1 min-w-0">
+          {selected && (
+            <AgentChat
+              key={selectedSessionId ?? selected.id}
+              agentSlug={selected.slug}
+              agentName={selected.name}
+              agentColor={selected.color}
+              height="h-[70vh] md:h-[calc(100vh-190px)]"
+              initialSessionId={selectedSessionId}
+              placeholder={`Consultá al agente ${selected.name.toLowerCase()}...`}
+              className="w-full"
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 }
