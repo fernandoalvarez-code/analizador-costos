@@ -6,6 +6,17 @@ import { listAgents, listUserSessions, deleteChatSession } from '@/lib/agents/fi
 import type { Agent, ChatSession } from '@/lib/agents/types';
 import AgentChat from '@/components/agents/AgentChat';
 
+// Título de referencia de una sesión — la primera pregunta del usuario, limpia
+function sessionTitle(session: ChatSession): string {
+  const first =
+    session.messages.find((m) => m.role === 'user')?.content ??
+    session.messages[0]?.content ??
+    '';
+  const line = first.replace(/\s+/g, ' ').trim();
+  if (!line) return 'Conversación sin título';
+  return line.length > 48 ? line.slice(0, 48) + '…' : line;
+}
+
 export default function AgentTestPage() {
   const { user } = useUser();
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -120,11 +131,11 @@ export default function AgentTestPage() {
                           : 'border-gray-200 hover:border-gray-400 hover:bg-gray-50'
                       }`}
                     >
-                      <span className="block text-gray-400 text-[10px]">
-                        {new Date(session.updatedAt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      <span className="block text-xs font-medium text-gray-800 line-clamp-2">
+                        {sessionTitle(session)}
                       </span>
-                      <span className="block text-xs text-gray-700 line-clamp-2">
-                        {session.messages[0]?.content?.slice(0, 60) ?? 'Conversación'}
+                      <span className="block text-gray-400 text-[10px] mt-1">
+                        {new Date(session.updatedAt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </button>
                     <button
