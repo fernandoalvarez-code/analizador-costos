@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUser } from '@/firebase';
-import { listAgents, listUserSessions } from '@/lib/agents/firestore';
+import { listAgents, listUserSessions, deleteChatSession } from '@/lib/agents/firestore';
 import type { Agent, ChatSession } from '@/lib/agents/types';
 import AgentChat from '@/components/agents/AgentChat';
 
@@ -33,6 +33,16 @@ export default function AgentTestPage() {
         setSessions([]);
       });
   }, [selected, user]);
+
+  const deleteSession = async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // evitar que también cargue la sesión
+    if (!confirm('¿Eliminar esta conversación?')) return;
+    await deleteChatSession(sessionId);
+    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    if (selectedSessionId === sessionId) {
+      setSelectedSessionId(null);
+    }
+  };
 
   if (!isAdmin) {
     return (
@@ -96,22 +106,30 @@ export default function AgentTestPage() {
               {sessions.map((session) => {
                 const active = selectedSessionId === session.id;
                 return (
-                  <button
-                    key={session.id}
-                    onClick={() => setSelectedSessionId(session.id)}
-                    className={`text-left px-3 py-2 rounded-lg border transition-colors ${
-                      active
-                        ? 'border-orange-300 bg-orange-50'
-                        : 'border-gray-200 hover:border-gray-400 hover:bg-gray-50'
-                    }`}
-                  >
-                    <span className="block text-gray-400 text-[10px]">
-                      {new Date(session.updatedAt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <span className="block text-xs text-gray-700 line-clamp-2">
-                      {session.messages[0]?.content?.slice(0, 60) ?? 'Conversación'}
-                    </span>
-                  </button>
+                  <div key={session.id} className="relative group">
+                    <button
+                      onClick={() => setSelectedSessionId(session.id)}
+                      className={`w-full text-left px-3 py-2 pr-6 rounded-lg border transition-colors ${
+                        active
+                          ? 'border-orange-300 bg-orange-50'
+                          : 'border-gray-200 hover:border-gray-400 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className="block text-gray-400 text-[10px]">
+                        {new Date(session.updatedAt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <span className="block text-xs text-gray-700 line-clamp-2">
+                        {session.messages[0]?.content?.slice(0, 60) ?? 'Conversación'}
+                      </span>
+                    </button>
+                    <button
+                      onClick={(e) => deleteSession(session.id, e)}
+                      className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-gray-200 hover:bg-red-100 hover:text-red-600 text-gray-400 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Eliminar conversación"
+                    >
+                      ×
+                    </button>
+                  </div>
                 );
               })}
             </div>

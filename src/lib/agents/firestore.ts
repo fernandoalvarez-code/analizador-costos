@@ -208,3 +208,7 @@ export async function listUserSessions(
     }) as ChatSession)
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 }
+
+export async function deleteChatSession(sessionId: string): Promise<void> {
+  await deleteDoc(doc(db, 'chat_sessions', sessionId));
+}
