@@ -163,8 +163,73 @@ export default function AgentChat({
   const downloadReport = useCallback(async () => {
     if (messages.length === 0 || isLoading) return;
 
-    // Paso 1: pedir resumen ejecutivo al agente
-    const reportPrompt = `Generá un INFORME TÉCNICO EJECUTIVO en base a esta conversación.
+    // Paso 1: pedir informe ejecutivo al agente (estructura según el agente)
+    const reportPrompt = agentSlug === 'comercial'
+      ? `Generá un INFORME COMERCIAL EJECUTIVO completo basado en esta conversación.
+El informe debe tener exactamente esta estructura en markdown:
+
+# PROPUESTA COMERCIAL SECOCUT
+**SECOCUT SRL — Representante exclusivo SECO Tools Argentina**
+**Fecha:** ${new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })}
+
+---
+
+## DATOS DEL CLIENTE
+- **Cliente:** [nombre del cliente]
+- **Máquina:** [máquina analizada]
+- **Material:** [material a mecanizar]
+- **Operación:** [turning/milling/drilling]
+
+---
+
+## SITUACIÓN ACTUAL
+[Descripción breve del proceso actual del cliente y el problema detectado]
+
+---
+
+## ANÁLISIS DE COSTOS
+
+| Concepto | Herramienta actual | Propuesta SECO |
+|---|---|---|
+| Código | | |
+| Precio inserto (USD) | | |
+| Filos | | |
+| Piezas por filo | | |
+| Costo herramienta/pieza (USD) | | |
+| Tiempo de ciclo (min) | | |
+| Costo máquina/pieza (USD) | | |
+| Costo cambio/pieza (USD) | | |
+| **COSTO TOTAL/PIEZA (USD)** | | |
+| **AHORRO/PIEZA (USD)** | | |
+| **AHORRO MENSUAL (USD)** | | |
+
+---
+
+## HERRAMIENTA PROPUESTA
+- **Código SECO:** [código]
+- **Descripción:** [descripción]
+- **Parámetros propuestos:** Vc: X m/min | fn: X mm/rev | ap: X mm
+- **Vida útil estimada:** X piezas por filo
+
+---
+
+## BENEFICIOS DE LA PROPUESTA
+- [Beneficio 1 con número concreto]
+- [Beneficio 2 con número concreto]
+- [Beneficio 3 con número concreto]
+
+---
+
+## PRÓXIMOS PASOS
+1. [Acción concreta 1]
+2. [Acción concreta 2]
+3. Prueba piloto en una máquina sin compromiso
+
+---
+
+*Precios sujetos a confirmación del equipo comercial de SECOCUT.*
+*Cálculos basados en los datos provistos por el cliente.*`
+      : `Generá un INFORME TÉCNICO EJECUTIVO en base a esta conversación.
 El informe debe tener exactamente esta estructura:
 
 **RESUMEN DE LA CONSULTA**
@@ -297,7 +362,7 @@ Sé conciso. Máximo una página A4.`;
         </div>
         {messages.length > 0 && (
           <div className="flex items-center gap-2">
-            {agentSlug === 'tecnico' && (
+            {(agentSlug === 'tecnico' || agentSlug === 'comercial') && (
               <button onClick={downloadReport} disabled={isGeneratingReport} className={BTN_REPORT} title="Descargar informe PDF">
                 <FileText size={14} />
                 <span className="hidden sm:inline">{isGeneratingReport ? 'Generando...' : 'Descargar PDF'}</span>
@@ -460,29 +525,44 @@ Sé conciso. Máximo una página A4.`;
       </div>
 
       {/* Informe PDF oculto — se captura con html2canvas (resumen ejecutivo) */}
-      <div id="agente-tecnico-informe" className="fixed -left-[9999px] top-0 w-[794px] bg-white p-10 font-sans text-sm">
-        <div className="flex items-center justify-between border-b-2 border-gray-800 pb-4 mb-6">
+      <div id="agente-tecnico-informe" className="fixed -left-[9999px] top-0 w-[794px] bg-white font-sans text-sm">
+        {/* Header con color de marca */}
+        <div className="bg-[#1a1a1a] px-10 py-6 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-black text-gray-900">INFORME TÉCNICO</h1>
-            <p className="text-xs text-gray-500 mt-0.5">SECOCUT SRL · Representante SECO Tools Argentina</p>
+            <h1 className="text-2xl font-black text-white">
+              {agentSlug === 'comercial' ? 'PROPUESTA COMERCIAL' : 'INFORME TÉCNICO'}
+            </h1>
+            <p className="text-xs text-[#f97316] mt-0.5 font-medium">
+              SECOCUT SRL · Representante exclusivo SECO Tools Argentina
+            </p>
           </div>
           <div className="text-right text-xs text-gray-400">
-            <p>{new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+            <p className="text-white font-medium">
+              {new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })}
+            </p>
           </div>
         </div>
+
+        {/* Contenido */}
         <div
-          className="text-xs text-gray-700 leading-relaxed prose prose-sm max-w-none
-            [&_table]:w-full [&_table]:border-collapse [&_table]:my-2
-            [&_th]:border [&_th]:border-gray-300 [&_th]:px-3 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-semibold [&_th]:bg-gray-100
-            [&_td]:border [&_td]:border-gray-300 [&_td]:px-3 [&_td]:py-1.5
+          className="px-10 py-8 text-xs text-gray-700 leading-relaxed prose prose-sm max-w-none
+            [&_table]:w-full [&_table]:border-collapse [&_table]:my-3
+            [&_th]:border [&_th]:border-gray-300 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:bg-gray-100 [&_th]:text-xs
+            [&_td]:border [&_td]:border-gray-300 [&_td]:px-3 [&_td]:py-1.5 [&_td]:text-xs
             [&_tr:nth-child(even)]:bg-gray-50
-            [&_h2]:font-bold [&_h2]:text-sm [&_h2]:mt-4 [&_h2]:mb-1
-            [&_strong]:font-semibold [&_hr]:my-3 [&_hr]:border-gray-200"
+            [&_h1]:text-base [&_h1]:font-black [&_h1]:text-gray-900 [&_h1]:mt-0
+            [&_h2]:text-xs [&_h2]:font-bold [&_h2]:text-[#f97316] [&_h2]:uppercase [&_h2]:tracking-wide [&_h2]:mt-5 [&_h2]:mb-2 [&_h2]:border-b [&_h2]:border-orange-200 [&_h2]:pb-1
+            [&_strong]:font-semibold [&_hr]:my-4 [&_hr]:border-gray-200
+            [&_ul]:list-disc [&_ul]:pl-4 [&_li]:mb-1"
           dangerouslySetInnerHTML={{ __html: reportHtml }}
         />
-        <div className="mt-8 pt-4 border-t border-gray-200 text-xs text-gray-400 flex justify-between">
-          <span>SECOCUT SRL · ventas@secocut.com</span>
-          <span>{new Date().toLocaleDateString('es-AR')}</span>
+
+        {/* Footer */}
+        <div className="px-10 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+          <span className="text-[10px] text-gray-400">SECOCUT SRL · ventas@secocut.com · www.secocut.com</span>
+          <span className="text-[10px] text-gray-400">
+            {new Date().toLocaleDateString('es-AR')}
+          </span>
         </div>
       </div>
     </div>
