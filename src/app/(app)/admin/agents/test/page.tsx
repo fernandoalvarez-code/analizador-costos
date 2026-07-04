@@ -37,10 +37,15 @@ export default function AgentTestPage() {
   const deleteSession = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation(); // evitar que también cargue la sesión
     if (!confirm('¿Eliminar esta conversación?')) return;
-    await deleteChatSession(sessionId);
-    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-    if (selectedSessionId === sessionId) {
-      setSelectedSessionId(null);
+    try {
+      await deleteChatSession(sessionId);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      if (selectedSessionId === sessionId) {
+        setSelectedSessionId(null);
+      }
+    } catch (err) {
+      console.error('[test] deleteChatSession:', err);
+      alert('No se pudo eliminar la conversación.');
     }
   };
 

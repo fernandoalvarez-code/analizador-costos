@@ -71,7 +71,7 @@ service cloud.firestore {
 
     match /chat_sessions/{sessionId} {
       allow create: if request.auth != null;
-      allow read, update: if request.auth != null &&
+      allow read, update, delete: if request.auth != null &&
         (isOwner(resource.data.userId) || isSecucutEmail() || isRequestingUserAdmin());
     }
 
