@@ -2385,6 +2385,7 @@ export default function TaylorCurvePage() {
             {isFinite(curveDataInfo.monthlySavings) && Number(monthlyProduction) > 0 && (
               <MonthlySavingsSummary
                 disableAnimation
+                compact
                 monthlyVolume={Number(monthlyProduction)}
                 compToolCost={curveDataInfo.desgloseActualReal.inserto}
                 secoToolCost={curveDataInfo.desglosePremiumReal.inserto}
