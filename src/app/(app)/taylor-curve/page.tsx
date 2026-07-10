@@ -2378,6 +2378,21 @@ export default function TaylorCurvePage() {
                 </LineChart>
               </div>
             </div>
+            {/* Impacto Económico Total — mismo panel que la app (sin recalcular) */}
+            {isFinite(curveDataInfo.monthlySavings) && Number(monthlyProduction) > 0 && (
+              <MonthlySavingsSummary
+                monthlyVolume={Number(monthlyProduction)}
+                compToolCost={curveDataInfo.desgloseActualReal.inserto}
+                secoToolCost={curveDataInfo.desglosePremiumReal.inserto}
+                compMachineCost={curveDataInfo.desgloseActualReal.maquina + curveDataInfo.desgloseActualReal.parada}
+                secoMachineCost={curveDataInfo.desglosePremiumReal.maquina + curveDataInfo.desglosePremiumReal.parada}
+                compTime={Number(tcCurrent)}
+                secoTime={Number(tcPremiumInput)}
+                horasPorTurno={Number(horasPorTurno) || 8}
+                turnosPorDia={Number(turnosPorDia) || 1}
+              />
+            )}
+
             {isFinite(curveDataInfo.monthlySavings) && Number(monthlyProduction) > 0 && (
               <div className="mt-8">
                 <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">
