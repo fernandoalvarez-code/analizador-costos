@@ -870,6 +870,21 @@ export default function EditTaylorCurvePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium, tcPremiumInput, isStressTestActive]);
 
+  const capacityCheck = useMemo(() => {
+    const vol = Number(monthlyProduction) || 0;
+    const tc = Number(tcPremiumInput) || 0; // ciclo del inserto propuesto
+    const hrsTurno = 8;   // edit no tiene inputs de turno
+    const turnos = 1;
+    if (vol <= 0 || tc <= 0) return null;
+    const changePerPiece = curveDataInfo?.effectivePcsPremium > 0
+      ? (Number(toolChangeTime) || 0) / curveDataInfo.effectivePcsPremium : 0;
+    const cicloEfectivo = tc + changePerPiece;
+    const horasRequeridas = (vol * cicloEfectivo) / 60;
+    const horasDisponibles = hrsTurno * turnos * 22; // 22 días hábiles
+    const maquinasNecesarias = horasDisponibles > 0 ? horasRequeridas / horasDisponibles : 0;
+    return { horasRequeridas: Math.round(horasRequeridas), maquinasNecesarias };
+  }, [monthlyProduction, tcPremiumInput, toolChangeTime, curveDataInfo]);
+
   const viabilityCheck = useMemo(() => {
     const mat = MATERIALS.find(m => m.nombre === materialId);
     const group = (mat?.grupo || '').replace(/^ISO\s+/i, '');
@@ -1313,6 +1328,12 @@ export default function EditTaylorCurvePage() {
                 <Input type="number" placeholder="0" className="w-full text-lg font-black text-blue-700 pl-4 pr-16 h-12 bg-slate-50 text-slate-900" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value)} />
                 <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400">pzs/mes</span>
               </div>
+              {capacityCheck && (
+                <p className={`text-[10px] mt-1 ${capacityCheck.maquinasNecesarias > 1 ? 'text-amber-600' : 'text-slate-400'}`}>
+                  📊 Este volumen requiere ~{capacityCheck.horasRequeridas} hs máquina/mes
+                  {capacityCheck.maquinasNecesarias > 1 && ` (≈ ${Math.ceil(capacityCheck.maquinasNecesarias)} máquinas)`}
+                </p>
+              )}
             </div>
           </div>
 

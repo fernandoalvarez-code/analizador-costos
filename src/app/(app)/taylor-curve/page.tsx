@@ -970,6 +970,22 @@ export default function TaylorCurvePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium, tcPremiumInput, isStressTestActive]);
 
+  const capacityCheck = useMemo(() => {
+    const vol = Number(monthlyProduction) || 0;
+    const tc = Number(tcPremiumInput) || 0; // ciclo del inserto propuesto
+    const hrsTurno = Number(horasPorTurno) || 8;
+    const turnos = Number(turnosPorDia) || 1;
+    if (vol <= 0 || tc <= 0) return null;
+    // ciclo efectivo: misma fuente que MonthlySavingsSummary / sección 3
+    const changePerPiece = curveDataInfo?.effectivePcsPremium > 0
+      ? (Number(toolChangeTime) || 0) / curveDataInfo.effectivePcsPremium : 0;
+    const cicloEfectivo = tc + changePerPiece;
+    const horasRequeridas = (vol * cicloEfectivo) / 60;
+    const horasDisponibles = hrsTurno * turnos * 22; // 22 días hábiles
+    const maquinasNecesarias = horasDisponibles > 0 ? horasRequeridas / horasDisponibles : 0;
+    return { horasRequeridas: Math.round(horasRequeridas), maquinasNecesarias };
+  }, [monthlyProduction, tcPremiumInput, horasPorTurno, turnosPorDia, toolChangeTime, curveDataInfo]);
+
   const viabilityCheck = useMemo(() => {
     const mat = MATERIALS.find(m => m.nombre === materialId);
     const group = (mat?.grupo || '').replace(/^ISO\s+/i, '');
@@ -1443,6 +1459,12 @@ export default function TaylorCurvePage() {
                   <span className="absolute right-3 top-3 text-[10px] font-bold text-slate-400 uppercase">Trns/Día</span>
                 </div>
               </div>
+              {capacityCheck && (
+                <p className={`text-[10px] mt-1 ${capacityCheck.maquinasNecesarias > 1 ? 'text-amber-600' : 'text-slate-400'}`}>
+                  📊 Este volumen requiere ~{capacityCheck.horasRequeridas} hs máquina/mes
+                  {capacityCheck.maquinasNecesarias > 1 && ` (≈ ${Math.ceil(capacityCheck.maquinasNecesarias)} máquinas a tu régimen de turnos)`}
+                </p>
+              )}
             </div>
           </div>
 
