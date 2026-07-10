@@ -872,18 +872,24 @@ export default function EditTaylorCurvePage() {
 
   const capacityCheck = useMemo(() => {
     const vol = Number(monthlyProduction) || 0;
-    const tc = Number(tcPremiumInput) || 0; // ciclo del inserto propuesto
-    const hrsTurno = 8;   // edit no tiene inputs de turno
-    const turnos = 1;
-    if (vol <= 0 || tc <= 0) return null;
-    const changePerPiece = curveDataInfo?.effectivePcsPremium > 0
+    const tcComp = Number(tcCurrent) || 0;
+    const tcSeco = Number(tcPremiumInput) || 0;
+    if (vol <= 0 || tcComp <= 0 || tcSeco <= 0) return null;
+    const changeComp = (curveDataInfo?.effectivePcsCurrent ?? 0) > 0
+      ? (Number(toolChangeTime) || 0) / curveDataInfo.effectivePcsCurrent : 0;
+    const changeSeco = (curveDataInfo?.effectivePcsPremium ?? 0) > 0
       ? (Number(toolChangeTime) || 0) / curveDataInfo.effectivePcsPremium : 0;
-    const cicloEfectivo = tc + changePerPiece;
-    const horasRequeridas = (vol * cicloEfectivo) / 60;
-    const horasDisponibles = hrsTurno * turnos * 22; // 22 días hábiles
-    const maquinasNecesarias = horasDisponibles > 0 ? horasRequeridas / horasDisponibles : 0;
-    return { horasRequeridas: Math.round(horasRequeridas), maquinasNecesarias };
-  }, [monthlyProduction, tcPremiumInput, toolChangeTime, curveDataInfo]);
+    const hrsComp = (vol * (tcComp + changeComp)) / 60;
+    const hrsSeco = (vol * (tcSeco + changeSeco)) / 60;
+    const hrsDisponibles = 8 * 1 * 22; // edit: 8h/1turno fijos, 22 días hábiles
+    return {
+      hrsComp: Math.round(hrsComp),
+      hrsSeco: Math.round(hrsSeco),
+      hrsLiberadas: Math.round(hrsComp - hrsSeco),
+      maqComp: hrsDisponibles > 0 ? hrsComp / hrsDisponibles : 0,
+      maqSeco: hrsDisponibles > 0 ? hrsSeco / hrsDisponibles : 0,
+    };
+  }, [monthlyProduction, tcCurrent, tcPremiumInput, toolChangeTime, curveDataInfo]);
 
   const viabilityCheck = useMemo(() => {
     const mat = MATERIALS.find(m => m.nombre === materialId);
@@ -1329,10 +1335,13 @@ export default function EditTaylorCurvePage() {
                 <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400">pzs/mes</span>
               </div>
               {capacityCheck && (
-                <p className={`text-[10px] mt-1 ${capacityCheck.maquinasNecesarias > 1 ? 'text-amber-600' : 'text-slate-400'}`}>
-                  📊 Este volumen requiere ~{capacityCheck.horasRequeridas} hs máquina/mes
-                  {capacityCheck.maquinasNecesarias > 1 && ` (≈ ${Math.ceil(capacityCheck.maquinasNecesarias)} máquinas)`}
-                </p>
+                <div className="text-[10px] mt-1 space-y-0.5">
+                  <p className="text-red-500">📊 Actual: ~{capacityCheck.hrsComp} hs/mes{capacityCheck.maqComp > 1 && ` (≈ ${Math.ceil(capacityCheck.maqComp)} máq.)`}</p>
+                  <p className="text-green-600">📊 Secocut: ~{capacityCheck.hrsSeco} hs/mes{capacityCheck.maqSeco > 1 && ` (≈ ${Math.ceil(capacityCheck.maqSeco)} máq.)`}</p>
+                  {capacityCheck.hrsLiberadas > 0 && (
+                    <p className="text-emerald-700 font-bold">⚡ {capacityCheck.hrsLiberadas} hs máquina liberadas/mes</p>
+                  )}
+                </div>
               )}
             </div>
           </div>
