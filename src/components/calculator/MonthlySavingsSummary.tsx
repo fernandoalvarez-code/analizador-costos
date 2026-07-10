@@ -12,6 +12,9 @@ interface MonthlySavingsProps {
   horasPorTurno?: number;
   turnosPorDia?: number;
   disableAnimation?: boolean;
+  toolChangeTime?: number;
+  compPiecesPerEdge?: number;
+  secoPiecesPerEdge?: number;
 }
 
 export function MonthlySavingsSummary({
@@ -24,7 +27,10 @@ export function MonthlySavingsSummary({
   secoTime,
   horasPorTurno = 8,
   turnosPorDia = 1,
-  disableAnimation = false
+  disableAnimation = false,
+  toolChangeTime = 0,
+  compPiecesPerEdge = 0,
+  secoPiecesPerEdge = 0
 }: MonthlySavingsProps) {
   
   // 1. Cálculos de Costos Totales
@@ -37,9 +43,13 @@ export function MonthlySavingsSummary({
   const secoTotalMonthly = secoTotalCostPerPiece * monthlyVolume;
   const netSavings = compTotalMonthly - secoTotalMonthly;
 
-  // 2. Cálculos de Productividad
-  const compPcsHr = compTime > 0 ? 60 / compTime : 0;
-  const secoPcsHr = secoTime > 0 ? 60 / secoTime : 0;
+  // 2. Cálculos de Productividad (ciclo efectivo: corte + cambio de filo prorrateado)
+  const compChangePerPiece = toolChangeTime > 0 && compPiecesPerEdge > 0 ? toolChangeTime / compPiecesPerEdge : 0;
+  const secoChangePerPiece = toolChangeTime > 0 && secoPiecesPerEdge > 0 ? toolChangeTime / secoPiecesPerEdge : 0;
+  const compCycleTime = compTime + compChangePerPiece;
+  const secoCycleTime = secoTime + secoChangePerPiece;
+  const compPcsHr = compCycleTime > 0 ? 60 / compCycleTime : 0;
+  const secoPcsHr = secoCycleTime > 0 ? 60 / secoCycleTime : 0;
   const extraPcsHr = secoPcsHr - compPcsHr;
   const extraPcsShift = extraPcsHr * horasPorTurno; 
   const extraPcsDay = extraPcsShift * turnosPorDia;
@@ -136,6 +146,7 @@ export function MonthlySavingsSummary({
                     <p className="text-[8px] text-orange-200/80 font-bold uppercase tracking-widest mt-1">Pzas / Día</p>
                   </div>
                 </div>
+                <p className="text-[8px] text-white/40 mt-2 text-center md:text-left italic">* Capacidad teórica adicional a utilización 100% de máquina.</p>
              </div>
            ) : (
              <div className="flex items-center justify-center h-full">

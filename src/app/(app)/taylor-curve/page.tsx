@@ -966,7 +966,7 @@ export default function TaylorCurvePage() {
     const hmCurrent = calcularEspesorViruta(operationType, feedCurrent, aeCurrent, dcCurrent, apCurrent, toolNameCurrent);
     const hmPremium = calcularEspesorViruta(operationType, feedPremium, aePremium, dcPremium, apPremium, toolNamePremium);
 
-    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost, limitHpAlert: hpLimitReached, desgloseActualReal, desglosePremiumReal, qCurrent, qPremium, hmCurrent, hmPremium, limiteTermicoActual };
+    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost, limitHpAlert: hpLimitReached, desgloseActualReal, desglosePremiumReal, qCurrent, qPremium, hmCurrent, hmPremium, limiteTermicoActual, effectivePcsCurrent, effectivePcsPremium };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium, tcPremiumInput, isStressTestActive]);
 
@@ -1976,6 +1976,9 @@ export default function TaylorCurvePage() {
               secoMachineCost={curveDataInfo.desglosePremiumReal.maquina + curveDataInfo.desglosePremiumReal.parada}
               compTime={Number(tcCurrent)}
               secoTime={Number(tcPremiumInput)}
+              toolChangeTime={Number(toolChangeTime) || 0}
+              compPiecesPerEdge={curveDataInfo.effectivePcsCurrent}
+              secoPiecesPerEdge={curveDataInfo.effectivePcsPremium}
               horasPorTurno={Number(horasPorTurno) || 8}
               turnosPorDia={Number(turnosPorDia) || 1}
             />
@@ -2389,6 +2392,9 @@ export default function TaylorCurvePage() {
                 secoMachineCost={curveDataInfo.desglosePremiumReal.maquina + curveDataInfo.desglosePremiumReal.parada}
                 compTime={Number(tcCurrent)}
                 secoTime={Number(tcPremiumInput)}
+                toolChangeTime={Number(toolChangeTime) || 0}
+                compPiecesPerEdge={curveDataInfo.effectivePcsCurrent}
+                secoPiecesPerEdge={curveDataInfo.effectivePcsPremium}
                 horasPorTurno={Number(horasPorTurno) || 8}
                 turnosPorDia={Number(turnosPorDia) || 1}
               />
