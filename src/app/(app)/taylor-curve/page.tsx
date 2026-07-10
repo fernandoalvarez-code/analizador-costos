@@ -2381,6 +2381,7 @@ export default function TaylorCurvePage() {
             {/* Impacto Económico Total — mismo panel que la app (sin recalcular) */}
             {isFinite(curveDataInfo.monthlySavings) && Number(monthlyProduction) > 0 && (
               <MonthlySavingsSummary
+                disableAnimation
                 monthlyVolume={Number(monthlyProduction)}
                 compToolCost={curveDataInfo.desgloseActualReal.inserto}
                 secoToolCost={curveDataInfo.desglosePremiumReal.inserto}

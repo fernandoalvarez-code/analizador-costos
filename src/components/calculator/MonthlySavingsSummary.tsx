@@ -11,6 +11,7 @@ interface MonthlySavingsProps {
   secoTime: number; 
   horasPorTurno?: number;
   turnosPorDia?: number;
+  disableAnimation?: boolean;
 }
 
 export function MonthlySavingsSummary({
@@ -22,7 +23,8 @@ export function MonthlySavingsSummary({
   compTime,
   secoTime,
   horasPorTurno = 8,
-  turnosPorDia = 1
+  turnosPorDia = 1,
+  disableAnimation = false
 }: MonthlySavingsProps) {
   
   // 1. Cálculos de Costos Totales
@@ -49,7 +51,7 @@ export function MonthlySavingsSummary({
   const isWinner = percentageSavings > 0;
 
   return (
-    <div className={`mt-8 rounded-2xl overflow-hidden shadow-2xl relative transition-all duration-500 animate-in fade-in slide-in-from-bottom-4 border-2 ${isWinner ? 'border-emerald-500/50 shadow-emerald-500/20 bg-gradient-to-br from-emerald-900 to-emerald-950' : 'border-rose-500/50 shadow-rose-500/20 bg-gradient-to-br from-rose-900 to-rose-950'}`}>
+    <div className={`mt-8 rounded-2xl overflow-hidden shadow-2xl relative transition-all duration-500 ${disableAnimation ? '' : 'animate-in fade-in slide-in-from-bottom-4'} border-2 ${isWinner ? 'border-emerald-500/50 shadow-emerald-500/20 bg-gradient-to-br from-emerald-900 to-emerald-950' : 'border-rose-500/50 shadow-rose-500/20 bg-gradient-to-br from-rose-900 to-rose-950'}`}>
       
       {/* Background Decorator */}
       <div className="absolute top-0 right-0 -mr-16 -mt-16 opacity-10 pointer-events-none">
