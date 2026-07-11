@@ -848,6 +848,7 @@ export default function EditTaylorCurvePage() {
         inserto: effectivePcsCurrent > 0 ? ((safeToolCostCurrent / safeEdgesCurrent) * (operationType === 'milling' ? (Number(zCurrent)||1) : 1)) / effectivePcsCurrent : 0,
         parada: effectivePcsCurrent > 0 ? (safeToolChangeTime * safeMachineCostMin) / effectivePcsCurrent : 0,
         lote: effectivePcsCurrent > 0 ? Math.ceil(safeMonthlyProduction / (effectivePcsCurrent * safeEdgesCurrent)) * (operationType === 'milling' ? (Number(zCurrent)||1) : 1) : 0,
+        loteContinuo: effectivePcsCurrent > 0 ? (safeMonthlyProduction * (operationType === 'milling' ? (Number(zCurrent)||1) : 1)) / (effectivePcsCurrent * safeEdgesCurrent) : 0,
     };
 
     const desglosePremiumReal = {
@@ -855,6 +856,7 @@ export default function EditTaylorCurvePage() {
         inserto: effectivePcsPremium > 0 ? ((safeToolCostPremium / safeEdgesPremium) * (operationType === 'milling' ? (Number(zPremium)||1) : 1)) / effectivePcsPremium : 0,
         parada: effectivePcsPremium > 0 ? (safeToolChangeTime * safeMachineCostMin) / effectivePcsPremium : 0,
         lote: effectivePcsPremium > 0 ? Math.ceil(safeMonthlyProduction / (effectivePcsPremium * safeEdgesPremium)) * (operationType === 'milling' ? (Number(zPremium)||1) : 1) : 0,
+        loteContinuo: effectivePcsPremium > 0 ? (safeMonthlyProduction * (operationType === 'milling' ? (Number(zPremium)||1) : 1)) / (effectivePcsPremium * safeEdgesPremium) : 0,
     };
 
     const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
@@ -1733,7 +1735,7 @@ export default function EditTaylorCurvePage() {
                                     <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>⚙️ Tiempo de Corte: {formatCurrency(hoveredData.desgloseActual.maquina)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(hoveredData.desgloseActual.maquina, hoveredData.costoActual)}%)</span></div>
                                     <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>💎 Inserto Puro: {formatCurrency(hoveredData.desgloseActual.inserto)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(hoveredData.desgloseActual.inserto, hoveredData.costoActual)}%)</span></div>
                                     <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>🔴 Costo Paradas: {formatCurrency(hoveredData.desgloseActual.parada)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(hoveredData.desgloseActual.parada, hoveredData.costoActual)}%)</span></div>
-                                    {hoveredData.desgloseActual.lote > 0 && (<p className="text-[10px] text-amber-700 font-bold mt-1 pt-1 border-t border-slate-50">📦 Insertos para Lote: {(curveDataInfo.desgloseActualReal?.lote || 0).toFixed(1)} unds.</p>)}
+                                    {hoveredData.desgloseActual.lote > 0 && (<p className="text-[10px] text-amber-700 font-bold mt-1 pt-1 border-t border-slate-50">📦 Insertos para Lote: {(curveDataInfo.desgloseActualReal?.loteContinuo || 0).toFixed(1)} unds. (≈ {(curveDataInfo.desgloseActualReal?.lote || 0).toFixed(0)} a comprar)</p>)}
                                   </div>
                                 )}
 
@@ -1753,7 +1755,7 @@ export default function EditTaylorCurvePage() {
                                     <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>⚙️ Tiempo de Corte: {formatCurrency(hoveredData.desglosePremium.maquina)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(hoveredData.desglosePremium.maquina, hoveredData.costoPremium)}%)</span></div>
                                     <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>💎 Inserto Puro: {formatCurrency(hoveredData.desglosePremium.inserto)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(hoveredData.desglosePremium.inserto, hoveredData.costoPremium)}%)</span></div>
                                     <div className="flex items-center gap-1 text-[10px] text-slate-500"><span>🔴 Costo Paradas: {formatCurrency(hoveredData.desglosePremium.parada)}</span><span className="text-[9px] font-medium text-slate-400 ml-1">({calculateIncidence(hoveredData.desglosePremium.parada, hoveredData.costoPremium)}%)</span></div>
-                                    {hoveredData.desglosePremium.lote > 0 && (<p className="text-[10px] text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-50">📦 Insertos para Lote: {(curveDataInfo.desglosePremiumReal?.lote || 0).toFixed(1)} unds.</p>)}
+                                    {hoveredData.desglosePremium.lote > 0 && (<p className="text-[10px] text-emerald-700 font-bold mt-1 pt-1 border-t border-slate-50">📦 Insertos para Lote: {(curveDataInfo.desglosePremiumReal?.loteContinuo || 0).toFixed(1)} unds. (≈ {(curveDataInfo.desglosePremiumReal?.lote || 0).toFixed(0)} a comprar)</p>)}
                                   </div>
                                 )}
                                 {hoveredData.desgloseActual && hoveredData.desglosePremium && hoveredData.costoPremium > 0 && (
@@ -2133,12 +2135,12 @@ export default function EditTaylorCurvePage() {
                     <td className="p-2 border border-slate-300 text-center">{formatCurrency(curveDataInfo.desglosePremiumReal.parada)}</td>
                   </tr>
                   <tr className="bg-amber-50/40">
-                    <td className="p-2 border border-slate-300 font-bold text-amber-900">📦 Insertos Consumidos (Lote)</td>
+                    <td className="p-2 border border-slate-300 font-bold text-amber-900">📦 Consumo de Insertos (Lote)</td>
                     <td className="p-2 border border-slate-300 text-center font-black text-amber-700">
-                      {(curveDataInfo.desgloseActualReal?.lote || 0).toFixed(1)} unds.
+                      {(curveDataInfo.desgloseActualReal?.loteContinuo || 0).toFixed(1)} unds. <span className="font-normal text-[9px] text-slate-500">(≈ {(curveDataInfo.desgloseActualReal?.lote || 0).toFixed(0)} a comprar)</span>
                     </td>
                     <td className="p-2 border border-slate-300 text-center font-black text-emerald-700">
-                      {(curveDataInfo.desglosePremiumReal?.lote || 0).toFixed(1)} unds.
+                      {(curveDataInfo.desglosePremiumReal?.loteContinuo || 0).toFixed(1)} unds. <span className="font-normal text-[9px] text-slate-500">(≈ {(curveDataInfo.desglosePremiumReal?.lote || 0).toFixed(0)} a comprar)</span>
                     </td>
                   </tr>
                 </tbody>
