@@ -2476,6 +2476,14 @@ export default function TaylorCurvePage() {
                     </div>
                   );
                 })()}
+                {capacityCheck && capacityCheck.hrsLiberadas > 0 && (
+                  <div className="mt-2 flex items-center justify-between px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
+                    <span className="text-[10px] text-slate-600">
+                      Capacidad requerida: <span className="text-red-600 font-bold">{capacityCheck.hrsComp.toLocaleString()} hs/mes</span> (actual) → <span className="text-green-700 font-bold">{capacityCheck.hrsSeco.toLocaleString()} hs/mes</span> (Secocut)
+                    </span>
+                    <span className="text-xs font-black text-emerald-700">⚡ {capacityCheck.hrsLiberadas.toLocaleString()} hs máquina liberadas/mes</span>
+                  </div>
+                )}
               </div>
             )}
             <div className="mt-auto pt-4 border-t border-slate-300 text-center text-[10px] text-slate-500">
