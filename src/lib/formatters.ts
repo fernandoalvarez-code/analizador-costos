@@ -22,6 +22,12 @@ export const formatNumber = (val?: number) => {
     return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(val);
 };
 
+// Consumo de insertos (lote): 2 decimales si <1 (0.03), 1 decimal si ≥1 (87.5)
+export const formatLoteConsumo = (val?: number) => {
+    if (typeof val !== 'number' || !isFinite(val)) return '0.00';
+    return val < 1 ? val.toFixed(2) : val.toFixed(1);
+};
+
 export const formatoMinutosYSegundos = (minutosDecimales: number): string => {
   if (!minutosDecimales || minutosDecimales <= 0) return "0m 0s";
   const min = Math.floor(minutosDecimales);
