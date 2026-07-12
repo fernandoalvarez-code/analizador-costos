@@ -11,6 +11,11 @@ export const metadata: Metadata = {
   description: 'Optimiza tus costos de manufactura con análisis avanzados.',
 };
 
+// Fuerza render dinámico en toda la app para que la CDN no cachee el HTML
+// (evita servir la versión anterior tras cada deploy). Cubre el grupo (app)
+// y la landing / (fuera del grupo). Los /_next/static hasheados siguen immutables.
+export const dynamic = 'force-dynamic';
+
 export default function RootLayout({
   children,
 }: Readonly<{
