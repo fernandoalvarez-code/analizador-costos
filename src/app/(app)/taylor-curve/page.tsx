@@ -21,7 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { calcRPM, calcVf, calcPc, calcMc, checkViability, calcTcDrilling } from '@/lib/machining-physics';
+import { calcRPM, calcVf, calcPc, calcMc, calcMcDrilling, calcPcDrilling, checkViability, calcTcDrilling } from '@/lib/machining-physics';
 import { MATERIALS_ISO } from '@/lib/materials-iso';
 import { getDrillingAlert } from '@/lib/drilling-alerts';
 import { getCoolantConcentration } from '@/lib/coolant-concentration';
@@ -1041,7 +1041,18 @@ export default function TaylorCurvePage() {
     const eff = Number(machineEfficiency) || 0.85;
     const pw = (Number(machinePowerHP) || 15) * 0.7457;
     const tq = Number(maxTorque) || 200;
-    if (vc <= 0 || fn <= 0 || ap <= 0) return null;
+    if (vc <= 0 || fn <= 0) return null;
+    if (operationType === 'drilling') {
+      // Taladrado tiene su propia física: Mc crece con D² y Pc sale del torque y
+      // las rpm, no de ap. Por eso no exige ap, que en taladrado nunca se carga.
+      // Sin Ø no hay rpm ni Mc, así que se pide el dato en vez de juzgar sin él.
+      if (dc <= 0) return { viable: true, reason: null, pc: null, mc: null };
+      const rpm = calcRPM(vc, dc);
+      const mc = calcMcDrilling(kc, fn, dc);
+      const pc = calcPcDrilling(mc, rpm);
+      return { ...checkViability(pc, mc, pw, tq), pc, mc };
+    }
+    if (ap <= 0) return null;
     if (operationType === 'milling') {
       if (dc <= 0) return null;
       const rpm = calcRPM(vc, dc);
@@ -1894,13 +1905,17 @@ export default function TaylorCurvePage() {
             <CardContent>
               {viabilityCheck && (
                 <div className={`mb-4 px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 ${
-                  viabilityCheck.viable
-                    ? 'bg-green-50 text-green-800 border border-green-200'
-                    : 'bg-red-50 text-red-800 border border-red-200'
+                  viabilityCheck.pc === null
+                    ? 'bg-slate-50 text-slate-700 border border-slate-200'
+                    : viabilityCheck.viable
+                      ? 'bg-green-50 text-green-800 border border-green-200'
+                      : 'bg-red-50 text-red-800 border border-red-200'
                 }`}>
-                  {viabilityCheck.viable
-                    ? `✅ Proceso viable — Pc: ${viabilityCheck.pc.toFixed(1)} kW${viabilityCheck.mc !== null ? ` / Mc: ${viabilityCheck.mc.toFixed(1)} Nm` : ' — cargá el Ø para verificar el torque'}`
-                    : `⚠️ PROCESO INVIABLE — ${viabilityCheck.reason}`}
+                  {viabilityCheck.pc === null
+                    ? '⚙️ Cargá el Ø de la mecha para verificar potencia y torque'
+                    : viabilityCheck.viable
+                      ? `✅ Proceso viable — Pc: ${viabilityCheck.pc.toFixed(1)} kW${viabilityCheck.mc !== null ? ` / Mc: ${viabilityCheck.mc.toFixed(1)} Nm` : ' — cargá el Ø para verificar el torque'}`
+                      : `⚠️ PROCESO INVIABLE — ${viabilityCheck.reason}`}
                 </div>
               )}
               {operationType === 'milling' && vfLimitMachine !== null && vfLimitMachine > 0 && (
