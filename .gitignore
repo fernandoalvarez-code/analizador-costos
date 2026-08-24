@@ -46,3 +46,8 @@ firestore-debug.log
 
 # Claude Code (config local)
 .claude/
+# Claves de cuenta de servicio de Firebase/GCP.
+# Nunca deben versionarse: dan acceso total al proyecto saltando las reglas.
+*-firebase-adminsdk-*.json
+*serviceAccount*.json
+*service-account*.json
