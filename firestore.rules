@@ -39,9 +39,13 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && (resource.data.userId == request.auth.uid || request.auth.token.admin == true);
     }
 
+    // NOTA: no hay ninguna referencia a esta colección en el cliente (2026-08-24).
+    // Se deja la regla endurecida por si se crea más adelante.
     match /analisis_costos/{analisisId} {
       allow get: if request.auth != null && (isOwner(resource.data.userId) || isRequestingUserAdmin());
-      allow list: if request.auth != null;
+      // list exige que la query filtre por userId: Firestore rechaza toda query
+      // que no pueda probar que devuelve solo documentos permitidos.
+      allow list: if request.auth != null && (isOwner(resource.data.userId) || isRequestingUserAdmin());
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update: if request.auth != null && (isOwner(resource.data.userId) || isRequestingUserAdmin());
       allow delete: if request.auth != null && (isOwner(resource.data.userId) || isRequestingUserAdmin());
