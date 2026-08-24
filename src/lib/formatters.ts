@@ -28,6 +28,16 @@ export const formatLoteConsumo = (val?: number) => {
     return val < 1 ? val.toFixed(2) : val.toFixed(1);
 };
 
+/**
+ * Un decimal alcanza para casi cualquier magnitud física, pero por debajo de 1
+ * redondea de más: 0.388 kW mostrado como "0.4" se lee como estimado a ojo.
+ * Mismo criterio que formatLoteConsumo.
+ */
+export const formatMagnitud = (val?: number) => {
+    if (typeof val !== 'number' || !isFinite(val)) return '0.00';
+    return val < 1 ? val.toFixed(2) : val.toFixed(1);
+};
+
 export const formatoMinutosYSegundos = (minutosDecimales: number): string => {
   if (!minutosDecimales || minutosDecimales <= 0) return "0m 0s";
   const min = Math.floor(minutosDecimales);

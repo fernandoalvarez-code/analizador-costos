@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectGroup, SelectLabel, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TrendingUp, Info, Share2, FileText, Wand2, ArrowLeft, Download, Flame, AlertTriangle } from 'lucide-react';
-import { formatCurrency, formatNumber, formatoMinutosYSegundos, formatLoteConsumo } from '@/lib/formatters';
+import { formatCurrency, formatNumber, formatoMinutosYSegundos, formatLoteConsumo, formatMagnitud } from '@/lib/formatters';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { updateDoc, serverTimestamp, getDoc, doc } from "firebase/firestore";
@@ -27,7 +27,7 @@ import { getDrillingAlert } from '@/lib/drilling-alerts';
 import { getCoolantConcentration } from '@/lib/coolant-concentration';
 
 
-const MATERIALS = [
+const MATERIALS: { grupo: string; nombre: string; kc: number; dureza: string; isoId?: string }[] = [
   // --- GRUPO ISO P (Aceros) 🟦 ---
   { grupo: "ISO P", nombre: "Acero Bajo Carbono (Ej: 1010, 1020)", kc: 1500, dureza: "150 HB" },
   { grupo: "ISO P", nombre: "Acero Medio Carbono (Ej: 1045, 4140)", kc: 1800, dureza: "200 HB" },
@@ -36,6 +36,7 @@ const MATERIALS = [
 
   // --- GRUPO ISO M (Inoxidables) 🟨 ---
   { grupo: "ISO M", nombre: "Acero Inoxidable Austenítico (304, 316)", kc: 2200, dureza: "200 HB" },
+  { grupo: "ISO M", nombre: "Inox. SUS 316L (JIS)", kc: 2200, dureza: "200 HB", isoId: "sus316l" },
   { grupo: "ISO M", nombre: "Acero Inox. Dúplex / Súper Dúplex", kc: 2600, dureza: "260 HB" },
 
   // --- GRUPO ISO K (Fundiciones) 🟥 ---
@@ -923,12 +924,23 @@ export default function EditTaylorCurvePage() {
 
   const viabilityCheck = useMemo(() => {
     const mat = MATERIALS.find(m => m.nombre === materialId);
-    const group = (mat?.grupo || '').replace(/^ISO\s+/i, '');
-    const kcIsoMilling = MATERIALS_ISO.filter(m => m.isoGroup === group);
-    const kcMilling = kcIsoMilling.length
-      ? Math.round(kcIsoMilling.reduce((s, m) => s + m.kc_milling, 0) / kcIsoMilling.length)
-      : (mat?.kc ?? 1800);
-    const kc = operationType === 'milling' ? kcMilling : (mat?.kc ?? 1800);
+    // Cada operación arranca viruta distinto, así que cada una tiene su propio kc.
+    const kcField = operationType === 'milling' ? 'kc_milling'
+      : operationType === 'drilling' ? 'kc_drilling'
+      : 'kc_turning';
+    // El array local rotula el grupo como "ISO M"; MATERIALS_ISO lo subdivide en
+    // M y M2 (y S en S y S2). Se matchea por la letra base para que el grupo
+    // incluya sus subgrupos, y se promedia igual que hacía fresado.
+    const group = (mat?.grupo || '').replace(/^ISO\s+/i, '').charAt(0).toUpperCase();
+    const isoMatches = group ? MATERIALS_ISO.filter(m => m.isoGroup.charAt(0) === group) : [];
+    // Un material que apunta a una entrada ISO concreta usa su kc exacto: promediar
+    // el grupo lo diluiría con los demás aceros de la familia.
+    const isoExact = mat?.isoId ? MATERIALS_ISO.find(m => m.id === mat.isoId) : undefined;
+    const kc = isoExact
+      ? isoExact[kcField]
+      : isoMatches.length
+        ? Math.round(isoMatches.reduce((s, m) => s + m[kcField], 0) / isoMatches.length)
+        : (mat?.kc ?? 1800);
     const vc = Number(vcCurrent);
     const fn = Number(feedCurrent);
     const ap = Number(apCurrent);
@@ -1700,7 +1712,7 @@ export default function EditTaylorCurvePage() {
                   {viabilityCheck.pc === null
                     ? '⚙️ Cargá el Ø de la mecha para verificar potencia y torque'
                     : viabilityCheck.viable
-                      ? `✅ Proceso viable — Pc: ${viabilityCheck.pc.toFixed(1)} kW${viabilityCheck.mc !== null ? ` / Mc: ${viabilityCheck.mc.toFixed(1)} Nm` : ' — cargá el Ø para verificar el torque'}`
+                      ? `✅ Proceso viable — Pc: ${formatMagnitud(viabilityCheck.pc)} kW${viabilityCheck.mc !== null ? ` / Mc: ${formatMagnitud(viabilityCheck.mc)} Nm` : ' — cargá el Ø para verificar el torque'}`
                       : `⚠️ PROCESO INVIABLE — ${viabilityCheck.reason}`}
                 </div>
               )}
