@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # El build de Next ignora los errores de TypeScript (next.config.mjs), así
+      # que este paso es el único lugar donde un error de tipos frena el deploy.
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # Valida la física de mecanizado contra los valores de catálogo Seco.
+      # Es el único test del proyecto y hasta ahora solo corría a mano.
+      - name: Test de física
+        run: npx tsx src/lib/machining-physics.test.ts
