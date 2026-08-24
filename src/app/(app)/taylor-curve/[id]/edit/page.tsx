@@ -50,6 +50,7 @@ const MATERIALS: { grupo: string; nombre: string; kc: number; dureza: string; is
 
   // --- GRUPO ISO S (Superaleaciones y Titanio) 🟧 ---
   { grupo: "ISO S", nombre: "Aleaciones de Titanio (Ej: Ti-6Al-4V)", kc: 2000, dureza: "350 HB" },
+  { grupo: "ISO S", nombre: "Titanio Ti-6Al-4V Gr.5", kc: 2600, dureza: "350 HB", isoId: "ti6al4v" },
   { grupo: "ISO S", nombre: "Súper Aleaciones Base Níquel (Inconel)", kc: 2800, dureza: "400 HB" },
 
   // --- GRUPO ISO H (Materiales Templados) ⬜ ---

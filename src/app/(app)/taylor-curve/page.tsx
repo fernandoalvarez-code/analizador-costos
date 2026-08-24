@@ -43,6 +43,7 @@ const MATERIALS: { grupo: string; nombre: string; kc: number; dureza: string; is
   { grupo: "ISO N", nombre: "Latón / Bronce / Cobre", kc: 900, dureza: "100 HB" },
   { grupo: "ISO N", nombre: "Plásticos de Ingeniería (Nylon, Delrin)", kc: 300, dureza: "N/A" },
   { grupo: "ISO S", nombre: "Aleaciones de Titanio (Ej: Ti-6Al-4V)", kc: 2000, dureza: "350 HB" },
+  { grupo: "ISO S", nombre: "Titanio Ti-6Al-4V Gr.5", kc: 2600, dureza: "350 HB", isoId: "ti6al4v" },
   { grupo: "ISO S", nombre: "Súper Aleaciones Base Níquel (Inconel)", kc: 2800, dureza: "400 HB" },
   { grupo: "ISO H", nombre: "Aceros Templados (> 45 HRC)", kc: 3500, dureza: "50+ HRC" }
 ];
