@@ -1768,7 +1768,7 @@ export default function EditTaylorCurvePage() {
                           />
                         }
 
-                        {vcLimitMachine > 0 && vcLimitMachine < 800 && (
+                        {vcLimitMachine !== null && vcLimitMachine > 0 && vcLimitMachine < 800 && (
                           <ReferenceLine
                             x={vcLimitMachine}
                             stroke="#ef4444"

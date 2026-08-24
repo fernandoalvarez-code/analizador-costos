@@ -308,7 +308,7 @@ Adjunto el informe PDF completo con el fundamento técnico.`;
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button onClick={handleDownloadPDF} disabled={isPrinting} variant="outline">
+                <Button onClick={() => handleDownloadPDF()} disabled={isPrinting} variant="outline">
                     {isPrinting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                     PDF
                 </Button>
