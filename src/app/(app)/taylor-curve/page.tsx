@@ -188,6 +188,27 @@ const calcularVf = (f: number | string, vc: number | string, d: number | string)
     return numF * rpm;
 };
 
+type LifeMode = 'piezas' | 'minutos' | 'mm';
+
+// Avance lineal real de la herramienta (mm/min), usado para convertir una vida medida
+// en mm de recorrido a minutos. En fresado el avance es por diente (fz), por eso se
+// multiplica por z; en torneado y taladrado ya es por vuelta (fn). El diámetro sale de
+// Dc: Ø de la fresa, Ø de la broca, o Ø de la pieza en torneado.
+const calcularVfLineal = (opType: string, f: number | string, vc: number | string, d: number | string, z: number | string): number => {
+    const numF = Number(f); const numVc = Number(vc); const numD = Number(d);
+    if (numF <= 0 || numVc <= 0 || numD <= 0) return 0;
+    const rpm = (numVc * 1000) / (Math.PI * numD);
+    if (opType === 'milling') return numF * (Number(z) || 1) * rpm;
+    return numF * rpm;
+};
+
+// Traduce el campo "Rendimiento" al lenguaje interno del modelo: vida del filo en minutos.
+const calcularVidaMinutos = (mode: LifeMode, valor: number | string, tc: number, vf: number): number => {
+    if (mode === 'minutos') return Number(valor) || 1;
+    if (mode === 'mm') { const mm = Number(valor) || 0; return mm > 0 && vf > 0 ? mm / vf : 0; }
+    return (Number(valor) || 1) * tc;
+};
+
 const calcularQ = (opType: string, ap: string|number, ae: string|number, f: string|number, vc: string|number, dc: string|number, z: string|number) => {
   const numAp = Number(ap) || 0; const numF = Number(f) || 0; 
   const numVc = Number(vc) || 0; const numDc = Number(dc) || 0; 
@@ -284,8 +305,8 @@ export default function TaylorCurvePage() {
   const [coolantInternal, setCoolantInternal] = useState(false);
   const [drillingOrientation, setDrillingOrientation] = useState<'vertical' | 'horizontal'>('vertical');
   const [profundidadAgujero, setProfundidadAgujero] = useState<string | number>("");
-  const [lifeModeCurrent, setLifeModeCurrent] = useState<'piezas' | 'minutos'>('piezas');
-  const [lifeModePremium, setLifeModePremium] = useState<'piezas' | 'minutos'>('piezas');
+  const [lifeModeCurrent, setLifeModeCurrent] = useState<LifeMode>('piezas');
+  const [lifeModePremium, setLifeModePremium] = useState<LifeMode>('piezas');
 
   const [toolNameCurrent, setToolNameCurrent] = useState<string>("");
   const [toolCostCurrent, setToolCostCurrent] = useState<string | number>("");
@@ -785,10 +806,13 @@ export default function TaylorCurvePage() {
     
     const n = taylorProps.n;
     
-    const vidaMinutosCompetidor = lifeModeCurrent === 'minutos' ? (Number(pcsCurrent) || 1) : ((Number(pcsCurrent) || 1) * safeTcCurrent);
+    const vfLinealCurrent = calcularVfLineal(operationType, feedCurrent, vcCurrent, dcCurrent, zCurrent);
+    const vfLinealPremium = calcularVfLineal(operationType, feedPremium, vcPremium, dcPremium, zPremium);
+
+    const vidaMinutosCompetidor = calcularVidaMinutos(lifeModeCurrent, pcsCurrent, safeTcCurrent, vfLinealCurrent);
     const constante_C_Competidor = safeVcCurrent > 0 && vidaMinutosCompetidor > 0 ? safeVcCurrent * Math.pow(vidaMinutosCompetidor, n) : 0;
     
-    const vidaMinutosSeco = lifeModePremium === 'minutos' ? (Number(pcsPremium) || 1) : ((Number(pcsPremium) || 1) * safeTcPremium);
+    const vidaMinutosSeco = calcularVidaMinutos(lifeModePremium, pcsPremium, safeTcPremium, vfLinealPremium);
     const constante_C_Seco = vcPropuesta > 0 && vidaMinutosSeco > 0 ? vcPropuesta * Math.pow(vidaMinutosSeco, n) : 0;
 
     const kc = mat.kc || 1500;
@@ -823,8 +847,16 @@ export default function TaylorCurvePage() {
     }
     const loadCurrent = (hpCurrent / safeMachinePowerHP) * 100, loadPremium = (hpPremium / safeMachinePowerHP) * 100;
     
-    let effectivePcsCurrent = lifeModeCurrent === 'piezas' ? (Number(pcsCurrent) || 1) : (safeTcCurrent > 0 ? (Number(pcsCurrent) || 0) / safeTcCurrent : 0);
-    let effectivePcsPremium = lifeModePremium === 'piezas' ? (Number(pcsPremium) || 1) : (safeTcPremium > 0 ? (Number(pcsPremium) || 0) / safeTcPremium : 0);
+    let effectivePcsCurrent = lifeModeCurrent === 'piezas'
+        ? (Number(pcsCurrent) || 1)
+        : lifeModeCurrent === 'mm'
+            ? (safeTcCurrent > 0 ? vidaMinutosCompetidor / safeTcCurrent : 0)
+            : (safeTcCurrent > 0 ? (Number(pcsCurrent) || 0) / safeTcCurrent : 0);
+    let effectivePcsPremium = lifeModePremium === 'piezas'
+        ? (Number(pcsPremium) || 1)
+        : lifeModePremium === 'mm'
+            ? (safeTcPremium > 0 ? vidaMinutosSeco / safeTcPremium : 0)
+            : (safeTcPremium > 0 ? (Number(pcsPremium) || 0) / safeTcPremium : 0);
     if (effectivePcsCurrent <= 0) effectivePcsCurrent = 1; 
     if (effectivePcsPremium <= 0) effectivePcsPremium = 1;
     
@@ -1005,12 +1037,13 @@ export default function TaylorCurvePage() {
     const vc = Number(vcCurrent);
     const fn = Number(feedCurrent);
     const ap = Number(apCurrent);
-    const dc = Number(dcCurrent) || 50;
+    const dc = Number(dcCurrent) || 0;
     const eff = Number(machineEfficiency) || 0.85;
     const pw = (Number(machinePowerHP) || 15) * 0.7457;
     const tq = Number(maxTorque) || 200;
     if (vc <= 0 || fn <= 0 || ap <= 0) return null;
     if (operationType === 'milling') {
+      if (dc <= 0) return null;
       const rpm = calcRPM(vc, dc);
       const vf = calcVf(rpm, fn) * (Number(zCurrent) || 1);
       const Q = (ap * (Number(aeCurrent) || 0) * vf) / 1000;
@@ -1020,8 +1053,10 @@ export default function TaylorCurvePage() {
       return { ...checkViability(pcMilling, mc, pw, tq), pc: pcMilling, mc };
     }
     const pc = calcPc(kc, ap, fn, vc, eff);
-    const mc = calcMc(kc, ap, fn, dc);
-    return { ...checkViability(pc, mc, pw, tq), pc, mc };
+    // El torque depende linealmente del diámetro: sin un Ø real cargado no se calcula
+    // ni se juzga, en vez de asumir un valor por defecto que daría un veredicto falso.
+    const mc = dc > 0 ? calcMc(kc, ap, fn, dc) : null;
+    return { ...checkViability(pc, mc ?? 0, pw, mc === null ? 0 : tq), pc, mc };
   }, [vcCurrent, feedCurrent, apCurrent, dcCurrent, materialId, machinePowerHP, maxTorque, machineEfficiency, operationType, zCurrent, aeCurrent]);
 
   const drillingAlert = useMemo(() => {
@@ -1084,6 +1119,7 @@ export default function TaylorCurvePage() {
     const safeToolChangeTime = Number(toolChangeTime) || 0;
     const safeZPremium = operationType === 'turning' ? 1 : (Number(zPremium) || 1);
     const safeEdgesPremium = Number(edgesPremium) || 1;
+    const vfLinealSimulado = calcularVfLineal(operationType, simulatedFeed, simulatedVc, dcPremium, zPremium);
     const factorVelocidad = Math.pow((taylorBase.vc / simulatedVc), 3.0), factorAvance = Math.pow((taylorBase.feed / simulatedFeed), 1.5);
     
     const nuevasPzas = Math.round(taylorBase.pcs * factorVelocidad * factorAvance);
@@ -1096,7 +1132,12 @@ export default function TaylorCurvePage() {
     const penalidadCambio = costJuego + (safeToolChangeTime * safeMachineCostMin);
     
     let costoHerr = 0;
-    if (lifeModePremium === 'minutos') {
+    if (lifeModePremium === 'mm') {
+        // nuevasPzas viene expresado en mm de recorrido: mm -> minutos -> piezas por filo
+        const vidaMinSimulada = vfLinealSimulado > 0 ? nuevasPzas / vfLinealSimulado : 0;
+        const piecesPerToolLife = nuevoTiempoMin > 0 ? vidaMinSimulada / nuevoTiempoMin : 0;
+        costoHerr = piecesPerToolLife > 0 ? penalidadCambio / piecesPerToolLife : 0;
+    } else if (lifeModePremium === 'minutos') {
         const piecesPerToolLife = nuevasPzas > 0 ? nuevasPzas / nuevoTiempoMin : 0;
         costoHerr = piecesPerToolLife > 0 ? penalidadCambio / piecesPerToolLife : 0;
     } else {
@@ -1106,7 +1147,7 @@ export default function TaylorCurvePage() {
     const nuevoCosto = costCorte + costoHerr;
     const nuevoRa = calcularRaTeorico(simulatedFeed, toolNamePremium);
     setSimulationResult({ newPcs: nuevasPzas, newTime: nuevoTiempoMin, newCost: nuevoCosto, newRa: nuevoRa });
-  }, [simulatedVc, simulatedFeed, taylorBase, isTaylorModalOpen, machineCostHr, toolCostPremium, toolChangeTime, operationType, zPremium, edgesPremium, toolNamePremium, lifeModePremium]);
+  }, [simulatedVc, simulatedFeed, taylorBase, isTaylorModalOpen, machineCostHr, toolCostPremium, toolChangeTime, operationType, zPremium, dcPremium, edgesPremium, toolNamePremium, lifeModePremium]);
 
   useEffect(() => {
     const percentage = Number(targetSavings);
@@ -1127,10 +1168,15 @@ export default function TaylorCurvePage() {
         vcSimulada++;
         const factorVelocidad = Math.pow((taylorBase.vc / vcSimulada), 3.0);
         const piezasTemp = taylorBase.pcs * factorVelocidad, tiempoTemp = taylorBase.time * (taylorBase.vc / vcSimulada);
+        const vfLinealTemp = calcularVfLineal(operationType, taylorBase.feed, vcSimulada, dcPremium, zPremium);
         const costCorte = safeMachineCostMin * tiempoTemp;
 
         let costHerr = 0;
-        if (lifeModePremium === 'minutos') {
+        if (lifeModePremium === 'mm') {
+            const vidaMinTemp = vfLinealTemp > 0 ? piezasTemp / vfLinealTemp : 0;
+            const pzasTempLife = tiempoTemp > 0 ? vidaMinTemp / tiempoTemp : 0;
+            costHerr = pzasTempLife > 0 ? penalidadCambio / pzasTempLife : 0;
+        } else if (lifeModePremium === 'minutos') {
             const pzasTempLife = piezasTemp > 0 ? piezasTemp / tiempoTemp : 0;
             costHerr = pzasTempLife > 0 ? penalidadCambio / pzasTempLife : 0;
         } else {
@@ -1153,7 +1199,7 @@ export default function TaylorCurvePage() {
     };
     const debounceTimer = setTimeout(autoCalcularPorObjetivo, 500);
     return () => clearTimeout(debounceTimer);
-  }, [targetSavings, isTaylorModalOpen, taylorBase.vc, taylorBase.feed, taylorBase.pcs, taylorBase.time, taylorBaseCost, machineCostHr, toolCostPremium, toolChangeTime, operationType, zPremium, edgesPremium, lifeModePremium]);
+  }, [targetSavings, isTaylorModalOpen, taylorBase.vc, taylorBase.feed, taylorBase.pcs, taylorBase.time, taylorBaseCost, machineCostHr, toolCostPremium, toolChangeTime, operationType, zPremium, dcPremium, edgesPremium, lifeModePremium]);
 
   const premiumMins = Math.floor(curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0);
   const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
@@ -1194,7 +1240,7 @@ export default function TaylorCurvePage() {
       return mensajeBase;
   }, [curveDataInfo, vcCurrent, machinePowerHP]);
 
-  const unidadVidaUtil = lifeModePremium === 'minutos' ? 'minutos' : (operationType === 'drilling' ? 'agujeros' : 'pzas/filo');
+  const unidadVidaUtil = lifeModePremium === 'minutos' ? 'minutos' : lifeModePremium === 'mm' ? 'mm' : (operationType === 'drilling' ? 'agujeros' : 'pzas/filo');
 
   if (isLoading) {
     return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
@@ -1496,8 +1542,8 @@ export default function TaylorCurvePage() {
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Costo Inserto ($)</Label><Input type="number" min="0" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={toolCostCurrent} onChange={e => setToolCostCurrent(e.target.value)} /></div>
               <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Filos / Inserto</Label><Input type="number" min="1" placeholder="Ej: 4" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={edgesCurrent} onChange={e => setEdgesCurrent(e.target.value)} /></div>
               
-              {operationType === 'milling' ? (
-                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">Dc Fresa (mm)</Label><Input type="number" min="0" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={dcCurrent} onChange={e => setDcCurrent(e.target.value)} /></div>
+              {operationType !== 'drilling' ? (
+                <div><Label className="block text-[10px] font-bold text-red-600 mb-1">{operationType === 'milling' ? 'Dc Fresa (mm)' : 'Ø Pieza (mm)'}</Label><Input type="number" min="0" className="border-red-200 bg-white text-slate-900 transition-colors focus:border-red-400" value={dcCurrent} onChange={e => setDcCurrent(e.target.value)} /></div>
               ) : null}
 
               {operationType === 'milling' ? (
@@ -1571,17 +1617,18 @@ export default function TaylorCurvePage() {
               <div className="col-span-2 grid grid-cols-2 gap-2">
                 <div>
                   <Label className="block text-[10px] font-bold text-red-600 mb-1">Medir en</Label>
-                  <Select value={lifeModeCurrent} onValueChange={(v: 'piezas'|'minutos') => setLifeModeCurrent(v)}>
+                  <Select value={lifeModeCurrent} onValueChange={(v: LifeMode) => setLifeModeCurrent(v)}>
                     <SelectTrigger className="border-red-200 bg-white text-slate-900 h-9 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="piezas">{operationType === 'drilling' ? 'Agujeros' : 'Piezas'}</SelectItem>
                       <SelectItem value="minutos">Minutos</SelectItem>
+                      <SelectItem value="mm">mm (recorrido)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label className="block text-[10px] font-bold text-red-600 mb-1">Rendimiento</Label>
-                  <Input type="number" min="0" className="border-red-200 bg-white text-slate-900 h-9 transition-colors focus:border-red-400" placeholder="Ej: 120" value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value)} />
+                  <Input type="number" min="0" className="border-red-200 bg-white text-slate-900 h-9 transition-colors focus:border-red-400" placeholder={lifeModeCurrent === 'mm' ? 'Ej: 12000' : 'Ej: 120'} value={pcsCurrent} onChange={e => setPcsCurrent(e.target.value)} />
                 </div>
               </div>
               
@@ -1673,8 +1720,8 @@ export default function TaylorCurvePage() {
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Costo Inserto ($)</Label><Input type="number" min="0" className="border-green-200 bg-white text-slate-900 transition-colors focus:border-green-400" value={toolCostPremium} onChange={e => setToolCostPremium(e.target.value)} /></div>
               <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Filos / Inserto</Label><Input type="number" min="1" placeholder="Ej: 8" className="border-green-200 bg-white text-slate-900 transition-colors focus:border-green-400" value={edgesPremium} onChange={e => setEdgesPremium(e.target.value)} /></div>
               
-              {operationType === 'milling' ? (
-                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">Diámetro Fresa (Dc) mm</Label><Input type="number" min="0" className="border-green-200 bg-white text-slate-900 transition-colors focus:border-green-400" value={dcPremium} onChange={e => setDcPremium(e.target.value)} /></div>
+              {operationType !== 'drilling' ? (
+                <div><Label className="block text-[10px] font-bold text-green-700 mb-1">{operationType === 'milling' ? 'Diámetro Fresa (Dc) mm' : 'Ø Pieza (mm)'}</Label><Input type="number" min="0" className="border-green-200 bg-white text-slate-900 transition-colors focus:border-green-400" value={dcPremium} onChange={e => setDcPremium(e.target.value)} /></div>
               ) : null}
 
               {operationType === 'milling' ? (
@@ -1736,17 +1783,18 @@ export default function TaylorCurvePage() {
               <div className="col-span-2 grid grid-cols-2 gap-2">
                 <div>
                   <Label className="block text-[10px] font-bold text-green-700 mb-1">Medir en</Label>
-                  <Select value={lifeModePremium} onValueChange={(v: 'piezas'|'minutos') => setLifeModePremium(v)}>
+                  <Select value={lifeModePremium} onValueChange={(v: LifeMode) => setLifeModePremium(v)}>
                     <SelectTrigger className="border-green-200 bg-white text-slate-900 h-9 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="piezas">{operationType === 'drilling' ? 'Agujeros' : 'Piezas'}</SelectItem>
                       <SelectItem value="minutos">Minutos</SelectItem>
+                      <SelectItem value="mm">mm (recorrido)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label className="block text-[10px] font-bold text-green-700 mb-1">Rendimiento</Label>
-                  <Input type="number" min="0" className="border-green-200 bg-white text-slate-900 h-9 transition-colors focus:border-green-400" placeholder="Ej: 120" value={pcsPremium} onChange={e => setPcsPremium(e.target.value)} />
+                  <Input type="number" min="0" className="border-green-200 bg-white text-slate-900 h-9 transition-colors focus:border-green-400" placeholder={lifeModePremium === 'mm' ? 'Ej: 12000' : 'Ej: 120'} value={pcsPremium} onChange={e => setPcsPremium(e.target.value)} />
                 </div>
               </div>
               
@@ -1851,7 +1899,7 @@ export default function TaylorCurvePage() {
                     : 'bg-red-50 text-red-800 border border-red-200'
                 }`}>
                   {viabilityCheck.viable
-                    ? `✅ Proceso viable — Pc: ${viabilityCheck.pc.toFixed(1)} kW / Mc: ${viabilityCheck.mc.toFixed(1)} Nm`
+                    ? `✅ Proceso viable — Pc: ${viabilityCheck.pc.toFixed(1)} kW${viabilityCheck.mc !== null ? ` / Mc: ${viabilityCheck.mc.toFixed(1)} Nm` : ' — cargá el Ø para verificar el torque'}`
                     : `⚠️ PROCESO INVIABLE — ${viabilityCheck.reason}`}
                 </div>
               )}
@@ -2311,8 +2359,8 @@ export default function TaylorCurvePage() {
                   )}
                   <tr>
                     <td className="p-2 border border-slate-300 font-bold">Rendimiento Estimado</td>
-                    <td className="p-2 border border-slate-300 text-center">{pcsCurrent} {lifeModeCurrent === 'minutos' ? 'minutos' : (operationType === 'drilling' ? 'agujeros' : 'pzs')}/filo</td>
-                    <td className="p-2 border border-slate-300 text-center text-green-700 font-bold">{pcsPremium} {lifeModePremium === 'minutos' ? 'minutos' : (operationType === 'drilling' ? 'agujeros' : 'pzs')}/filo</td>
+                    <td className="p-2 border border-slate-300 text-center">{pcsCurrent} {lifeModeCurrent === 'minutos' ? 'minutos' : lifeModeCurrent === 'mm' ? 'mm' : (operationType === 'drilling' ? 'agujeros' : 'pzs')}/filo</td>
+                    <td className="p-2 border border-slate-300 text-center text-green-700 font-bold">{pcsPremium} {lifeModePremium === 'minutos' ? 'minutos' : lifeModePremium === 'mm' ? 'mm' : (operationType === 'drilling' ? 'agujeros' : 'pzs')}/filo</td>
                   </tr>
                    {operationType !== 'drilling' && (
                     <tr className="bg-slate-100">
