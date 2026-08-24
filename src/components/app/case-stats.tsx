@@ -4,7 +4,8 @@
 import React from 'react';
 import { DollarSign, BarChart, BadgeCheck, Clock, Zap } from 'lucide-react';
 
-import { useCollection, useFirestore, useMemoFirebase, collection } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser, useDoc, doc, collection } from '@/firebase';
+import { query, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatNumber } from '@/lib/formatters';
 
@@ -43,11 +44,25 @@ const StatCard = ({ title, value, icon, isLoading, isCurrency = false, isHours =
 
 export default function CaseStats() {
   const firestore = useFirestore();
+  const { user, loading: userLoading } = useUser();
 
+  const userProfileRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return doc(firestore, `users/${user.uid}`);
+  }, [firestore, user]);
+
+  const { data: userProfile, isLoading: profileLoading } = useDoc<{ role?: string }>(userProfileRef);
+  const isAdmin = Boolean(userProfile?.role === 'admin' && user?.email?.endsWith('@secocut.com'));
+
+  // Las reglas exigen propietario o admin, y Firestore rechaza toda query que no
+  // pueda probarlo de antemano: sin el filtro por userId la consulta fallaba
+  // entera para los vendedores y las tarjetas quedaban en cero.
   const casesCollectionRef = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'cuttingToolAnalyses');
-  }, [firestore]);
+    if (!firestore || userLoading || profileLoading) return null;
+    if (isAdmin) return collection(firestore, 'cuttingToolAnalyses');
+    if (!user) return null;
+    return query(collection(firestore, 'cuttingToolAnalyses'), where('userId', '==', user.uid));
+  }, [firestore, user, userLoading, profileLoading, isAdmin]);
 
   const { data: casesData, isLoading } = useCollection<CaseData>(casesCollectionRef);
 

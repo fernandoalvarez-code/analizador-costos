@@ -3,7 +3,7 @@
 
 import { useEffect } from 'react';
 import { query, where, getDocs, serverTimestamp } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, collection, addDocumentNonBlocking } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser, useDoc, doc, collection, addDocumentNonBlocking } from '@/firebase';
 
 type CaseData = {
   id: string;
@@ -14,11 +14,24 @@ type CaseData = {
 
 const StaleCaseChecker = () => {
   const firestore = useFirestore();
+  const { user, loading: userLoading } = useUser();
 
+  const userProfileRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return doc(firestore, `users/${user.uid}`);
+  }, [firestore, user]);
+
+  const { data: userProfile, isLoading: profileLoading } = useDoc<{ role?: string }>(userProfileRef);
+  const isAdmin = Boolean(userProfile?.role === 'admin' && user?.email?.endsWith('@secocut.com'));
+
+  // Solo corre para admin. La query filtra por status y no por propietario, así
+  // que las reglas la rechazan para un vendedor; y aunque pasara, crear la
+  // notificación también es exclusivo de admin. Correrla igual solo generaba
+  // dos fallos silenciosos seguidos.
   const casesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || userLoading || profileLoading || !isAdmin) return null;
     return query(collection(firestore, 'cuttingToolAnalyses'), where('status', '==', 'Pendiente'));
-  }, [firestore]);
+  }, [firestore, userLoading, profileLoading, isAdmin]);
 
   const { data: pendingCases } = useCollection<CaseData>(casesQuery);
 
