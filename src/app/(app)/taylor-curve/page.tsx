@@ -1240,7 +1240,7 @@ export default function TaylorCurvePage() {
       return mensajeBase;
   }, [curveDataInfo, vcCurrent, machinePowerHP]);
 
-  const unidadVidaUtil = lifeModePremium === 'minutos' ? 'minutos' : lifeModePremium === 'mm' ? 'mm' : (operationType === 'drilling' ? 'agujeros' : 'pzas/filo');
+  const unidadVidaUtil = lifeModePremium === 'minutos' ? 'minutos' : lifeModePremium === 'mm' ? 'mm/filo' : (operationType === 'drilling' ? 'agujeros' : 'pzas/filo');
 
   if (isLoading) {
     return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
@@ -1622,7 +1622,7 @@ export default function TaylorCurvePage() {
                     <SelectContent>
                       <SelectItem value="piezas">{operationType === 'drilling' ? 'Agujeros' : 'Piezas'}</SelectItem>
                       <SelectItem value="minutos">Minutos</SelectItem>
-                      <SelectItem value="mm">mm (recorrido)</SelectItem>
+                      <SelectItem value="mm">mm (recorrido/f)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1788,7 +1788,7 @@ export default function TaylorCurvePage() {
                     <SelectContent>
                       <SelectItem value="piezas">{operationType === 'drilling' ? 'Agujeros' : 'Piezas'}</SelectItem>
                       <SelectItem value="minutos">Minutos</SelectItem>
-                      <SelectItem value="mm">mm (recorrido)</SelectItem>
+                      <SelectItem value="mm">mm (recorrido/f)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
