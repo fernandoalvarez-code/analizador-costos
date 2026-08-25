@@ -11,7 +11,6 @@ import {
   Menu,
   LayoutDashboard,
   FolderKanban,
-  Calculator,
   History,
   TrendingUp,
   Bot,
@@ -49,11 +48,8 @@ const menuItems = [
       label: 'Gestión de Casos',
       icon: FolderKanban,
     },
-    {
-      href: '/simulator/new',
-      label: 'Simulador',
-      icon: Calculator,
-    },
+    // El Simulador queda oculto del menú porque no funciona. La ruta
+    // /simulator/new sigue existiendo: para reactivarlo, devolver la entrada.
     {
       href: '/history',
       label: 'Historial de Análisis',
