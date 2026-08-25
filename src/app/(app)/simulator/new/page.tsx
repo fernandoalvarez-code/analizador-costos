@@ -40,8 +40,6 @@ export default function NewSimulatorPage() {
     }
   }, [user, userLoading, router]);
 
-  if (userLoading || (user && !user.email?.endsWith('@secocut.com'))) return null;
-
   // --- Hooks para data y estado de conexión ---
   const settingsRef = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -280,6 +278,13 @@ Adjunto el informe PDF completo con el fundamento técnico.`;
 
   const companyLogoSrc = isOnline ? settings?.companyLogoUrl : companyLogoBase64;
   const secoLogoSrc = isOnline ? settings?.secoLogoUrl : secoLogoBase64;
+
+  // El guard va acá, DESPUÉS de todos los hooks. Estaba arriba, antes de 15 de
+  // ellos: mientras userLoading era true el componente cortaba y ejecutaba 10
+  // hooks, y al resolver la auth seguía de largo y ejecutaba 25. React exige la
+  // misma cantidad y orden en cada render, así que tiraba "Rendered more hooks
+  // than during the previous render" — el client-side exception de esta ruta.
+  if (userLoading || (user && !user.email?.endsWith('@secocut.com'))) return null;
 
   return (
     <div className="min-h-screen bg-slate-50">
