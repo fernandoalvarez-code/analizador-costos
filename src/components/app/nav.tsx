@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Settings,
   Briefcase,
+  Calculator,
   History,
   TrendingUp,
 } from 'lucide-react';
@@ -41,8 +42,11 @@ export default function AppNav() {
       label: 'Gestión de Casos',
       icon: FolderKanban,
     },
-    // El Simulador queda oculto del menú porque no funciona. La ruta
-    // /simulator/new sigue existiendo: para reactivarlo, devolver la entrada.
+    {
+      href: '/simulator/new',
+      label: 'Simulador de Competitividad',
+      icon: Calculator,
+    },
     {
       href: '/history',
       label: 'Historial de Análisis',
