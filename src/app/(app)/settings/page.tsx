@@ -37,7 +37,6 @@ import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth, updateDocument
 import { useToast } from '@/hooks/use-toast';
 import { createUserWithRole } from '@/firebase/admin-actions';
 import { Auth } from 'firebase/auth';
-import { useTheme } from 'next-themes';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { setDoc, onSnapshot } from 'firebase/firestore';
 import { UploadCloud, Image as ImageIcon, Loader2 } from 'lucide-react';
@@ -115,7 +114,6 @@ const UserCreationForm = () => {
 
 // --- PÁGINA PRINCIPAL DE CONFIGURACIÓN ---
 export default function SettingsPage() {
-  const { setTheme } = useTheme();
   const { user } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
@@ -296,18 +294,9 @@ export default function SettingsPage() {
         {/* OTRAS SECCIONES (ADMIN Y USUARIO) */}
         {isAdmin && <UserCreationForm />}
         
-        <Card>
-          <CardHeader><CardTitle>Apariencia</CardTitle><CardDescription>Personaliza la apariencia de la aplicación.</CardDescription></CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Label htmlFor="theme-select">Tema</Label>
-               <Select onValueChange={(theme) => setTheme(theme)} defaultValue="system">
-                <SelectTrigger id="theme-select"><SelectValue placeholder="Selecciona un tema" /></SelectTrigger>
-                <SelectContent><SelectItem value="light">Claro</SelectItem><SelectItem value="dark">Oscuro</SelectItem><SelectItem value="system">Sistema</SelectItem></SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+        {/* La tarjeta "Apariencia" se quitó junto con forcedTheme="light":
+            el selector no tenía efecto y confundía. Devolverla cuando el tema
+            oscuro esté terminado. */}
 
         <Card>
           <CardHeader><CardTitle>Seguridad</CardTitle><CardDescription>Gestiona la seguridad de tu cuenta.</CardDescription></CardHeader>

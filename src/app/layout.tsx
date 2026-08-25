@@ -29,10 +29,16 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
+        {/* forcedTheme="light": la app solo tiene tema claro terminado. Los
+            tokens .dark de globals.css existen, pero los ~296 fondos claros
+            hardcodeados (bg-white, bg-slate-50) no tienen variante dark:, así
+            que en modo oscuro quedaba una app clara con parches oscuros.
+            Para habilitar oscuro de verdad hay que migrar esos fondos a tokens
+            y recién ahí sacar esta prop. */}
         <ThemeProvider
             attribute="class"
-            defaultTheme="system"
-            enableSystem
+            forcedTheme="light"
+            defaultTheme="light"
             disableTransitionOnChange
         >
           <ToastStateProvider>
