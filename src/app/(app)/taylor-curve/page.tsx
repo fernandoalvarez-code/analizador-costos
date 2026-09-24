@@ -1,6 +1,6 @@
 
 "use client";
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot, ReferenceLine } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -21,235 +21,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { calcRPM, calcVf, calcPc, calcMc, calcMcDrilling, calcPcDrilling, checkViability, calcTcDrilling } from '@/lib/machining-physics';
-import { MATERIALS_ISO } from '@/lib/materials-iso';
-import { getDrillingAlert } from '@/lib/drilling-alerts';
-import { getCoolantConcentration } from '@/lib/coolant-concentration';
+import { calcRPM, calcVf, calcTcDrilling } from '@/lib/machining-physics';
 import { Switch } from '@/components/ui/switch';
 import { MonthlySavingsSummary } from '@/components/calculator/MonthlySavingsSummary';
-
-
-const MATERIALS: { grupo: string; nombre: string; kc: number; dureza: string; isoId?: string }[] = [
-  { grupo: "ISO P", nombre: "Acero Bajo Carbono (Ej: 1010, 1020)", kc: 1500, dureza: "150 HB" },
-  { grupo: "ISO P", nombre: "Acero Medio Carbono (Ej: 1045, 4140)", kc: 1800, dureza: "200 HB" },
-  { grupo: "ISO P", nombre: "Acero Aleado / Cementación (Ej: 8620, 16MnCr5)", kc: 1700, dureza: "180 HB" },
-  { grupo: "ISO P", nombre: "Acero Alta Aleación / Herramienta", kc: 2100, dureza: "300 HB" },
-  { grupo: "ISO M", nombre: "Acero Inoxidable Austenítico (304, 316)", kc: 2200, dureza: "200 HB" },
-  { grupo: "ISO M", nombre: "Inox. SUS 316L (JIS)", kc: 2200, dureza: "200 HB", isoId: "sus316l" },
-  { grupo: "ISO M", nombre: "Acero Inox. Dúplex / Súper Dúplex", kc: 2600, dureza: "260 HB" },
-  { grupo: "ISO K", nombre: "Fundición Gris (GG)", kc: 1200, dureza: "200 HB" },
-  { grupo: "ISO K", nombre: "Fundición Nodular / Dúctil (GGG)", kc: 1500, dureza: "250 HB" },
-  { grupo: "ISO N", nombre: "Aluminio / Aleaciones de Aluminio", kc: 700, dureza: "60 HB" },
-  { grupo: "ISO N", nombre: "Latón / Bronce / Cobre", kc: 900, dureza: "100 HB" },
-  { grupo: "ISO N", nombre: "Plásticos de Ingeniería (Nylon, Delrin)", kc: 300, dureza: "N/A" },
-  { grupo: "ISO S", nombre: "Aleaciones de Titanio (Ej: Ti-6Al-4V)", kc: 2000, dureza: "350 HB" },
-  { grupo: "ISO S", nombre: "Titanio Ti-6Al-4V Gr.5", kc: 2600, dureza: "350 HB", isoId: "ti6al4v" },
-  { grupo: "ISO S", nombre: "Súper Aleaciones Base Níquel (Inconel)", kc: 2800, dureza: "400 HB" },
-  { grupo: "ISO H", nombre: "Aceros Templados (> 45 HRC)", kc: 3500, dureza: "50+ HRC" }
-];
-
-const TAYLOR_CONSTANTS: Record<string, {n: number, C: number}> = {
-  "ISO P": { n: 0.25, C: 250 }, "ISO M": { n: 0.20, C: 150 }, "ISO K": { n: 0.25, C: 200 },
-  "ISO N": { n: 0.35, C: 900 }, "ISO S": { n: 0.18, C: 130 }, "ISO H": { n: 0.15, C: 120 },
-};
-
-const MATRIZ_ROMPEVIRUTAS: Record<string, any> = {
-  "ME10": { desc: "Geometría Aguda Double Turbo" },
-  "M12":  { desc: "Geometría Universal Double Turbo" }
-};
-
-const CALIDADES_SECO = {
-  "MS2050": { tipo: "PVD", aplicacion: "Inox / Titanio", desc: "Grado de alta tenacidad" }
-};
-
-const dataDoubleTurbo: Record<string, Record<string, Record<string, number>>> = {
-    "ISO P": {
-        "ME10": { base: 0.14, medio: 0.16, fino: 0.24 },
-        "M12":  { base: 0.16, medio: 0.18, fino: 0.28 }
-    },
-    "ISO M": {
-        "ME10": { base: 0.14, medio: 0.16, fino: 0.24 },
-    },
-    "ISO K": {
-        "M12": { base: 0.17, medio: 0.19, fino: 0.28 }
-    },
-    "ISO S": {
-        "ME10": { base: 0.095, medio: 0.10, fino: 0.12 }
-    }
-};
-
-const calcularFzSugerido = (ae: number | string, dc: number | string, materialSMG: string, rompeviruta: string) => {
-  const ratio = (Number(ae) / Number(dc));
-  if(isNaN(ratio) || ratio <= 0) return null;
-
-  let nivel = "base"; // 100% ae
-  if (ratio <= 0.15) nivel = "fino";    // <=15% ae
-  else if (ratio <= 0.40) nivel = "medio"; // <=40% ae
-
-  const materialData = MATERIALS.find(m => m.nombre === materialSMG);
-  const materialGroup = materialData?.grupo;
-
-  if (!materialGroup || !dataDoubleTurbo[materialGroup] || !dataDoubleTurbo[materialGroup][rompeviruta] || !dataDoubleTurbo[materialGroup][rompeviruta][nivel]) {
-      return null;
-  }
-  return dataDoubleTurbo[materialGroup][rompeviruta][nivel];
-};
-
-
-const extraerRadioISO = (codigoInserto: string): number | null => {
-  if (!codigoInserto) return null;
-  const partePrincipal = codigoInserto.split('-')[0];
-  const soloNumeros = partePrincipal.replace(/\D/g, '');
-  if (soloNumeros.length >= 2) return parseInt(soloNumeros.slice(-2), 10) / 10;
-  return null;
-};
-
-const analizarRompevirutas = (codigoInserto: string): { esWiper: boolean; tipoCorte: string; sufijo: string } => {
-    if (!codigoInserto) return { esWiper: false, tipoCorte: 'Desconocido', sufijo: '' };
-    const textoLimpio = codigoInserto.replace(/\s|-/g, '').toUpperCase();
-    const match = textoLimpio.match(/\d{6}(.*)/);
-    if (!match || !match[1]) return { esWiper: false, tipoCorte: 'Desconocido', sufijo: '' };
-    const sufijo = match[1];
-    const esWiper = sufijo.includes('W');
-    let tipoCorte = 'Medio';
-    if (sufijo.includes('F') || sufijo.includes('FF')) tipoCorte = 'Terminacion';
-    else if (sufijo.includes('R') || sufijo.includes('RR')) tipoCorte = 'Desbaste';
-    return { esWiper, tipoCorte, sufijo };
-};
-
-const auditarParametros = (ap: number | string, avance: number | string, codigoInserto: string): string | null => {
-  const radio = extraerRadioISO(codigoInserto);
-  if (!radio || !ap || !avance) return null;
-  const apNum = Number(ap);
-  const avanceNum = Number(avance);
-  if (apNum < radio) return `⚠️ Riesgo de Vibración: Tu ap (${apNum}mm) es menor al radio del inserto (${radio}mm). Las fuerzas radiales empujarán la pieza.`;
-  if (avanceNum > (radio * 0.5)) return `⚠️ Avance Excesivo: Un avance de ${avanceNum} mm/rev es muy alto para un radio de ${radio}mm. Límite sugerido: ${(radio*0.5).toFixed(2)} mm/rev.`;
-  return null;
-};
-
-const auditarAplicacion = (ap: number | string, codigoInserto: string): string | null => {
-  if (!ap || !codigoInserto) return null;
-  const { tipoCorte } = analizarRompevirutas(codigoInserto);
-  const apNum = Number(ap);
-  if (tipoCorte === 'Terminacion' && apNum > 1.5) return `⚠️ Cuidado: Estás usando un rompevirutas de Terminación con un ap de ${apNum}mm. La viruta se va a atascar y romperá el filo.`;
-  if (tipoCorte === 'Desbaste' && apNum < 1.0) return `⚠️ Cuidado: Estás usando un rompevirutas de Desbaste Pesado para un corte muy fino (${apNum}mm). La viruta no va a romper y saldrá en hilos largos.`;
-  return null;
-};
-
-const calcularRaTeorico = (avance: number | string, codigoInserto: string): string | null => {
-  const radio = extraerRadioISO(codigoInserto);
-  const avanceNum = Number(avance);
-  if (!avanceNum || !radio || radio <= 0) return null;
-  let ra_micrones = (Math.pow(avanceNum, 2) / (32 * radio)) * 1000;
-  const { esWiper } = analizarRompevirutas(codigoInserto);
-  if (esWiper) ra_micrones = ra_micrones / 2; 
-  return ra_micrones.toFixed(2);
-};
-
-const analizarInsertoFresado = (codigoInserto: string): { formaPlaquita: string, incidenciaPlaquita: string, geometriaFilo: string, alertaGeometria: string | null } | null => {
-  if (!codigoInserto) return null;
-  const textoLimpio = codigoInserto.toUpperCase().trim();
-  const formaPlaquita = textoLimpio.charAt(0); 
-  const incidenciaPlaquita = textoLimpio.charAt(1);
-  let geometriaFilo = 'Media';
-  let alertaGeometria = null;
-  if (textoLimpio.includes('-D') || textoLimpio.includes('TN')) {
-    geometriaFilo = 'Robusta / Negativa';
-    alertaGeometria = '💡 Filo robusto detectado. Ideal para desbaste pesado o cortes interrumpidos. Consumirá más HP de la máquina.';
-  } else if (textoLimpio.includes('-E') || textoLimpio.includes('-F')) {
-    geometriaFilo = 'Viva / Positiva';
-    alertaGeometria = '⚠️ Filo muy vivo y positivo. Excelente para acabados y bajo consumo de HP, pero frágil ante cortes interrumpidos.';
-  }
-  return { formaPlaquita, incidenciaPlaquita, geometriaFilo, alertaGeometria };
-};
-
-const auditarMaterialFresado = (codigoGrado: string, materialSeleccionado: string): string | null => {
-  if (!codigoGrado || !materialSeleccionado) return null;
-  const grado = codigoGrado.toUpperCase();
-  const material = materialSeleccionado.toLowerCase();
-  if (grado.includes('PCD') && (material.includes('acero') || material.includes('fundicion'))) return '❌ ERROR CRÍTICO: El PCD (Diamante) reacciona químicamente con el hierro a altas temperaturas. Solo usar en Aluminio, Plásticos o Titanio.';
-  if (grado.includes('PCBN') && material.includes('aluminio')) return '⚠️ ALERTA DE COSTO: El PCBN es extremadamente caro y está diseñado para aceros templados >45HRC o fundición gris. Para aluminio, usa plaquitas no recubiertas (Ej: H15) o PCD.';
-  if ((grado.includes('MP') || grado.includes('MK')) && (material.includes('titanio') || material.includes('inconel'))) return '💡 SUGERENCIA: Para Titanio se recomiendan calidades PVD (Ej: MS2050 o F15M) por su tenacidad de filo, no CVD.';
-  return null;
-};
-
-const auditarBroca = (diametro?: number | string, profundidad?: number | string): string | null => {
-  if (!diametro || !profundidad) return null;
-  const numDiametro = Number(diametro);
-  const numProfundidad = Number(profundidad);
-  if (numDiametro <= 0 || numProfundidad <= 0) return null;
-  const ratioL_D = numProfundidad / numDiametro;
-  if (ratioL_D > 8) return '⚠️ Alerta de Profundidad (>8xD): Broca muy larga. Se requiere agujero piloto y reducir el avance (fn) un 20% al entrar para evitar que la broca flexe o se parta.';
-  return null;
-};
-
-const calcularVf = (f: number | string, vc: number | string, d: number | string): number => {
-    const numF = Number(f); const numVc = Number(vc); const numD = Number(d);
-    if (numF <= 0 || numVc <= 0 || numD <= 0) return 0;
-    const rpm = (numVc * 1000) / (Math.PI * numD);
-    return numF * rpm;
-};
-
-type LifeMode = 'piezas' | 'minutos' | 'mm';
-
-// Avance lineal real de la herramienta (mm/min), usado para convertir una vida medida
-// en mm de recorrido a minutos. En fresado el avance es por diente (fz), por eso se
-// multiplica por z; en torneado y taladrado ya es por vuelta (fn). El diámetro sale de
-// Dc: Ø de la fresa, Ø de la broca, o Ø de la pieza en torneado.
-const calcularVfLineal = (opType: string, f: number | string, vc: number | string, d: number | string, z: number | string): number => {
-    const numF = Number(f); const numVc = Number(vc); const numD = Number(d);
-    if (numF <= 0 || numVc <= 0 || numD <= 0) return 0;
-    const rpm = (numVc * 1000) / (Math.PI * numD);
-    if (opType === 'milling') return numF * (Number(z) || 1) * rpm;
-    return numF * rpm;
-};
-
-// Traduce el campo "Rendimiento" al lenguaje interno del modelo: vida del filo en minutos.
-const calcularVidaMinutos = (mode: LifeMode, valor: number | string, tc: number, vf: number): number => {
-    if (mode === 'minutos') return Number(valor) || 1;
-    if (mode === 'mm') { const mm = Number(valor) || 0; return mm > 0 && vf > 0 ? mm / vf : 0; }
-    return (Number(valor) || 1) * tc;
-};
-
-const calcularQ = (opType: string, ap: string|number, ae: string|number, f: string|number, vc: string|number, dc: string|number, z: string|number) => {
-  const numAp = Number(ap) || 0; const numF = Number(f) || 0; 
-  const numVc = Number(vc) || 0; const numDc = Number(dc) || 0; 
-  const numAe = Number(ae) || 0; const numZ = Number(z) || 1;
-
-  if (opType === 'turning') {
-     return numVc * numAp * numF;
-  } else if (opType === 'milling') {
-     if (numDc === 0) return 0;
-     const rpm = (numVc * 1000) / (Math.PI * numDc);
-     const vf = numF * numZ * rpm;
-     return (numAp * numAe * vf) / 1000;
-  } else if (opType === 'drilling') {
-     if (numDc === 0) return 0;
-     const rpm = (numVc * 1000) / (Math.PI * numDc);
-     const vf = numF * rpm;
-     return (Math.PI * Math.pow(numDc, 2) * vf) / 4000;
-  }
-  return 0;
-};
-
-const calcularEspesorViruta = (opType: string, f: string|number, ae: string|number, dc: string|number, ap: string|number, toolCode: string) => {
-   const numF = Number(f) || 0; const numAe = Number(ae) || 0;
-   const numDc = Number(dc) || 0; const numAp = Number(ap) || 0;
-   const re = extraerRadioISO(toolCode) || 0.8;
-
-   if (opType === 'milling') {
-      if (numAe > 0 && numDc > 0 && numAe < (numDc / 2)) {
-         return numF * Math.sqrt(numAe / numDc); 
-      }
-      return numF;
-   } else if (opType === 'turning') {
-      if (numAp > 0 && re > 0 && numAp < re) {
-         return numF * Math.sqrt(numAp / re);
-      }
-      return numF * 0.996; 
-   }
-   return numF;
-};
+import { MATERIALS, COOLANT_COLOR, DRILLING_ALERT_STYLES, type LifeMode } from '@/lib/taylor-data';
+import {
+  extraerRadioISO, auditarParametros, auditarAplicacion, calcularRaTeorico, calcularVf,
+  calcularVfLineal, calcularQ, calcularEspesorViruta, getDrillingVcRange, obtenerAnguloTexto,
+  getLoadColor, getHmColorClass, calculateIncidence,
+} from '@/lib/taylor-helpers';
+import { useTaylorCurve } from '@/hooks/use-taylor-curve';
 
 const SurveyField = ({ label }: { label: string }) => (
     <div className="flex justify-between items-end border-b-2 border-dotted border-slate-300 py-3">
@@ -257,35 +38,6 @@ const SurveyField = ({ label }: { label: string }) => (
         <span className="flex-grow"></span>
     </div>
 );
-
-const COOLANT_COLOR: Record<string, string> = {
-  P: 'text-green-700', K: 'text-green-700',
-  N: 'text-yellow-700', M: 'text-yellow-700', M2: 'text-yellow-700',
-  S: 'text-red-700', S2: 'text-red-700',
-  H: 'text-orange-700',
-};
-
-const DRILLING_ALERT_STYLES: Record<string, string> = {
-  critical_g83:    'bg-red-50 border-red-300 text-red-900',
-  recommended_g83: 'bg-orange-50 border-orange-200 text-orange-900',
-  recommended_g73: 'bg-blue-50 border-blue-200 text-blue-900',
-  optimized:       'bg-green-50 border-green-200 text-green-900',
-};
-
-function getDrillingVcRange(isoGroup: string): { min: number; max: number } {
-  const group = isoGroup.replace(/^ISO\s+/i, '').trim();
-  const MAP: Record<string, { min: number; max: number }> = {
-    P:  { min: 80,  max: 200 },
-    M:  { min: 30,  max: 80  },
-    M2: { min: 30,  max: 80  },
-    K:  { min: 60,  max: 150 },
-    N:  { min: 100, max: 300 },
-    S:  { min: 20,  max: 50  },
-    S2: { min: 20,  max: 50  },
-    H:  { min: 40,  max: 80  },
-  };
-  return MAP[group] ?? { min: 60, max: 200 };
-}
 
 export default function TaylorCurvePage() {
   const { user } = useUser();
@@ -366,6 +118,22 @@ export default function TaylorCurvePage() {
 
   const [suggestedCuttingData, setSuggestedCuttingData] = useState<{ap: string, fz: string, vc: string, notes: string} | null>(null);
   const [isFetchingCuttingData, setIsFetchingCuttingData] = useState(false);
+
+  const {
+    curveDataInfo, capacityCheck, viabilityCheck, drillingAlert, coolantInfo,
+    vcLimitMachine, vfLimitMachine, insightText,
+    analisisFresaCurrent, alertaMaterialCurrent, analisisFresaPremium, alertaMaterialPremium,
+    warningBrocaCurrent, warningBrocaPremium,
+  } = useTaylorCurve({
+    operationType, materialId,
+    machineCostHr, toolChangeTime, machinePowerHP, maxTorque, machineEfficiency,
+    coolantInternal, drillingOrientation, profundidadAgujero, monthlyProduction,
+    horasPorTurno, turnosPorDia, isStressTestActive,
+    toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent,
+    tcCurrent, zCurrent, edgesCurrent, dcCurrent, aeCurrent, lifeModeCurrent,
+    toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium,
+    tcPremiumInput, zPremium, edgesPremium, dcPremium, aePremium, lifeModePremium,
+  });
 
   useEffect(() => {
     const isReadyForSuggestion = materialId && toolNamePremium && toolNamePremium.length > 2;
@@ -471,52 +239,8 @@ export default function TaylorCurvePage() {
   const warningAppPremium = auditarAplicacion(apPremium, toolNamePremium);
   const warningPremium = warningParamPremium || warningAppPremium;
 
-  const analisisFresaCurrent = useMemo(() => analizarInsertoFresado(toolNameCurrent), [toolNameCurrent]);
-  const alertaMaterialCurrent = useMemo(() => auditarMaterialFresado(toolNameCurrent, materialId), [toolNameCurrent, materialId]);
   const warningFresaCurrent = alertaMaterialCurrent || analisisFresaCurrent?.alertaGeometria;
-
-  const analisisFresaPremium = useMemo(() => analizarInsertoFresado(toolNamePremium), [toolNamePremium]);
-  const alertaMaterialPremium = useMemo(() => auditarMaterialFresado(toolNamePremium, materialId), [toolNamePremium, materialId]);
   const warningFresaPremium = alertaMaterialPremium || analisisFresaPremium?.alertaGeometria;
-  
-  const warningBrocaCurrent = useMemo(() => auditarBroca(dcCurrent, profundidadAgujero), [dcCurrent, profundidadAgujero]);
-  const warningBrocaPremium = useMemo(() => auditarBroca(dcPremium, profundidadAgujero), [dcPremium, profundidadAgujero]);
-
-  const obtenerFactorIncidencia = (codigoInserto: string): number => {
-    if (!codigoInserto || codigoInserto.length < 2) return 1.0;
-    const segundaLetra = codigoInserto.charAt(1).toUpperCase();
-    switch (segundaLetra) {
-      case 'N': case 'O': return 1.00;
-      case 'A': case 'B': case 'C': return 0.92;
-      case 'P': case 'D': return 0.88;
-      case 'E': case 'F': case 'G': return 0.85;
-      default: return 1.00;
-    }
-  };
-
-  const obtenerAnguloTexto = (codigoInserto: string): string => {
-    if (!codigoInserto || codigoInserto.length < 2) return 'N/A';
-    const segundaLetra = codigoInserto.charAt(1).toUpperCase();
-    const angulos: Record<string, string> = {
-      'N': '0° (Negativo)', 'A': '3°', 'B': '5°', 'C': '7°', 'P': '11°', 'D': '15°', 'E': '20°', 'F': '25°', 'G': '30°'
-    };
-    return angulos[segundaLetra] || 'Desconocido';
-  };
-
-  const obtenerFactorForma = (codigoInserto: string): number => {
-    if (!codigoInserto || codigoInserto.length < 1) return 1.0;
-    const primeraLetra = codigoInserto.charAt(0).toUpperCase();
-    switch (primeraLetra) {
-      case 'V': return 0.85;
-      case 'D': return 0.90;
-      case 'T': return 0.92;
-      case 'E': case 'M': return 0.98;
-      case 'C': case 'W': return 1.00;
-      case 'S': case 'P': return 1.05;
-      case 'R': return 1.10;
-      default: return 1.00;
-    }
-  };
 
   React.useEffect(() => {
     const fetchLogos = async () => {
@@ -794,344 +518,6 @@ export default function TaylorCurvePage() {
     );
   };
   
-  const curveDataInfo = useMemo(() => {
-    const safeMachineCostMin = (Number(machineCostHr) || 0) / 60;
-    const safeToolCostCurrent = Number(toolCostCurrent) || 0;
-    const safeToolCostPremium = Number(toolCostPremium) || 0;
-    const safeToolChangeTime = Number(toolChangeTime) || 0;
-    const safeTcCurrent = Number(tcCurrent) || 0;
-    const safeTcPremium = Number(tcPremiumInput) || 0;
-    const safeVcCurrent = Number(vcCurrent) || 0.0001;
-    const vcPropuesta = Number(vcPremium) || 0.0001;
-    const mat = MATERIALS.find(m => m.nombre === materialId) || MATERIALS[1];
-    const taylorProps = TAYLOR_CONSTANTS[mat.grupo as keyof typeof TAYLOR_CONSTANTS] || { n: 0.25, C: 250 };
-    
-    const n = taylorProps.n;
-    
-    const vfLinealCurrent = calcularVfLineal(operationType, feedCurrent, vcCurrent, dcCurrent, zCurrent);
-    const vfLinealPremium = calcularVfLineal(operationType, feedPremium, vcPremium, dcPremium, zPremium);
-
-    const vidaMinutosCompetidor = calcularVidaMinutos(lifeModeCurrent, pcsCurrent, safeTcCurrent, vfLinealCurrent);
-    const constante_C_Competidor = safeVcCurrent > 0 && vidaMinutosCompetidor > 0 ? safeVcCurrent * Math.pow(vidaMinutosCompetidor, n) : 0;
-    
-    const vidaMinutosSeco = calcularVidaMinutos(lifeModePremium, pcsPremium, safeTcPremium, vfLinealPremium);
-    const constante_C_Seco = vcPropuesta > 0 && vidaMinutosSeco > 0 ? vcPropuesta * Math.pow(vidaMinutosSeco, n) : 0;
-
-    const kc = mat.kc || 1500;
-    const safeMachinePowerHP = Number(machinePowerHP) || 15;
-    let hpCurrent = 0, hpPremium = 0;
-    const safeMonthlyProduction = Number(monthlyProduction) || 0;
-    const safeEdgesCurrent = Number(edgesCurrent) || 1;
-    const safeEdgesPremium = Number(edgesPremium) || 1;
-
-    if (operationType === 'turning') {
-        const safeFeedCurrent = Number(feedCurrent) || 0.0001, safeApCurrent = Number(apCurrent) || 0.0001;
-        const kwCurrent_base = (safeApCurrent * safeFeedCurrent * safeVcCurrent * kc) / 60000;
-        hpCurrent = kwCurrent_base * 1.341 * obtenerFactorForma(toolNameCurrent) * obtenerFactorIncidencia(toolNameCurrent);
-        const kwPremium_base = (Number(apPremium) * Number(feedPremium) * vcPropuesta * kc) / 60000;
-        hpPremium = kwPremium_base * 1.341 * obtenerFactorForma(toolNamePremium) * obtenerFactorIncidencia(toolNamePremium);
-    } else if (operationType === 'milling') {
-        const safeDcCurrent = Number(dcCurrent) || 0.0001, safeFzCurrent = Number(feedCurrent) || 0, safeZCurrentMilling = Number(zCurrent) || 1, safeApCurrent = Number(apCurrent) || 0, safeAeCurrent = Number(aeCurrent) || 0;
-        const rpmCurrent = (safeVcCurrent * 1000) / (Math.PI * safeDcCurrent), vfCurrent = safeFzCurrent * safeZCurrentMilling * rpmCurrent;
-        const rpmPremium = (vcPropuesta * 1000) / (Math.PI * (Number(dcPremium) || 0.0001)), vfPremium = (Number(feedPremium) || 0) * (Number(zPremium) || 1) * rpmPremium;
-        const qCurrent = (safeApCurrent * safeAeCurrent * vfCurrent) / 1000, kwCurrent = (qCurrent * kc) / 60000;
-        hpCurrent = (kwCurrent * 1.341) / 0.8;
-        const qPremium = ((Number(apPremium) || 0) * (Number(aePremium) || 0) * vfPremium) / 1000, kwPremium = (qPremium * kc) / 60000;
-        hpPremium = (kwPremium * 1.341) / 0.8;
-    } else if (operationType === 'drilling') {
-        const safeDcCurrent = Number(dcCurrent) || 0.0001, safeFnCurrent = Number(feedCurrent) || 0;
-        const rpmCurrent = (safeVcCurrent * 1000) / (Math.PI * safeDcCurrent), vfCurrent = safeFnCurrent * rpmCurrent;
-        const rpmPremium = (vcPropuesta * 1000) / (Math.PI * (Number(dcPremium) || 0.0001)), vfPremium = (Number(feedPremium) || 0) * rpmPremium;
-        const qCurrent = (Math.PI * Math.pow(safeDcCurrent, 2) / 4) * vfCurrent / 1000, kwCurrent = (qCurrent * kc) / 60000;
-        hpCurrent = (kwCurrent * 1.341) / 0.8;
-        const qPremium = (Math.PI * Math.pow((Number(dcPremium) || 0.0001), 2) / 4) * vfPremium / 1000, kwPremium = (qPremium * kc) / 60000;
-        hpPremium = (kwPremium * 1.341) / 0.8;
-    }
-    const loadCurrent = (hpCurrent / safeMachinePowerHP) * 100, loadPremium = (hpPremium / safeMachinePowerHP) * 100;
-    
-    let effectivePcsCurrent = lifeModeCurrent === 'piezas'
-        ? (Number(pcsCurrent) || 1)
-        : lifeModeCurrent === 'mm'
-            ? (safeTcCurrent > 0 ? vidaMinutosCompetidor / safeTcCurrent : 0)
-            : (safeTcCurrent > 0 ? (Number(pcsCurrent) || 0) / safeTcCurrent : 0);
-    let effectivePcsPremium = lifeModePremium === 'piezas'
-        ? (Number(pcsPremium) || 1)
-        : lifeModePremium === 'mm'
-            ? (safeTcPremium > 0 ? vidaMinutosSeco / safeTcPremium : 0)
-            : (safeTcPremium > 0 ? (Number(pcsPremium) || 0) / safeTcPremium : 0);
-    if (effectivePcsCurrent <= 0) effectivePcsCurrent = 1; 
-    if (effectivePcsPremium <= 0) effectivePcsPremium = 1;
-    
-    const calcCostWithBreakdown = (v: number, isPremium: boolean, feed: number) => {
-        const C = isPremium ? constante_C_Seco : constante_C_Competidor;
-        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0, lifePcs: 0, hpReq: 0 };
-    
-        const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
-        const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
-        const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
-        const ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
-    
-        const baseTime = isPremium ? safeTcPremium : safeTcCurrent;
-        const baseVc = isPremium ? vcPropuesta : safeVcCurrent;
-        const tc = baseTime * (baseVc / v);
-        
-        const lifeMins = Math.pow((C / v), (1 / n));
-        
-        const costoMaquina = safeMachineCostMin * tc;
-        const piecesPerToolLife = lifeMins > 0 ? lifeMins / tc : 0;
-        const costPerEdge = edges > 0 ? toolPrice / edges : 0;
-
-        const costoInsertoPuro = piecesPerToolLife > 0 ? (costPerEdge * z) / piecesPerToolLife : 0;
-        const costoParada = piecesPerToolLife > 0 ? (safeToolChangeTime * safeMachineCostMin) / piecesPerToolLife : 0;
-        
-        const costoTotal = costoMaquina + costoInsertoPuro + costoParada;
-
-        let hpReq = 0;
-        const toolCode = isPremium ? toolNamePremium : toolNameCurrent;
-        const dc = isPremium ? (Number(dcPremium) || 0.0001) : (Number(dcCurrent) || 0.0001);
-        const ae = isPremium ? (Number(aePremium) || 0) : (Number(aeCurrent) || 0);
-
-        if (operationType === 'turning') {
-            const kw_base = (ap * feed * v * kc) / 60000;
-            hpReq = kw_base * 1.341 * obtenerFactorForma(toolCode) * obtenerFactorIncidencia(toolCode);
-        } else if (operationType === 'milling') {
-            const rpm = (v * 1000) / (Math.PI * dc);
-            const vf = feed * z * rpm;
-            const q = (ap * ae * vf) / 1000;
-            hpReq = ((q * kc) / 60000 * 1.341) / 0.8;
-        } else if (operationType === 'drilling') {
-            const rpm = (v * 1000) / (Math.PI * dc);
-            const vf = feed * rpm;
-            const q = (Math.PI * Math.pow(dc, 2) / 4) * vf / 1000;
-            hpReq = ((q * kc) / 60000 * 1.341) / 0.8;
-        }
-
-        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada, lifePcs: piecesPerToolLife, hpReq };
-    };
-
-    const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
-        const costCorte = safeMachineCostMin * tc;
-        const costPerEdge = edges > 0 ? toolPrice / edges : 0;
-        const toolChangePenalty = (costPerEdge * z) + (safeToolChangeTime * safeMachineCostMin);
-        const costoHerr = pcsPerEdge > 0 ? toolChangePenalty / pcsPerEdge : 0;
-        return costCorte + costoHerr;
-    };
-
-    const speedsSet = new Set<number>();
-    const C_for_range = taylorProps.C;
-    for (let v = 50; v <= C_for_range * 1.5; v += 10) { speedsSet.add(v); }
-    if (Number(vcCurrent) > 0) speedsSet.add(Number(vcCurrent)); if (Number(vcPremium) > 0) speedsSet.add(Number(vcPremium));
-    const sortedSpeeds = Array.from(speedsSet).sort((a, b) => a - b);
-    
-    let minPremiumCost = Infinity;
-    let optimalSpeed = 0;
-    let hpLimitReached = false;
-
-    const limiteTermicoActual = isStressTestActive ? taylorProps.C * 1.05 : null;
-
-    const data = sortedSpeeds.map(v => {
-        const resActual = calcCostWithBreakdown(v, false, Number(feedCurrent) || 0.0001);
-        const resPremium = calcCostWithBreakdown(v, true, Number(feedPremium) || 0.0001);
-        
-        if (isStressTestActive && limiteTermicoActual && v >= limiteTermicoActual) {
-            // Falla térmica catastrófica (colapso de filo)
-            resActual.costoTotal = resActual.costoTotal * Math.pow((v / limiteTermicoActual), 6);
-        }
-        
-        const objHpExcedido = resPremium.hpReq > safeMachinePowerHP;
-
-        // Sólo actualizamos el óptimo si NO excede la potencia de la máquina.
-        if (!objHpExcedido && resPremium.costoTotal < minPremiumCost && resPremium.costoTotal > 0) { 
-            minPremiumCost = resPremium.costoTotal; 
-            optimalSpeed = v; 
-            hpLimitReached = false;
-        } else if (objHpExcedido && resPremium.costoTotal < minPremiumCost) {
-            hpLimitReached = true;
-        }
-        
-        const multZ_Act = operationType === 'milling' ? (Number(zCurrent)||1) : 1;
-        const multZ_Prem = operationType === 'milling' ? (Number(zPremium)||1) : 1;
-        
-        const insertosAct = resActual.lifePcs > 0 ? Math.ceil(safeMonthlyProduction / (resActual.lifePcs * safeEdgesCurrent)) * multZ_Act : 0;
-        const insertosPrem = resPremium.lifePcs > 0 ? Math.ceil(safeMonthlyProduction / (resPremium.lifePcs * safeEdgesPremium)) * multZ_Prem : 0;
-
-        return { 
-          speed: v,
-          costoActual: resActual.costoTotal,
-          costoPremium: resPremium.costoTotal,
-          desgloseActual: {
-            maquina: resActual.costoMaquina,
-            inserto: resActual.costoInsertoPuro,
-            parada: resActual.costoParada,
-            lote: insertosAct
-          },
-          desglosePremium: {
-            maquina: resPremium.costoMaquina,
-            inserto: resPremium.costoInsertoPuro,
-            parada: resPremium.costoParada,
-            lote: insertosPrem
-          }
-        };
-    });
-    
-    const actualCostCurrent = calcEmpiricalCost(safeTcCurrent, safeToolCostCurrent, effectivePcsCurrent, (Number(zCurrent) || 1), safeEdgesCurrent);
-    const actualCostPremium = calcEmpiricalCost(safeTcPremium, safeToolCostPremium, effectivePcsPremium, (Number(zPremium) || 1), safeEdgesPremium);
-    
-    const desgloseActualReal = {
-        maquina: safeMachineCostMin * safeTcCurrent,
-        inserto: effectivePcsCurrent > 0 ? ((safeToolCostCurrent / safeEdgesCurrent) * (operationType === 'milling' ? (Number(zCurrent)||1) : 1)) / effectivePcsCurrent : 0,
-        parada: effectivePcsCurrent > 0 ? (safeToolChangeTime * safeMachineCostMin) / effectivePcsCurrent : 0,
-        lote: effectivePcsCurrent > 0 ? Math.ceil(safeMonthlyProduction / (effectivePcsCurrent * safeEdgesCurrent)) * (operationType === 'milling' ? (Number(zCurrent)||1) : 1) : 0,
-        loteContinuo: effectivePcsCurrent > 0 ? (safeMonthlyProduction * (operationType === 'milling' ? (Number(zCurrent)||1) : 1)) / (effectivePcsCurrent * safeEdgesCurrent) : 0,
-    };
-
-    const desglosePremiumReal = {
-        maquina: safeMachineCostMin * safeTcPremium,
-        inserto: effectivePcsPremium > 0 ? ((safeToolCostPremium / safeEdgesPremium) * (operationType === 'milling' ? (Number(zPremium)||1) : 1)) / effectivePcsPremium : 0,
-        parada: effectivePcsPremium > 0 ? (safeToolChangeTime * safeMachineCostMin) / effectivePcsPremium : 0,
-        lote: effectivePcsPremium > 0 ? Math.ceil(safeMonthlyProduction / (effectivePcsPremium * safeEdgesPremium)) * (operationType === 'milling' ? (Number(zPremium)||1) : 1) : 0,
-        loteContinuo: effectivePcsPremium > 0 ? (safeMonthlyProduction * (operationType === 'milling' ? (Number(zPremium)||1) : 1)) / (effectivePcsPremium * safeEdgesPremium) : 0,
-    };
-
-    const realAbsoluteSavings = actualCostCurrent - actualCostPremium;
-    const realSavingsPercentage = actualCostCurrent > 0 ? (realAbsoluteSavings / actualCostCurrent) * 100 : 0;
-    const monthlySavings = isFinite(realAbsoluteSavings) ? realAbsoluteSavings * safeMonthlyProduction : 0;
-    
-    const qCurrent = calcularQ(operationType, apCurrent, aeCurrent, feedCurrent, vcCurrent, dcCurrent, zCurrent);
-    const qPremium = calcularQ(operationType, apPremium, aePremium, feedPremium, vcPremium, dcPremium, zPremium);
-    const hmCurrent = calcularEspesorViruta(operationType, feedCurrent, aeCurrent, dcCurrent, apCurrent, toolNameCurrent);
-    const hmPremium = calcularEspesorViruta(operationType, feedPremium, aePremium, dcPremium, apPremium, toolNamePremium);
-
-    return { data, actualCostCurrent, actualCostPremium, realAbsoluteSavings, realSavingsPercentage, tcPremium: safeTcPremium, monthlySavings, hpCurrent, hpPremium, loadCurrent, loadPremium, velocidadOptimaSeco: optimalSpeed, costoOptimoSeco: minPremiumCost, limitHpAlert: hpLimitReached, desgloseActualReal, desglosePremiumReal, qCurrent, qPremium, hmCurrent, hmPremium, limiteTermicoActual, effectivePcsCurrent, effectivePcsPremium };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [machineCostHr, toolCostCurrent, toolCostPremium, toolChangeTime, materialId, apCurrent, apPremium, feedCurrent, feedPremium, vcCurrent, vcPremium, pcsCurrent, pcsPremium, tcCurrent, zCurrent, zPremium, edgesCurrent, edgesPremium, operationType, monthlyProduction, machinePowerHP, toolNameCurrent, toolNamePremium, dcCurrent, dcPremium, aeCurrent, aePremium, profundidadAgujero, lifeModeCurrent, lifeModePremium, tcPremiumInput, isStressTestActive]);
-
-  const capacityCheck = useMemo(() => {
-    const vol = Number(monthlyProduction) || 0;
-    const tcComp = Number(tcCurrent) || 0;
-    const tcSeco = Number(tcPremiumInput) || 0;
-    if (vol <= 0 || tcComp <= 0 || tcSeco <= 0) return null;
-    // ciclo efectivo por condición: misma fuente que MonthlySavingsSummary / sección 3
-    const changeComp = (curveDataInfo?.effectivePcsCurrent ?? 0) > 0
-      ? (Number(toolChangeTime) || 0) / curveDataInfo.effectivePcsCurrent : 0;
-    const changeSeco = (curveDataInfo?.effectivePcsPremium ?? 0) > 0
-      ? (Number(toolChangeTime) || 0) / curveDataInfo.effectivePcsPremium : 0;
-    const hrsComp = (vol * (tcComp + changeComp)) / 60;
-    const hrsSeco = (vol * (tcSeco + changeSeco)) / 60;
-    const hrsDisponibles = (Number(horasPorTurno) || 8) * (Number(turnosPorDia) || 1) * 22; // 22 días hábiles
-    return {
-      hrsComp: Math.round(hrsComp),
-      hrsSeco: Math.round(hrsSeco),
-      hrsLiberadas: Math.round(hrsComp - hrsSeco),
-      maqComp: hrsDisponibles > 0 ? hrsComp / hrsDisponibles : 0,
-      maqSeco: hrsDisponibles > 0 ? hrsSeco / hrsDisponibles : 0,
-    };
-  }, [monthlyProduction, tcCurrent, tcPremiumInput, toolChangeTime, horasPorTurno, turnosPorDia, curveDataInfo]);
-
-  const viabilityCheck = useMemo(() => {
-    const mat = MATERIALS.find(m => m.nombre === materialId);
-    // Cada operación arranca viruta distinto, así que cada una tiene su propio kc.
-    const kcField = operationType === 'milling' ? 'kc_milling'
-      : operationType === 'drilling' ? 'kc_drilling'
-      : 'kc_turning';
-    // El array local rotula el grupo como "ISO M"; MATERIALS_ISO lo subdivide en
-    // M y M2 (y S en S y S2). Se matchea por la letra base para que el grupo
-    // incluya sus subgrupos, y se promedia igual que hacía fresado.
-    const group = (mat?.grupo || '').replace(/^ISO\s+/i, '').charAt(0).toUpperCase();
-    const isoMatches = group ? MATERIALS_ISO.filter(m => m.isoGroup.charAt(0) === group) : [];
-    // Un material que apunta a una entrada ISO concreta usa su kc exacto: promediar
-    // el grupo lo diluiría con los demás aceros de la familia.
-    const isoExact = mat?.isoId ? MATERIALS_ISO.find(m => m.id === mat.isoId) : undefined;
-    const kc = isoExact
-      ? isoExact[kcField]
-      : isoMatches.length
-        ? Math.round(isoMatches.reduce((s, m) => s + m[kcField], 0) / isoMatches.length)
-        : (mat?.kc ?? 1800);
-    const vc = Number(vcCurrent);
-    const fn = Number(feedCurrent);
-    const ap = Number(apCurrent);
-    const dc = Number(dcCurrent) || 0;
-    const eff = Number(machineEfficiency) || 0.85;
-    const pw = (Number(machinePowerHP) || 15) * 0.7457;
-    const tq = Number(maxTorque) || 200;
-    if (vc <= 0 || fn <= 0) return null;
-    if (operationType === 'drilling') {
-      // Taladrado tiene su propia física: Mc crece con D² y Pc sale del torque y
-      // las rpm, no de ap. Por eso no exige ap, que en taladrado nunca se carga.
-      // Sin Ø no hay rpm ni Mc, así que se pide el dato en vez de juzgar sin él.
-      if (dc <= 0) return { viable: true, reason: null, pc: null, mc: null };
-      const rpm = calcRPM(vc, dc);
-      const mc = calcMcDrilling(kc, fn, dc);
-      const pc = calcPcDrilling(mc, rpm);
-      return { ...checkViability(pc, mc, pw, tq), pc, mc };
-    }
-    if (ap <= 0) return null;
-    if (operationType === 'milling') {
-      if (dc <= 0) return null;
-      const rpm = calcRPM(vc, dc);
-      const vf = calcVf(rpm, fn) * (Number(zCurrent) || 1);
-      const Q = (ap * (Number(aeCurrent) || 0) * vf) / 1000;
-      if (Q <= 0) return null;
-      const pcMilling = (Q * kc) / 60000;
-      const mc = calcMc(kc, ap, fn, dc);
-      return { ...checkViability(pcMilling, mc, pw, tq), pc: pcMilling, mc };
-    }
-    const pc = calcPc(kc, ap, fn, vc, eff);
-    // El torque depende linealmente del diámetro: sin un Ø real cargado no se calcula
-    // ni se juzga, en vez de asumir un valor por defecto que daría un veredicto falso.
-    const mc = dc > 0 ? calcMc(kc, ap, fn, dc) : null;
-    return { ...checkViability(pc, mc ?? 0, pw, mc === null ? 0 : tq), pc, mc };
-  }, [vcCurrent, feedCurrent, apCurrent, dcCurrent, materialId, machinePowerHP, maxTorque, machineEfficiency, operationType, zCurrent, aeCurrent]);
-
-  const drillingAlert = useMemo(() => {
-    if (operationType !== 'drilling') return null;
-    const depth = Number(profundidadAgujero);
-    const diam = Number(dcCurrent);
-    if (!depth || !diam) return null;
-    return getDrillingAlert({
-      coolantInternal,
-      depth,
-      diameter: diam,
-      materialIsoGroup: MATERIALS.find(m => m.nombre === materialId)?.grupo || '',
-      orientation: drillingOrientation,
-    });
-  }, [operationType, coolantInternal, profundidadAgujero, dcCurrent, materialId, drillingOrientation]);
-
-  const coolantInfo = useMemo(() => {
-    if (operationType !== 'drilling') return null;
-    const grupo = MATERIALS.find(m => m.nombre === materialId)?.grupo || '';
-    const conc = getCoolantConcentration(grupo);
-    if (!conc) return null;
-    return { ...conc, group: grupo.replace(/^ISO\s+/i, '') };
-  }, [operationType, materialId]);
-
-  const vcLimitMachine = useMemo(() => {
-    if (operationType === 'milling') return null;
-    const maxPowerKw = (Number(machinePowerHP) || 15) * 0.7457;
-    const kc = MATERIALS.find(m => m.nombre === materialId)?.kc || 1800;
-    const ap = Number(apCurrent) || 1;
-    const fn = Number(feedCurrent) || 0.1;
-    const eta = Number(machineEfficiency) || 0.85;
-    const vcLimit = (maxPowerKw * 60000 * eta) / (kc * ap * fn);
-    return Math.round(vcLimit);
-  }, [operationType, machinePowerHP, materialId, apCurrent, feedCurrent, machineEfficiency]);
-
-  const vfLimitMachine = useMemo(() => {
-    if (operationType !== 'milling') return null;
-    const maxPowerKw = (Number(machinePowerHP) || 15) * 0.7457;
-    const mat = MATERIALS.find(m => m.nombre === materialId);
-    const group = (mat?.grupo || '').replace(/^ISO\s+/i, '');
-    const kcIsoMilling = MATERIALS_ISO.filter(m => m.isoGroup === group);
-    const kc = kcIsoMilling.length
-      ? Math.round(kcIsoMilling.reduce((s, m) => s + m.kc_milling, 0) / kcIsoMilling.length)
-      : (mat?.kc ?? 1800);
-    const ap = Number(apCurrent) || 1;
-    const ae = Number(aeCurrent) || 1;
-    const eta = Number(machineEfficiency) || 0.85;
-    const vfMax = (maxPowerKw * 60000 * eta * 1000) / (kc * ap * ae);
-    return Math.round(vfMax);
-  }, [operationType, machinePowerHP, materialId, apCurrent, aeCurrent, machineEfficiency]);
-
   useEffect(() => {
     if (!isTaylorModalOpen || !taylorBase || taylorBase.vc === 0 || taylorBase.feed === 0) {
         setSimulationResult(null);
@@ -1229,63 +615,24 @@ export default function TaylorCurvePage() {
   const premiumSecs = Math.round(((curveDataInfo.tcPremium > 0 && curveDataInfo.tcPremium !== Infinity ? curveDataInfo.tcPremium : 0) - premiumMins) * 60);
   const porcentajeAhorro = curveDataInfo.realSavingsPercentage.toFixed(1);
 
-  const getLoadColor = (load: number) => {
-      if (load < 20) return { bar: 'bg-red-500', text: 'text-red-700', label: 'Subutilizado (Sube Avance)' };
-      if (load <= 80) return { bar: 'bg-emerald-500', text: 'text-emerald-700', label: 'Óptimo / Seguro' };
-      if (load <= 95) return { bar: 'bg-amber-500', text: 'text-amber-700', label: 'Desbaste Pesado' };
-      return { bar: 'bg-red-600 animate-pulse', text: 'text-red-800 font-black', label: '¡PELIGRO: Sobrecarga!' };
-  };
-  
   const materialGroups = MATERIALS.reduce((acc, mat) => {
       (acc[mat.grupo] = acc[mat.grupo] || []).push(mat);
       return acc;
   }, {} as Record<string, typeof MATERIALS>);
 
   const porcentajeAhorroSimulado = taylorBaseCost > 0 && simulationResult ? (((taylorBaseCost - simulationResult.newCost) / taylorBaseCost) * 100) : 0;
-  
-  const insightText = useMemo(() => {
-      const { velocidadOptimaSeco, costoOptimoSeco, limitHpAlert } = curveDataInfo;
-      const numVcCurrent = Number(vcCurrent);
-      if (!numVcCurrent || !velocidadOptimaSeco || !costoOptimoSeco) return null;
-      
-      let mensajeBase = "";
-      if (numVcCurrent < velocidadOptimaSeco) {
-          mensajeBase = `💡 Tu máquina está subutilizada. Si subimos la velocidad de ${numVcCurrent} a ${velocidadOptimaSeco} m/min con el inserto Seco, alcanzarás el costo mínimo absoluto de ${formatCurrency(costoOptimoSeco)} por pieza.`;
-      } else if (numVcCurrent > velocidadOptimaSeco + 10) { 
-          mensajeBase = `⚠️ Estás quemando insertos. Bajando la velocidad a ${velocidadOptimaSeco} m/min con Seco, extenderás la vida útil drásticamente y bajarás tu costo a ${formatCurrency(costoOptimoSeco)}.`;
-      } else {
-          mensajeBase = `✅ ¡Estás muy cerca del punto óptimo! Mantener la velocidad alrededor de ${velocidadOptimaSeco} m/min te asegura la máxima eficiencia y rentabilidad.`;
-      }
-
-      if (limitHpAlert) {
-          mensajeBase += ` 🔴 Atención: La velocidad teórica más óptima fue limitada porque excedía los ${machinePowerHP} HP de tu máquina.`;
-      }
-
-      return mensajeBase;
-  }, [curveDataInfo, vcCurrent, machinePowerHP]);
 
   const unidadVidaUtil = lifeModePremium === 'minutos' ? 'minutos' : lifeModePremium === 'mm' ? 'mm/filo' : (operationType === 'drilling' ? 'agujeros' : 'pzas/filo');
 
   if (isLoading) {
     return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
   }
-  
-  const getHmColorClass = (hm: number) => {
-    if (hm < 0.05) return "text-orange-500";
-    if (hm > 0.25) return "text-red-600";
-    return "text-emerald-600";
-  };
 
   const qActual = calcularQ(operationType, apCurrent, aeCurrent, feedCurrent, vcCurrent, dcCurrent, zCurrent);
   const hmActual = calcularEspesorViruta(operationType, feedCurrent, aeCurrent, dcCurrent, apCurrent, toolNameCurrent);
 
   const qPropuesta = calcularQ(operationType, apPremium, aePremium, feedPremium, vcPremium, dcPremium, zPremium);
   const hmPropuesta = calcularEspesorViruta(operationType, feedPremium, aePremium, dcPremium, apPremium, toolNamePremium);
-
-  const calculateIncidence = (partCost: number, totalCost: number) => {
-    if (!totalCost || totalCost === 0 || isNaN(partCost) || isNaN(totalCost)) return "0.0";
-    return ((partCost / totalCost) * 100).toFixed(1); 
-  };
 
   const renderSafeNumber = (value: number | string | undefined | null, decimals: number = 1, suffix: string = '', cssClass: string = '') => {
       const num = Number(value);
