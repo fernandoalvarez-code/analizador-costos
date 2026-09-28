@@ -23,6 +23,12 @@ export function PdfPaginaVidaFilo({ data, unit, vcActual, vcPremium, pageNumber,
   const pointActual = data.find(d => d.speed === vcActual);
   const pointPremium = data.find(d => d.speed === vcPremium);
 
+  // Con valores grandes (modo piezas, curvas altas) los ticks se ven más
+  // prolijos como enteros; con valores chicos (modo minutos, taladrado)
+  // formatMagnitud conserva los decimales que hacen falta.
+  const maxLifeValue = chartData.reduce((max, d) => Math.max(max, d.lifeActual, d.lifePremium), 0);
+  const yTickFormatter = (value: number) => maxLifeValue >= 20 ? `${Math.round(value)}` : formatMagnitud(value);
+
   return (
     <div id="pdf-pagina-3" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
         <div className="flex justify-between items-center mb-8">
@@ -31,16 +37,38 @@ export function PdfPaginaVidaFilo({ data, unit, vcActual, vcPremium, pageNumber,
         </div>
         <div>
           <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">4. Vida del Filo vs. Velocidad</h2>
-          <div className="w-full h-[300px] border border-slate-200 p-2 bg-white">
-            <LineChart width={650} height={280} data={chartData}>
+          <div className="w-full h-[420px] border border-slate-200 p-2 bg-white">
+            <LineChart width={650} height={400} data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 30 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis type="number" dataKey="speed" domain={['dataMin', 'dataMax']} label={{ value: 'Vc (m/min)', position: 'bottom', offset: -5 }} />
-              <YAxis label={{ value: `Vida del Filo (${unit})`, angle: -90, position: 'insideLeft' }} tickFormatter={(value: number) => formatMagnitud(value)} />
+              <XAxis type="number" dataKey="speed" domain={['dataMin', 'dataMax']} label={{ value: 'Vc (m/min)', position: 'bottom', offset: 15 }} />
+              <YAxis width={80} label={{ value: `Vida del Filo (${unit})`, angle: -90, position: 'insideLeft', offset: 0 }} tickFormatter={yTickFormatter} />
               <Legend verticalAlign="top" height={36} />
               <Line type="monotone" dataKey="lifeActual" name="Vida Competidor" stroke="#ef4444" strokeWidth={3} dot={false} isAnimationActive={false} />
               <Line type="monotone" dataKey="lifePremium" name="Vida Secocut" stroke="#22c55e" strokeWidth={3} dot={false} isAnimationActive={false} />
-              {pointActual && isFinite(pointActual.lifeActual) && <ReferenceDot x={vcActual} y={pointActual.lifeActual} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />}
-              {pointPremium && isFinite(pointPremium.lifePremium) && <ReferenceDot x={vcPremium} y={pointPremium.lifePremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
+              {pointActual && isFinite(pointActual.lifeActual) && (
+                <ReferenceDot
+                  x={vcActual}
+                  y={pointActual.lifeActual}
+                  r={6}
+                  fill="#ef4444"
+                  stroke="white"
+                  strokeWidth={2}
+                  isFront={true}
+                  label={{ value: formatMagnitud(pointActual.lifeActual), position: 'top', fill: '#ef4444', fontSize: 11, fontWeight: 'bold' }}
+                />
+              )}
+              {pointPremium && isFinite(pointPremium.lifePremium) && (
+                <ReferenceDot
+                  x={vcPremium}
+                  y={pointPremium.lifePremium}
+                  r={6}
+                  fill="#22c55e"
+                  stroke="white"
+                  strokeWidth={2}
+                  isFront={true}
+                  label={{ value: formatMagnitud(pointPremium.lifePremium), position: 'top', fill: '#22c55e', fontSize: 11, fontWeight: 'bold' }}
+                />
+              )}
             </LineChart>
           </div>
           <div className="mt-3 text-[10px] text-slate-500 leading-snug">
