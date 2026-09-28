@@ -68,7 +68,7 @@ export function VidaFiloChart({ data, unit, vcActual, vcPremium }: VidaFiloChart
               <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 30 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis type="number" dataKey="speed" domain={['dataMin', 'dataMax']} label={{ value: 'Velocidad de Corte Vc (m/min)', position: 'bottom', offset: 15 }} tick={{fontSize: 12}} />
-                <YAxis label={{ value: `Vida del Filo (${unit})`, angle: -90, position: 'insideLeft', offset: 0 }} tick={{fontSize: 12}} tickFormatter={(value: number) => formatMagnitud(value)} />
+                <YAxis label={{ value: `Vida del Filo (${unit})`, angle: -90, position: 'insideLeft', offset: 0, style: { textAnchor: 'middle' } }} tick={{fontSize: 12}} tickFormatter={(value: number) => formatMagnitud(value)} />
                 <Tooltip formatter={(value: number) => [`${formatMagnitud(value)} ${unit}`, undefined]} labelFormatter={(label) => `Vc: ${label} m/min`} />
                 <Legend verticalAlign="top" height={36} />
                 <Line type="monotone" dataKey="lifeActual" name="Vida Competidor" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#ef4444' }} />

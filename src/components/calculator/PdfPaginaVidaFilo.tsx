@@ -41,7 +41,7 @@ export function PdfPaginaVidaFilo({ data, unit, vcActual, vcPremium, pageNumber,
             <LineChart width={650} height={400} data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 30 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis type="number" dataKey="speed" domain={['dataMin', 'dataMax']} label={{ value: 'Vc (m/min)', position: 'bottom', offset: 15 }} />
-              <YAxis width={80} label={{ value: `Vida del Filo (${unit})`, angle: -90, position: 'insideLeft', offset: 0 }} tickFormatter={yTickFormatter} />
+              <YAxis width={80} label={{ value: `Vida del Filo (${unit})`, angle: -90, position: 'insideLeft', offset: 0, style: { textAnchor: 'middle' } }} tickFormatter={yTickFormatter} />
               <Legend verticalAlign="top" height={36} />
               <Line type="monotone" dataKey="lifeActual" name="Vida Competidor" stroke="#ef4444" strokeWidth={3} dot={false} isAnimationActive={false} />
               <Line type="monotone" dataKey="lifePremium" name="Vida Secocut" stroke="#22c55e" strokeWidth={3} dot={false} isAnimationActive={false} />
