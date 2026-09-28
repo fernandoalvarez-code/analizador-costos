@@ -33,11 +33,14 @@ export function windowVidaFiloData<T extends { speed: number }>(data: T[], vcAct
 }
 
 // Usada por el PDF para decidir si agrega la página 3: solo si en los dos
-// puntos de referencia (Vc actual y Vc propuesta) la vida es un número > 0.
+// puntos de referencia (Vc actual y Vc propuesta) la vida es un número finito
+// > 0. lifePcs = lifeMins / tc puede dar Infinity con tc = 0, que un simple
+// "> 0" deja pasar.
 export function hasValidVidaFiloReference(data: VidaFiloChartPoint[], vcActual: number, vcPremium: number): boolean {
   const pointActual = data.find(d => d.speed === vcActual);
   const pointPremium = data.find(d => d.speed === vcPremium);
-  return !!pointActual && !!pointPremium && pointActual.lifeActual > 0 && pointPremium.lifePremium > 0;
+  const ok = (n: number) => Number.isFinite(n) && n > 0;
+  return !!pointActual && !!pointPremium && ok(pointActual.lifeActual) && ok(pointPremium.lifePremium);
 }
 
 // Extraído de taylor-curve/page.tsx y taylor-curve/[id]/edit/page.tsx, que tenían
