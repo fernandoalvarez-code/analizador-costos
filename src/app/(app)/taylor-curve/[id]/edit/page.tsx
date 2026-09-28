@@ -516,7 +516,7 @@ export default function EditTaylorCurvePage() {
   // para que compartan un solo eje Y.
   const lifeDataKeyActual = lifeModePremium === 'piezas' ? 'lifePcsActual' : 'lifeMinsActual';
   const lifeDataKeyPremium = lifeModePremium === 'piezas' ? 'lifePcsPremium' : 'lifeMinsPremium';
-  const lifeUnitLabel = lifeModePremium === 'piezas' ? (operationType === 'drilling' ? 'agujeros' : 'pzas/filo') : 'min';
+  const lifeUnitLabel = lifeModePremium === 'piezas' ? (operationType === 'drilling' ? 'agujeros' : 'pzas/filo') : 'minutos';
   const lifeChartData = curveDataInfo.data.map(d => ({ speed: d.speed, lifeActual: d[lifeDataKeyActual], lifePremium: d[lifeDataKeyPremium] }));
 
   if (isLoading) {
