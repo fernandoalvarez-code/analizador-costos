@@ -16,25 +16,38 @@ interface VidaFiloChartProps {
   vcPremium: number;
 }
 
+// Ventana del eje X: con n genérico por grupo ISO, la curva de Taylor no es
+// defendible lejos de las Vc que realmente se cargaron (a Vc bajas la vida
+// estimada explota y aplasta visualmente la zona útil, la que rodea las dos
+// velocidades que importan). Se recorta a [0.7×min(Vc), 1.4×max(Vc)]. Si falta
+// alguna de las dos Vc (0 o vacía → Number() da 0), se muestra el rango
+// completo como antes — no hay ventana que centrar.
+// Compartida entre la variante de pantalla (VidaFiloChart) y la de impresión
+// (PdfPaginaVidaFilo) para que las dos muestren exactamente lo mismo.
+export function windowVidaFiloData<T extends { speed: number }>(data: T[], vcActual: number, vcPremium: number): T[] {
+  const hasBothVc = vcActual > 0 && vcPremium > 0;
+  if (!hasBothVc) return data;
+  const windowMin = 0.7 * Math.min(vcActual, vcPremium);
+  const windowMax = 1.4 * Math.max(vcActual, vcPremium);
+  return data.filter(d => d.speed >= windowMin && d.speed <= windowMax);
+}
+
+// Usada por el PDF para decidir si agrega la página 3: solo si en los dos
+// puntos de referencia (Vc actual y Vc propuesta) la vida es un número > 0.
+export function hasValidVidaFiloReference(data: VidaFiloChartPoint[], vcActual: number, vcPremium: number): boolean {
+  const pointActual = data.find(d => d.speed === vcActual);
+  const pointPremium = data.find(d => d.speed === vcPremium);
+  return !!pointActual && !!pointPremium && pointActual.lifeActual > 0 && pointPremium.lifePremium > 0;
+}
+
 // Extraído de taylor-curve/page.tsx y taylor-curve/[id]/edit/page.tsx, que tenían
 // esta card duplicada de forma idéntica.
 export function VidaFiloChart({ data, unit, vcActual, vcPremium }: VidaFiloChartProps) {
-  // Ventana del eje X: con n genérico por grupo ISO, la curva de Taylor no es
-  // defendible lejos de las Vc que realmente se cargaron (a Vc bajas la vida
-  // estimada explota y aplasta visualmente la zona útil, la que rodea las dos
-  // velocidades que importan). Se recorta a [0.7×min(Vc), 1.4×max(Vc)]. Si falta
-  // alguna de las dos Vc (0 o vacía → Number() da 0), se muestra el rango
-  // completo como antes — no hay ventana que centrar.
-  const hasBothVc = vcActual > 0 && vcPremium > 0;
-  const windowMin = hasBothVc ? 0.7 * Math.min(vcActual, vcPremium) : null;
-  const windowMax = hasBothVc ? 1.4 * Math.max(vcActual, vcPremium) : null;
-  const chartData = hasBothVc
-    ? data.filter(d => d.speed >= windowMin! && d.speed <= windowMax!)
-    : data;
+  const chartData = windowVidaFiloData(data, vcActual, vcPremium);
 
-  // vcActual y vcPremium están siempre dentro de [windowMin, windowMax] por
-  // construcción (min ≤ vcActual, vcPremium ≤ max), así que los ReferenceDot
-  // quedan dentro de la ventana sin necesidad de un caso especial.
+  // vcActual y vcPremium están siempre dentro de la ventana por construcción
+  // (min ≤ vcActual, vcPremium ≤ max), así que los ReferenceDot quedan dentro
+  // sin necesidad de un caso especial.
   const pointActual = data.find(d => d.speed === vcActual);
   const pointPremium = data.find(d => d.speed === vcPremium);
 

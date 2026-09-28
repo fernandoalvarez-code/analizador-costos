@@ -20,7 +20,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { MonthlySavingsSummary } from '@/components/calculator/MonthlySavingsSummary';
-import { VidaFiloChart } from '@/components/calculator/VidaFiloChart';
+import { VidaFiloChart, hasValidVidaFiloReference } from '@/components/calculator/VidaFiloChart';
+import { PdfPaginaVidaFilo } from '@/components/calculator/PdfPaginaVidaFilo';
 import { useToast } from '@/hooks/use-toast';
 import { calcRPM, calcVf, calcTcDrilling } from '@/lib/machining-physics';
 import { MATERIALS, COOLANT_COLOR, DRILLING_ALERT_STYLES, type LifeMode } from '@/lib/taylor-data';
@@ -340,6 +341,14 @@ export default function EditTaylorCurvePage() {
         const imgData2 = canvas2.toDataURL('image/png');
         const imgHeight2 = (canvas2.height * a4Width) / canvas2.width;
         pdf.addImage(imgData2, 'PNG', 0, 0, a4Width, imgHeight2);
+        const elementoPagina3 = document.getElementById('pdf-pagina-3');
+        if (elementoPagina3) {
+          pdf.addPage();
+          const canvas3 = await html2canvas(elementoPagina3, { scale: 2, useCORS: true, allowTaint: true });
+          const imgData3 = canvas3.toDataURL('image/png');
+          const imgHeight3 = (canvas3.height * a4Width) / canvas3.width;
+          pdf.addImage(imgData3, 'PNG', 0, 0, a4Width, imgHeight3);
+        }
         const fileName = `Reporte_Secocut_Analisis.pdf`;
         if (action === 'blob') return pdf.output('blob');
         else if (action === 'download') pdf.save(fileName);
@@ -518,6 +527,10 @@ export default function EditTaylorCurvePage() {
   const lifeDataKeyPremium = lifeModePremium === 'piezas' ? 'lifePcsPremium' : 'lifeMinsPremium';
   const lifeUnitLabel = lifeModePremium === 'piezas' ? (operationType === 'drilling' ? 'agujeros' : 'pzas/filo') : 'minutos';
   const lifeChartData = curveDataInfo.data.map(d => ({ speed: d.speed, lifeActual: d[lifeDataKeyActual], lifePremium: d[lifeDataKeyPremium] }));
+  // Página 3 del PDF: solo si en los dos puntos de referencia (Vc actual y
+  // propuesta) la vida es un número > 0 — si no, el PDF sale de 2 páginas.
+  const hasPage3 = hasValidVidaFiloReference(lifeChartData, Number(vcCurrent), Number(vcPremium));
+  const totalPdfPages = hasPage3 ? 3 : 2;
 
   if (isLoading) {
     return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
@@ -1581,14 +1594,14 @@ export default function EditTaylorCurvePage() {
             </div>
 
             <div className="mt-auto pt-4 border-t border-slate-300 text-center text-[10px] text-slate-500">
-              Reporte de Análisis de Costos • Página 1 de 2
+              Reporte de Análisis de Costos • Página 1 de {totalPdfPages}
             </div>
           </div>
 
           <div id="pdf-pagina-2" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
               <div className="flex justify-between items-center mb-8">
                   <h2 className="text-xl font-black text-slate-800 uppercase">Análisis Gráfico</h2>
-                  <p className="text-sm font-bold text-slate-500">Página 2 de 2</p>
+                  <p className="text-sm font-bold text-slate-500">Página 2 de {totalPdfPages}</p>
               </div>
             <div>
               <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">2. Análisis de Curva de Costos</h2>
@@ -1658,6 +1671,16 @@ export default function EditTaylorCurvePage() {
               Documento generado automáticamente por Simulador de Competitividad Secocut SRL.
             </div>
           </div>
+          {hasPage3 && (
+            <PdfPaginaVidaFilo
+              data={lifeChartData}
+              unit={lifeUnitLabel}
+              vcActual={Number(vcCurrent)}
+              vcPremium={Number(vcPremium)}
+              pageNumber={3}
+              totalPages={totalPdfPages}
+            />
+          )}
         </div>
         <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', zIndex: -1 }}>
             <div id="survey-pdf-content" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
