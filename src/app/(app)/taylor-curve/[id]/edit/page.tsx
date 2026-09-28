@@ -333,21 +333,21 @@ export default function EditTaylorCurvePage() {
         const canvas1 = await html2canvas(elementoPagina1, { scale: 2, useCORS: true, allowTaint: true });
         const imgData1 = canvas1.toDataURL('image/png');
         const imgHeight1 = (canvas1.height * a4Width) / canvas1.width;
-        pdf.addImage(imgData1, 'PNG', 0, 0, a4Width, imgHeight1);
+        pdf.addImage(imgData1, 'PNG', 0, 0, a4Width, imgHeight1, undefined, 'FAST');
         pdf.addPage();
         const elementoPagina2 = document.getElementById('pdf-pagina-2');
         if (!elementoPagina2) throw new Error("Elemento 'pdf-pagina-2' no encontrado.");
         const canvas2 = await html2canvas(elementoPagina2, { scale: 2, useCORS: true, allowTaint: true });
         const imgData2 = canvas2.toDataURL('image/png');
         const imgHeight2 = (canvas2.height * a4Width) / canvas2.width;
-        pdf.addImage(imgData2, 'PNG', 0, 0, a4Width, imgHeight2);
+        pdf.addImage(imgData2, 'PNG', 0, 0, a4Width, imgHeight2, undefined, 'FAST');
         const elementoPagina3 = document.getElementById('pdf-pagina-3');
         if (elementoPagina3) {
           pdf.addPage();
           const canvas3 = await html2canvas(elementoPagina3, { scale: 2, useCORS: true, allowTaint: true });
           const imgData3 = canvas3.toDataURL('image/png');
           const imgHeight3 = (canvas3.height * a4Width) / canvas3.width;
-          pdf.addImage(imgData3, 'PNG', 0, 0, a4Width, imgHeight3);
+          pdf.addImage(imgData3, 'PNG', 0, 0, a4Width, imgHeight3, undefined, 'FAST');
         }
         const fileName = `Reporte_Secocut_Analisis.pdf`;
         if (action === 'blob') return pdf.output('blob');
