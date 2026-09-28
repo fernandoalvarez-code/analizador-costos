@@ -624,6 +624,17 @@ export default function TaylorCurvePage() {
 
   const unidadVidaUtil = lifeModePremium === 'minutos' ? 'minutos' : lifeModePremium === 'mm' ? 'mm/filo' : (operationType === 'drilling' ? 'agujeros' : 'pzas/filo');
 
+  // Gráfico "Vida del Filo vs. Vc": usa el mismo modo elegido en "Medir en" (Secocut)
+  // para decidir qué campo de la curva mostrar — piezas si lifeModePremium es 'piezas',
+  // minutos en caso contrario (no hay un campo en mm; 'mm' cae a minutos, la unidad
+  // base del Taylor inverso). Ambas líneas (competidor y Secocut) usan la misma unidad
+  // para que compartan un solo eje Y.
+  const lifeDataKeyActual = lifeModePremium === 'piezas' ? 'lifePcsActual' : 'lifeMinsActual';
+  const lifeDataKeyPremium = lifeModePremium === 'piezas' ? 'lifePcsPremium' : 'lifeMinsPremium';
+  const lifeUnitLabel = lifeModePremium === 'piezas' ? (operationType === 'drilling' ? 'agujeros' : 'pzas/filo') : 'min';
+  const lifePointCurrent = curveDataInfo.data.find(d => d.speed === Number(vcCurrent));
+  const lifePointPremium = curveDataInfo.data.find(d => d.speed === Number(vcPremium));
+
   if (isLoading) {
     return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
   }
@@ -1410,6 +1421,33 @@ export default function TaylorCurvePage() {
                         </CardContent>
                     </Card>
                 </div>
+              </div>
+            </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+            <CardHeader>
+                <CardTitle>Vida del Filo vs. Velocidad</CardTitle>
+                <CardDescription>
+                  Vida estimada según el modelo de Taylor (C = Vc·Tⁿ) a partir de tu dato de referencia — no es un valor medido ni un criterio de desgaste (VB).
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[320px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={curveDataInfo.data} margin={{ top: 5, right: 20, left: 10, bottom: 30 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis type="number" dataKey="speed" domain={['dataMin', 'dataMax']} label={{ value: 'Velocidad de Corte Vc (m/min)', position: 'bottom', offset: 15 }} tick={{fontSize: 12}} />
+                    <YAxis label={{ value: `Vida del Filo (${lifeUnitLabel})`, angle: -90, position: 'insideLeft', offset: 0 }} tick={{fontSize: 12}} />
+                    <Tooltip formatter={(value: number) => [`${Number(value).toFixed(lifeModePremium === 'piezas' ? 0 : 2)} ${lifeUnitLabel}`, undefined]} labelFormatter={(label) => `Vc: ${label} m/min`} />
+                    <Legend verticalAlign="top" height={36} />
+                    <Line type="monotone" dataKey={lifeDataKeyActual} name="Vida Competidor" stroke="#ef4444" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#ef4444' }} />
+                    <Line type="monotone" dataKey={lifeDataKeyPremium} name="Vida Secocut" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 6, fill: '#22c55e' }} />
+
+                    {lifePointCurrent && isFinite(Number(lifePointCurrent[lifeDataKeyActual])) && <ReferenceDot x={Number(vcCurrent)} y={lifePointCurrent[lifeDataKeyActual]} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />}
+                    {lifePointPremium && isFinite(Number(lifePointPremium[lifeDataKeyPremium])) && <ReferenceDot x={Number(vcPremium)} y={lifePointPremium[lifeDataKeyPremium]} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
         </Card>

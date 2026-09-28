@@ -165,7 +165,7 @@ export function useTaylorCurve(inputs: UseTaylorCurveInputs) {
 
     const calcCostWithBreakdown = (v: number, isPremium: boolean, feed: number) => {
         const C = isPremium ? constante_C_Seco : constante_C_Competidor;
-        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0, lifePcs: 0, hpReq: 0 };
+        if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0, lifeMins: 0, lifePcs: 0, hpReq: 0 };
 
         const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
         const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
@@ -207,7 +207,7 @@ export function useTaylorCurve(inputs: UseTaylorCurveInputs) {
             hpReq = ((q * kc) / 60000 * 1.341) / 0.8;
         }
 
-        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada, lifePcs: piecesPerToolLife, hpReq };
+        return { costoTotal, costoMaquina, costoInsertoPuro, costoParada, lifeMins, lifePcs: piecesPerToolLife, hpReq };
     };
 
     const calcEmpiricalCost = (tc: number, toolPrice: number, pcsPerEdge: number, z: number, edges: number) => {
@@ -260,6 +260,13 @@ export function useTaylorCurve(inputs: UseTaylorCurveInputs) {
           speed: v,
           costoActual: resActual.costoTotal,
           costoPremium: resPremium.costoTotal,
+          // Vida del filo derivada del mismo Taylor inverso que ya alimenta el costo
+          // (C = Vc·T^n despejado del dato de referencia que cargó el usuario), no
+          // un dato medido ni un criterio de desgaste (VB) — ver useTaylorCurve.
+          lifeMinsActual: resActual.lifeMins,
+          lifeMinsPremium: resPremium.lifeMins,
+          lifePcsActual: resActual.lifePcs,
+          lifePcsPremium: resPremium.lifePcs,
           desgloseActual: {
             maquina: resActual.costoMaquina,
             inserto: resActual.costoInsertoPuro,
