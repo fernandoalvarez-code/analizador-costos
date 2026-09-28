@@ -45,7 +45,7 @@ export function PdfPaginaVidaFilo({ data, unit, vcActual, vcPremium, pageNumber,
           </div>
           <div className="mt-3 text-[10px] text-slate-500 leading-snug">
             <p>Las vidas en las velocidades de trabajo corresponden a los rendimientos de referencia cargados en el análisis; el resto de la curva es una estimación según el modelo de Taylor (C = Vc·Tⁿ). No constituye una medición.</p>
-            <p className="mt-1">A mayor velocidad de corte, menor vida del filo. Los puntos marcan la condición actual (rojo) y la propuesta (verde).</p>
+            <p className="mt-1">A mayor velocidad de corte, menor vida del filo. Cada curva varía solo la velocidad y mantiene el avance cargado en su condición. Los puntos marcan la condición actual (rojo) y la propuesta (verde).</p>
           </div>
         </div>
         <div className="mt-auto pt-4 border-t border-slate-300 text-center text-[10px] text-slate-500">

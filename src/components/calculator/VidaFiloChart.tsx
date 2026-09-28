@@ -59,7 +59,7 @@ export function VidaFiloChart({ data, unit, vcActual, vcPremium }: VidaFiloChart
         <CardHeader>
             <CardTitle>Vida del Filo vs. Velocidad</CardTitle>
             <CardDescription>
-              Vida estimada según el modelo de Taylor (C = Vc·Tⁿ) a partir de tu dato de referencia — no es un valor medido ni un criterio de desgaste (VB).
+              Vida estimada según el modelo de Taylor (C = Vc·Tⁿ) a partir de tu dato de referencia — no es un valor medido ni un criterio de desgaste (VB). Cada curva varía solo la velocidad y mantiene el avance cargado en su condición.
             </CardDescription>
         </CardHeader>
         <CardContent>
