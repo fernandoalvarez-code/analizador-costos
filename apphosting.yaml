@@ -9,3 +9,5 @@ runConfig:
 env:
   - variable: OPENAI_API_KEY
     secret: OPENAI_API_KEY
+  - variable: ANTHROPIC_API_KEY
+    secret: ANTHROPIC_API_KEY
