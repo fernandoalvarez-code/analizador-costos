@@ -26,9 +26,12 @@ import { Switch } from '@/components/ui/switch';
 import { MonthlySavingsSummary } from '@/components/calculator/MonthlySavingsSummary';
 import { VidaFiloChart, hasValidVidaFiloReference } from '@/components/calculator/VidaFiloChart';
 import { PdfPaginaVidaFilo } from '@/components/calculator/PdfPaginaVidaFilo';
+import { PdfPaginaDashboard } from '@/components/calculator/PdfPaginaDashboard';
+import { PdfPaginaCurvaCostos } from '@/components/calculator/PdfPaginaCurvaCostos';
+import { PdfPaginaDesgloseTecnico } from '@/components/calculator/PdfPaginaDesgloseTecnico';
 import { MATERIALS, COOLANT_COLOR, DRILLING_ALERT_STYLES, type LifeMode } from '@/lib/taylor-data';
 import {
-  extraerRadioISO, auditarParametros, auditarAplicacion, calcularRaTeorico, calcularVf,
+  extraerRadioISO, auditarParametros, auditarAplicacion, calcularRaTeorico,
   calcularVfLineal, calcularQ, calcularEspesorViruta, getDrillingVcRange, obtenerAnguloTexto,
   getLoadColor, getHmColorClass, calculateIncidence,
 } from '@/lib/taylor-helpers';
@@ -359,13 +362,23 @@ export default function TaylorCurvePage() {
         const imgHeight2 = (canvas2.height * a4Width) / canvas2.width;
         pdf.addImage(imgData2, 'PNG', 0, 0, a4Width, imgHeight2, undefined, 'FAST');
 
+        pdf.addPage();
+
         const elementoPagina3 = document.getElementById('pdf-pagina-3');
-        if (elementoPagina3) {
+        if (!elementoPagina3) throw new Error("Elemento 'pdf-pagina-3' no encontrado.");
+
+        const canvas3 = await html2canvas(elementoPagina3, { scale: 2, useCORS: true, allowTaint: true });
+        const imgData3 = canvas3.toDataURL('image/png');
+        const imgHeight3 = (canvas3.height * a4Width) / canvas3.width;
+        pdf.addImage(imgData3, 'PNG', 0, 0, a4Width, imgHeight3, undefined, 'FAST');
+
+        const elementoPagina4 = document.getElementById('pdf-pagina-4');
+        if (elementoPagina4) {
           pdf.addPage();
-          const canvas3 = await html2canvas(elementoPagina3, { scale: 2, useCORS: true, allowTaint: true });
-          const imgData3 = canvas3.toDataURL('image/png');
-          const imgHeight3 = (canvas3.height * a4Width) / canvas3.width;
-          pdf.addImage(imgData3, 'PNG', 0, 0, a4Width, imgHeight3, undefined, 'FAST');
+          const canvas4 = await html2canvas(elementoPagina4, { scale: 2, useCORS: true, allowTaint: true });
+          const imgData4 = canvas4.toDataURL('image/png');
+          const imgHeight4 = (canvas4.height * a4Width) / canvas4.width;
+          pdf.addImage(imgData4, 'PNG', 0, 0, a4Width, imgHeight4, undefined, 'FAST');
         }
 
         const fileName = `Reporte_Secocut_Analisis.pdf`;
@@ -647,7 +660,7 @@ export default function TaylorCurvePage() {
   // Página 3 del PDF: solo si en los dos puntos de referencia (Vc actual y
   // propuesta) la vida es un número > 0 — si no, el PDF sale de 2 páginas.
   const hasPage3 = hasValidVidaFiloReference(lifeChartData, Number(vcCurrent), Number(vcPremium));
-  const totalPdfPages = hasPage3 ? 3 : 2;
+  const totalPdfPages = hasPage3 ? 4 : 3;
 
   if (isLoading) {
     return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
@@ -1671,288 +1684,69 @@ export default function TaylorCurvePage() {
         </Dialog>
 
         <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', zIndex: -1 }}>
-          <div id="pdf-pagina-1" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
-            
-            <div className="relative mb-8 pb-4 border-b-2 border-slate-800">
-              <div className="flex justify-between items-start mb-8 h-16">
-                {logos.company ? <img src={logos.company} alt="Logo Empresa" crossOrigin="anonymous" className="h-full object-contain max-w-[250px] object-left" /> : <div className="h-12 flex items-center justify-center bg-blue-600 text-white font-black px-4 rounded text-lg">SECOCUT</div>}
-                
-                {logos.brand ? <img src={logos.brand} alt="Logo Marca" crossOrigin="anonymous" className="h-full object-contain max-w-[200px] object-right" /> : <div className="h-12 flex items-center justify-center text-slate-800 font-black text-3xl">Seco</div>}
-              </div>
-
-              <div className="text-center mb-10 mt-4">
-                <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tight">Análisis de Curva de Costos</h1>
-              </div>
-
-              <div className="flex justify-between items-end">
-                <h2 className="text-2xl font-bold text-blue-600">{saveClientName || pieceName || 'Reporte de Análisis'}</h2>
-                <div className="text-right">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Informe Técnico</p>
-                  <p className="text-lg font-black text-slate-800">{new Date().toLocaleDateString('es-ES')}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">1. Condiciones de Trabajo Evaluadas</h2>
-              <table className="w-full text-xs text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-800 text-white">
-                    <th className="p-2 border border-slate-700">Parámetro</th>
-                    <th className="p-2 border border-slate-700 text-center">Condición Actual (Competidor)</th>
-                    <th className="p-2 border border-slate-700 text-center">Propuesta (Secocut)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td className="p-2 border border-slate-300 font-bold bg-slate-50">Herramienta</td>
-                    <td className="p-2 border border-slate-300 text-center">{toolNameCurrent || 'No especificada'}</td>
-                    <td className="p-2 border border-slate-300 font-bold text-green-700 bg-green-50 text-center">{toolNamePremium || 'No especificada'}</td>
-                  </tr>
-                  {(operationType === 'turning' || operationType === 'milling') && (
-                    <tr>
-                      <td className="p-2 border border-slate-300 font-bold">Incidencia (Holgura)</td>
-                      <td className="p-2 border border-slate-300 text-center">{obtenerAnguloTexto(toolNameCurrent)}</td>
-                      <td className="p-2 border border-slate-300 text-center bg-green-50 font-medium">{obtenerAnguloTexto(toolNamePremium)}</td>
-                    </tr>
-                  )}
-                  <tr>
-                    <td className="p-2 border border-slate-300 font-bold">Precio Inserto</td>
-                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(Number(toolCostCurrent))}</td>
-                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(Number(toolCostPremium))}</td>
-                  </tr>
-                  {(operationType === 'milling' || operationType === 'drilling') && (
-                    <tr>
-                      <td className="p-2 border border-slate-300 font-bold">{operationType === 'drilling' ? 'Diámetro de Broca (Dc)' : 'Diámetro Fresa (Dc)'}</td>
-                      <td className="p-2 border border-slate-300 text-center">{dcCurrent} mm</td>
-                      <td className="p-2 border border-slate-300 text-center font-bold text-green-700">{dcPremium} mm</td>
-                    </tr>
-                  )}
-                  <tr>
-                    <td className="p-2 border border-slate-300 font-bold">
-                      {operationType === 'drilling' ? 'Prof. del Agujero (L)' : 'Profundidad de Corte (ap)'}
-                    </td>
-                    <td className="p-2 border border-slate-300 text-center">{operationType === 'drilling' ? profundidadAgujero : apCurrent} mm</td>
-                    <td className="p-2 border border-slate-300 text-center text-green-700">{operationType === 'drilling' ? profundidadAgujero : apPremium} mm</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 border border-slate-300 font-bold">Tiempo de Corte (min)</td>
-                    <td className="p-2 border border-slate-300 text-center">{formatoMinutosYSegundos(Number(tcCurrent))}</td>
-                    <td className="p-2 border border-slate-300 text-center">{formatoMinutosYSegundos(Number(tcPremiumInput))}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 border border-slate-300 font-bold">Velocidad de Corte (Vc)</td>
-                    <td className="p-2 border border-slate-300 text-center">{vcCurrent} m/min</td>
-                    <td className="p-2 border border-slate-300 text-center">{vcPremium} m/min</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 border border-slate-300 font-bold">Avance ({operationType === 'milling' ? 'fz' : 'fn'})</td>
-                    <td className="p-2 border border-slate-300 text-center">{feedCurrent} {operationType === 'milling' ? 'mm/z' : 'mm/rev'}</td>
-                    <td className="p-2 border border-slate-300 text-center text-green-700 font-bold">{feedPremium} {operationType === 'milling' ? 'mm/z' : 'mm/rev'}</td>
-                  </tr>
-                  {operationType === 'drilling' && (
-                    <tr className="bg-green-50">
-                      <td className="font-bold p-2 text-gray-800 border border-slate-300">Velocidad de Penetración (Vf)</td>
-                      <td className="p-2 text-center border border-slate-300">{calcularVf(feedCurrent, vcCurrent, dcCurrent).toFixed(0)} mm/min</td>
-                      <td className="p-2 text-center text-green-800 font-black border border-slate-300">
-                        {calcularVf(feedPremium, vcPremium, dcPremium).toFixed(0)} mm/min
-                      </td>
-                    </tr>
-                  )}
-                  <tr>
-                    <td className="p-2 border border-slate-300 font-bold">Rendimiento Estimado</td>
-                    <td className="p-2 border border-slate-300 text-center">{pcsCurrent} {lifeModeCurrent === 'minutos' ? 'minutos' : lifeModeCurrent === 'mm' ? 'mm' : (operationType === 'drilling' ? 'agujeros' : 'pzs')}/filo</td>
-                    <td className="p-2 border border-slate-300 text-center text-green-700 font-bold">{pcsPremium} {lifeModePremium === 'minutos' ? 'minutos' : lifeModePremium === 'mm' ? 'mm' : (operationType === 'drilling' ? 'agujeros' : 'pzs')}/filo</td>
-                  </tr>
-                   {operationType !== 'drilling' && (
-                    <tr className="bg-slate-100">
-                      <td className="p-2 border border-slate-300 font-bold">Rugosidad Teórica (Ra)</td>
-                      <td className="p-2 border border-slate-300 text-center">
-                          {`${raActual ?? 'N/A'} µm`}
-                      </td>
-                      <td className="p-2 border border-slate-300 text-center bg-slate-50 font-medium">
-                          {`${raPropuesta ?? 'N/A'} µm`}
-                      </td>
-                    </tr>
-                  )}
-                  <tr>
-                    <td className="p-2 border border-slate-300 font-bold">Consumo de Motor</td>
-                    <td className="p-2 border border-slate-300 text-center">{curveDataInfo.hpCurrent.toFixed(1)} HP ({curveDataInfo.loadCurrent.toFixed(1)}%)</td>
-                    <td className="p-2 border border-slate-300 text-center">{curveDataInfo.hpPremium.toFixed(1)} HP ({curveDataInfo.loadPremium.toFixed(1)}%)</td>
-                  </tr>
-                  <tr className="bg-slate-50">
-                    <td className="p-2 border border-slate-300 font-black text-slate-800">Costo Real por Pieza</td>
-                    <td className="p-2 border border-slate-300 font-black text-red-600 text-center text-lg">{isFinite(curveDataInfo.actualCostCurrent) ? formatCurrency(curveDataInfo.actualCostCurrent) : 'N/A'}</td>
-                    <td className="p-2 border border-slate-300 text-center">
-                      {isFinite(curveDataInfo.actualCostPremium) ? (
-                          <div className="flex items-center gap-2 justify-center">
-                              <span className="font-black text-green-800 text-xl">
-                                {formatCurrency(curveDataInfo.actualCostPremium)}
-                              </span>
-                          </div>
-                      ) : (
-                          'N/A'
-                      )}
-                    </td>
-                  </tr>
-                  <tr className="text-[10px] text-slate-500 bg-white">
-                    <td className="p-2 border border-slate-300 pl-6">↳ Costo de Máquina</td>
-                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(curveDataInfo.desgloseActualReal.maquina)}</td>
-                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(curveDataInfo.desglosePremiumReal.maquina)}</td>
-                  </tr>
-                  <tr className="text-[10px] text-slate-500 bg-white">
-                    <td className="p-2 border border-slate-300 pl-6">↳ Costo de Inserto Puro</td>
-                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(curveDataInfo.desgloseActualReal.inserto)}</td>
-                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(curveDataInfo.desglosePremiumReal.inserto)}</td>
-                  </tr>
-                  <tr className="text-[10px] text-slate-500 bg-white">
-                    <td className="p-2 border border-slate-300 pl-6">↳ Costo de Paradas</td>
-                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(curveDataInfo.desgloseActualReal.parada)}</td>
-                    <td className="p-2 border border-slate-300 text-center">{formatCurrency(curveDataInfo.desglosePremiumReal.parada)}</td>
-                  </tr>
-                  <tr className="bg-amber-50/40">
-                    <td className="p-2 border border-slate-300 font-bold text-amber-900">📦 Consumo de Insertos (Lote)</td>
-                    <td className="p-2 border border-slate-300 text-center font-black text-amber-700">
-                      {formatLoteConsumo(curveDataInfo.desgloseActualReal?.loteContinuo || 0)} unds. <span className="font-normal text-[9px] text-slate-500">(≈ {(curveDataInfo.desgloseActualReal?.lote || 0).toFixed(0)} a comprar)</span>
-                    </td>
-                    <td className="p-2 border border-slate-300 text-center font-black text-emerald-700">
-                      {formatLoteConsumo(curveDataInfo.desglosePremiumReal?.loteContinuo || 0)} unds. <span className="font-normal text-[9px] text-slate-500">(≈ {(curveDataInfo.desglosePremiumReal?.lote || 0).toFixed(0)} a comprar)</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div className={`border-2 rounded-xl p-6 text-center mb-8 relative overflow-hidden ${curveDataInfo.monthlySavings >= 0 ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-500'}`}>
-              <div className={`absolute top-0 left-0 w-full h-2 ${curveDataInfo.monthlySavings >= 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <p className={`text-sm font-bold uppercase tracking-widest mb-2 mt-2 ${curveDataInfo.monthlySavings >= 0 ? 'text-green-700' : 'text-red-700'}`}>Impacto Mensual Proyectado</p>
-              <p className={`text-5xl font-black mb-2 ${curveDataInfo.monthlySavings >= 0 ? 'text-green-800' : 'text-red-800'}`}>
-                {curveDataInfo.monthlySavings >= 0 ? '' : '-'}{formatCurrency(Math.abs(curveDataInfo.monthlySavings))}
-              </p>
-              <div className={`inline-block px-4 py-2 rounded-full mt-2 ${curveDataInfo.monthlySavings >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-                <p className={`text-sm font-bold ${curveDataInfo.monthlySavings >= 0 ? 'text-green-800' : 'text-red-800'}`}>
-                  Basado en {formatNumber(Number(monthlyProduction))} piezas/mes • {curveDataInfo.monthlySavings >= 0 ? 'Ahorro' : 'Costo Extra'} unitario: {formatCurrency(Math.abs(curveDataInfo.realAbsoluteSavings))}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-auto pt-4 border-t border-slate-300 text-center text-[10px] text-slate-500">
-              Reporte de Análisis de Costos • Página 1 de {totalPdfPages}
-            </div>
-          </div>
-
-          <div id="pdf-pagina-2" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
-              <div className="flex justify-between items-center mb-8">
-                  <h2 className="text-xl font-black text-slate-800 uppercase">Análisis Gráfico</h2>
-                  <p className="text-sm font-bold text-slate-500">Página 2 de {totalPdfPages}</p>
-              </div>
-            <div>
-              <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">2. Análisis de Curva de Costos</h2>
-              <div className="w-full h-[300px] border border-slate-200 p-2 bg-white">
-                <LineChart width={650} height={280} data={curveDataInfo.data}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="speed" label={{ value: 'Vc (m/min)', position: 'bottom', offset: -5 }} />
-                  <YAxis label={{ value: 'Costo USD', angle: -90, position: 'insideLeft' }} />
-                  <Legend verticalAlign="top" height={36} />
-                  <Line type="monotone" dataKey="costoActual" name="Inserto Competidor" stroke="#ef4444" strokeWidth={3} dot={false} />
-                  <Line type="monotone" dataKey="costoPremium" name="Propuesta (Secocut)" stroke="#22c55e" strokeWidth={3} dot={false} />
-                  {isFinite(curveDataInfo.actualCostCurrent) && <ReferenceDot x={Number(vcCurrent)} y={curveDataInfo.actualCostCurrent} r={6} fill="#ef4444" stroke="white" strokeWidth={2} isFront={true} />}
-                  {isFinite(curveDataInfo.actualCostPremium) && <ReferenceDot x={Number(vcPremium)} y={curveDataInfo.actualCostPremium} r={6} fill="#22c55e" stroke="white" strokeWidth={2} isFront={true} />}
-                  {isStressTestActive && curveDataInfo.limiteTermicoActual && (
-                    <ReferenceLine x={curveDataInfo.limiteTermicoActual} stroke="#ea580c" strokeWidth={1} strokeDasharray="4 4" label={{ position: 'insideTopLeft', value: '⚠️ Falla Térmica Compe.', fill: '#ea580c', fontSize: 9 }} />
-                  )}
-                </LineChart>
-              </div>
-            </div>
-            {/* Impacto Económico Total — mismo panel que la app (sin recalcular) */}
-            {isFinite(curveDataInfo.monthlySavings) && Number(monthlyProduction) > 0 && (
-              <MonthlySavingsSummary
-                disableAnimation
-                compact
-                monthlyVolume={Number(monthlyProduction)}
-                compToolCost={curveDataInfo.desgloseActualReal.inserto}
-                secoToolCost={curveDataInfo.desglosePremiumReal.inserto}
-                compMachineCost={curveDataInfo.desgloseActualReal.maquina + curveDataInfo.desgloseActualReal.parada}
-                secoMachineCost={curveDataInfo.desglosePremiumReal.maquina + curveDataInfo.desglosePremiumReal.parada}
-                compTime={Number(tcCurrent)}
-                secoTime={Number(tcPremiumInput)}
-                toolChangeTime={Number(toolChangeTime) || 0}
-                compPiecesPerEdge={curveDataInfo.effectivePcsCurrent}
-                secoPiecesPerEdge={curveDataInfo.effectivePcsPremium}
-                horasPorTurno={Number(horasPorTurno) || 8}
-                turnosPorDia={Number(turnosPorDia) || 1}
-              />
-            )}
-
-            {isFinite(curveDataInfo.monthlySavings) && Number(monthlyProduction) > 0 && (
-              <div className="mt-8">
-                <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">
-                  3. Proyección de Ahorro Mensual (Base: {formatNumber(Number(monthlyProduction))} piezas)
-                </h2>
-                
-                {(() => {
-                  const vol = Number(monthlyProduction) || 0;
-                  const compTool = curveDataInfo.desgloseActualReal.inserto * vol;
-                  const secoTool = curveDataInfo.desglosePremiumReal.inserto * vol;
-                  const toolSavings = compTool - secoTool;
-
-                  const compMach = (curveDataInfo.desgloseActualReal.maquina + curveDataInfo.desgloseActualReal.parada) * vol;
-                  const secoMach = (curveDataInfo.desglosePremiumReal.maquina + curveDataInfo.desglosePremiumReal.parada) * vol;
-                  const machineSavings = compMach - secoMach;
-
-                  const netSavings = toolSavings + machineSavings;
-
-                  return (
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="p-3 border border-slate-200 rounded-lg bg-slate-50">
-                        <p className="text-xs text-slate-500 font-bold mb-1">1. Impacto en Compras</p>
-                        <p className="text-[9px] text-slate-400 leading-tight mb-2">Diferencia en gasto de insertos</p>
-                        <p className={`text-xl font-black tracking-tight ${toolSavings >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                          {toolSavings > 0 ? '+' : ''}{formatCurrency(toolSavings)}
-                        </p>
-                      </div>
-                      <div className="p-3 border border-slate-200 rounded-lg bg-slate-50">
-                        <p className="text-xs text-slate-500 font-bold mb-1">2. Impacto en Producción</p>
-                        <p className="text-[9px] text-slate-400 leading-tight mb-2">Ahorro en horas máquina y operador</p>
-                        <p className={`text-xl font-black tracking-tight ${machineSavings >= 0 ? 'text-emerald-600' : 'text-slate-700'}`}>
-                          {machineSavings > 0 ? '+' : ''}{formatCurrency(machineSavings)}
-                        </p>
-                      </div>
-                      <div className={`p-3 border-2 rounded-lg ${netSavings >= 0 ? 'border-emerald-500 bg-emerald-50' : 'border-red-500 bg-red-50'}`}>
-                        <p className={`text-xs font-bold mb-1 ${netSavings >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>3. AHORRO NETO TOTAL</p>
-                        <p className={`text-[9px] leading-tight mb-2 ${netSavings >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>Impacto financiero final</p>
-                        <p className={`text-2xl font-black tracking-tight ${netSavings >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-                          {netSavings > 0 ? '+' : ''}{formatCurrency(netSavings)}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })()}
-                {capacityCheck && (
-                  <div className="mt-2 flex items-center justify-between px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
-                    <span className="text-[10px] text-slate-600">
-                      Capacidad requerida: <span className="text-red-600 font-bold">{capacityCheck.hrsComp.toLocaleString()} hs/mes</span> (actual) → <span className="text-green-700 font-bold">{capacityCheck.hrsSeco.toLocaleString()} hs/mes</span> (Secocut)
-                    </span>
-                    {capacityCheck.hrsLiberadas > 0 ? (
-                      <span className="text-xs font-black text-emerald-700">⚡ {capacityCheck.hrsLiberadas.toLocaleString()} hs máquina liberadas/mes</span>
-                    ) : (
-                      <span className="text-[10px] text-slate-400">Sin variación de horas máquina</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="mt-auto pt-4 border-t border-slate-300 text-center text-[10px] text-slate-500">
-              Documento generado automáticamente por Simulador de Competitividad Secocut SRL.
-            </div>
-          </div>
+          <PdfPaginaDashboard
+            logos={logos}
+            saveClientName={saveClientName}
+            pieceName={pieceName}
+            curveDataInfo={curveDataInfo}
+            monthlyProduction={monthlyProduction}
+            tcCurrent={tcCurrent}
+            tcPremiumInput={tcPremiumInput}
+            toolChangeTime={toolChangeTime}
+            horasPorTurno={horasPorTurno}
+            turnosPorDia={turnosPorDia}
+            capacityCheck={capacityCheck}
+            pageNumber={1}
+            totalPages={totalPdfPages}
+          />
+          <PdfPaginaCurvaCostos
+            data={curveDataInfo.data}
+            vcActual={Number(vcCurrent)}
+            vcPremium={Number(vcPremium)}
+            actualCostCurrent={curveDataInfo.actualCostCurrent}
+            actualCostPremium={curveDataInfo.actualCostPremium}
+            isStressTestActive={isStressTestActive}
+            limiteTermicoActual={curveDataInfo.limiteTermicoActual}
+            logoUrl={logos.company}
+            pageNumber={2}
+            totalPages={totalPdfPages}
+          />
+          <PdfPaginaDesgloseTecnico
+            operationType={operationType}
+            toolNameCurrent={toolNameCurrent}
+            toolNamePremium={toolNamePremium}
+            toolCostCurrent={toolCostCurrent}
+            toolCostPremium={toolCostPremium}
+            dcCurrent={dcCurrent}
+            dcPremium={dcPremium}
+            apCurrent={apCurrent}
+            apPremium={apPremium}
+            profundidadAgujero={profundidadAgujero}
+            tcCurrent={tcCurrent}
+            tcPremiumInput={tcPremiumInput}
+            vcCurrent={vcCurrent}
+            vcPremium={vcPremium}
+            feedCurrent={feedCurrent}
+            feedPremium={feedPremium}
+            pcsCurrent={pcsCurrent}
+            pcsPremium={pcsPremium}
+            lifeModeCurrent={lifeModeCurrent}
+            lifeModePremium={lifeModePremium}
+            raActual={raActual}
+            raPropuesta={raPropuesta}
+            curveDataInfo={curveDataInfo}
+            logoUrl={logos.company}
+            pageNumber={3}
+            totalPages={totalPdfPages}
+          />
           {hasPage3 && (
             <PdfPaginaVidaFilo
               data={lifeChartData}
               unit={lifeUnitLabel}
               vcActual={Number(vcCurrent)}
               vcPremium={Number(vcPremium)}
-              pageNumber={3}
+              logoUrl={logos.company}
+              pageNumber={4}
               totalPages={totalPdfPages}
             />
           )}

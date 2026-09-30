@@ -2,23 +2,25 @@ import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, ReferenceDot } from 'recharts';
 import { formatMagnitud } from '@/lib/formatters';
 import { windowVidaFiloData, type VidaFiloChartPoint } from './VidaFiloChart';
+import { PdfLightHeader } from './PdfLightHeader';
+import { PdfFooter } from './PdfFooter';
 
 interface PdfPaginaVidaFiloProps {
   data: VidaFiloChartPoint[];
   unit: string;
   vcActual: number;
   vcPremium: number;
+  logoUrl: string;
   pageNumber: number;
   totalPages: number;
 }
 
-// Página 3 del PDF exportable: mismo contenedor, header y footer que la
-// página 2 (#pdf-pagina-2), capturada por html2canvas igual que las otras.
-// El gráfico usa el mismo patrón que el de costos de la página 2: tamaño fijo
-// en píxeles (no ResponsiveContainer, que puede reportar ancho 0 en un
-// contenedor fuera de pantalla) y sin animación, para que html2canvas no
-// capture el dibujo a mitad de camino (opacity:0 en el trazo).
-export function PdfPaginaVidaFilo({ data, unit, vcActual, vcPremium, pageNumber, totalPages }: PdfPaginaVidaFiloProps) {
+// Página 4 del PDF exportable: mismo contenedor que el resto, capturada por
+// html2canvas igual que las otras. El gráfico usa el mismo patrón que el de
+// costos: tamaño fijo en píxeles (no ResponsiveContainer, que puede reportar
+// ancho 0 en un contenedor fuera de pantalla) y sin animación, para que
+// html2canvas no capture el dibujo a mitad de camino (opacity:0 en el trazo).
+export function PdfPaginaVidaFilo({ data, unit, vcActual, vcPremium, logoUrl, pageNumber, totalPages }: PdfPaginaVidaFiloProps) {
   const chartData = windowVidaFiloData(data, vcActual, vcPremium);
   const pointActual = data.find(d => d.speed === vcActual);
   const pointPremium = data.find(d => d.speed === vcPremium);
@@ -30,11 +32,8 @@ export function PdfPaginaVidaFilo({ data, unit, vcActual, vcPremium, pageNumber,
   const yTickFormatter = (value: number) => maxLifeValue >= 20 ? `${Math.round(value)}` : formatMagnitud(value);
 
   return (
-    <div id="pdf-pagina-3" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
-        <div className="flex justify-between items-center mb-8">
-            <h2 className="text-xl font-black text-slate-800 uppercase">Análisis Gráfico</h2>
-            <p className="text-sm font-bold text-slate-500">Página {pageNumber} de {totalPages}</p>
-        </div>
+    <div id="pdf-pagina-4" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
+        <PdfLightHeader logoUrl={logoUrl} title="Análisis Gráfico" pageNumber={pageNumber} totalPages={totalPages} />
         <div>
           <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-3 border-l-4 border-blue-600">4. Vida del Filo vs. Velocidad</h2>
           <div className="w-full h-[420px] border border-slate-200 p-2 bg-white">
@@ -76,9 +75,7 @@ export function PdfPaginaVidaFilo({ data, unit, vcActual, vcPremium, pageNumber,
             <p className="mt-1">A mayor velocidad de corte, menor vida del filo. Cada curva varía solo la velocidad y mantiene el avance cargado en su condición. Los puntos marcan la condición actual (rojo) y la propuesta (verde).</p>
           </div>
         </div>
-        <div className="mt-auto pt-4 border-t border-slate-300 text-center text-[10px] text-slate-500">
-          Documento generado automáticamente por Simulador de Competitividad Secocut SRL.
-        </div>
+        <PdfFooter showAiDisclaimer />
     </div>
   );
 }
