@@ -52,7 +52,9 @@ service cloud.firestore {
     }
 
     match /notifications/{notificationId} {
-      allow read: if request.auth != null;
+      // Cada notificación va a un destinatario (recipientId = dueño del caso); los admins leen todas.
+      allow read: if request.auth != null
+                  && (resource.data.recipientId == request.auth.uid || isRequestingUserAdmin());
       allow create: if isRequestingUserAdmin();
       allow update, delete: if isRequestingUserAdmin();
     }

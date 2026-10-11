@@ -9,6 +9,7 @@ import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 type CaseData = {
   id: string;
   name: string;
+  userId?: string;
   status: 'Pendiente' | 'Exitoso' | 'No Exitoso';
   dateCreated: { seconds: number; nanoseconds: number };
 };
@@ -55,6 +56,8 @@ const StaleCaseChecker = () => {
               title: 'Caso Pendiente de Seguimiento',
               message: `El caso "${caseData.name}" lleva más de 30 días pendiente.`,
               caseId: caseData.id,
+              // Destinatario: el dueño del caso (los admins leen todas por rol).
+              recipientId: caseData.userId ?? null,
               createdAt: serverTimestamp(),
               readBy: [],
             };
