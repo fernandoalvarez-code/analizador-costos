@@ -1,28 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeAdminApp } from '@/firebase/auth/admin-app';
-import { getAuth } from 'firebase-admin/auth';
+import { requireSecucutUser } from '@/lib/server/auth-guards';
 import { getFirestore } from 'firebase-admin/firestore';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  // Auth
-  const token = (req.headers.get('authorization') ?? '').replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-
-  let userEmail = '';
-  try {
-    const adminApp = await initializeAdminApp();
-    const decoded = await getAuth(adminApp).verifyIdToken(token);
-    userEmail = decoded.email ?? '';
-  } catch {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  }
-
-  if (!userEmail.endsWith('@secocut.com')) {
-    return NextResponse.json({ error: 'Sin permisos' }, { status: 403 });
-  }
+  const auth = await requireSecucutUser(req);
+  if (!auth.ok) return auth.response;
+  const userEmail = auth.user.email;
 
   const { url, category, tags, title } = await req.json();
 
