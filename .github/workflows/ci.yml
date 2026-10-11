@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'feat/**', 'fix/**']
   pull_request:
     branches: [main]
 
@@ -26,7 +26,7 @@ jobs:
         run: npx tsc --noEmit
 
       # Valida la física de mecanizado contra los valores de catálogo Seco.
-      # Es el único test del proyecto y hasta ahora solo corría a mano.
+      # Es un script de tsx con su propia verificación (no usa vitest).
       - name: Test de física
         run: npx tsx src/lib/machining-physics.test.ts
 
