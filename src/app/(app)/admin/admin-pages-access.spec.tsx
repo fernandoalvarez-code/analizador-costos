@@ -26,11 +26,17 @@ const users = {
   secocutSinVerificar: { uid: 'u2', email: 'x@secocut.com', emailVerified: false },
   gmail: { uid: 'u3', email: 'cliente@gmail.com', emailVerified: true },
 };
+// Agente con todos los campos que lee la pantalla (knowledgeCategories, etc.).
+const agent = {
+  id: 'a1', name: 'Técnico', slug: 'tecnico', description: 'Agente técnico', systemPrompt: '...', tone: 'tecnico' as const,
+  color: '#2563eb', icon: 'Wrench', knowledgeCategories: ['catalogo'], isActive: true,
+  createdAt: new Date('2026-01-01'), updatedAt: new Date('2026-01-01'), createdBy: 'admin@secocut.com',
+};
 const settle = () => new Promise((r) => setTimeout(r, 20));
 
 beforeEach(() => {
   vi.clearAllMocks();
-  listAgents.mockResolvedValue([{ id: 'a1', slug: 'tecnico', name: 'Técnico', isActive: true }]);
+  listAgents.mockResolvedValue([agent]);
   listUserSessions.mockResolvedValue([]);
   listKnowledgeEntries.mockResolvedValue([]);
 });
