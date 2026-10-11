@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { requireVerifiedUser } from '@/lib/server/auth-guards';
+import { enforceRateLimit } from '@/lib/server/rate-limit';
 
 // --- DEFINICIONES DE TIPO PARA ROBUSTEZ ---
 interface ScreenContext {
@@ -39,6 +40,8 @@ export async function POST(req: Request) {
   try {
     const auth = await requireVerifiedUser(req);
     if (!auth.ok) return auth.response;
+    const limit = await enforceRateLimit('chat', auth.user.uid);
+    if (!limit.ok) return limit.response;
 
     // Inicializar el cliente de OpenAI DENTRO de la petición para evitar
     // crashes al momento de construir/desplegar la aplicación en la nube

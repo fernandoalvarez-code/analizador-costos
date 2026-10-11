@@ -73,6 +73,11 @@ service cloud.firestore {
       allow write: if isSecucutEmail() || isRequestingUserAdmin();
     }
 
+    // Contadores de uso diario de las rutas /api: solo los escribe el servidor (Admin SDK).
+    match /rate_limits/{counterId} {
+      allow read, write: if false;
+    }
+
     match /chat_sessions/{sessionId} {
       allow create: if request.auth != null;
       allow read, update, delete: if request.auth != null &&

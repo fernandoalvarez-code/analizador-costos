@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { requireVerifiedUser } from '@/lib/server/auth-guards';
+import { enforceRateLimit } from '@/lib/server/rate-limit';
 
 export async function POST(req: Request) {
   try {
     const auth = await requireVerifiedUser(req);
     if (!auth.ok) return auth.response;
+    const limit = await enforceRateLimit('suggest-cutting-data', auth.user.uid);
+    if (!limit.ok) return limit.response;
 
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,

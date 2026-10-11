@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSecucutUser } from '@/lib/server/auth-guards';
+import { enforceRateLimit } from '@/lib/server/rate-limit';
 import {
   getAgentBySlugAdmin as getAgentBySlug,
   searchKnowledgeByTagsAdmin as searchKnowledgeByTags,
@@ -38,6 +39,9 @@ export async function POST(req: NextRequest) {
   if (!auth.ok) return auth.response;
   const uid = auth.user.uid;
   const userEmail = auth.user.email;
+
+  const limit = await enforceRateLimit('agents-chat', uid);
+  if (!limit.ok) return limit.response;
 
   // ── Body ──────────────────────────────────────────────
   const body = await req.json();
