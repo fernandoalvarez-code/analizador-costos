@@ -19,11 +19,19 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get: if request.auth != null;
+      // Cada usuario lee su propio perfil; un admin lee cualquiera. (Ninguna pantalla lee el perfil de otro.)
+      allow get: if isOwner(userId) || isRequestingUserAdmin();
       allow list: if isRequestingUserAdmin();
-      allow create: if isOwner(userId) && request.resource.data.role == 'user';
+      // Solo se crea el propio perfil, con rol 'user' y únicamente estos campos.
+      allow create: if isOwner(userId)
+                    && request.resource.data.role == 'user'
+                    && request.resource.data.keys().hasOnly(['id', 'email', 'role', 'name']);
+      // Un admin puede cambiar el rol de OTRO usuario (solo 'user' o 'admin'), nunca el
+      // propio: como quien actúa sigue siendo admin, siempre queda al menos uno.
       allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role)
-                   || isRequestingUserAdmin();
+                   || (isRequestingUserAdmin()
+                       && request.auth.uid != userId
+                       && request.resource.data.role in ['user', 'admin']);
       allow delete: if false;
     }
 
