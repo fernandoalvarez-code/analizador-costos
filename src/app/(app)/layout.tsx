@@ -7,6 +7,8 @@ import { useUser, useFirestore, doc } from "@/firebase";
 import AppHeader from "@/components/app/header";
 import { Skeleton } from "@/components/ui/skeleton";
 import StaleCaseChecker from "@/components/app/stale-case-checker";
+import EmailVerificationBanner from "@/components/app/email-verification-banner";
+import { needsEmailVerification } from "@/lib/client/email-verification";
 
 export default function AppLayout({
   children,
@@ -51,6 +53,7 @@ export default function AppLayout({
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       <AppHeader />
+      {needsEmailVerification(user) && <EmailVerificationBanner user={user} />}
       <main className="flex-1 w-full max-w-[1800px] mx-auto p-4 md:p-6 lg:p-8">
         {children}
         <StaleCaseChecker />
