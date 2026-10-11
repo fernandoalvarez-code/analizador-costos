@@ -224,7 +224,11 @@ export default function AdminAgentsPage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  // No se lee nada hasta confirmar el rol: un usuario sin acceso vería rechazos de las reglas.
+  useEffect(() => {
+    if (!isAdmin) return;
+    load();
+  }, [isAdmin]);
 
   if (!isAdmin) {
     return (

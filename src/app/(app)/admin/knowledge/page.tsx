@@ -534,7 +534,11 @@ export default function AdminKnowledgePage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [filterCat]);
+  // No se lee nada hasta confirmar el rol: un usuario sin acceso vería rechazos de las reglas.
+  useEffect(() => {
+    if (!isAdmin) return;
+    load();
+  }, [filterCat, isAdmin]);
 
   if (!isAdmin) {
     return (

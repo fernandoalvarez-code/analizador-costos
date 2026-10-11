@@ -27,24 +27,26 @@ export default function AgentTestPage() {
 
   const isAdmin = isVerifiedSecocutUser(user);
 
+  // No se lee nada hasta confirmar el rol: un usuario sin acceso vería rechazos de las reglas.
   useEffect(() => {
+    if (!isAdmin) return;
     listAgents(false).then((list) => {
       const order = ['tecnico', 'comercial', 'vendedor'];
       const sorted = list.sort((a, b) => order.indexOf(a.slug) - order.indexOf(b.slug));
       setAgents(sorted);
       if (sorted.length > 0) setSelected(sorted[0]);
     });
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
-    if (!selected || !user) return;
+    if (!isAdmin || !selected || !user) return;
     listUserSessions(user.uid, selected.id)
       .then((list) => setSessions(list.slice(0, 8)))
       .catch((e) => {
         console.error('[test] listUserSessions:', e);
         setSessions([]);
       });
-  }, [selected, user]);
+  }, [isAdmin, selected, user]);
 
   const deleteSession = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation(); // evitar que también cargue la sesión

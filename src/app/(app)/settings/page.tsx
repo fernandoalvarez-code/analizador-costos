@@ -91,13 +91,20 @@ export default function SettingsPage() {
   useEffect(() => {
     if (firestore) {
         // Escuchamos el documento 'settings/general'
-        const unsub = onSnapshot(doc(firestore, "settings", "general"), (snapshot) => {
-            if (snapshot.exists()) {
-                const data = snapshot.data();
-                if (data.companyLogoUrl) setCompanyLogo(data.companyLogoUrl);
-                if (data.secoLogoUrl) setSecoLogo(data.secoLogoUrl);
-            }
-        });
+        const unsub = onSnapshot(
+            doc(firestore, "settings", "general"),
+            (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.data();
+                    if (data.companyLogoUrl) setCompanyLogo(data.companyLogoUrl);
+                    if (data.secoLogoUrl) setSecoLogo(data.secoLogoUrl);
+                }
+            },
+            (error) => {
+                // Una cuenta sin verificar no puede leer settings (reglas): es esperable y no se reporta.
+                if (error.code !== "permission-denied") console.error("Error cargando los logos:", error);
+            },
+        );
         return () => unsub();
     }
   }, [firestore]);
