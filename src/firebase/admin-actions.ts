@@ -2,7 +2,6 @@
 
 import { Auth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Firestore, doc, setDoc } from 'firebase/firestore';
-import { setCustomUserClaims } from './auth/set-custom-claims';
 
 /**
  * Creates a new user in Firebase Authentication, sets their custom claims (role),
@@ -38,23 +37,18 @@ export async function createUserWithRole(
   }
 
   try {
-    // Step 2 (Client-side calls Server-side): Set custom claims for the new user.
-    // This function will securely communicate with a server-side endpoint.
-    await setCustomUserClaims({ uid: user.uid, claims: { role } });
-
-    // Step 3 (Client-side): Create a user profile document in Firestore.
-    // The role is now stored in the auth token, but we can store it here too for client-side queries.
+    // Step 2: crear el perfil en Firestore. El rol vive solo en users/{uid}.role (no hay custom claims).
     const userDocRef = doc(firestore, 'users', user.uid);
     await setDoc(userDocRef, {
       id: user.uid,
       email: user.email,
-      role: role, // Storing role for easier client-side access if needed.
+      role: role,
     });
 
   } catch (error) {
     // If setting claims or Firestore doc fails, we should ideally delete the created user
     // to avoid an inconsistent state. This requires admin privileges.
-    console.error("Error setting custom claims or Firestore document. Manual cleanup may be needed.", error);
+    console.error("Error creating the Firestore profile. Manual cleanup may be needed.", error);
     // For now, re-throw the error to notify the caller.
     throw error;
   }

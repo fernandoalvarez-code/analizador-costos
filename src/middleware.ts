@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Descarte rápido de requests sin header Authorization. NO valida el token: la validación real
+// (token + email verificado + dominio) la hacen requireVerifiedUser/requireSecucutUser en cada ruta.
 export function middleware(request: NextRequest) {
   const authorization = request.headers.get('authorization');
   if (!authorization?.startsWith('Bearer ')) {

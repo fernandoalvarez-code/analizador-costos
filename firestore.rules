@@ -34,9 +34,9 @@ service cloud.firestore {
     }
 
     match /simulations/{simulationId} {
-      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || request.auth.token.admin == true);
-      allow create: if request.auth != null && (request.resource.data.userId == request.auth.uid || request.auth.token.admin == true);
-      allow update, delete: if request.auth != null && (resource.data.userId == request.auth.uid || request.auth.token.admin == true);
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isRequestingUserAdmin());
+      allow create: if request.auth != null && (request.resource.data.userId == request.auth.uid || isRequestingUserAdmin());
+      allow update, delete: if request.auth != null && (resource.data.userId == request.auth.uid || isRequestingUserAdmin());
     }
 
     // NOTA: no hay ninguna referencia a esta colección en el cliente (2026-08-24).
