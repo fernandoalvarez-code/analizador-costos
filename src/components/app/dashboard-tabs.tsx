@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { ImageUploader } from "./image-uploader";
 import { formatCurrency, formatoMinutosYSegundos } from "@/lib/formatters";
 
+import { authedFetch } from "@/lib/client/auth-fetch";
 // --- FUNCIÓN DE LIMPIEZA BLINDADA (FINAL) ---
 const cleanForFirestore = (obj: any): any => {
   // 1. Manejo de valores vacíos
@@ -287,7 +288,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     const timer = setTimeout(async () => {
       setIsFetchingCuttingData(true);
       try {
-        const response = await fetch('/api/suggest-cutting-data', {
+        const response = await authedFetch('/api/suggest-cutting-data', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

@@ -35,6 +35,7 @@ import {
 } from '@/lib/taylor-helpers';
 import { useTaylorCurve } from '@/hooks/use-taylor-curve';
 
+import { authedFetch } from "@/lib/client/auth-fetch";
 const SurveyField = ({ label }: { label: string }) => (
     <div className="flex justify-between items-end border-b-2 border-dotted border-slate-300 py-3">
         <span className="font-semibold text-slate-700">{label}:</span>
@@ -408,7 +409,7 @@ export default function EditTaylorCurvePage() {
     const radioPremium = extraerRadioISO(toolNamePremium);
     const chatPayload = { userMessage, screenContext: { operationType, material: materialId, machine: { potencia_motor_hp: Number(machinePowerHP) || 0, }, condicion_actual_competencia: { herramienta: toolNameCurrent, radio_punta_mm: radioCurrent, advertencia_fisica: warningCurrent, angulo_incidencia_iso: obtenerAnguloTexto(toolNameCurrent), profundidad_ap_mm: Number(apCurrent) || 0, vc: Number(vcCurrent) || 0, feed: Number(feedCurrent) || 0, carga_husillo_hp: curveDataInfo.hpCurrent, costPerPiece: curveDataInfo.actualCostCurrent }, propuesta_seco: { herramienta: toolNamePremium, radio_punta_mm: radioPremium, advertencia_fisica: warningPremium, angulo_incidencia_iso: obtenerAnguloTexto(toolNamePremium), profundidad_ap_mm: Number(apPremium) || 0, vc: Number(vcPremium) || 0, feed: Number(feedPremium) || 0, carga_husillo_hp: curveDataInfo.hpPremium, costPerPiece: curveDataInfo.actualCostPremium } } };
     try {
-      const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(chatPayload) });
+      const response = await authedFetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(chatPayload) });
       if (!response.ok) { let errorMsg = `Error HTTP: ${response.status}`; try { const errData = await response.json(); errorMsg = errData.error || errData.message || errorMsg; } catch(e) {} throw new Error(errorMsg); }
       const data = await response.json();
       setChatMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
