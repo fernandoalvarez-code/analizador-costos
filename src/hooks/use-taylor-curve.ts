@@ -168,7 +168,9 @@ export function useTaylorCurve(inputs: UseTaylorCurveInputs) {
         if (C <= 0 || v <= 0) return { costoTotal: 0, costoMaquina: 0, costoInsertoPuro: 0, costoParada: 0, lifeMins: 0, lifePcs: 0, hpReq: 0 };
 
         const toolPrice = isPremium ? safeToolCostPremium : safeToolCostCurrent;
-        const z = isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1);
+        // Z (dientes) solo existe en fresado: en torneado y taladrado se ignora aunque el
+        // estado conserve un valor viejo (mismo criterio que multZ_Act/multZ_Prem).
+        const z = operationType === 'milling' ? (isPremium ? (Number(zPremium) || 1) : (Number(zCurrent) || 1)) : 1;
         const edges = isPremium ? safeEdgesPremium : safeEdgesCurrent;
         const ap = isPremium ? (Number(apPremium) || 0.0001) : (Number(apCurrent) || 0.0001);
 

@@ -179,6 +179,9 @@ export default function EditTaylorCurvePage() {
 
   useEffect(() => { setTcPremiumManual(false); }, [materialId, operationType]);
 
+  // Z (dientes) solo aplica a fresado: al pasar a torneado/taladrado se descarta para que no quede un valor oculto.
+  useEffect(() => { if (operationType !== 'milling') { setZCurrent(""); setZPremium(""); } }, [operationType]);
+
   useEffect(() => {
     if (operationType === 'drilling') {
       const vc = Number(vcCurrent);
@@ -222,7 +225,7 @@ export default function EditTaylorCurvePage() {
         setVcCurrent(inputs.vcCurrent || "");
         setPcsCurrent(inputs.pcsCurrent || "");
         setTcCurrent(inputs.tcCurrent || "");
-        setZCurrent(inputs.zCurrent || "");
+        setZCurrent(inputs.operationType === 'milling' ? (inputs.zCurrent || "") : "");
         setEdgesCurrent(inputs.edgesCurrent || "");
         setDcCurrent(inputs.dcCurrent || "");
         setAeCurrent(inputs.aeCurrent || "");
@@ -234,7 +237,7 @@ export default function EditTaylorCurvePage() {
         setVcPremium(inputs.vcPremium || "");
         setPcsPremium(inputs.pcsPremium || "");
         setTcPremiumInput(inputs.tcPremiumInput || "");
-        setZPremium(inputs.zPremium || "");
+        setZPremium(inputs.operationType === 'milling' ? (inputs.zPremium || "") : "");
         setEdgesPremium(inputs.edgesPremium || "");
         setDcPremium(inputs.dcPremium || "");
         setAePremium(inputs.aePremium || "");
