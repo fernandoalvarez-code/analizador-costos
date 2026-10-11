@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { createRulesTestEnv, secocutVerified } from './helpers';
@@ -32,18 +32,31 @@ describe('/notifications', () => {
     await assertFails(getDoc(doc(as('beto'), 'notifications/n-ana')));
   });
 
-  it('la consulta del encabezado (recipientId == uid) funciona para un no admin', async () => {
-    await assertSucceeds(getDocs(query(collection(as('ana'), 'notifications'), where('recipientId', '==', 'ana'), limit(50))));
+  // ── Las tres consultas del encabezado (header.tsx) ───────────────────────────────────────────
+  const idsOf = (snap: { docs: { id: string }[] }) => snap.docs.map((d) => d.id).sort();
+
+  it('un admin lista TODAS sin filtro y recibe las 3, incluida la anterior sin destinatario', async () => {
+    const snap = await assertSucceeds(getDocs(collection(as('admin1'), 'notifications')));
+    expect(idsOf(snap)).toEqual(['n-ana', 'n-beto', 'n-vieja']);
   });
 
-  it('una consulta sin filtro es rechazada para un no admin (por eso el encabezado espera el rol)', async () => {
+  it('la consulta del admin en el encabezado (orderBy createdAt desc, limit 5) devuelve todas, de la más nueva a la más vieja', async () => {
+    const snap = await assertSucceeds(getDocs(query(collection(as('admin1'), 'notifications'), orderBy('createdAt', 'desc'), limit(5))));
+    expect(snap.docs.map((d) => d.id)).toEqual(['n-ana', 'n-beto', 'n-vieja']);
+  });
+
+  it('un no admin lista filtrando por su propio recipientId y recibe SOLO las suyas', async () => {
+    const snap = await assertSucceeds(getDocs(query(collection(as('ana'), 'notifications'), where('recipientId', '==', 'ana'), limit(50))));
+    expect(idsOf(snap)).toEqual(['n-ana']);
+  });
+
+  it('un no admin que filtra por el recipientId de OTRO falla', async () => {
+    await assertFails(getDocs(query(collection(as('ana'), 'notifications'), where('recipientId', '==', 'beto'), limit(50))));
+  });
+
+  it('un no admin SIN filtro falla (con y sin orderBy/limit)', async () => {
+    await assertFails(getDocs(collection(as('ana'), 'notifications')));
     await assertFails(getDocs(query(collection(as('ana'), 'notifications'), orderBy('createdAt', 'desc'), limit(5))));
-    await assertFails(getDocs(query(collection(as('ana'), 'notifications'), where('recipientId', '==', 'beto'))));
-  });
-
-  it('un admin lee todas, incluidas las anteriores sin destinatario', async () => {
-    await assertSucceeds(getDocs(query(collection(as('admin1'), 'notifications'), orderBy('createdAt', 'desc'), limit(5))));
-    await assertSucceeds(getDoc(doc(as('admin1'), 'notifications/n-vieja')));
   });
 
   it('las anteriores sin recipientId no las ve un no admin', async () => {

@@ -40,6 +40,19 @@ describe('/users', () => {
     it('NO con rol admin', async () => { await assertFails(setDoc(doc(as('nuevo'), 'users/nuevo'), profile('nuevo', { role: 'admin' }))); });
     it('NO el perfil de otro uid', async () => { await assertFails(setDoc(doc(as('nuevo'), 'users/otro'), profile('otro'))); });
     it('NO con campos extra (p. ej. isAdmin)', async () => { await assertFails(setDoc(doc(as('nuevo'), 'users/nuevo'), profile('nuevo', { isAdmin: true }))); });
+    // Payload EXACTO de src/app/(app)/layout.tsx en el primer ingreso: { id, email, role: 'user' } con setDoc(..., { merge: true }).
+    it('el payload real de layout.tsx (id, email, role) con setDoc merge:true se acepta como creación', async () => {
+      await assertSucceeds(setDoc(doc(as('nuevo'), 'users/nuevo'), { id: 'nuevo', email: 'nuevo@secocut.com', role: 'user' }, { merge: true }));
+    });
+    it('el mismo payload con email null (cuenta sin email) también', async () => {
+      await assertSucceeds(setDoc(doc(as('nuevo'), 'users/nuevo'), { id: 'nuevo', email: null, role: 'user' }, { merge: true }));
+    });
+    it('si el perfil ya existe, repetir el payload de layout.tsx NO pisa un rol admin (carrera entre dos pestañas)', async () => {
+      await assertFails(setDoc(doc(as('admin1'), 'users/admin1'), { id: 'admin1', email: 'admin1@secocut.com', role: 'user' }, { merge: true }));
+    });
+    it('el nombre se agrega después con un update que solo trae name (src/app/(app)/settings/page.tsx)', async () => {
+      await assertSucceeds(updateDoc(doc(as('ana'), 'users/ana'), { name: 'Ana' }));
+    });
     it('un admin tampoco crea perfiles ajenos', async () => { await assertFails(setDoc(doc(as('admin1'), 'users/otro'), profile('otro'))); });
   });
 
