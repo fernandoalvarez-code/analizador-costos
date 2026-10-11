@@ -29,3 +29,16 @@ jobs:
       # Es el único test del proyecto y hasta ahora solo corría a mano.
       - name: Test de física
         run: npx tsx src/lib/machining-physics.test.ts
+
+      - name: Tests unitarios
+        run: npm test
+
+      # El emulador de Firestore necesita Java. Proyecto demo-*: nunca toca un
+      # proyecto real (ver el script test:rules en package.json).
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Tests de reglas de Firestore
+        run: npm run test:rules
