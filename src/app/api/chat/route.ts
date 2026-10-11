@@ -1,8 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { initializeAdminApp } from '@/firebase/auth/admin-app';
-import { getAuth } from 'firebase-admin/auth';
+import { requireVerifiedUser } from '@/lib/server/auth-guards';
 
 // --- DEFINICIONES DE TIPO PARA ROBUSTEZ ---
 interface ScreenContext {
@@ -38,9 +37,8 @@ interface ChatRequestBody {
 
 export async function POST(req: Request) {
   try {
-    const token = (req.headers.get('authorization') ?? '').replace('Bearer ', '');
-    await initializeAdminApp();
-    await getAuth().verifyIdToken(token);
+    const auth = await requireVerifiedUser(req);
+    if (!auth.ok) return auth.response;
 
     // Inicializar el cliente de OpenAI DENTRO de la petición para evitar
     // crashes al momento de construir/desplegar la aplicación en la nube
