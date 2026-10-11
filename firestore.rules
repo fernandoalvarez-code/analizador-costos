@@ -12,6 +12,13 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    // Cuenta con email verificado que no es anónima (cualquier dominio).
+    function isVerifiedUser() {
+      return request.auth != null &&
+             request.auth.token.email_verified == true &&
+             request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
     function isSecucutEmail() {
       return request.auth != null &&
              request.auth.token.email_verified == true &&
@@ -68,18 +75,19 @@ service cloud.firestore {
     }
 
     match /settings/{settingId} {
-      allow read: if request.auth != null;
+      // Solo guarda las URL de los logos del PDF: lo leen también usuarios de otros dominios.
+      allow read: if isVerifiedUser();
       allow write: if isRequestingUserAdmin();
     }
 
     // ── Agentes IA ────────────────────────────────────
     match /ai_agents/{agentId} {
-      allow read: if request.auth != null;
+      allow read: if isSecucutEmail();
       allow write: if isSecucutEmail() || isRequestingUserAdmin();
     }
 
     match /knowledge_entries/{entryId} {
-      allow read: if request.auth != null;
+      allow read: if isSecucutEmail();
       allow write: if isSecucutEmail() || isRequestingUserAdmin();
     }
 
@@ -89,7 +97,8 @@ service cloud.firestore {
     }
 
     match /chat_sessions/{sessionId} {
-      allow create: if request.auth != null;
+      // Solo se puede crear una sesión propia (antes se podía crear a nombre de cualquier userId).
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow read, update, delete: if request.auth != null &&
         (isOwner(resource.data.userId) || isSecucutEmail() || isRequestingUserAdmin());
     }
