@@ -40,6 +40,7 @@ import { Auth } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { setDoc, onSnapshot } from 'firebase/firestore';
 import { UploadCloud, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 // --- TIPOS Y SCHEMAS ---
 type UserProfile = {
@@ -130,7 +131,7 @@ export default function SettingsPage() {
   }, [firestore, user]);
 
   const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
-  const isAdmin = userProfile?.role === 'admin' && user?.email?.endsWith('@secocut.com');
+  const isAdmin = userProfile?.role === 'admin' && isVerifiedSecocutUser(user);
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),

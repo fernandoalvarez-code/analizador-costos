@@ -37,6 +37,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "../ui/skeleton";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 const menuItems = [
     {
@@ -86,7 +87,7 @@ export default function AppHeader() {
   const pathname = usePathname();
   const firestore = useFirestore();
 
-  const isSecocutEmployee = user?.email?.endsWith('@secocut.com') ?? false;
+  const isSecocutEmployee = isVerifiedSecocutUser(user);
 
   const filteredMenuItems = menuItems.filter(item => {
     if (isSecocutEmployee) return true;

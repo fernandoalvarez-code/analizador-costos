@@ -11,6 +11,7 @@ import {
   deleteKnowledgeEntry,
 } from '@/lib/agents/firestore';
 import type { KnowledgeEntry, KnowledgeEntryInput } from '@/lib/agents/types';
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 // ── Tailwind consts ───────────────────────────────────
 const CARD = 'rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-2';
@@ -524,7 +525,7 @@ export default function AdminKnowledgePage() {
   const [editEntry, setEditEntry] = useState<KnowledgeEntry | null>(null);
   const [filterCat, setFilterCat] = useState<string>('');
 
-  const isAdmin = user?.email?.endsWith('@secocut.com') ?? false;
+  const isAdmin = isVerifiedSecocutUser(user);
 
   const load = async () => {
     setLoading(true);

@@ -4,18 +4,19 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/firebase";
 import CasesTableWrapper from "@/components/app/cases-table";
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 export default function CasesPage() {
     const { user, loading: userLoading } = useUser();
     const router = useRouter();
 
     useEffect(() => {
-        if (!userLoading && user && !user.email?.endsWith('@secocut.com')) {
+        if (!userLoading && user && !isVerifiedSecocutUser(user)) {
             router.replace('/history');
         }
     }, [user, userLoading, router]);
 
-    if (userLoading || (user && !user.email?.endsWith('@secocut.com'))) return null;
+    if (userLoading || (user && !isVerifiedSecocutUser(user))) return null;
 
     return (
         <div className="container mx-auto">

@@ -19,6 +19,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from "@/hooks/use-toast";
 
 import { useRouter } from "next/navigation";
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 export default function NewSimulatorPage() {
   const [isSaving, setIsSaving] = useState(false);
@@ -34,7 +35,7 @@ export default function NewSimulatorPage() {
 
   useEffect(() => {
     if (!userLoading && user) {
-        if (!user.email?.endsWith('@secocut.com')) {
+        if (!isVerifiedSecocutUser(user)) {
             router.replace('/history');
         }
     }
@@ -284,7 +285,7 @@ Adjunto el informe PDF completo con el fundamento técnico.`;
   // hooks, y al resolver la auth seguía de largo y ejecutaba 25. React exige la
   // misma cantidad y orden en cada render, así que tiraba "Rendered more hooks
   // than during the previous render" — el client-side exception de esta ruta.
-  if (userLoading || (user && !user.email?.endsWith('@secocut.com'))) return null;
+  if (userLoading || (user && !isVerifiedSecocutUser(user))) return null;
 
   return (
     <div className="min-h-screen bg-slate-50">

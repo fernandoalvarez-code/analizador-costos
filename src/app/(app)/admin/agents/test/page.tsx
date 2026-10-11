@@ -5,6 +5,7 @@ import { useUser } from '@/firebase';
 import { listAgents, listUserSessions, deleteChatSession } from '@/lib/agents/firestore';
 import type { Agent, ChatSession } from '@/lib/agents/types';
 import AgentChat from '@/components/agents/AgentChat';
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 // Título de referencia de una sesión — la primera pregunta del usuario, limpia
 function sessionTitle(session: ChatSession): string {
@@ -24,7 +25,7 @@ export default function AgentTestPage() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
-  const isAdmin = user?.email?.endsWith('@secocut.com') ?? false;
+  const isAdmin = isVerifiedSecocutUser(user);
 
   useEffect(() => {
     listAgents(false).then((list) => {

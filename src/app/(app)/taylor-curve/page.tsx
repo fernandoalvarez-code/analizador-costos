@@ -38,6 +38,7 @@ import {
 import { useTaylorCurve } from '@/hooks/use-taylor-curve';
 
 import { authedFetch } from "@/lib/client/auth-fetch";
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 const SurveyField = ({ label }: { label: string }) => (
     <div className="flex justify-between items-end border-b-2 border-dotted border-slate-300 py-3">
         <span className="font-semibold text-slate-700">{label}:</span>
@@ -50,7 +51,7 @@ export default function TaylorCurvePage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  const isInternalUser = user?.email?.endsWith('@secocut.com') || false;
+  const isInternalUser = isVerifiedSecocutUser(user);
 
   const [logos, setLogos] = useState({ company: '', brand: '' });
 

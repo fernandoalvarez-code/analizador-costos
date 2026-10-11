@@ -8,6 +8,7 @@ import { useCollection, useFirestore, useMemoFirebase, useUser, useDoc, doc, col
 import { query, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatNumber } from '@/lib/formatters';
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 type CaseData = {
   id: string;
@@ -52,7 +53,7 @@ export default function CaseStats() {
   }, [firestore, user]);
 
   const { data: userProfile, isLoading: profileLoading } = useDoc<{ role?: string }>(userProfileRef);
-  const isAdmin = Boolean(userProfile?.role === 'admin' && user?.email?.endsWith('@secocut.com'));
+  const isAdmin = Boolean(userProfile?.role === 'admin' && isVerifiedSecocutUser(user));
 
   // Las reglas exigen propietario o admin, y Firestore rechaza toda query que no
   // pueda probarlo de antemano: sin el filtro por userId la consulta fallaba
