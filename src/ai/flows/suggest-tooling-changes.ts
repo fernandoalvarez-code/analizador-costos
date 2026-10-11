@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview An AI agent that suggests tooling changes to increase savings.
  *
