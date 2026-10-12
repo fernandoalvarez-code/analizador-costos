@@ -421,13 +421,20 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   // Carga inicial
   useEffect(() => {
     if (firestore) {
-        const unsub = onSnapshot(doc(firestore, "settings", "general"), (doc) => {
-            if (doc.exists()) {
-                const data = doc.data();
-                if (data.companyLogoUrl) setCompanyLogo(data.companyLogoUrl);
-                if (data.secoLogoUrl) setSecoLogo(data.secoLogoUrl);
-            }
-        });
+        const unsub = onSnapshot(
+            doc(firestore, "settings", "general"),
+            (doc) => {
+                if (doc.exists()) {
+                    const data = doc.data();
+                    if (data.companyLogoUrl) setCompanyLogo(data.companyLogoUrl);
+                    if (data.secoLogoUrl) setSecoLogo(data.secoLogoUrl);
+                }
+            },
+            (error) => {
+                // Una cuenta sin verificar no puede leer settings (reglas): es esperable y no se reporta.
+                if (error.code !== "permission-denied") console.error("Error cargando los logos:", error);
+            },
+        );
         return () => unsub();
     }
   }, [firestore]);
