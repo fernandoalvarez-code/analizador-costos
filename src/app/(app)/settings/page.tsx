@@ -35,11 +35,12 @@ import {
 // Asegúrate de que 'storage' esté exportado en tu archivo firebase/index.ts
 import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth, updateDocumentNonBlocking, doc, storage } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { createUserWithRole } from '@/firebase/admin-actions';
+import UsersManagement from '@/components/app/users-management';
 import { Auth } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { setDoc, onSnapshot } from 'firebase/firestore';
 import { UploadCloud, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 // --- TIPOS Y SCHEMAS ---
 type UserProfile = {
@@ -51,66 +52,6 @@ const profileFormSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.'),
   email: z.string().email('Correo electrónico no válido.').optional(),
 });
-
-const createUserSchema = z.object({
-  email: z.string().email({ message: "Por favor, introduce un correo electrónico válido." }),
-  password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
-  role: z.enum(['user', 'admin'], { required_error: "Debes seleccionar un rol." }),
-});
-
-// --- COMPONENTE DE CREACIÓN DE USUARIO (ADMIN) ---
-const UserCreationForm = () => {
-    const { toast } = useToast();
-    const auth = useAuth();
-    const firestore = useFirestore();
-    const form = useForm<z.infer<typeof createUserSchema>>({
-        resolver: zodResolver(createUserSchema),
-        defaultValues: { email: "", password: "", role: "user" },
-    });
-
-    async function onSubmit(data: z.infer<typeof createUserSchema>) {
-        if (!auth || !firestore) return;
-        try {
-            await createUserWithRole(auth, firestore, data.email, data.password, data.role);
-            toast({ title: "Usuario Creado", description: `El usuario ${data.email} ha sido creado con el rol de ${data.role}.` });
-            form.reset();
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Error al crear usuario", description: error.message });
-        }
-    }
-
-    return (
-         <Card>
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)}>
-                <CardHeader>
-                    <CardTitle>Crear Nuevo Usuario</CardTitle>
-                    <CardDescription>Crea una nueva cuenta de usuario y asígnale un rol.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <FormField control={form.control} name="email" render={({ field }) => (
-                        <FormItem><FormLabel>Correo Electrónico</FormLabel><FormControl><Input type="email" placeholder="email@ejemplo.com" {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="password" render={({ field }) => (
-                        <FormItem><FormLabel>Contraseña</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                     <FormField control={form.control} name="role" render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Rol</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un rol" /></SelectTrigger></FormControl>
-                                <SelectContent><SelectItem value="user">Usuario</SelectItem><SelectItem value="admin">Administrador</SelectItem></SelectContent>
-                            </Select>
-                            <FormMessage />
-                            </FormItem>
-                        )} />
-                </CardContent>
-                <CardFooter className="border-t px-6 py-4"><Button type="submit">Crear Usuario</Button></CardFooter>
-                </form>
-            </Form>
-        </Card>
-    )
-}
 
 // --- PÁGINA PRINCIPAL DE CONFIGURACIÓN ---
 export default function SettingsPage() {
@@ -130,7 +71,7 @@ export default function SettingsPage() {
   }, [firestore, user]);
 
   const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
-  const isAdmin = userProfile?.role === 'admin' && user?.email?.endsWith('@secocut.com');
+  const isAdmin = userProfile?.role === 'admin' && isVerifiedSecocutUser(user);
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -150,13 +91,20 @@ export default function SettingsPage() {
   useEffect(() => {
     if (firestore) {
         // Escuchamos el documento 'settings/general'
-        const unsub = onSnapshot(doc(firestore, "settings", "general"), (snapshot) => {
-            if (snapshot.exists()) {
-                const data = snapshot.data();
-                if (data.companyLogoUrl) setCompanyLogo(data.companyLogoUrl);
-                if (data.secoLogoUrl) setSecoLogo(data.secoLogoUrl);
-            }
-        });
+        const unsub = onSnapshot(
+            doc(firestore, "settings", "general"),
+            (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.data();
+                    if (data.companyLogoUrl) setCompanyLogo(data.companyLogoUrl);
+                    if (data.secoLogoUrl) setSecoLogo(data.secoLogoUrl);
+                }
+            },
+            (error) => {
+                // Una cuenta sin verificar no puede leer settings (reglas): es esperable y no se reporta.
+                if (error.code !== "permission-denied") console.error("Error cargando los logos:", error);
+            },
+        );
         return () => unsub();
     }
   }, [firestore]);
@@ -292,7 +240,7 @@ export default function SettingsPage() {
         )}
 
         {/* OTRAS SECCIONES (ADMIN Y USUARIO) */}
-        {isAdmin && <UserCreationForm />}
+        {isAdmin && <UsersManagement />}
         
         {/* La tarjeta "Apariencia" se quitó junto con forcedTheme="light":
             el selector no tenía efecto y confundía. Devolverla cuando el tema

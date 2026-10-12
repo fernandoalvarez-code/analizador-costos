@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -18,11 +19,11 @@ import {
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { query, orderBy, limit } from "firebase/firestore";
+import { query, where, orderBy, limit } from "firebase/firestore";
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-import { useAuth, useUser, useCollection, useFirestore, useMemoFirebase, collection } from "@/firebase";
+import { useAuth, useUser, useCollection, useDoc, useFirestore, useMemoFirebase, collection, doc } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -37,6 +38,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "../ui/skeleton";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 const menuItems = [
     {
@@ -86,19 +88,37 @@ export default function AppHeader() {
   const pathname = usePathname();
   const firestore = useFirestore();
 
-  const isSecocutEmployee = user?.email?.endsWith('@secocut.com') ?? false;
+  const isSecocutEmployee = isVerifiedSecocutUser(user);
 
   const filteredMenuItems = menuItems.filter(item => {
     if (isSecocutEmployee) return true;
     return ['/history', '/taylor-curve'].includes(item.href);
   });
 
-  const notificationsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, "notifications"), orderBy("createdAt", "desc"), limit(5));
-  }, [firestore]);
+  // Las notificaciones tienen destinatario (recipientId = dueño del caso): cada usuario lee solo las
+  // suyas y los admins leen todas (reglas: recipientId == uid o admin). Hay que saber el rol ANTES de
+  // armar la consulta, porque una consulta sin filtro es rechazada para un no admin.
+  const profileRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return doc(firestore, `users/${user.uid}`);
+  }, [firestore, user]);
+  const { data: profile, isLoading: isLoadingProfile } = useDoc<{ role?: string }>(profileRef);
+  const isAdmin = profile?.role === 'admin';
 
-  const { data: notifications, isLoading: isLoadingNotifications } = useCollection<Notification>(notificationsQuery);
+  const notificationsQuery = useMemoFirebase(() => {
+    if (!firestore || !user || isLoadingProfile) return null;
+    const notificationsRef = collection(firestore, "notifications");
+    return isAdmin
+      ? query(notificationsRef, orderBy("createdAt", "desc"), limit(5))
+      // Sin orderBy para no requerir un índice compuesto: se ordena en el cliente.
+      : query(notificationsRef, where("recipientId", "==", user.uid), limit(50));
+  }, [firestore, user, isLoadingProfile, isAdmin]);
+
+  const { data: rawNotifications, isLoading: isLoadingNotifications } = useCollection<Notification>(notificationsQuery);
+  const notifications = React.useMemo(
+    () => [...rawNotifications].sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0)).slice(0, 5),
+    [rawNotifications],
+  );
 
   const handleSignOut = async () => {
     if (!auth) return;

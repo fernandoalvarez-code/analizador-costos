@@ -37,6 +37,8 @@ import {
 } from '@/lib/taylor-helpers';
 import { useTaylorCurve } from '@/hooks/use-taylor-curve';
 
+import { authedFetch } from "@/lib/client/auth-fetch";
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 const SurveyField = ({ label }: { label: string }) => (
     <div className="flex justify-between items-end border-b-2 border-dotted border-slate-300 py-3">
         <span className="font-semibold text-slate-700">{label}:</span>
@@ -49,7 +51,7 @@ export default function TaylorCurvePage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  const isInternalUser = user?.email?.endsWith('@secocut.com') || false;
+  const isInternalUser = isVerifiedSecocutUser(user);
 
   const [logos, setLogos] = useState({ company: '', brand: '' });
 
@@ -149,7 +151,7 @@ export default function TaylorCurvePage() {
     const timer = setTimeout(async () => {
       setIsFetchingCuttingData(true);
       try {
-        const response = await fetch('/api/suggest-cutting-data', {
+        const response = await authedFetch('/api/suggest-cutting-data', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ material: materialId, quality: '', toolDesc: toolNamePremium })
@@ -475,7 +477,7 @@ export default function TaylorCurvePage() {
     };
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await authedFetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(chatPayload)

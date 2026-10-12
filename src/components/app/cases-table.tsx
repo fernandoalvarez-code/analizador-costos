@@ -56,6 +56,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency, formatoMinutosYSegundos } from "@/lib/formatters";
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 
 export type CaseData = {
@@ -448,7 +449,7 @@ const CasesTableWrapper = () => {
   }, [firestore, user]);
 
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
-  const isAdmin = Boolean(userProfile?.role === 'admin' && user?.email?.endsWith('@secocut.com'));
+  const isAdmin = Boolean(userProfile?.role === 'admin' && isVerifiedSecocutUser(user));
 
   const casesCollectionRef = useMemoFirebase(() => {
     if (!firestore) return null;

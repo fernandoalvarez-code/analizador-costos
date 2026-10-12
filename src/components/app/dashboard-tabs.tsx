@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { ImageUploader } from "./image-uploader";
 import { formatCurrency, formatoMinutosYSegundos } from "@/lib/formatters";
 
+import { authedFetch } from "@/lib/client/auth-fetch";
 // --- FUNCIÓN DE LIMPIEZA BLINDADA (FINAL) ---
 const cleanForFirestore = (obj: any): any => {
   // 1. Manejo de valores vacíos
@@ -287,7 +288,7 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
     const timer = setTimeout(async () => {
       setIsFetchingCuttingData(true);
       try {
-        const response = await fetch('/api/suggest-cutting-data', {
+        const response = await authedFetch('/api/suggest-cutting-data', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -420,13 +421,20 @@ export default function DashboardTabs({ initialData, isReadOnly = false }: Dashb
   // Carga inicial
   useEffect(() => {
     if (firestore) {
-        const unsub = onSnapshot(doc(firestore, "settings", "general"), (doc) => {
-            if (doc.exists()) {
-                const data = doc.data();
-                if (data.companyLogoUrl) setCompanyLogo(data.companyLogoUrl);
-                if (data.secoLogoUrl) setSecoLogo(data.secoLogoUrl);
-            }
-        });
+        const unsub = onSnapshot(
+            doc(firestore, "settings", "general"),
+            (doc) => {
+                if (doc.exists()) {
+                    const data = doc.data();
+                    if (data.companyLogoUrl) setCompanyLogo(data.companyLogoUrl);
+                    if (data.secoLogoUrl) setSecoLogo(data.secoLogoUrl);
+                }
+            },
+            (error) => {
+                // Una cuenta sin verificar no puede leer settings (reglas): es esperable y no se reporta.
+                if (error.code !== "permission-denied") console.error("Error cargando los logos:", error);
+            },
+        );
         return () => unsub();
     }
   }, [firestore]);

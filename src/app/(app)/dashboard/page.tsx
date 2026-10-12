@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/firebase";
 import CaseStats from "@/components/app/case-stats";
 import CasesTableWrapper from "@/components/app/cases-table";
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 export default function DashboardPage() {
   const { user, loading } = useUser();
@@ -12,14 +13,14 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!loading && user) {
-        const isSecocutEmployee = user.email?.endsWith('@secocut.com');
+        const isSecocutEmployee = isVerifiedSecocutUser(user);
         if (!isSecocutEmployee) {
             router.replace('/history');
         }
     }
   }, [user, loading, router]);
 
-  const isSecocutEmployee = user?.email?.endsWith('@secocut.com');
+  const isSecocutEmployee = isVerifiedSecocutUser(user);
   
   if (loading || !isSecocutEmployee) {
       return null;

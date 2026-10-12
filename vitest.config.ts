@@ -6,11 +6,16 @@ import { fileURLToPath } from 'node:url';
 // machining-physics.test.ts es un script de tsx (no usa vitest) y por eso el
 // patrón es *.spec.ts: así vitest no intenta correrlo.
 export default defineConfig({
+  // Los tests de pantallas (*.spec.tsx) usan JSX; cada uno pide jsdom con el docblock @vitest-environment.
+  esbuild: { jsx: 'automatic' },
   resolve: {
-    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      'server-only': fileURLToPath(new URL('./tests/stubs/server-only.ts', import.meta.url)),
+    },
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.spec.ts'],
+    include: ['src/**/*.spec.{ts,tsx}'],
   },
 });

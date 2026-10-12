@@ -11,3 +11,39 @@ env:
     secret: OPENAI_API_KEY
   - variable: ANTHROPIC_API_KEY
     secret: ANTHROPIC_API_KEY
+
+  # ── Límites de uso diario de las rutas de IA (PROVISORIOS, no secretos) ──────────────────
+  # Por usuario y por día UTC, más un tope global por ruta como cortacircuitos. 0 bloquea la
+  # ruta. Ver docs/limites-de-uso.md. Cambiar acá y volver a desplegar.
+  - variable: RATE_LIMIT_CHAT_USER_DAILY
+    value: "40"
+    availability:
+      - RUNTIME
+  - variable: RATE_LIMIT_CHAT_GLOBAL_DAILY
+    value: "300"
+    availability:
+      - RUNTIME
+  - variable: RATE_LIMIT_AGENTS_CHAT_USER_DAILY
+    value: "40"
+    availability:
+      - RUNTIME
+  - variable: RATE_LIMIT_AGENTS_CHAT_GLOBAL_DAILY
+    value: "300"
+    availability:
+      - RUNTIME
+  - variable: RATE_LIMIT_SUGGEST_CUTTING_DATA_USER_DAILY
+    value: "40"
+    availability:
+      - RUNTIME
+  - variable: RATE_LIMIT_SUGGEST_CUTTING_DATA_GLOBAL_DAILY
+    value: "300"
+    availability:
+      - RUNTIME
+  - variable: RATE_LIMIT_SAVINGS_SUGGESTIONS_USER_DAILY
+    value: "20"
+    availability:
+      - RUNTIME
+  - variable: RATE_LIMIT_SAVINGS_SUGGESTIONS_GLOBAL_DAILY
+    value: "300"
+    availability:
+      - RUNTIME

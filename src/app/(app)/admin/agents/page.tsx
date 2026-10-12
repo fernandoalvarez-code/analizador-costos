@@ -5,6 +5,7 @@ import { Plus, Bot, Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-react
 import { useUser } from '@/firebase';
 import { listAgents, createAgent, updateAgent, deleteAgent } from '@/lib/agents/firestore';
 import type { Agent, AgentInput } from '@/lib/agents/types';
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 // ── Tailwind consts ───────────────────────────────────
 const CARD = 'rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-3';
@@ -214,7 +215,7 @@ export default function AdminAgentsPage() {
   const [modal, setModal] = useState<{ open: boolean; agent?: Agent }>({ open: false });
   const [seeding, setSeeding] = useState(false);
 
-  const isAdmin = user?.email?.endsWith('@secocut.com') ?? false;
+  const isAdmin = isVerifiedSecocutUser(user);
 
   const load = async () => {
     setLoading(true);
@@ -223,7 +224,11 @@ export default function AdminAgentsPage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  // No se lee nada hasta confirmar el rol: un usuario sin acceso vería rechazos de las reglas.
+  useEffect(() => {
+    if (!isAdmin) return;
+    load();
+  }, [isAdmin]);
 
   if (!isAdmin) {
     return (

@@ -11,6 +11,7 @@ import {
   deleteKnowledgeEntry,
 } from '@/lib/agents/firestore';
 import type { KnowledgeEntry, KnowledgeEntryInput } from '@/lib/agents/types';
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 // ── Tailwind consts ───────────────────────────────────
 const CARD = 'rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-2';
@@ -524,7 +525,7 @@ export default function AdminKnowledgePage() {
   const [editEntry, setEditEntry] = useState<KnowledgeEntry | null>(null);
   const [filterCat, setFilterCat] = useState<string>('');
 
-  const isAdmin = user?.email?.endsWith('@secocut.com') ?? false;
+  const isAdmin = isVerifiedSecocutUser(user);
 
   const load = async () => {
     setLoading(true);
@@ -533,7 +534,11 @@ export default function AdminKnowledgePage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [filterCat]);
+  // No se lee nada hasta confirmar el rol: un usuario sin acceso vería rechazos de las reglas.
+  useEffect(() => {
+    if (!isAdmin) return;
+    load();
+  }, [filterCat, isAdmin]);
 
   if (!isAdmin) {
     return (

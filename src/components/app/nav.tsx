@@ -24,12 +24,13 @@ import {
 } from '@/components/ui/sidebar';
 
 import { useUser } from '@/firebase';
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 export default function AppNav() {
   const pathname = usePathname();
   const { user } = useUser();
 
-  const isSecocutUser = user?.email?.endsWith('@secocut.com') ?? false;
+  const isSecocutUser = isVerifiedSecocutUser(user);
 
   const menuItems = [
     {

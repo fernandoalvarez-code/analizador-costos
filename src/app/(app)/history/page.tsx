@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 export default function HistoryPage() {
   const [simulations, setSimulations] = useState<any[]>([]);
@@ -19,7 +20,7 @@ export default function HistoryPage() {
     return firestoreDoc(db, 'users', user.uid);
   }, [user]);
   const { data: userProfile, isLoading: profileLoading } = useDoc<any>(userProfileRef);
-  const isAdmin = userProfile?.role === 'admin' && user?.email?.endsWith('@secocut.com');
+  const isAdmin = userProfile?.role === 'admin' && isVerifiedSecocutUser(user);
 
   const fetchSimulations = async () => {
     // COMPUERTA ESTRICTA Y EXTREMA

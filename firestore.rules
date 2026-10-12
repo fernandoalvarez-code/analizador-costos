@@ -12,6 +12,13 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    // Cuenta con email verificado que no es anónima (cualquier dominio).
+    function isVerifiedUser() {
+      return request.auth != null &&
+             request.auth.token.email_verified == true &&
+             request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
     function isSecucutEmail() {
       return request.auth != null &&
              request.auth.token.email_verified == true &&
@@ -19,11 +26,19 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get: if request.auth != null;
+      // Cada usuario lee su propio perfil; un admin lee cualquiera. (Ninguna pantalla lee el perfil de otro.)
+      allow get: if isOwner(userId) || isRequestingUserAdmin();
       allow list: if isRequestingUserAdmin();
-      allow create: if isOwner(userId) && request.resource.data.role == 'user';
+      // Solo se crea el propio perfil, con rol 'user' y únicamente estos campos.
+      allow create: if isOwner(userId)
+                    && request.resource.data.role == 'user'
+                    && request.resource.data.keys().hasOnly(['id', 'email', 'role', 'name']);
+      // Un admin puede cambiar el rol de OTRO usuario (solo 'user' o 'admin'), nunca el
+      // propio: como quien actúa sigue siendo admin, siempre queda al menos uno.
       allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role)
-                   || isRequestingUserAdmin();
+                   || (isRequestingUserAdmin()
+                       && request.auth.uid != userId
+                       && request.resource.data.role in ['user', 'admin']);
       allow delete: if false;
     }
 
@@ -34,9 +49,9 @@ service cloud.firestore {
     }
 
     match /simulations/{simulationId} {
-      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || request.auth.token.admin == true);
-      allow create: if request.auth != null && (request.resource.data.userId == request.auth.uid || request.auth.token.admin == true);
-      allow update, delete: if request.auth != null && (resource.data.userId == request.auth.uid || request.auth.token.admin == true);
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isRequestingUserAdmin());
+      allow create: if request.auth != null && (request.resource.data.userId == request.auth.uid || isRequestingUserAdmin());
+      allow update, delete: if request.auth != null && (resource.data.userId == request.auth.uid || isRequestingUserAdmin());
     }
 
     // NOTA: no hay ninguna referencia a esta colección en el cliente (2026-08-24).
@@ -52,29 +67,38 @@ service cloud.firestore {
     }
 
     match /notifications/{notificationId} {
-      allow read: if request.auth != null;
+      // Cada notificación va a un destinatario (recipientId = dueño del caso); los admins leen todas.
+      allow read: if request.auth != null
+                  && (resource.data.recipientId == request.auth.uid || isRequestingUserAdmin());
       allow create: if isRequestingUserAdmin();
       allow update, delete: if isRequestingUserAdmin();
     }
 
     match /settings/{settingId} {
-      allow read: if request.auth != null;
+      // Solo guarda las URL de los logos del PDF: lo leen también usuarios de otros dominios.
+      allow read: if isVerifiedUser();
       allow write: if isRequestingUserAdmin();
     }
 
     // ── Agentes IA ────────────────────────────────────
     match /ai_agents/{agentId} {
-      allow read: if request.auth != null;
+      allow read: if isSecucutEmail();
       allow write: if isSecucutEmail() || isRequestingUserAdmin();
     }
 
     match /knowledge_entries/{entryId} {
-      allow read: if request.auth != null;
+      allow read: if isSecucutEmail();
       allow write: if isSecucutEmail() || isRequestingUserAdmin();
     }
 
+    // Contadores de uso diario de las rutas /api: solo los escribe el servidor (Admin SDK).
+    match /rate_limits/{counterId} {
+      allow read, write: if false;
+    }
+
     match /chat_sessions/{sessionId} {
-      allow create: if request.auth != null;
+      // Solo se puede crear una sesión propia (antes se podía crear a nombre de cualquier userId).
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow read, update, delete: if request.auth != null &&
         (isOwner(resource.data.userId) || isSecucutEmail() || isRequestingUserAdmin());
     }

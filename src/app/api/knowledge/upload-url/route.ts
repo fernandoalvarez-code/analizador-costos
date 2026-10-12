@@ -1,45 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeAdminApp } from '@/firebase/auth/admin-app';
-import { getAuth } from 'firebase-admin/auth';
+import { requireSecucutUser } from '@/lib/server/auth-guards';
+import { safeFetchText, UnsafeUrlError } from '@/lib/server/safe-fetch';
 import { getFirestore } from 'firebase-admin/firestore';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  // Auth
-  const token = (req.headers.get('authorization') ?? '').replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-
-  let userEmail = '';
-  try {
-    const adminApp = await initializeAdminApp();
-    const decoded = await getAuth(adminApp).verifyIdToken(token);
-    userEmail = decoded.email ?? '';
-  } catch {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  }
-
-  if (!userEmail.endsWith('@secocut.com')) {
-    return NextResponse.json({ error: 'Sin permisos' }, { status: 403 });
-  }
+  const auth = await requireSecucutUser(req);
+  if (!auth.ok) return auth.response;
+  const userEmail = auth.user.email;
 
   const { url, category, tags, title } = await req.json();
 
-  if (!url || !url.startsWith('https://')) {
+  if (typeof url !== 'string' || !url.startsWith('https://')) {
     return NextResponse.json({ error: 'URL inválida' }, { status: 400 });
   }
 
-  // Fetchear la página
+  // Descarga con protección contra SSRF: solo destinos públicos por https, sin seguir redirecciones.
+  // Los errores de red no se devuelven tal cual (no sirven para explorar la red interna).
   let html = '';
   try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SECOCUTBot/1.0)' },
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    html = await res.text();
+    const result = await safeFetchText(url);
+    if (result.kind === 'redirect') {
+      return NextResponse.json({ error: 'La URL redirige a otra dirección. Ingresá la URL final de la página.' }, { status: 400 });
+    }
+    if (result.kind === 'http-error') {
+      return NextResponse.json({ error: `No se pudo acceder a la URL (HTTP ${result.status}).` }, { status: 400 });
+    }
+    html = result.text;
   } catch (e) {
-    return NextResponse.json({ error: 'No se pudo acceder a la URL: ' + String(e) }, { status: 400 });
+    if (e instanceof UnsafeUrlError) {
+      return NextResponse.json({ error: 'URL no permitida. Solo se admiten páginas públicas por https.' }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'No se pudo acceder a la URL.' }, { status: 400 });
   }
 
   // Extraer texto limpio del HTML

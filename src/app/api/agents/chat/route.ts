@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuth } from 'firebase-admin/auth';
-import { initializeAdminApp } from '@/firebase/auth/admin-app';
+import { requireSecucutUser } from '@/lib/server/auth-guards';
+import { enforceRateLimit } from '@/lib/server/rate-limit';
 import {
   getAgentBySlugAdmin as getAgentBySlug,
   searchKnowledgeByTagsAdmin as searchKnowledgeByTags,
@@ -34,21 +34,14 @@ function extractKeywords(text: string): string[] {
 
 export async function POST(req: NextRequest) {
   // ── Auth ──────────────────────────────────────────────
-  const token = (req.headers.get('authorization') ?? '').replace('Bearer ', '');
-  if (!token) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  }
+  // Agentes internos: solo cuentas @secocut.com verificadas.
+  const auth = await requireSecucutUser(req);
+  if (!auth.ok) return auth.response;
+  const uid = auth.user.uid;
+  const userEmail = auth.user.email;
 
-  let uid: string;
-  let userEmail: string;
-  try {
-    const adminApp = await initializeAdminApp();
-    const decoded = await getAuth(adminApp).verifyIdToken(token);
-    uid = decoded.uid;
-    userEmail = decoded.email ?? '';
-  } catch {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  }
+  const limit = await enforceRateLimit('agents-chat', uid);
+  if (!limit.ok) return limit.response;
 
   // ── Body ──────────────────────────────────────────────
   const body = await req.json();

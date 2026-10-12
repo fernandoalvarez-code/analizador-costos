@@ -4,10 +4,12 @@
 import { useEffect } from 'react';
 import { query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser, useDoc, doc, collection, addDocumentNonBlocking } from '@/firebase';
+import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 type CaseData = {
   id: string;
   name: string;
+  userId?: string;
   status: 'Pendiente' | 'Exitoso' | 'No Exitoso';
   dateCreated: { seconds: number; nanoseconds: number };
 };
@@ -22,7 +24,7 @@ const StaleCaseChecker = () => {
   }, [firestore, user]);
 
   const { data: userProfile, isLoading: profileLoading } = useDoc<{ role?: string }>(userProfileRef);
-  const isAdmin = Boolean(userProfile?.role === 'admin' && user?.email?.endsWith('@secocut.com'));
+  const isAdmin = Boolean(userProfile?.role === 'admin' && isVerifiedSecocutUser(user));
 
   // Solo corre para admin. La query filtra por status y no por propietario, así
   // que las reglas la rechazan para un vendedor; y aunque pasara, crear la
@@ -54,6 +56,8 @@ const StaleCaseChecker = () => {
               title: 'Caso Pendiente de Seguimiento',
               message: `El caso "${caseData.name}" lleva más de 30 días pendiente.`,
               caseId: caseData.id,
+              // Destinatario: el dueño del caso (los admins leen todas por rol).
+              recipientId: caseData.userId ?? null,
               createdAt: serverTimestamp(),
               readBy: [],
             };
