@@ -33,12 +33,23 @@ export const calcularFzSugerido = (ae: number | string, dc: number | string, mat
   return dataDoubleTurbo[materialGroup][rompeviruta][nivel];
 };
 
+// Tipo ISO de una plaquita (norma ISO 1832): 4 letras (forma, incidencia, tolerancia, tipo) + 2 dígitos
+// de tamaño + 2 de espesor (puede ser alfanumérico, p. ej. "T3") + 2 dígitos de radio de punta en décimas
+// de mm. Lo que sigue (rompevirutas, calidad: "-M3", "KCK20", "TP2501") NO es parte del tipo y no se mira.
+// Los separadores (espacio o guion) entre grupos se toleran: "CNMG 12 04 08".
+const TIPO_ISO_PLAQUITA = /[A-Z]{4}[\s-]*\d{2}[\s-]*[0-9A-Z]{2}[\s-]*(\d{2})(?!\d)/;
+
+/**
+ * Radio de punta (mm) leído SOLO de los dígitos de radio del tipo ISO ("CNMG120408" -> 0,8).
+ * Devuelve null si el código no tiene un tipo ISO reconocible o el radio es 00 (plaquita sin radio
+ * de punta definido): es preferible no mostrar un Ra a mostrar uno calculado con un radio inventado.
+ */
 export const extraerRadioISO = (codigoInserto: string): number | null => {
   if (!codigoInserto) return null;
-  const partePrincipal = codigoInserto.split('-')[0];
-  const soloNumeros = partePrincipal.replace(/\D/g, '');
-  if (soloNumeros.length >= 2) return parseInt(soloNumeros.slice(-2), 10) / 10;
-  return null;
+  const match = TIPO_ISO_PLAQUITA.exec(codigoInserto.toUpperCase());
+  if (!match) return null;
+  const radio = parseInt(match[1], 10) / 10;
+  return radio > 0 ? radio : null;
 };
 
 export const analizarRompevirutas = (codigoInserto: string): { esWiper: boolean; tipoCorte: string; sufijo: string } => {
