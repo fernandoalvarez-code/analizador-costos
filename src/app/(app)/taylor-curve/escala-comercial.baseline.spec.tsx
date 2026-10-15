@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render } from '@testing-library/react';
+import { cleanup, render } from '@testing-library/react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { expectGolden } from '../../../../tests/golden';
-import { escalaComercialBlock, installDomPolyfills, rechartsStub } from '../../../../tests/screen-mocks';
+import { escalaComercialBase, escalaComercialBlock, fillToyotaPage, installDomPolyfills, rechartsStub } from '../../../../tests/screen-mocks';
 
 // LÍNEA BASE de la pantalla "Curva de costos": el bloque ESCALA COMERCIAL tal como lo renderiza `main` antes
 // de la función de máquinas en paralelo. Con el campo vacío tiene que seguir siendo idéntico.
@@ -25,22 +25,14 @@ afterAll(() => cleanup());
 
 function renderToyota() {
   const view = render(<Page />);
-  const c = view.container;
-  const set = (el: Element | null | undefined, value: string) => { expect(el, 'campo no encontrado').toBeTruthy(); fireEvent.change(el!, { target: { value } }); };
-  set(c.querySelector('input[placeholder="0"]'), '10000');                           // Pzs/Mes
-  const pcs = c.querySelectorAll('input[placeholder="Ej: 120"]');                    // rendimiento (piezas)
-  set(pcs[0], '20'); set(pcs[1], '40');
-  set(c.querySelector('input[placeholder="Ej: 7.0"]'), '2');                         // tiempo de corte actual
-  set(c.querySelector('input[placeholder="Ej: 6.36"]'), '1.375');                    // tiempo de corte propuesta
-  const cambio = [...c.querySelectorAll('label')].find((l) => l.textContent?.includes('Cambio (min)'));
-  set(cambio?.parentElement?.querySelector('input'), '2');                           // cambio de herramienta
+  fillToyotaPage(view.container);
   return view;
 }
 
-describe('pantalla: bloque Escala Comercial sin máquinas en paralelo', () => {
+describe('pantalla: bloque Escala Comercial sin máquinas en paralelo (línea base)', () => {
   it('con el caso Toyota coincide con el golden de main', () => {
     const { container } = renderToyota();
-    expectGolden('escala-comercial.page.base.html', escalaComercialBlock(container).outerHTML);
+    expectGolden('escala-comercial.page.base.html', escalaComercialBase(container));
   });
 
   it('muestra las líneas de capacidad que ya existían (350 y 238 hs/mes, ≈ 2 máq. en la actual)', () => {

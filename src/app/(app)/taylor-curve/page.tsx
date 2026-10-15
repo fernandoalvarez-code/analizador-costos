@@ -36,6 +36,8 @@ import {
   getLoadColor, getHmColorClass, calculateIncidence,
 } from '@/lib/taylor-helpers';
 import { useTaylorCurve } from '@/hooks/use-taylor-curve';
+import { computeMachineScale } from '@/lib/machine-scale';
+import { MachineScaleFields, MachineScaleSummary } from '@/components/calculator/MachineScale';
 
 import { authedFetch } from "@/lib/client/auth-fetch";
 import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
@@ -97,6 +99,9 @@ export default function TaylorCurvePage() {
   const [monthlyProduction, setMonthlyProduction] = useState<string | number>(0);
   const [horasPorTurno, setHorasPorTurno] = useState<string | number>(8);
   const [turnosPorDia, setTurnosPorDia] = useState<string | number>(1);
+  // Escala por máquinas en paralelo (opcional): vacío = la función está apagada y todo queda como antes.
+  const [machinesParallel, setMachinesParallel] = useState<string | number>("");
+  const [workDaysPerMonth, setWorkDaysPerMonth] = useState<string | number>(22);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [saveCaseName, setSaveCaseName] = useState("");
@@ -141,6 +146,14 @@ export default function TaylorCurvePage() {
     toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium,
     tcPremiumInput, zPremium, edgesPremium, dcPremium, aePremium, lifeModePremium,
   });
+
+  // null con "Máquinas en paralelo" vacío o cualquier dato inválido: entonces no se muestra nada nuevo.
+  const machineScale = React.useMemo(() => capacityCheck
+    ? computeMachineScale({
+        hrsComp: capacityCheck.hrsCompExact, hrsSeco: capacityCheck.hrsSecoExact,
+        machines: machinesParallel, hoursPerShift: horasPorTurno, shiftsPerDay: turnosPorDia, daysPerMonth: workDaysPerMonth,
+      })
+    : null, [capacityCheck, machinesParallel, horasPorTurno, turnosPorDia, workDaysPerMonth]);
 
   useEffect(() => {
     const isReadyForSuggestion = materialId && toolNamePremium && toolNamePremium.length > 2;
@@ -323,7 +336,7 @@ export default function TaylorCurvePage() {
             date: serverTimestamp(),
             taylorInputs: {
               operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, maxTorque, machineEfficiency, profundidadAgujero, coolantInternal, drillingOrientation,
-              monthlyProduction, horasPorTurno, turnosPorDia, lifeModeCurrent, lifeModePremium,
+              monthlyProduction, horasPorTurno, turnosPorDia, machinesParallel, workDaysPerMonth, lifeModeCurrent, lifeModePremium,
               toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrent, zCurrent, edgesCurrent, dcCurrent, aeCurrent,
               toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, tcPremiumInput, zPremium, edgesPremium, dcPremium, aePremium,
             },
@@ -927,15 +940,17 @@ export default function TaylorCurvePage() {
                   <span className="absolute right-3 top-3 text-[10px] font-bold text-slate-400 uppercase">Trns/Día</span>
                 </div>
               </div>
+              <MachineScaleFields machines={machinesParallel} onMachinesChange={setMachinesParallel} days={workDaysPerMonth} onDaysChange={setWorkDaysPerMonth} />
               {capacityCheck && (
                 <div className="text-[10px] mt-1 space-y-0.5">
-                  <p className="text-red-500">📊 Actual: ~{capacityCheck.hrsComp} hs/mes{capacityCheck.maqComp > 1 && ` (≈ ${Math.ceil(capacityCheck.maqComp)} máq.)`}</p>
-                  <p className="text-green-600">📊 Secocut: ~{capacityCheck.hrsSeco} hs/mes{capacityCheck.maqSeco > 1 && ` (≈ ${Math.ceil(capacityCheck.maqSeco)} máq.)`}</p>
+                  <p className="text-red-500">📊 Actual: ~{capacityCheck.hrsComp} hs/mes{!machineScale && capacityCheck.maqComp > 1 && ` (≈ ${Math.ceil(capacityCheck.maqComp)} máq.)`}</p>
+                  <p className="text-green-600">📊 Secocut: ~{capacityCheck.hrsSeco} hs/mes{!machineScale && capacityCheck.maqSeco > 1 && ` (≈ ${Math.ceil(capacityCheck.maqSeco)} máq.)`}</p>
                   {capacityCheck.hrsLiberadas > 0 && (
                     <p className="text-emerald-700 font-bold">⚡ {capacityCheck.hrsLiberadas} hs máquina liberadas/mes</p>
                   )}
                 </div>
               )}
+              {machineScale && <MachineScaleSummary scale={machineScale} variant="screen" />}
             </div>
           </div>
 

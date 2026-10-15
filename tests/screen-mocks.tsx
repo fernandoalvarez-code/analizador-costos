@@ -1,4 +1,5 @@
-import { vi } from 'vitest';
+import { fireEvent } from '@testing-library/react';
+import { expect, vi } from 'vitest';
 
 /** Polyfills de jsdom que usan Radix y Recharts en las pantallas de la curva. */
 export function installDomPolyfills() {
@@ -20,5 +21,38 @@ export function escalaComercialBlock(container: HTMLElement): HTMLElement {
   const label = [...container.querySelectorAll('label')].find((l) => l.textContent?.includes('Escala Comercial'));
   if (!label?.parentElement) throw new Error('no se encontró el bloque Escala Comercial');
   return label.parentElement;
+}
+/**
+ * El bloque SIN lo que agrega la función de máquinas en paralelo (el contenedor de sus dos campos). Con "Máquinas en
+ * paralelo" vacío tiene que ser idéntico, carácter por carácter, al bloque de `main`.
+ */
+export function escalaComercialBase(container: HTMLElement): string {
+  const clone = escalaComercialBlock(container).cloneNode(true) as HTMLElement;
+  clone.querySelectorAll('[data-testid="escala-maquinas-campos"], [data-testid="escala-maquinas-resultado"]').forEach((el) => el.remove());
+  return clone.outerHTML;
+}
+/** Cambia el valor de un campo como lo haría el usuario. */
+export function typeInto(el: Element | null | undefined, value: string) {
+  expect(el, 'campo no encontrado').toBeTruthy();
+  fireEvent.change(el!, { target: { value } });
+}
+
+/** Campo por el rótulo de unidad que lleva a la derecha (p. ej. "Hrs/Trn"). */
+export function fieldByUnit(container: HTMLElement, unit: string): HTMLInputElement {
+  const span = [...container.querySelectorAll('span')].find((s) => s.textContent?.trim() === unit);
+  const input = span?.parentElement?.querySelector('input');
+  if (!input) throw new Error(`no se encontró el campo ${unit}`);
+  return input as HTMLInputElement;
+}
+
+/** Carga el caso Toyota en la pantalla NUEVA de la curva: 10.000 pzs/mes, cambio 2 min, rendimiento 20 y 40, tiempos 2,0 y 1,375. */
+export function fillToyotaPage(c: HTMLElement) {
+  typeInto(c.querySelector('input[placeholder="0"]'), '10000');
+  const pcs = c.querySelectorAll('input[placeholder="Ej: 120"]');
+  typeInto(pcs[0], '20'); typeInto(pcs[1], '40');
+  typeInto(c.querySelector('input[placeholder="Ej: 7.0"]'), '2');
+  typeInto(c.querySelector('input[placeholder="Ej: 6.36"]'), '1.375');
+  const cambio = [...c.querySelectorAll('label')].find((l) => l.textContent?.includes('Cambio (min)'));
+  typeInto(cambio?.parentElement?.querySelector('input'), '2');
 }
 export { vi };
