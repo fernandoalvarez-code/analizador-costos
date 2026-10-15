@@ -1716,6 +1716,7 @@ export default function TaylorCurvePage() {
             horasPorTurno={horasPorTurno}
             turnosPorDia={turnosPorDia}
             capacityCheck={capacityCheck}
+            machineScale={machineScale}
             pageNumber={1}
             totalPages={totalPdfPages}
           />
