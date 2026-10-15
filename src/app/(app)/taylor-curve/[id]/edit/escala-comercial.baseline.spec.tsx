@@ -2,7 +2,7 @@
 import { cleanup, render } from '@testing-library/react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { expectGolden } from '../../../../../../tests/golden';
-import { escalaComercialBlock, installDomPolyfills, rechartsStub } from '../../../../../../tests/screen-mocks';
+import { escalaComercialBase, escalaComercialBlock, installDomPolyfills, rechartsStub } from '../../../../../../tests/screen-mocks';
 
 // LÍNEA BASE de la pantalla de EDICIÓN: bloque ESCALA COMERCIAL de `main` antes de la función de máquinas en
 // paralelo, para un caso guardado (Toyota). FRÁGIL: depende de los nombres que importa de '@/firebase'.
@@ -43,7 +43,7 @@ afterAll(() => cleanup());
 describe('edición: bloque Escala Comercial sin máquinas en paralelo', () => {
   it('con el caso Toyota guardado coincide con el golden de main', () => {
     const { container } = render(<EditPage />);
-    expectGolden('escala-comercial.edit.base.html', escalaComercialBlock(container).outerHTML);
+    expectGolden('escala-comercial.edit.base.html', escalaComercialBase(container));
   });
 
   it('muestra las líneas de capacidad que ya existían (calculadas con 8 h × 1 turno × 22 días)', () => {
