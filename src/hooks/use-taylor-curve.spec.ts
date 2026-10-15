@@ -11,6 +11,7 @@ vi.mock('react', () => ({ useMemo: <T,>(fn: () => T) => fn() }));
 
 import { useTaylorCurve, type UseTaylorCurveInputs } from '@/hooks/use-taylor-curve';
 import { MATERIALS } from '@/lib/taylor-data';
+import { TOYOTA_INPUTS } from '../../tests/fixtures/toyota';
 
 const VC = 200;
 
@@ -52,5 +53,30 @@ describe('Z (dientes) en el costo de herramienta', () => {
     expect(sinZ.actual).toBeGreaterThan(0);
     expect(conZ.actual / sinZ.actual).toBeCloseTo(4, 9);
     expect(conZ.premium / sinZ.premium).toBeCloseTo(4, 9);
+  });
+});
+
+// capacityCheck: caso Toyota (10.000 pzs/mes, cambio 2 min, rendimiento 20 y 40, tiempos de corte 2,0 y 1,375).
+describe('capacityCheck', () => {
+  const cap = () => useTaylorCurve(TOYOTA_INPUTS).capacityCheck!;
+
+  it('los valores que ya existían no cambian: 350 y 238 hs/mes, 113 liberadas, ≈ 1,99 y 1,35 máquinas', () => {
+    const c = cap();
+    expect(c.hrsComp).toBe(350);
+    expect(c.hrsSeco).toBe(238);       // 237,5 redondeado por la app
+    expect(c.hrsLiberadas).toBe(113);  // 112,5 redondeado
+    expect(c.maqComp).toBeCloseTo(350 / 176, 9);
+    expect(c.maqSeco).toBeCloseTo(237.5 / 176, 9);
+  });
+
+  it('expone además las horas sin redondear: 350 y 237,5', () => {
+    const c = cap();
+    expect(c.hrsCompExact).toBeCloseTo(350, 9);
+    expect(c.hrsSecoExact).toBeCloseTo(237.5, 9);
+  });
+
+  it('es null cuando falta el volumen o algún tiempo de ciclo (como antes)', () => {
+    expect(useTaylorCurve({ ...TOYOTA_INPUTS, monthlyProduction: '' }).capacityCheck).toBeNull();
+    expect(useTaylorCurve({ ...TOYOTA_INPUTS, tcPremiumInput: '' }).capacityCheck).toBeNull();
   });
 });
