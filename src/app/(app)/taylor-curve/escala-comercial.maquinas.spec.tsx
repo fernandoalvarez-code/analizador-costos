@@ -22,8 +22,8 @@ import Page from '@/app/(app)/taylor-curve/page';
 beforeAll(() => installDomPolyfills());
 afterAll(() => cleanup());
 
-const machines = (c: HTMLElement) => c.querySelector('input[aria-label="Máquinas en paralelo"]') as HTMLInputElement;
-const days = (c: HTMLElement) => c.querySelector('input[aria-label="Días de trabajo por mes"]') as HTMLInputElement;
+const machines = (c: HTMLElement) => c.querySelector('[data-testid="escala-input-maquinas"]') as HTMLInputElement;
+const days = (c: HTMLElement) => c.querySelector('[data-testid="escala-input-dias"]') as HTMLInputElement;
 const result = (c: HTMLElement) => c.querySelector('[data-testid="escala-maquinas-resultado"]');
 const text = (c: HTMLElement) => escalaComercialBlock(c).textContent ?? '';
 
@@ -224,5 +224,91 @@ describe('horas por turno posibles (Hrs/Trn entre 1 y 24; Hrs/Trn × Trns/Día �
 
   it('con valores válidos el bloque sigue idéntico al de main (sin aviso ni cambios de clase)', () => {
     expectGolden('escala-comercial.page.base.html', escalaComercialBase(toyota()));
+  });
+});
+
+describe('campos: etiqueta visible ENCIMA, sin superposición, con aviso corto', () => {
+  const campos = ['escala-input-horas', 'escala-input-turnos', 'escala-input-maquinas', 'escala-input-dias'];
+  const aviso = (c: HTMLElement, id: string) => c.querySelector(`[data-testid="${id}"]`)?.textContent;
+
+  it('los 4 campos están en el componente compartido, cada uno con su <label> asociada', () => {
+    const c = toyota();
+    const etiquetas: string[] = [];
+    for (const id of campos) {
+      const input = c.querySelector(`[data-testid="${id}"]`) as HTMLInputElement;
+      expect(input, id).toBeTruthy();
+      const label = c.querySelector(`label[for="${input.id}"]`);
+      expect(label, `label de ${id}`).toBeTruthy();
+      etiquetas.push(label!.textContent!);
+    }
+    expect(etiquetas).toEqual(['Hrs/Trn', 'Trns/Día', 'Máquinas en paralelo', 'Días de trabajo por mes']);
+  });
+
+  it('ninguna etiqueta va posicionada de forma absoluta dentro de los campos (era la causa del texto tapado)', () => {
+    const c = toyota();
+    const contenedor = c.querySelector('[data-testid="escala-maquinas-campos"]')!;
+    expect(contenedor.querySelectorAll('.absolute')).toHaveLength(0);
+    for (const id of campos) {
+      const input = c.querySelector(`[data-testid="${id}"]`)!;
+      expect(input.className).not.toMatch(/\bpr-(12|14|16)\b/); // sin relleno derecho reservado a una etiqueta superpuesta
+    }
+  });
+
+  it('los 4 campos muestran lo que se escribe (valor en el estado y en el campo) y arrancan con 8 h, 1 turno, 22 días', () => {
+    const c = toyota();
+    expect(fieldByUnit(c, 'Hrs/Trn').value).toBe('8');
+    expect(fieldByUnit(c, 'Trns/Día').value).toBe('1');
+    expect(fieldByUnit(c, 'Días').value).toBe('22');
+    typeInto(fieldByUnit(c, 'Hrs/Trn'), '12'); typeInto(fieldByUnit(c, 'Trns/Día'), '2'); typeInto(fieldByUnit(c, 'Máquinas'), '10'); typeInto(fieldByUnit(c, 'Días'), '20');
+    expect([fieldByUnit(c, 'Hrs/Trn').value, fieldByUnit(c, 'Trns/Día').value, fieldByUnit(c, 'Máquinas').value, fieldByUnit(c, 'Días').value]).toEqual(['12', '2', '10', '20']);
+  });
+
+  it('24.000 pzs, 10 máquinas, 8 h, 1 turno, 22 días: la tarjeta se muestra (ejemplo de Fernando)', () => {
+    const c = toyota();
+    typeInto(c.querySelector('input[placeholder="0"]'), '24000');
+    typeInto(machines(c), '10');
+    expect(text(c)).toContain('Base: 10 máq. × 8 h × 1 turno × 22 días = 1.760 hs/mes disponibles');
+  });
+
+  describe('Máquinas en paralelo: entero entre 1 y 100', () => {
+    it.each([['1'], ['50'], ['100']])('%s se calcula', (n) => {
+      const c = toyota();
+      typeInto(machines(c), n);
+      expect(result(c)).not.toBeNull();
+      expect(aviso(c, 'escala-aviso-maquinas')).toBeUndefined();
+    });
+
+    it.each([['101'], ['1000'], ['0'], ['-3'], ['1.5']])('%s: sin tarjeta y con aviso corto en el campo', (n) => {
+      const c = toyota();
+      typeInto(machines(c), n);
+      expect(result(c)).toBeNull();
+      expect(aviso(c, 'escala-aviso-maquinas')).toBe('⚠ Máquinas en paralelo: entero entre 1 y 100.');
+      expect(machines(c).getAttribute('aria-invalid')).toBe('true');
+    });
+
+    it('vacío no es un error: sin aviso y sin tarjeta', () => {
+      const c = toyota();
+      expect(aviso(c, 'escala-aviso-maquinas')).toBeUndefined();
+      expect(result(c)).toBeNull();
+    });
+  });
+
+  describe('Días de trabajo por mes: entre 1 y 31', () => {
+    it.each([['0'], ['32'], ['-1']])('%s: sin tarjeta y con aviso corto', (n) => {
+      const c = toyota();
+      typeInto(machines(c), '2');
+      typeInto(days(c), n);
+      expect(result(c)).toBeNull();
+      expect(aviso(c, 'escala-aviso-dias')).toBe('⚠ Días/Mes: entre 1 y 31.');
+    });
+
+    it('vacío con máquinas en uso: aviso (sin días no se puede calcular); vacío con N vacío: nada', () => {
+      const c = toyota();
+      typeInto(days(c), '');
+      expect(aviso(c, 'escala-aviso-dias')).toBeUndefined();
+      typeInto(machines(c), '2');
+      expect(aviso(c, 'escala-aviso-dias')).toBe('⚠ Días/Mes: entre 1 y 31.');
+      expect(result(c)).toBeNull();
+    });
   });
 });

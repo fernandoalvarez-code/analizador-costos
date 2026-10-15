@@ -41,8 +41,8 @@ const open = (extra: Record<string, unknown> = {}) => {
   stable.saved.taylorInputs = { ...BASE_INPUTS, ...extra };
   return render(<EditPage />).container;
 };
-const machines = (c: HTMLElement) => c.querySelector('input[aria-label="Máquinas en paralelo"]') as HTMLInputElement;
-const days = (c: HTMLElement) => c.querySelector('input[aria-label="Días de trabajo por mes"]') as HTMLInputElement;
+const machines = (c: HTMLElement) => c.querySelector('[data-testid="escala-input-maquinas"]') as HTMLInputElement;
+const days = (c: HTMLElement) => c.querySelector('[data-testid="escala-input-dias"]') as HTMLInputElement;
 const result = (c: HTMLElement) => c.querySelector('[data-testid="escala-maquinas-resultado"]');
 const text = (c: HTMLElement) => escalaComercialBlock(c).textContent ?? '';
 
@@ -146,6 +146,23 @@ describe('horas por turno guardadas imposibles', () => {
     await waitFor(() => expect(updateDoc).toHaveBeenCalled());
     const inputs = (updateDoc.mock.calls[0] as unknown as [unknown, { taylorInputs: Record<string, unknown> }])[1].taylorInputs;
     expect(inputs.horasPorTurno).toBe(8445);
+  });
+});
+
+describe('campos en la edición: solo máquinas y días (las horas por turno son las del caso guardado)', () => {
+  it('muestra los dos campos con etiqueta encima y sin etiquetas absolutas; no hay campos de horas ni turnos', () => {
+    const c = open({ machinesParallel: 10 });
+    expect(c.querySelector('[data-testid="escala-input-horas"]')).toBeNull();
+    expect(c.querySelector('[data-testid="escala-input-turnos"]')).toBeNull();
+    const cont = c.querySelector('[data-testid="escala-maquinas-campos"]')!;
+    expect(cont.querySelectorAll('.absolute')).toHaveLength(0);
+    expect([...cont.querySelectorAll('label')].map((l) => l.textContent)).toEqual(['Máquinas en paralelo', 'Días de trabajo por mes']);
+  });
+
+  it('Máquinas en paralelo guardado fuera de 1–100: sin tarjeta y con aviso corto', () => {
+    const c = open({ machinesParallel: 101 });
+    expect(result(c)).toBeNull();
+    expect(c.querySelector('[data-testid="escala-aviso-maquinas"]')?.textContent).toBe('⚠ Máquinas en paralelo: entero entre 1 y 100.');
   });
 });
 

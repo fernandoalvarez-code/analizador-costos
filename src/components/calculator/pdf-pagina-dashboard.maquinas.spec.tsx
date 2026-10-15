@@ -85,8 +85,13 @@ describe('PDF página 1 con máquinas en paralelo', () => {
     expect(pie).toBeGreaterThan(tarjeta);
   });
 
-  it('línea Base con separador de miles: 1000 máquinas -> "1.000 máq. … = 176.000 hs/mes"', () => {
-    expect(plain(html({ machines: 1000 }))).toContain('Base: 1.000 máq. × 8 h × 1 turno × 22 días = 176.000 hs/mes disponibles');
+  it('línea Base con separador de miles: 100 máquinas -> "= 17.600 hs/mes"; 24 h por día y 31 días, 3.720 hs por máquina', () => {
+    expect(plain(html({ machines: 100 }))).toContain('Base: 100 máq. × 8 h × 1 turno × 22 días = 17.600 hs/mes disponibles');
+    expect(plain(html({ machines: 5, hoursPerShift: 8, shiftsPerDay: 3, days: 31 }))).toContain('Base: 5 máq. × 8 h × 3 turnos × 31 días = 3.720 hs/mes disponibles');
+  });
+
+  it('más de 100 máquinas: sin tarjeta (idéntica a main)', () => {
+    expect(html({ machines: 101 })).toBe(golden());
   });
 
   it('el caso real que falló: 8445 h por turno -> no hay tarjeta y la caja de productividad no muestra Pzas/Trn ni Pzas/Día', () => {

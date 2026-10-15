@@ -934,17 +934,12 @@ export default function TaylorCurvePage() {
                   <Input type="number" min="0" placeholder="0" className="w-full text-base font-black text-blue-700 pl-3 pr-14 h-11 bg-slate-50 text-slate-900 transition-colors focus:border-blue-400" value={monthlyProduction} onChange={(e) => setMonthlyProduction(e.target.value)} />
                   <span className="absolute right-3 top-3 text-[10px] font-bold text-slate-400 uppercase">Pzs/Mes</span>
                 </div>
-                <div className="relative">
-                  <Input type="number" min="1" max="24" aria-invalid={shiftProblem ? true : undefined} className={`w-full text-base font-bold pl-3 pr-12 h-11 bg-white text-slate-900 transition-colors focus:border-blue-400${shiftProblem ? " border-red-500" : ""}`} value={horasPorTurno} onChange={(e) => setHorasPorTurno(e.target.value ? Number(e.target.value) : '')} />
-                  <span className="absolute right-3 top-3 text-[10px] font-bold text-slate-400 uppercase">Hrs/Trn</span>
-                </div>
-                <div className="relative">
-                  <Input type="number" min="1" max="5" aria-invalid={shiftProblem ? true : undefined} className={`w-full text-base font-bold pl-3 pr-12 h-11 bg-white text-slate-900 transition-colors focus:border-blue-400${shiftProblem && shiftProblem.includes("×") ? " border-red-500" : ""}`} value={turnosPorDia} onChange={(e) => setTurnosPorDia(e.target.value ? Number(e.target.value) : '')} />
-                  <span className="absolute right-3 top-3 text-[10px] font-bold text-slate-400 uppercase">Trns/Día</span>
-                </div>
               </div>
-              {shiftProblem && <p data-testid="escala-aviso-turnos" className="text-[10px] font-bold text-red-600 mt-1">⚠ {shiftProblem}</p>}
-              <MachineScaleFields machines={machinesParallel} onMachinesChange={setMachinesParallel} days={workDaysPerMonth} onDaysChange={setWorkDaysPerMonth} />
+              <MachineScaleFields
+                machines={machinesParallel} onMachinesChange={setMachinesParallel} days={workDaysPerMonth} onDaysChange={setWorkDaysPerMonth}
+                hoursPerShift={horasPorTurno} onHoursPerShiftChange={setHorasPorTurno}
+                shiftsPerDay={turnosPorDia} onShiftsPerDayChange={setTurnosPorDia} shiftNotice={shiftProblem}
+              />
               {capacityCheck && (
                 <div className="text-[10px] mt-1 space-y-0.5">
                   <p className="text-red-500">📊 Actual: ~{capacityCheck.hrsComp} hs/mes{!machineScale && capacityCheck.maqComp > 1 && ` (≈ ${Math.ceil(capacityCheck.maqComp)} máq.)`}</p>

@@ -51,6 +51,10 @@ const CEIL_EPSILON = 1e-9;
 
 const MAX_DAYS_PER_MONTH = 31;
 
+/** "Máquinas en paralelo": entero entre 1 y 100. */
+export const MIN_MACHINES = 1;
+export const MAX_MACHINES = 100;
+
 /** Un día no tiene más de 24 horas: Hrs/Trn entre 1 y 24 y Hrs/Trn × Trns/Día no mayor a 24. */
 export const MIN_HOURS_PER_SHIFT = 1;
 export const MAX_HOURS_PER_DAY = 24;
@@ -82,9 +86,29 @@ export function shiftHoursProblem(
   return null;
 }
 
+/** Mensaje corto si "Máquinas en paralelo" está cargado pero no es un entero entre 1 y 100. Vacío no es un error: la función está apagada. */
+export function machinesProblem(machines: string | number | null | undefined): string | null {
+  if (typeof machines === 'string' ? machines.trim() === '' : machines === null || machines === undefined) return null;
+  const n = toNumber(machines);
+  if (n === null || !Number.isInteger(n) || n < MIN_MACHINES || n > MAX_MACHINES) return `Máquinas en paralelo: entero entre ${MIN_MACHINES} y ${MAX_MACHINES}.`;
+  return null;
+}
+
+/**
+ * Mensaje corto si los días de trabajo por mes no sirven: cargados fuera de 1–31, o vacíos mientras las máquinas
+ * en paralelo están en uso (sin días no se puede calcular). Con la función apagada y el campo vacío no hay mensaje.
+ */
+export function daysProblem(days: string | number | null | undefined, machinesInUse: boolean): string | null {
+  const vacio = typeof days === 'string' ? days.trim() === '' : days === null || days === undefined;
+  if (vacio) return machinesInUse ? `Días/Mes: entre 1 y ${MAX_DAYS_PER_MONTH}.` : null;
+  const n = toNumber(days);
+  if (n === null || n < 1 || n > MAX_DAYS_PER_MONTH) return `Días/Mes: entre 1 y ${MAX_DAYS_PER_MONTH}.`;
+  return null;
+}
+
 export function computeMachineScale(input: MachineScaleInput): MachineScaleResult | null {
   const machines = toNumber(input.machines);
-  if (machines === null || !Number.isInteger(machines) || machines < 1) return null;
+  if (machines === null || !Number.isInteger(machines) || machines < MIN_MACHINES || machines > MAX_MACHINES) return null;
 
   const hoursPerShift = toNumber(input.hoursPerShift);
   const shiftsPerDay = toNumber(input.shiftsPerDay);

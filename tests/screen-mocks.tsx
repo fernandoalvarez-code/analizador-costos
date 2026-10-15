@@ -37,10 +37,13 @@ export function typeInto(el: Element | null | undefined, value: string) {
   fireEvent.change(el!, { target: { value } });
 }
 
-/** Campo por el rótulo de unidad que lleva a la derecha (p. ej. "Hrs/Trn"). */
+const FIELD_TESTID: Record<string, string> = {
+  'Hrs/Trn': 'escala-input-horas', 'Trns/Día': 'escala-input-turnos', 'Máquinas': 'escala-input-maquinas', 'Días': 'escala-input-dias',
+};
+
+/** Campo nuevo de la Escala Comercial por su nombre corto ("Hrs/Trn", "Trns/Día", "Máquinas", "Días"). */
 export function fieldByUnit(container: HTMLElement, unit: string): HTMLInputElement {
-  const span = [...container.querySelectorAll('span')].find((s) => s.textContent?.trim() === unit);
-  const input = span?.parentElement?.querySelector('input');
+  const input = container.querySelector(`[data-testid="${FIELD_TESTID[unit]}"]`);
   if (!input) throw new Error(`no se encontró el campo ${unit}`);
   return input as HTMLInputElement;
 }

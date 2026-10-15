@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeMachineScale, formatMachinesFreed, formatUtilization, shiftHoursProblem, type MachineScaleInput } from '@/lib/machine-scale';
+import { computeMachineScale, daysProblem, formatMachinesFreed, formatUtilization, machinesProblem, shiftHoursProblem, type MachineScaleInput } from '@/lib/machine-scale';
 
 // Datos comunes: 8 h × 1 turno × 22 días = 176 hs/mes por máquina.
 const base = (over: Partial<MachineScaleInput> = {}): MachineScaleInput => ({
@@ -175,5 +175,39 @@ describe('horas por turno posibles: Hrs/Trn entre 1 y 24 y Hrs/Trn × Trns/Día 
 
   it('con datos válidos el resultado es el de siempre (Toyota: 199 % → 135 %)', () => {
     expect(formatUtilization(computeMachineScale(base({ machines: 1 }))!.utilizationCurrent)).toBe('199 %');
+  });
+});
+
+describe('tope de máquinas en paralelo: entero entre 1 y 100', () => {
+  it.each([1, 2, 50, 99, 100, '100', '1'])('%j se calcula', (machines) => {
+    expect(computeMachineScale(base({ machines }))).not.toBeNull();
+    expect(machinesProblem(machines)).toBeNull();
+  });
+
+  it.each([101, 150, 1000, '101', 0, -1, 1.5, 100.5, NaN, Infinity, 'abc'])('%j: sin cálculo y con mensaje', (machines) => {
+    expect(computeMachineScale(base({ machines }))).toBeNull();
+    expect(machinesProblem(machines)).toBe('Máquinas en paralelo: entero entre 1 y 100.');
+  });
+
+  it('vacío no es un error (la función está apagada): sin mensaje', () => {
+    for (const v of ['', '  ', null, undefined]) expect(machinesProblem(v)).toBeNull();
+  });
+
+  it('con 100 máquinas la utilización es mínima pero válida (350 / 17.600 = 2 %)', () => {
+    const r = computeMachineScale(base({ machines: 100 }))!;
+    expect(formatUtilization(r.utilizationCurrent)).toBe('2 %');
+    expect(r.machinesNeededCurrent).toBe(2);
+  });
+});
+
+describe('días de trabajo por mes: mensaje', () => {
+  it.each([1, 22, 31, '20'])('%j sin mensaje', (d) => { expect(daysProblem(d, true)).toBeNull(); });
+  it.each([0, 32, -1, 'abc', NaN])('%j: "Días/Mes: entre 1 y 31."', (d) => {
+    expect(daysProblem(d, true)).toBe('Días/Mes: entre 1 y 31.');
+    expect(daysProblem(d, false)).toBe('Días/Mes: entre 1 y 31.');
+  });
+  it('vacío: mensaje solo si las máquinas en paralelo están en uso', () => {
+    expect(daysProblem('', true)).toBe('Días/Mes: entre 1 y 31.');
+    expect(daysProblem('', false)).toBeNull();
   });
 });
