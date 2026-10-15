@@ -12,12 +12,17 @@ import { formatMachinesFreed, formatUtilization, type MachineScaleResult } from 
 export const MACHINE_SCALE_NOTE =
   'Las horas liberadas generan ahorro solo si se utilizan (más producción, menos horas extra o una máquina evitada).';
 
-const num = (n: number) => String(Number.isInteger(n) ? n : Math.round(n * 10) / 10).replace('.', ',');
+/** 176000 -> "176.000"; 7,5 -> "7,5" (punto de miles y coma decimal, como el resto de la app en español). */
+const num = (n: number) => {
+  const [entero, decimal] = String(Number.isInteger(n) ? n : Math.round(n * 10) / 10).split('.');
+  const miles = entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return decimal ? `${miles},${decimal}` : miles;
+};
 
 /** "Base: 1 máq. × 8 h × 1 turno × 22 días = 176 hs/mes disponibles (…)": con qué se calculó el porcentaje. */
 export function machineScaleBasis(s: MachineScaleResult): string {
   const turnos = `${num(s.shiftsPerDay)} ${s.shiftsPerDay === 1 ? 'turno' : 'turnos'}`;
-  return `Base: ${s.machines} máq. × ${num(s.hoursPerShift)} h × ${turnos} × ${num(s.daysPerMonth)} días = ${num(s.hoursAvailable)} hs/mes disponibles (teórico: sin paradas ni mantenimiento)`;
+  return `Base: ${num(s.machines)} máq. × ${num(s.hoursPerShift)} h × ${turnos} × ${num(s.daysPerMonth)} días = ${num(s.hoursAvailable)} hs/mes disponibles (teórico: sin paradas ni mantenimiento)`;
 }
 
 interface FieldsProps {
@@ -25,9 +30,11 @@ interface FieldsProps {
   onMachinesChange: (value: string | number) => void;
   days: string | number;
   onDaysChange: (value: string | number) => void;
+  /** Aviso corto cuando las horas por turno no permiten calcular (se muestra junto a los campos). */
+  notice?: string | null;
 }
 
-export function MachineScaleFields({ machines, onMachinesChange, days, onDaysChange }: FieldsProps) {
+export function MachineScaleFields({ machines, onMachinesChange, days, onDaysChange, notice }: FieldsProps) {
   return (
     <div data-testid="escala-maquinas-campos" className="mt-3">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -51,6 +58,7 @@ export function MachineScaleFields({ machines, onMachinesChange, days, onDaysCha
       <p className="text-[10px] text-slate-400 mt-1">
         Opcional. Con las máquinas en paralelo se muestra la utilización teórica y las máquinas evitadas. Los días de trabajo solo se usan en ese cálculo.
       </p>
+      {notice && <p data-testid="escala-maquinas-aviso" className="text-[10px] font-bold text-red-600 mt-1">⚠ {notice}</p>}
     </div>
   );
 }

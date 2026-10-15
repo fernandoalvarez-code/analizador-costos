@@ -36,7 +36,7 @@ import {
   getLoadColor, getHmColorClass, calculateIncidence,
 } from '@/lib/taylor-helpers';
 import { useTaylorCurve } from '@/hooks/use-taylor-curve';
-import { computeMachineScale } from '@/lib/machine-scale';
+import { computeMachineScale, shiftHoursProblem } from '@/lib/machine-scale';
 import { MachineScaleFields, MachineScaleSummary } from '@/components/calculator/MachineScale';
 
 import { authedFetch } from "@/lib/client/auth-fetch";
@@ -146,6 +146,9 @@ export default function TaylorCurvePage() {
     toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium,
     tcPremiumInput, zPremium, edgesPremium, dcPremium, aePremium, lifeModePremium,
   });
+
+  // Horas por turno / turnos imposibles (8445 h por turno, 4 turnos de 8 h…): aviso junto al campo. Con datos válidos es null.
+  const shiftProblem = shiftHoursProblem(horasPorTurno, turnosPorDia);
 
   // null con "Máquinas en paralelo" vacío o cualquier dato inválido: entonces no se muestra nada nuevo.
   const machineScale = React.useMemo(() => capacityCheck
@@ -932,14 +935,15 @@ export default function TaylorCurvePage() {
                   <span className="absolute right-3 top-3 text-[10px] font-bold text-slate-400 uppercase">Pzs/Mes</span>
                 </div>
                 <div className="relative">
-                  <Input type="number" min="1" max="24" className="w-full text-base font-bold pl-3 pr-12 h-11 bg-white text-slate-900 transition-colors focus:border-blue-400" value={horasPorTurno} onChange={(e) => setHorasPorTurno(e.target.value ? Number(e.target.value) : '')} />
+                  <Input type="number" min="1" max="24" aria-invalid={shiftProblem ? true : undefined} className={`w-full text-base font-bold pl-3 pr-12 h-11 bg-white text-slate-900 transition-colors focus:border-blue-400${shiftProblem ? " border-red-500" : ""}`} value={horasPorTurno} onChange={(e) => setHorasPorTurno(e.target.value ? Number(e.target.value) : '')} />
                   <span className="absolute right-3 top-3 text-[10px] font-bold text-slate-400 uppercase">Hrs/Trn</span>
                 </div>
                 <div className="relative">
-                  <Input type="number" min="1" max="5" className="w-full text-base font-bold pl-3 pr-12 h-11 bg-white text-slate-900 transition-colors focus:border-blue-400" value={turnosPorDia} onChange={(e) => setTurnosPorDia(e.target.value ? Number(e.target.value) : '')} />
+                  <Input type="number" min="1" max="5" aria-invalid={shiftProblem ? true : undefined} className={`w-full text-base font-bold pl-3 pr-12 h-11 bg-white text-slate-900 transition-colors focus:border-blue-400${shiftProblem && shiftProblem.includes("×") ? " border-red-500" : ""}`} value={turnosPorDia} onChange={(e) => setTurnosPorDia(e.target.value ? Number(e.target.value) : '')} />
                   <span className="absolute right-3 top-3 text-[10px] font-bold text-slate-400 uppercase">Trns/Día</span>
                 </div>
               </div>
+              {shiftProblem && <p data-testid="escala-aviso-turnos" className="text-[10px] font-bold text-red-600 mt-1">⚠ {shiftProblem}</p>}
               <MachineScaleFields machines={machinesParallel} onMachinesChange={setMachinesParallel} days={workDaysPerMonth} onDaysChange={setWorkDaysPerMonth} />
               {capacityCheck && (
                 <div className="text-[10px] mt-1 space-y-0.5">

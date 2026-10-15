@@ -153,3 +153,76 @@ describe('datos inválidos: no se muestra nada nuevo y nada se rompe', () => {
     expect(result(c)).toBeNull();
   });
 });
+
+describe('horas por turno posibles (Hrs/Trn entre 1 y 24; Hrs/Trn × Trns/Día ≤ 24)', () => {
+  const aviso = (c: HTMLElement) => c.querySelector('[data-testid="escala-aviso-turnos"]');
+  const caja = (c: HTMLElement) => c.textContent ?? '';
+
+  it('con datos válidos no hay aviso, la tarjeta aparece y la caja de productividad muestra sus fichas de siempre', () => {
+    const c = toyota();
+    typeInto(machines(c), '10');
+    expect(aviso(c)).toBeNull();
+    expect(result(c)).not.toBeNull();
+    expect(caja(c)).toContain('Pzas / Trn (8h)');
+  });
+
+  it('el caso real que falló: N=10 y Hrs/Trn=8445 -> sin tarjeta, aviso corto en el campo y sin fichas por turno', () => {
+    const c = toyota();
+    typeInto(machines(c), '10');
+    typeInto(fieldByUnit(c, 'Hrs/Trn'), '8445');
+    expect(result(c)).toBeNull();
+    expect(aviso(c)?.textContent).toBe('⚠ Hrs/Trn debe estar entre 1 y 24.');
+    expect(fieldByUnit(c, 'Hrs/Trn').getAttribute('aria-invalid')).toBe('true');
+    expect(caja(c)).not.toContain('1.857.900');
+    expect(caja(c)).not.toContain('Pzas / Trn');
+    expect(caja(c)).not.toContain('(8445h)');
+    expect(caja(c)).toContain('Pzas / Hora');
+  });
+
+  it('el aviso también aparece con N vacío (los mismos datos alimentan la caja de productividad)', () => {
+    const c = toyota();
+    typeInto(fieldByUnit(c, 'Hrs/Trn'), '25');
+    expect(aviso(c)?.textContent).toBe('⚠ Hrs/Trn debe estar entre 1 y 24.');
+    expect(caja(c)).not.toContain('Pzas / Trn');
+  });
+
+  it('Hrs/Trn × Trns/Día > 24 (8 h × 4 turnos): aviso del producto y sin tarjeta', () => {
+    const c = toyota();
+    typeInto(machines(c), '2');
+    typeInto(fieldByUnit(c, 'Trns/Día'), '4');
+    expect(result(c)).toBeNull();
+    expect(aviso(c)?.textContent).toBe('⚠ Hrs/Trn × Trns/Día no puede superar 24 h.');
+    expect(fieldByUnit(c, 'Trns/Día').getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it.each([['8', '3'], ['12', '2'], ['24', '1']])('el límite es inclusivo: %s h × %s turnos (24 h) sí se calcula', (h, t) => {
+    const c = toyota();
+    typeInto(machines(c), '2');
+    typeInto(fieldByUnit(c, 'Hrs/Trn'), h);
+    typeInto(fieldByUnit(c, 'Trns/Día'), t);
+    expect(aviso(c)).toBeNull();
+    expect(result(c)).not.toBeNull();
+  });
+
+  it('al corregir el valor la tarjeta vuelve y el aviso desaparece', () => {
+    const c = toyota();
+    typeInto(machines(c), '2');
+    typeInto(fieldByUnit(c, 'Hrs/Trn'), '8445');
+    expect(result(c)).toBeNull();
+    typeInto(fieldByUnit(c, 'Hrs/Trn'), '8');
+    expect(aviso(c)).toBeNull();
+    expect(text(c)).toContain('Utilización teórica: 99 % → 67 %');
+  });
+
+  it('Hrs/Trn vacío no es un error: sin aviso (la app usa 8) y sin tarjeta', () => {
+    const c = toyota();
+    typeInto(machines(c), '2');
+    typeInto(fieldByUnit(c, 'Hrs/Trn'), '');
+    expect(aviso(c)).toBeNull();
+    expect(result(c)).toBeNull();
+  });
+
+  it('con valores válidos el bloque sigue idéntico al de main (sin aviso ni cambios de clase)', () => {
+    expectGolden('escala-comercial.page.base.html', escalaComercialBase(toyota()));
+  });
+});

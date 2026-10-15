@@ -85,6 +85,34 @@ describe('PDF página 1 con máquinas en paralelo', () => {
     expect(pie).toBeGreaterThan(tarjeta);
   });
 
+  it('línea Base con separador de miles: 1000 máquinas -> "1.000 máq. … = 176.000 hs/mes"', () => {
+    expect(plain(html({ machines: 1000 }))).toContain('Base: 1.000 máq. × 8 h × 1 turno × 22 días = 176.000 hs/mes disponibles');
+  });
+
+  it('el caso real que falló: 8445 h por turno -> no hay tarjeta y la caja de productividad no muestra Pzas/Trn ni Pzas/Día', () => {
+    const h = html({ machines: 10, hoursPerShift: 8445 });
+    const t = plain(h);
+    expect(h).not.toContain('escala-maquinas-resultado');
+    expect(t).not.toContain('Utilización teórica');
+    expect(t).toContain('Pzas / Hora');          // no depende del turno: se mantiene
+    expect(t).not.toContain('Pzas / Trn');
+    expect(t).not.toContain('Pzas / Día');
+    expect(t).not.toContain('8445');
+    expect(t).toContain('Capacidad requerida: 350 hs/mes'); // lo demás de la página sigue
+  });
+
+  it('2 turnos de 8 h: la caja de productividad conserva sus fichas (datos válidos, números de siempre)', () => {
+    const t = plain(html({ machines: '', shiftsPerDay: 2 }));
+    expect(t).toContain('Pzas / Trn (8h)');
+    expect(t).toContain('Pzas / Día');
+  });
+
+  it('4 turnos de 8 h (32 h por día): sin tarjeta y sin fichas por turno', () => {
+    const h = html({ machines: 2, shiftsPerDay: 4 });
+    expect(h).not.toContain('escala-maquinas-resultado');
+    expect(plain(h)).not.toContain('Pzas / Trn');
+  });
+
   it('dos turnos de 7,5 h y 20 días: la línea Base lo dice', () => {
     expect(plain(html({ machines: 1, hoursPerShift: 7.5, shiftsPerDay: 2, days: 20 }))).toContain('Base: 1 máq. × 7,5 h × 2 turnos × 20 días = 300 hs/mes disponibles');
   });

@@ -116,6 +116,39 @@ describe('opción C: horas por turno y turnos del caso guardado solo en el bloqu
   });
 });
 
+describe('horas por turno guardadas imposibles', () => {
+  const aviso = (c: HTMLElement) => c.querySelector('[data-testid="escala-maquinas-aviso"]');
+
+  it('guardado con 8445 h por turno y N completo: sin tarjeta y con aviso corto', () => {
+    const c = open({ horasPorTurno: 8445, turnosPorDia: 1, machinesParallel: 10 });
+    expect(result(c)).toBeNull();
+    expect(aviso(c)?.textContent).toBe('⚠ Hrs/Trn debe estar entre 1 y 24. (valores guardados del caso)');
+  });
+
+  it('guardado con 8 h × 4 turnos y N completo: aviso del producto', () => {
+    const c = open({ horasPorTurno: 8, turnosPorDia: 4, machinesParallel: 2 });
+    expect(result(c)).toBeNull();
+    expect(aviso(c)?.textContent).toContain('Hrs/Trn × Trns/Día no puede superar 24 h.');
+  });
+
+  it('con N vacío no hay aviso y la pantalla es idéntica a la de main (la edición no usa esos datos)', () => {
+    const c = open({ horasPorTurno: 8445, turnosPorDia: 1 });
+    expect(aviso(c)).toBeNull();
+    expect(result(c)).toBeNull();
+    expectGolden('escala-comercial.edit.base.html', escalaComercialBase(c));
+  });
+
+  it('el valor guardado inválido se conserva al guardar (no se corrige a escondidas)', async () => {
+    const c = open({ horasPorTurno: 8445, turnosPorDia: 1, machinesParallel: 10 });
+    fireEvent.click([...c.querySelectorAll('button')].find((b) => b.textContent?.includes('Guardar Análisis'))!);
+    const confirmar = [...c.querySelectorAll('button')].filter((b) => b.textContent?.includes('Guardar Análisis')).pop()!;
+    await act(async () => { fireEvent.click(confirmar); });
+    await waitFor(() => expect(updateDoc).toHaveBeenCalled());
+    const inputs = (updateDoc.mock.calls[0] as unknown as [unknown, { taylorInputs: Record<string, unknown> }])[1].taylorInputs;
+    expect(inputs.horasPorTurno).toBe(8445);
+  });
+});
+
 describe('PDF generado desde la edición', () => {
   it('la página 1 lleva la tarjeta cuando hay máquinas en paralelo, y no cuando no', () => {
     const conN = open({ machinesParallel: 2 });

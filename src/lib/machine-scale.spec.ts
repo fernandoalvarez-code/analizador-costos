@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeMachineScale, formatMachinesFreed, formatUtilization, type MachineScaleInput } from '@/lib/machine-scale';
+import { computeMachineScale, formatMachinesFreed, formatUtilization, shiftHoursProblem, type MachineScaleInput } from '@/lib/machine-scale';
 
 // Datos comunes: 8 h × 1 turno × 22 días = 176 hs/mes por máquina.
 const base = (over: Partial<MachineScaleInput> = {}): MachineScaleInput => ({
@@ -139,5 +139,41 @@ describe('formato', () => {
     expect(formatMachinesFreed(0.049)).toBeNull();
     expect(formatMachinesFreed(0)).toBeNull();
     expect(formatMachinesFreed(NaN)).toBeNull();
+  });
+});
+
+describe('horas por turno posibles: Hrs/Trn entre 1 y 24 y Hrs/Trn × Trns/Día no mayor a 24', () => {
+  it('el caso real que falló: 10 máquinas con 8445 h por turno -> no se calcula (antes: 1.857.900 hs/mes y 0 %)', () => {
+    expect(computeMachineScale(base({ machines: 10, hoursPerShift: 8445 }))).toBeNull();
+    expect(shiftHoursProblem(8445, 1)).toBe('Hrs/Trn debe estar entre 1 y 24.');
+  });
+
+  it.each([[1, 1], [7.5, 2], [8, 3], [12, 2], [24, 1], [1, 5], [8, 1], ['8', '3']] as const)('Hrs/Trn %s × Trns/Día %s es posible', (h, t) => {
+    expect(shiftHoursProblem(h, t)).toBeNull();
+    expect(computeMachineScale(base({ hoursPerShift: h, shiftsPerDay: t }))).not.toBeNull();
+  });
+
+  it.each([[25, 1], [8445, 1], [24.01, 1], [0.5, 1], [-8, 1], [1e9, 1]] as const)('Hrs/Trn %s fuera de 1–24: aviso y sin cálculo', (h, t) => {
+    expect(shiftHoursProblem(h, t)).toBe('Hrs/Trn debe estar entre 1 y 24.');
+    expect(computeMachineScale(base({ hoursPerShift: h, shiftsPerDay: t }))).toBeNull();
+  });
+
+  it.each([[8, 4], [12, 3], [24, 2], [7.5, 4], [10, 2.5]] as const)('Hrs/Trn %s × Trns/Día %s supera 24 h por día', (h, t) => {
+    expect(shiftHoursProblem(h, t)).toBe('Hrs/Trn × Trns/Día no puede superar 24 h.');
+    expect(computeMachineScale(base({ hoursPerShift: h, shiftsPerDay: t }))).toBeNull();
+  });
+
+  it('el límite es inclusivo: 24 h por día exactas (8 × 3, 12 × 2, 24 × 1) sí se calculan', () => {
+    for (const [h, t] of [[8, 3], [12, 2], [24, 1]] as const) expect(computeMachineScale(base({ hoursPerShift: h, shiftsPerDay: t }))).not.toBeNull();
+  });
+
+  it('vacío no es un error (la app usa 8 y 1 por defecto) y no genera aviso', () => {
+    expect(shiftHoursProblem('', '')).toBeNull();
+    expect(shiftHoursProblem(null, undefined)).toBeNull();
+    expect(shiftHoursProblem('', 3)).toBeNull();
+  });
+
+  it('con datos válidos el resultado es el de siempre (Toyota: 199 % → 135 %)', () => {
+    expect(formatUtilization(computeMachineScale(base({ machines: 1 }))!.utilizationCurrent)).toBe('199 %');
   });
 });

@@ -34,7 +34,7 @@ import {
   getLoadColor, getHmColorClass, calculateIncidence,
 } from '@/lib/taylor-helpers';
 import { useTaylorCurve } from '@/hooks/use-taylor-curve';
-import { computeMachineScale } from '@/lib/machine-scale';
+import { computeMachineScale, shiftHoursProblem } from '@/lib/machine-scale';
 import { MachineScaleFields, MachineScaleSummary } from '@/components/calculator/MachineScale';
 
 import { authedFetch } from "@/lib/client/auth-fetch";
@@ -146,6 +146,10 @@ export default function EditTaylorCurvePage() {
     toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium,
     tcPremiumInput, zPremium, edgesPremium, dcPremium, aePremium, lifeModePremium,
   });
+
+  // Horas por turno / turnos GUARDADOS imposibles (8445 h…): se avisa solo si la función está en uso (N completo); con N
+  // vacío la pantalla queda idéntica a la de siempre.
+  const savedShiftProblem = shiftHoursProblem(savedHoursPerShift ?? 8, savedShiftsPerDay ?? 1);
 
   // null con "Máquinas en paralelo" vacío o cualquier dato inválido: entonces no se muestra nada nuevo.
   // Usa las horas por turno y los turnos del caso guardado (8 y 1 si no los tiene).
@@ -802,7 +806,7 @@ export default function EditTaylorCurvePage() {
                 <Input type="number" placeholder="0" className="w-full text-lg font-black text-blue-700 pl-4 pr-16 h-12 bg-slate-50 text-slate-900" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value)} />
                 <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400">pzs/mes</span>
               </div>
-              <MachineScaleFields machines={machinesParallel} onMachinesChange={setMachinesParallel} days={workDaysPerMonth} onDaysChange={setWorkDaysPerMonth} />
+              <MachineScaleFields machines={machinesParallel} onMachinesChange={setMachinesParallel} days={workDaysPerMonth} onDaysChange={setWorkDaysPerMonth} notice={savedShiftProblem && String(machinesParallel).trim() !== '' ? `${savedShiftProblem} (valores guardados del caso)` : null} />
               {capacityCheck && (
                 <div className="text-[10px] mt-1 space-y-0.5">
                   <p className="text-red-500">📊 Actual: ~{capacityCheck.hrsComp} hs/mes{!machineScale && capacityCheck.maqComp > 1 && ` (≈ ${Math.ceil(capacityCheck.maqComp)} máq.)`}</p>
