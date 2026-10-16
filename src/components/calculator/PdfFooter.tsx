@@ -12,11 +12,11 @@ interface PdfFooterProps {
 export function PdfFooter({ showAiDisclaimer = false }: PdfFooterProps) {
   return (
     <div className="mt-auto pt-4 border-t border-slate-300 text-center">
-      <p className="text-[10px] text-slate-500 font-semibold">
+      <p className="text-[11px] text-slate-500 font-semibold">
         Valores sugeridos — sujetos a verificación y ajuste en máquina
       </p>
       {showAiDisclaimer && (
-        <p className="text-[7px] text-slate-400 mt-2 leading-snug max-w-2xl mx-auto">
+        <p className="text-[11px] text-slate-500 mt-2 leading-snug max-w-2xl mx-auto">
           Este informe fue elaborado con asistencia de inteligencia artificial a partir de los datos aportados y del catálogo del fabricante. El criterio técnico y la revisión final son responsabilidad de SECOCUT. Ante cualquier discrepancia, prevalece el dato verificado en Seco Suggest.
         </p>
       )}

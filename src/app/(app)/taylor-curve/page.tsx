@@ -25,9 +25,8 @@ import { calcRPM, calcVf, calcTcDrilling } from '@/lib/machining-physics';
 import { Switch } from '@/components/ui/switch';
 import { MonthlySavingsSummary } from '@/components/calculator/MonthlySavingsSummary';
 import { VidaFiloChart, hasValidVidaFiloReference } from '@/components/calculator/VidaFiloChart';
-import { PdfPaginaVidaFilo } from '@/components/calculator/PdfPaginaVidaFilo';
 import { PdfPaginaDashboard } from '@/components/calculator/PdfPaginaDashboard';
-import { PdfPaginaCurvaCostos } from '@/components/calculator/PdfPaginaCurvaCostos';
+import { PdfPaginaGraficos } from '@/components/calculator/PdfPaginaGraficos';
 import { PdfPaginaDesgloseTecnico } from '@/components/calculator/PdfPaginaDesgloseTecnico';
 import { MATERIALS, COOLANT_COLOR, DRILLING_ALERT_STYLES, type LifeMode } from '@/lib/taylor-data';
 import {
@@ -377,14 +376,6 @@ export default function TaylorCurvePage() {
         const imgHeight3 = (canvas3.height * a4Width) / canvas3.width;
         pdf.addImage(imgData3, 'PNG', 0, 0, a4Width, imgHeight3, undefined, 'FAST');
 
-        const elementoPagina4 = document.getElementById('pdf-pagina-4');
-        if (elementoPagina4) {
-          pdf.addPage();
-          const canvas4 = await html2canvas(elementoPagina4, { scale: 2, useCORS: true, allowTaint: true });
-          const imgData4 = canvas4.toDataURL('image/png');
-          const imgHeight4 = (canvas4.height * a4Width) / canvas4.width;
-          pdf.addImage(imgData4, 'PNG', 0, 0, a4Width, imgHeight4, undefined, 'FAST');
-        }
 
         const fileName = `Reporte_Secocut_Analisis.pdf`;
         if (action === 'blob') {
@@ -664,8 +655,9 @@ export default function TaylorCurvePage() {
   const lifeChartData = curveDataInfo.data.map(d => ({ speed: d.speed, lifeActual: d[lifeDataKeyActual], lifePremium: d[lifeDataKeyPremium] }));
   // Página 3 del PDF: solo si en los dos puntos de referencia (Vc actual y
   // propuesta) la vida es un número > 0 — si no, el PDF sale de 2 páginas.
-  const hasPage3 = hasValidVidaFiloReference(lifeChartData, Number(vcCurrent), Number(vcPremium));
-  const totalPdfPages = hasPage3 ? 4 : 3;
+  const hasVidaFilo = hasValidVidaFiloReference(lifeChartData, Number(vcCurrent), Number(vcPremium));
+  // El informe lleva siempre 3 hojas: 1 resumen, 2 análisis gráfico (curva de costos + vida del filo) y 3 desglose técnico.
+  const totalPdfPages = 3;
 
   if (isLoading) {
     return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
@@ -1704,14 +1696,16 @@ export default function TaylorCurvePage() {
             pageNumber={1}
             totalPages={totalPdfPages}
           />
-          <PdfPaginaCurvaCostos
-            data={curveDataInfo.data}
+          <PdfPaginaGraficos
+            costData={curveDataInfo.data}
             vcActual={Number(vcCurrent)}
             vcPremium={Number(vcPremium)}
             actualCostCurrent={curveDataInfo.actualCostCurrent}
             actualCostPremium={curveDataInfo.actualCostPremium}
             isStressTestActive={isStressTestActive}
             limiteTermicoActual={curveDataInfo.limiteTermicoActual}
+            lifeData={hasVidaFilo ? lifeChartData : null}
+            lifeUnit={lifeUnitLabel}
             logoUrl={logos.company}
             pageNumber={2}
             totalPages={totalPdfPages}
@@ -1744,17 +1738,6 @@ export default function TaylorCurvePage() {
             pageNumber={3}
             totalPages={totalPdfPages}
           />
-          {hasPage3 && (
-            <PdfPaginaVidaFilo
-              data={lifeChartData}
-              unit={lifeUnitLabel}
-              vcActual={Number(vcCurrent)}
-              vcPremium={Number(vcPremium)}
-              logoUrl={logos.company}
-              pageNumber={4}
-              totalPages={totalPdfPages}
-            />
-          )}
         </div>
         <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', zIndex: -1 }}>
             <div id="survey-pdf-content" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
