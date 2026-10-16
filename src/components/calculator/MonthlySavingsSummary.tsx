@@ -1,5 +1,6 @@
 import React from 'react';
 import { TrendingDown, TrendingUp, DollarSign, Zap, Factory } from 'lucide-react';
+import { shiftHoursProblem } from '@/lib/machine-scale';
 
 interface MonthlySavingsProps {
   monthlyVolume: number;
@@ -55,6 +56,9 @@ export function MonthlySavingsSummary({
   const extraPcsHr = secoPcsHr - compPcsHr;
   const extraPcsShift = extraPcsHr * horasPorTurno;
   const extraPcsDay = extraPcsShift * turnosPorDia;
+  // Con horas por turno imposibles (p. ej. 8445 h) las fichas "Pzas / Trn" y "Pzas / Día" no tienen sentido: se
+  // ocultan. Con datos válidos el panel es exactamente el de siempre. "Pzas / Hora" no depende del turno.
+  const shiftOutputValid = shiftHoursProblem(horasPorTurno, turnosPorDia) === null;
 
   // Formateos
   const formatCurrency = (value: number) =>
@@ -161,6 +165,7 @@ export function MonthlySavingsSummary({
                     <p className={`${prodSize} font-black text-orange-400 drop-shadow-sm`}>+{extraPcsHr.toFixed(1)}</p>
                     <p className="text-[8px] text-orange-200/80 font-bold uppercase tracking-widest mt-1">Pzas / Hora</p>
                   </div>
+                  {shiftOutputValid && (<>
                   <div className={`bg-gradient-to-b from-orange-500/20 to-orange-500/5 border border-orange-500/30 rounded-xl ${prodCard} text-center flex-1 shadow-inner`}>
                     <p className={`${prodSize} font-black text-orange-400 drop-shadow-sm`}>+{Math.floor(extraPcsShift)}</p>
                     <p className="text-[8px] text-orange-200/80 font-bold uppercase tracking-widest mt-1">Pzas / Trn ({horasPorTurno}h)</p>
@@ -170,6 +175,7 @@ export function MonthlySavingsSummary({
                     <p className={`${prodSize} font-black text-orange-400 drop-shadow-sm`}>+{Math.floor(extraPcsDay)}</p>
                     <p className="text-[8px] text-orange-200/80 font-bold uppercase tracking-widest mt-1">Pzas / Día</p>
                   </div>
+                  </>)}
                 </div>
                 <p className="text-[8px] text-white/40 mt-2 text-center md:text-left italic">* Capacidad teórica adicional a utilización 100% de máquina.</p>
              </div>
