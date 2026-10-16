@@ -333,6 +333,10 @@ export function useTaylorCurve(inputs: UseTaylorCurveInputs) {
       hrsComp: Math.round(hrsComp),
       hrsSeco: Math.round(hrsSeco),
       hrsLiberadas: Math.round(hrsComp - hrsSeco),
+      // Las mismas horas SIN redondear: las usa la escala por máquinas en paralelo (machine-scale.ts).
+      // Solo se agregan; los valores de arriba y las fórmulas no cambian.
+      hrsCompExact: hrsComp,
+      hrsSecoExact: hrsSeco,
       maqComp: hrsDisponibles > 0 ? hrsComp / hrsDisponibles : 0,
       maqSeco: hrsDisponibles > 0 ? hrsSeco / hrsDisponibles : 0,
     };

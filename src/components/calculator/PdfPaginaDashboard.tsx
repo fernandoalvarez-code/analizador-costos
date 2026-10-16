@@ -2,6 +2,8 @@ import React from 'react';
 import { MonthlySavingsSummary } from './MonthlySavingsSummary';
 import { PdfFooter } from './PdfFooter';
 import { formatCurrency, formatNumber } from '@/lib/formatters';
+import type { MachineScaleResult } from '@/lib/machine-scale';
+import { MachineScaleSummary } from './MachineScale';
 
 interface PdfPaginaDashboardProps {
   logos: { company: string; brand: string };
@@ -15,6 +17,8 @@ interface PdfPaginaDashboardProps {
   horasPorTurno: string | number;
   turnosPorDia: string | number;
   capacityCheck: { hrsComp: number; hrsSeco: number; hrsLiberadas: number } | null;
+  /** Máquinas en paralelo (opcional). Sin valor, la página queda exactamente como antes. */
+  machineScale?: MachineScaleResult | null;
   pageNumber: number;
   totalPages: number;
 }
@@ -28,7 +32,7 @@ interface PdfPaginaDashboardProps {
 export function PdfPaginaDashboard({
   logos, saveClientName, pieceName, curveDataInfo, monthlyProduction,
   tcCurrent, tcPremiumInput, toolChangeTime, horasPorTurno, turnosPorDia,
-  capacityCheck, pageNumber, totalPages,
+  capacityCheck, machineScale, pageNumber, totalPages,
 }: PdfPaginaDashboardProps) {
   return (
     <div id="pdf-pagina-1" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
@@ -117,7 +121,7 @@ export function PdfPaginaDashboard({
               </div>
             );
           })()}
-          {capacityCheck && (
+          {capacityCheck && (<>
             <div className="mt-2 flex items-center justify-between px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
               <span className="text-[10px] text-slate-600">
                 Capacidad requerida: <span className="text-red-600 font-bold">{capacityCheck.hrsComp.toLocaleString()} hs/mes</span> (actual) → <span className="text-green-700 font-bold">{capacityCheck.hrsSeco.toLocaleString()} hs/mes</span> (Secocut)
@@ -128,7 +132,8 @@ export function PdfPaginaDashboard({
                 <span className="text-[10px] text-slate-400">Sin variación de horas máquina</span>
               )}
             </div>
-          )}
+            {machineScale && <MachineScaleSummary scale={machineScale} variant="pdf" />}
+          </>)}
         </div>
       )}
       <PdfFooter />
