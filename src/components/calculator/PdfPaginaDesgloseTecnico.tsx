@@ -1,6 +1,7 @@
 import React from 'react';
 import { PdfLightHeader } from './PdfLightHeader';
 import { PdfFooter } from './PdfFooter';
+import { truncateForPdf } from '@/lib/pdf-graficos';
 import { obtenerAnguloTexto, calcularVf } from '@/lib/taylor-helpers';
 import { formatCurrency, formatoMinutosYSegundos, formatLoteConsumo } from '@/lib/formatters';
 
@@ -62,7 +63,7 @@ export function PdfPaginaDesgloseTecnico({
     <div id="pdf-pagina-3" className="w-[210mm] min-h-[297mm] bg-white text-black p-10 font-sans box-border flex flex-col">
       <PdfLightHeader logoUrl={logoUrl} title="Análisis Gráfico" pageNumber={pageNumber} totalPages={totalPages} />
 
-      <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-4 border-l-4 border-blue-600">3. Desglose Técnico Comparativo</h2>
+      <h2 className="text-sm font-bold bg-slate-100 p-2 rounded text-slate-800 uppercase mb-4 border-l-4 border-blue-600">4. Desglose Técnico Comparativo</h2>
 
       <div className="mb-6">
         <h3 className="text-xs font-bold text-slate-600 uppercase mb-2">A. Configuración de la Herramienta</h3>
@@ -77,8 +78,8 @@ export function PdfPaginaDesgloseTecnico({
           <tbody>
             <tr>
               <td className="p-2 border border-slate-300 font-bold bg-slate-50">Herramienta</td>
-              <td className="p-2 border border-slate-300 text-center">{toolNameCurrent || 'No especificada'}</td>
-              <td className="p-2 border border-slate-300 font-bold text-green-700 bg-green-50 text-center">{toolNamePremium || 'No especificada'}</td>
+              <td className="p-2 border border-slate-300 text-center">{truncateForPdf(toolNameCurrent || 'No especificada')}</td>
+              <td className="p-2 border border-slate-300 font-bold text-green-700 bg-green-50 text-center">{truncateForPdf(toolNamePremium || 'No especificada')}</td>
             </tr>
             <tr>
               <td className="p-2 border border-slate-300 font-bold">Precio Inserto</td>
@@ -222,7 +223,7 @@ export function PdfPaginaDesgloseTecnico({
         </table>
       </div>
 
-      <PdfFooter />
+      <PdfFooter showAiDisclaimer />
     </div>
   );
 }
