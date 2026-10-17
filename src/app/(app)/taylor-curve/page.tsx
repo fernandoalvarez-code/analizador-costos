@@ -14,6 +14,7 @@ import html2canvas from 'html2canvas';
 import { addDoc, collection, serverTimestamp, getDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, useUser } from "@/firebase";
+import { guardarCaso, MENSAJE_SIN_PDF } from "@/lib/client/guardar-caso";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
@@ -309,15 +310,8 @@ export default function TaylorCurvePage() {
     
     try {
         const pdfBlob = await handleGeneratePDF('blob');
-        let pdfUrl = '';
 
-        if (pdfBlob instanceof Blob) {
-            const storageRef = ref(storage, `analisis_costos_pdfs/${user.uid}_${Date.now()}.pdf`);
-            const snapshot = await uploadBytes(storageRef, pdfBlob);
-            pdfUrl = await getDownloadURL(snapshot.ref);
-        }
-
-        const docData = {
+        const construirDoc = (pdfUrl: string) => ({
             userId: user.uid,
             
             // --- Campos de la tabla Dashboard (cuttingToolAnalyses) ---
@@ -342,12 +336,21 @@ export default function TaylorCurvePage() {
               toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrent, zCurrent, edgesCurrent, dcCurrent, aeCurrent,
               toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, tcPremiumInput, zPremium, edgesPremium, dcPremium, aePremium,
             },
-        };
-        
-        const docRef = await addDoc(collection(db, "cuttingToolAnalyses"), docData);
-        console.log("🔥 [TAYLOR] Documento real guardado en Firestore con ID:", docRef.id);
-        
-        alert(`Análisis "${saveCaseName}" guardado correctamente.`);
+        });
+
+        const resultado = await guardarCaso({
+            pdfBlob,
+            subirPdf: async (blob) => {
+                const storageRef = ref(storage, `analisis_costos_pdfs/${user.uid}_${Date.now()}.pdf`);
+                const snapshot = await uploadBytes(storageRef, blob);
+                return getDownloadURL(snapshot.ref);
+            },
+            escribirCaso: (pdfUrl) => addDoc(collection(db, "cuttingToolAnalyses"), construirDoc(pdfUrl)),
+        });
+
+        alert(resultado.pdfAdjuntado
+            ? `Análisis "${saveCaseName}" guardado correctamente.`
+            : `${MENSAJE_SIN_PDF}\nAnálisis "${saveCaseName}".`);
         setIsSaveModalOpen(false);
 
     } catch (error) {

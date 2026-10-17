@@ -14,6 +14,7 @@ import html2canvas from 'html2canvas';
 import { updateDoc, serverTimestamp, getDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, useUser, useDoc, useMemoFirebase } from "@/firebase";
+import { guardarCaso, MENSAJE_SIN_PDF } from "@/lib/client/guardar-caso";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
@@ -308,20 +309,14 @@ export default function EditTaylorCurvePage() {
     setIsSaving(true);
     try {
       const pdfBlob = await handleGeneratePDF('blob');
-      let pdfUrl = '';
 
-      if (pdfBlob instanceof Blob) {
-        const storageRef = ref(storage, `analisis_costos_pdfs/${user.uid}_${id}_${Date.now()}.pdf`);
-        const snapshot = await uploadBytes(storageRef, pdfBlob);
-        pdfUrl = await getDownloadURL(snapshot.ref);
-      }
-
-      const docData = {
+      const construirDoc = (pdfUrl: string) => ({
         userId: user.uid,
         clientName: saveClientName,
         caseName: saveCaseName,
         annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction) || 0)) * 12,
-        pdfUrl: pdfUrl,
+        // Si el PDF no se pudo adjuntar se conserva el que ya tenía el caso (no se pisa con vacío).
+        ...(pdfUrl && { pdfUrl }),
         dateModified: serverTimestamp(),
         taylorInputs: {
           operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, maxTorque, machineEfficiency, profundidadAgujero, coolantInternal, drillingOrientation,
@@ -332,10 +327,20 @@ export default function EditTaylorCurvePage() {
           toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrent, zCurrent, edgesCurrent, dcCurrent, aeCurrent,
           toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, tcPremiumInput, zPremium, edgesPremium, dcPremium, aePremium,
         },
-      };
+      });
 
-      await updateDoc(docRef, docData);
-      alert(`Análisis "${saveCaseName}" actualizado correctamente.`);
+      const resultado = await guardarCaso({
+        pdfBlob,
+        subirPdf: async (blob) => {
+          const storageRef = ref(storage, `analisis_costos_pdfs/${user.uid}_${id}_${Date.now()}.pdf`);
+          const snapshot = await uploadBytes(storageRef, blob);
+          return getDownloadURL(snapshot.ref);
+        },
+        escribirCaso: (pdfUrl) => updateDoc(docRef, construirDoc(pdfUrl)),
+      });
+      alert(resultado.pdfAdjuntado
+        ? `Análisis "${saveCaseName}" actualizado correctamente.`
+        : `${MENSAJE_SIN_PDF}\nAnálisis "${saveCaseName}".`);
       setIsSaveModalOpen(false);
 
     } catch (error) {
