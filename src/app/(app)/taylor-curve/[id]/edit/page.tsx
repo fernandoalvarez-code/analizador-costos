@@ -12,9 +12,8 @@ import { formatCurrency, formatNumber, formatoMinutosYSegundos, formatLoteConsum
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { updateDoc, serverTimestamp, getDoc, doc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage, useUser, useDoc, useMemoFirebase } from "@/firebase";
-import { guardarCaso, MENSAJE_SIN_PDF } from "@/lib/client/guardar-caso";
+import { db, useUser, useDoc, useMemoFirebase } from "@/firebase";
+import { guardarCaso } from "@/lib/client/guardar-caso";
 import { estadoEdicionCurva, tieneTaylorInputs } from "@/lib/tipo-documento";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
@@ -318,16 +317,14 @@ export default function EditTaylorCurvePage() {
 
     setIsSaving(true);
     try {
-      const pdfBlob = await handleGeneratePDF('blob');
-
-      const construirDoc = (pdfUrl: string) => ({
+      const construirDoc = () => ({
         // Se conserva el dueño: un admin que edita el caso de otro usuario no se lo queda.
         userId: initialData.userId || user.uid,
         clientName: saveClientName,
         caseName: saveCaseName,
         annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction) || 0)) * 12,
-        // Si el PDF no se pudo adjuntar se conserva el que ya tenía el caso (no se pisa con vacío).
-        ...(pdfUrl && { pdfUrl }),
+        // El PDF no se guarda (se genera al imprimir) y el enlace que ya tuviera el caso se conserva:
+        // updateDoc no toca los campos que no se envían.
         dateModified: serverTimestamp(),
         taylorInputs: {
           operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, maxTorque, machineEfficiency, profundidadAgujero, coolantInternal, drillingOrientation,
@@ -340,18 +337,8 @@ export default function EditTaylorCurvePage() {
         },
       });
 
-      const resultado = await guardarCaso({
-        pdfBlob,
-        subirPdf: async (blob) => {
-          const storageRef = ref(storage, `analisis_costos_pdfs/${user.uid}_${id}_${Date.now()}.pdf`);
-          const snapshot = await uploadBytes(storageRef, blob);
-          return getDownloadURL(snapshot.ref);
-        },
-        escribirCaso: (pdfUrl) => updateDoc(docRef, construirDoc(pdfUrl)),
-      });
-      alert(resultado.pdfAdjuntado
-        ? `Análisis "${saveCaseName}" actualizado correctamente.`
-        : `${MENSAJE_SIN_PDF}\nAnálisis "${saveCaseName}".`);
+      await guardarCaso({ escribirCaso: () => updateDoc(docRef, construirDoc()) });
+      alert(`Análisis "${saveCaseName}" actualizado correctamente.`);
       setIsSaveModalOpen(false);
 
     } catch (error) {
@@ -376,7 +363,7 @@ export default function EditTaylorCurvePage() {
     if (user) fetchLogos();
   }, [user]);
 
-  const handleGeneratePDF = async (action: 'download' | 'share' | 'blob') => {
+  const handleGeneratePDF = async (action: 'download' | 'share') => {
     setIsGenerating(true);
     try {
         const pdf = new jsPDF('p', 'mm', 'a4');
@@ -402,8 +389,7 @@ export default function EditTaylorCurvePage() {
         const imgHeight3 = (canvas3.height * a4Width) / canvas3.width;
         pdf.addImage(imgData3, 'PNG', 0, 0, a4Width, imgHeight3, undefined, 'FAST');
         const fileName = `Reporte_Secocut_Analisis.pdf`;
-        if (action === 'blob') return pdf.output('blob');
-        else if (action === 'download') pdf.save(fileName);
+        if (action === 'download') pdf.save(fileName);
         else {
             const pdfBlob = pdf.output('blob');
             const file = new File([pdfBlob], fileName, { type: 'application/pdf' });

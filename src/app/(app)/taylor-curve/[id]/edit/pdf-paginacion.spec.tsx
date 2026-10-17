@@ -26,6 +26,7 @@ vi.mock('recharts', () => {
   return Object.fromEntries(names.map((n) => [n, Stub]));
 });
 
+import { updateDoc } from 'firebase/firestore';
 import EditPage from '@/app/(app)/taylor-curve/[id]/edit/page';
 
 beforeAll(() => {
@@ -102,6 +103,57 @@ describe('la generación del PDF captura exactamente esas 3 hojas', () => {
     await generar(c);
     expect(html2canvas).toHaveBeenCalledTimes(3);
     expect(addPage).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('PDF desde un caso guardado con taylorInputs (el PDF ya no se guarda: se imprime desde la edición)', () => {
+  const guardado = { machinesParallel: 10, workDaysPerMonth: 22 };
+
+  it('la hoja 1 trae la tarjeta de máquinas con los datos guardados y el botón PDF captura las 3 hojas', async () => {
+    const c = open(guardado);
+    const t = page(c, 1)!.textContent!;
+    expect(t).toContain('Utilización teórica');
+    expect(t).toContain('Máquinas necesarias');
+    const boton = [...c.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'PDF')!;
+    await act(async () => { fireEvent.click(boton); });
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(html2canvas.mock.calls.map((call) => (call[0] as HTMLElement).id)).toEqual(['pdf-pagina-1', 'pdf-pagina-2', 'pdf-pagina-3']);
+    expect(addImage).toHaveBeenCalledTimes(3);
+  });
+
+  it('un caso guardado sin los campos de máquinas (anterior a esa función) imprime las 3 hojas sin tarjeta', async () => {
+    const c = open({ machinesParallel: undefined, workDaysPerMonth: undefined });
+    expect(page(c, 1)!.textContent).not.toContain('Utilización teórica');
+    expect(page(c, 3)).toBeTruthy();
+  });
+
+  it('editar y guardar un caso que ya tenía pdfUrl: updateDoc NO envía pdfUrl, así que se conserva', async () => {
+    (stable.saved as Record<string, unknown>).pdfUrl = 'https://storage/viejo.pdf';
+    try {
+      const c = open(guardado);
+      const abrir = [...c.querySelectorAll('button')].find((b) => /Guardar/.test(b.textContent ?? ''))!;
+      await act(async () => { fireEvent.click(abrir); });
+      // El botón de la pantalla y el del diálogo dicen lo mismo: el del diálogo es el último.
+      const confirmar = [...document.querySelectorAll('button')].filter((b) => b.textContent?.includes('Guardar Análisis')).pop()!;
+      await act(async () => { fireEvent.click(confirmar); });
+      await waitFor(() => expect(updateDoc).toHaveBeenCalledTimes(1));
+      const enviado = (updateDoc as unknown as { mock: { calls: unknown[][] } }).mock.calls[0][1] as Record<string, unknown>;
+      expect('pdfUrl' in enviado).toBe(false);
+      expect(html2canvas).not.toHaveBeenCalled();
+      expect(enviado.taylorInputs).toMatchObject({ machinesParallel: 10, workDaysPerMonth: 22 });
+    } finally {
+      delete (stable.saved as Record<string, unknown>).pdfUrl;
+    }
+  });
+
+  it('guardar no genera PDF ni toca Storage', () => {
+    const edit = readFileSync('src/app/(app)/taylor-curve/[id]/edit/page.tsx', 'utf8');
+    const alta = readFileSync('src/app/(app)/taylor-curve/page.tsx', 'utf8');
+    for (const code of [edit, alta]) {
+      expect(code).not.toMatch(/uploadBytes|getDownloadURL|firebase\/storage/);
+      expect(code).not.toContain("handleGeneratePDF('blob')");
+      expect(code).not.toMatch(/pdfUrl/);
+    }
   });
 });
 
