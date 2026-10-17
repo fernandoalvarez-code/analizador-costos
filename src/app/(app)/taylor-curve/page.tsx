@@ -12,9 +12,8 @@ import { formatCurrency, formatNumber, formatoMinutosYSegundos, formatLoteConsum
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { addDoc, collection, serverTimestamp, getDoc, doc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage, useUser } from "@/firebase";
-import { guardarCaso, MENSAJE_SIN_PDF } from "@/lib/client/guardar-caso";
+import { db, useUser } from "@/firebase";
+import { guardarCaso } from "@/lib/client/guardar-caso";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
@@ -309,9 +308,7 @@ export default function TaylorCurvePage() {
     setIsSaving(true);
     
     try {
-        const pdfBlob = await handleGeneratePDF('blob');
-
-        const construirDoc = (pdfUrl: string) => ({
+        const construirDoc = () => ({
             userId: user.uid,
             
             // --- Campos de la tabla Dashboard (cuttingToolAnalyses) ---
@@ -327,7 +324,6 @@ export default function TaylorCurvePage() {
             clientName: saveClientName,
             caseName: saveCaseName,
             annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction) || 0)) * 12,
-            pdfUrl: pdfUrl,
             dateCreated: serverTimestamp(),
             date: serverTimestamp(),
             taylorInputs: {
@@ -338,19 +334,12 @@ export default function TaylorCurvePage() {
             },
         });
 
-        const resultado = await guardarCaso({
-            pdfBlob,
-            subirPdf: async (blob) => {
-                const storageRef = ref(storage, `analisis_costos_pdfs/${user.uid}_${Date.now()}.pdf`);
-                const snapshot = await uploadBytes(storageRef, blob);
-                return getDownloadURL(snapshot.ref);
-            },
-            escribirCaso: (pdfUrl) => addDoc(collection(db, "cuttingToolAnalyses"), construirDoc(pdfUrl)),
+        // El PDF no se guarda: se genera al imprimir desde la edición del caso.
+        await guardarCaso({
+            escribirCaso: () => addDoc(collection(db, "cuttingToolAnalyses"), construirDoc()),
         });
 
-        alert(resultado.pdfAdjuntado
-            ? `Análisis "${saveCaseName}" guardado correctamente.`
-            : `${MENSAJE_SIN_PDF}\nAnálisis "${saveCaseName}".`);
+        alert(`Análisis "${saveCaseName}" guardado correctamente.`);
         setIsSaveModalOpen(false);
 
     } catch (error) {
@@ -361,7 +350,7 @@ export default function TaylorCurvePage() {
     }
 };
 
-  const handleGeneratePDF = async (action: 'download' | 'share' | 'blob') => {
+  const handleGeneratePDF = async (action: 'download' | 'share') => {
     setIsGenerating(true);
     try {
         const pdf = new jsPDF('p', 'mm', 'a4');
@@ -397,9 +386,7 @@ export default function TaylorCurvePage() {
 
 
         const fileName = `Reporte_Secocut_Analisis.pdf`;
-        if (action === 'blob') {
-          return pdf.output('blob');
-        } else if (action === 'download') {
+        if (action === 'download') {
             pdf.save(fileName);
         } else {
             const pdfBlob = pdf.output('blob');
