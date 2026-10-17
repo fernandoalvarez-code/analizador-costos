@@ -39,9 +39,27 @@ export const ETIQUETA_TIPO: Record<TipoDocumento, string> = {
   simulacion: 'Simulación',
 };
 
-/** Ruta del editor que corresponde al documento: curva → editor de la curva; el resto → editor de casos. */
-export function getEditRoute(doc: Pick<DocumentoAnalisis, 'id' | 'taylorInputs'> & { id: string }): string {
-  return tieneTaylorInputs(doc) ? `/taylor-curve/${doc.id}/edit` : `/cases/${doc.id}/edit`;
+/**
+ * Ruta del editor que corresponde al documento: curva → editor de la curva; caso de éxito → editor de
+ * casos; simulación → null (las simulaciones no se editan: solo ver, PDF y eliminar).
+ */
+export function getEditRoute(doc: DocumentoAnalisis & { id: string }): string | null {
+  switch (getTipoDocumento(doc)) {
+    case 'curva': return `/taylor-curve/${doc.id}/edit`;
+    case 'caso': return `/cases/${doc.id}/edit`;
+    case 'simulacion': return null;
+  }
+}
+
+/** Acciones que ofrecen las listas (Historial y tabla de casos) para un documento. */
+export function accionesDisponibles(doc: DocumentoAnalisis & { id: string; pdfUrl?: string }) {
+  return {
+    /** null = sin acción Editar (simulaciones). */
+    editar: getEditRoute(doc),
+    /** URL del PDF guardado, o null si no hay. */
+    pdf: doc.pdfUrl ? doc.pdfUrl : null,
+    eliminar: true as const,
+  };
 }
 
 /** Qué hacer al abrir /taylor-curve/[id]/edit según lo que devolvió la lectura. */
@@ -49,12 +67,15 @@ export type EstadoEdicionCurva =
   | { estado: 'cargando' }
   | { estado: 'ok' }
   | { estado: 'inexistente'; destino: string }
-  | { estado: 'otro-tipo'; destino: string };
+  | { estado: 'otro-tipo'; destino: string; sinEditor: boolean };
 
 export function estadoEdicionCurva(isLoading: boolean, doc: (DocumentoAnalisis & { id: string }) | null | undefined): EstadoEdicionCurva {
   if (isLoading) return { estado: 'cargando' };
   if (!doc) return { estado: 'inexistente', destino: '/history' };
-  if (!tieneTaylorInputs(doc)) return { estado: 'otro-tipo', destino: getEditRoute(doc) };
+  if (!tieneTaylorInputs(doc)) {
+    const ruta = getEditRoute(doc);
+    return { estado: 'otro-tipo', destino: ruta ?? '/history', sinEditor: ruta === null };
+  }
   return { estado: 'ok' };
 }
 
@@ -62,15 +83,29 @@ export function estadoEdicionCurva(isLoading: boolean, doc: (DocumentoAnalisis &
 export const nombreCliente = (doc: DocumentoAnalisis): string => doc.clientName || doc.cliente || '';
 export const nombreCaso = (doc: DocumentoAnalisis): string => doc.caseName || doc.name || '';
 
+/** uid -> nombre (o email si no hay nombre) a partir de los documentos de `users`. Ignora los sin dato. */
+export function mapaUsuarios(perfiles: Array<{ id: string; name?: string | null; email?: string | null }>): Map<string, string> {
+  const mapa = new Map<string, string>();
+  for (const p of perfiles) {
+    const etiqueta = (p.name && p.name.trim()) || (p.email && p.email.trim());
+    if (etiqueta) mapa.set(p.id, etiqueta);
+  }
+  return mapa;
+}
+
 /**
- * Quién creó el documento, usando SOLO lo que ya está en el documento (las reglas no dejan leer el
- * perfil de otros usuarios). Los propios se identifican con la sesión actual; los ajenos, con un email
- * guardado en el documento (userEmail o el último editor del caso de éxito) o, si no hay, el uid abreviado.
+ * Quién creó el documento. Orden: el mapa uid → nombre/email (lo arma el admin leyendo `users` una vez),
+ * la sesión actual si es un documento propio, el email guardado en el documento (userEmail o el último
+ * editor del caso de éxito) y, al final, el uid abreviado. Sin `mapa` (no admin o falló la lectura)
+ * usa solo los últimos tres.
  */
 export function usuarioDelDocumento(
   doc: DocumentoAnalisis,
   actual: { uid: string; email?: string | null; displayName?: string | null } | null,
+  mapa?: Map<string, string> | null,
 ): string {
+  const delMapa = doc.userId ? mapa?.get(doc.userId) : undefined;
+  if (delMapa) return delMapa;
   if (actual && doc.userId && doc.userId === actual.uid) return actual.displayName || actual.email || 'Yo';
   const guardado = doc.userName || doc.userEmail || doc.history?.find(h => h?.lastModifiedByEmail)?.lastModifiedByEmail;
   if (guardado) return guardado;

@@ -56,7 +56,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency, formatoMinutosYSegundos } from "@/lib/formatters";
-import { getEditRoute } from "@/lib/tipo-documento";
+import { accionesDisponibles } from "@/lib/tipo-documento";
 import TipoBadge from "@/components/app/tipo-badge";
 import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
@@ -111,6 +111,7 @@ Logramos proyectar un ahorro anual de *${ahorro}* bajando el tiempo de ciclo a $
 
 const ActionCell = ({ caseData, user, isAdmin, onDeleteClick }: { caseData: CaseData; user: User | null; isAdmin: boolean; onDeleteClick: (caseData: CaseData) => void; }) => {
     const isOwner = user?.uid === caseData.userId;
+    const acciones = accionesDisponibles(caseData);
 
     return (
         <DropdownMenu>
@@ -128,12 +129,14 @@ const ActionCell = ({ caseData, user, isAdmin, onDeleteClick }: { caseData: Case
                         Ver / Imprimir PDF
                     </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild disabled={!isAdmin && !isOwner}>
-                    <Link href={getEditRoute(caseData)}>
-                        <Edit className="mr-2 h-4 w-4"/>
-                        Editar
-                    </Link>
-                </DropdownMenuItem>
+                {acciones.editar && (
+                    <DropdownMenuItem asChild disabled={!isAdmin && !isOwner}>
+                        <Link href={acciones.editar}>
+                            <Edit className="mr-2 h-4 w-4"/>
+                            Editar
+                        </Link>
+                    </DropdownMenuItem>
+                )}
                  <DropdownMenuItem onClick={() => compartirPorWhatsApp(caseData)}>
                     <Share2 className="mr-2 h-4 w-4" />
                     Compartir por WhatsApp

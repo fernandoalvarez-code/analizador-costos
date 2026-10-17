@@ -600,10 +600,12 @@ export default function EditTaylorCurvePage() {
           <p className="text-sm text-amber-800">
             {inexistente
               ? 'El análisis no existe o no tenés acceso. Te llevamos al Historial.'
-              : 'Se edita con otro editor. Te llevamos ahí en unos segundos.'}
+              : estadoEdicion.estado === 'otro-tipo' && estadoEdicion.sinEditor
+                ? 'Las simulaciones no se editan. Te llevamos al Historial.'
+                : 'Se edita con otro editor. Te llevamos ahí en unos segundos.'}
           </p>
           <Button variant="outline" onClick={() => router.replace(estadoEdicion.destino)}>
-            {inexistente ? 'Ir al Historial' : 'Ir al editor ahora'}
+            {inexistente || estadoEdicion.sinEditor ? 'Ir al Historial' : 'Ir al editor ahora'}
           </Button>
         </div>
       </div>

@@ -8,12 +8,14 @@ import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
 import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
-import { getEditRoute, nombreCaso, nombreCliente, usuarioDelDocumento } from "@/lib/tipo-documento";
+import { accionesDisponibles, mapaUsuarios, nombreCaso, nombreCliente, usuarioDelDocumento } from "@/lib/tipo-documento";
 import TipoBadge from "@/components/app/tipo-badge";
 
 export default function HistoryPage() {
   const [simulations, setSimulations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // uid -> nombre/email, solo para el admin (columna Usuario). Si la lectura falla queda null y se usan los respaldos.
+  const [usuarios, setUsuarios] = useState<Map<string, string> | null>(null);
   const router = useRouter();
 
   const { user, loading: userLoading } = useUser();
@@ -40,7 +42,15 @@ export default function HistoryPage() {
         ? query(collection(db, "cuttingToolAnalyses"))
         : query(collection(db, "cuttingToolAnalyses"), where("userId", "==", user.uid));
 
-      const querySnapshot = await getDocs(q);
+      // Solo un admin puede listar `users` (reglas). Se lee UNA vez por carga y un fallo no rompe la pantalla.
+      const usuariosPromise = isAdmin
+        ? getDocs(collection(db, "users"))
+            .then(snap => mapaUsuarios(snap.docs.map(d => ({ id: d.id, ...(d.data() as { name?: string; email?: string }) }))))
+            .catch(error => { console.error("No se pudo leer users para la columna Usuario:", error); return null; })
+        : Promise.resolve(null);
+
+      const [querySnapshot, mapa] = await Promise.all([getDocs(q), usuariosPromise]);
+      setUsuarios(mapa);
       const data = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
       // Ordenamos en memoria usando JavaScript (Descendente)
@@ -127,7 +137,9 @@ export default function HistoryPage() {
               ) : simulations.length === 0 ? (
                 <tr><td colSpan={isAdmin ? 6 : 5} className="p-8 text-center text-slate-500">No hay análisis guardados aún.</td></tr>
               ) : (
-                simulations.map((sim) => (
+                simulations.map((sim) => {
+                  const acciones = accionesDisponibles(sim);
+                  return (
                   <tr key={sim.id} className="hover:bg-slate-50 transition-colors">
                     <td className="p-4 text-slate-600">
                       {sim.dateCreated?.toDate 
@@ -137,16 +149,20 @@ export default function HistoryPage() {
                           : 'N/A'}
                     </td>
                     <td className="p-4 font-bold">
-                      <span
-                        onClick={() => router.push(getEditRoute(sim))}
-                        className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
-                        title="Clic para abrir y editar este informe"
-                      >
-                        {nombreCliente(sim)}
-                      </span>
+                      {acciones.editar ? (
+                        <span
+                          onClick={() => router.push(acciones.editar!)}
+                          className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+                          title="Clic para abrir y editar este informe"
+                        >
+                          {nombreCliente(sim)}
+                        </span>
+                      ) : (
+                        <span>{nombreCliente(sim)}</span>
+                      )}
                     </td>
                     {isAdmin && (
-                      <td className="p-4 text-slate-600 text-xs">{usuarioDelDocumento(sim, user)}</td>
+                      <td className="p-4 text-slate-600 text-xs">{usuarioDelDocumento(sim, user, usuarios)}</td>
                     )}
                     <td className="p-4 text-slate-600">
                       <div className="flex flex-wrap items-center gap-2"><span>{nombreCaso(sim)}</span><TipoBadge doc={sim} /></div>
@@ -155,17 +171,19 @@ export default function HistoryPage() {
                       {formatCurrency(sim.annualSavings)}
                     </td>
                     <td className="p-4 flex flex-wrap items-center justify-end gap-2">
-                      <Button
-                        onClick={() => router.push(getEditRoute(sim))}
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-1"
-                      >
-                        <Edit className="h-3 w-3" /> Editar
-                      </Button>
+                      {acciones.editar && (
+                        <Button
+                          onClick={() => router.push(acciones.editar!)}
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-1"
+                        >
+                          <Edit className="h-3 w-3" /> Editar
+                        </Button>
+                      )}
 
-                      {sim.pdfUrl && (
-                        <a href={sim.pdfUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-bold transition-colors flex items-center gap-1">
+                      {acciones.pdf && (
+                        <a href={acciones.pdf} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-bold transition-colors flex items-center gap-1">
                           📄 PDF
                         </a>
                       )}
@@ -190,7 +208,8 @@ export default function HistoryPage() {
                       </button>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
