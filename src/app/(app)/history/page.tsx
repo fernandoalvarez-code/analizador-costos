@@ -8,6 +8,8 @@ import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
 import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
+import { getEditRoute, nombreCaso, nombreCliente } from "@/lib/tipo-documento";
+import TipoBadge from "@/components/app/tipo-badge";
 
 export default function HistoryPage() {
   const [simulations, setSimulations] = useState<any[]>([]);
@@ -137,20 +139,22 @@ export default function HistoryPage() {
                     </td>
                     <td className="p-4 font-bold">
                       <span
-                        onClick={() => router.push(`/taylor-curve/${sim.id}/edit`)}
+                        onClick={() => router.push(getEditRoute(sim))}
                         className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
                         title="Clic para abrir y editar este informe"
                       >
-                        {sim.clientName}
+                        {nombreCliente(sim)}
                       </span>
                     </td>
-                    <td className="p-4 text-slate-600">{sim.caseName}</td>
+                    <td className="p-4 text-slate-600">
+                      <div className="flex flex-wrap items-center gap-2"><span>{nombreCaso(sim)}</span><TipoBadge doc={sim} /></div>
+                    </td>
                     <td className="p-4 font-black text-emerald-600">
                       {formatCurrency(sim.annualSavings)}
                     </td>
                     <td className="p-4 flex flex-wrap items-center justify-end gap-2">
                       <Button
-                        onClick={() => router.push(`/taylor-curve/${sim.id}/edit`)}
+                        onClick={() => router.push(getEditRoute(sim))}
                         variant="outline"
                         size="sm"
                         className="flex items-center gap-1"
@@ -176,7 +180,7 @@ export default function HistoryPage() {
                       </button>
 
                       <button
-                        onClick={() => handleDeleteAnalysis(sim.id, sim.clientName)}
+                        onClick={() => handleDeleteAnalysis(sim.id, nombreCliente(sim))}
                         className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded text-xs font-bold transition-colors flex items-center gap-1 shadow-sm ml-1"
                         title="Eliminar este análisis"
                       >

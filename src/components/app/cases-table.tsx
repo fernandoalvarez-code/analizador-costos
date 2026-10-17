@@ -56,6 +56,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency, formatoMinutosYSegundos } from "@/lib/formatters";
+import { getEditRoute } from "@/lib/tipo-documento";
+import TipoBadge from "@/components/app/tipo-badge";
 import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 
@@ -74,6 +76,9 @@ export type CaseData = {
   results?: {
     tiempoCicloB?: number;
   }
+  // Solo se usan para deducir el tipo de documento (ver lib/tipo-documento).
+  taylorInputs?: unknown;
+  inputs?: unknown;
 };
 
 export type UserProfile = {
@@ -124,7 +129,7 @@ const ActionCell = ({ caseData, user, isAdmin, onDeleteClick }: { caseData: Case
                     </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild disabled={!isAdmin && !isOwner}>
-                    <Link href={`/cases/${caseData.id}/edit`}>
+                    <Link href={getEditRoute(caseData)}>
                         <Edit className="mr-2 h-4 w-4"/>
                         Editar
                     </Link>
@@ -202,6 +207,11 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
             )}
           </div>
         ),
+      },
+      {
+        id: "tipo",
+        header: "Tipo",
+        cell: ({ row }) => <TipoBadge doc={row.original} />,
       },
       {
         accessorKey: "cliente",
