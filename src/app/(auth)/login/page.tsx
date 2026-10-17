@@ -32,7 +32,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push("/dashboard");
+      router.push("/history");
     }
   }, [user, loading, router]);
 
@@ -49,7 +49,7 @@ export default function LoginPage() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      router.push("/dashboard");
+      router.push("/history");
     } catch (error: any) {
       toast({
         variant: "destructive",

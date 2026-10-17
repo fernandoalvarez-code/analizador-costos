@@ -8,7 +8,7 @@ import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
 import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
-import { getEditRoute, nombreCaso, nombreCliente } from "@/lib/tipo-documento";
+import { getEditRoute, nombreCaso, nombreCliente, usuarioDelDocumento } from "@/lib/tipo-documento";
 import TipoBadge from "@/components/app/tipo-badge";
 
 export default function HistoryPage() {
@@ -34,14 +34,12 @@ export default function HistoryPage() {
 
     setIsLoading(true);
     try {
-      console.log("🔒 [HISTORIAL] Disparando query segura para:", user.uid);
-      
-      // Forzamos la query ultra-segura para TODOS (admin o no admin) por ahora
-      const q = query(
-        collection(db, "cuttingToolAnalyses"), 
-        where("userId", "==", user.uid)
-      );
-      
+      // Un admin ve toda la colección (las reglas lo permiten por su rol); el resto, solo lo suyo:
+      // Firestore rechaza una consulta sin el filtro por userId si no es admin.
+      const q = isAdmin
+        ? query(collection(db, "cuttingToolAnalyses"))
+        : query(collection(db, "cuttingToolAnalyses"), where("userId", "==", user.uid));
+
       const querySnapshot = await getDocs(q);
       const data = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
@@ -117,6 +115,7 @@ export default function HistoryPage() {
               <tr>
                 <th className="p-4">Fecha</th>
                 <th className="p-4">Cliente</th>
+                {isAdmin && <th className="p-4">Usuario</th>}
                 <th className="p-4">Pieza / Operación</th>
                 <th className="p-4">Ahorro Proyectado</th>
                 <th className="p-4 text-right">Acciones</th>
@@ -124,9 +123,9 @@ export default function HistoryPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
-                <tr><td colSpan={5} className="p-8 text-center text-slate-500">Cargando historial...</td></tr>
+                <tr><td colSpan={isAdmin ? 6 : 5} className="p-8 text-center text-slate-500">Cargando historial...</td></tr>
               ) : simulations.length === 0 ? (
-                <tr><td colSpan={5} className="p-8 text-center text-slate-500">No hay análisis guardados aún.</td></tr>
+                <tr><td colSpan={isAdmin ? 6 : 5} className="p-8 text-center text-slate-500">No hay análisis guardados aún.</td></tr>
               ) : (
                 simulations.map((sim) => (
                   <tr key={sim.id} className="hover:bg-slate-50 transition-colors">
@@ -146,6 +145,9 @@ export default function HistoryPage() {
                         {nombreCliente(sim)}
                       </span>
                     </td>
+                    {isAdmin && (
+                      <td className="p-4 text-slate-600 text-xs">{usuarioDelDocumento(sim, user)}</td>
+                    )}
                     <td className="p-4 text-slate-600">
                       <div className="flex flex-wrap items-center gap-2"><span>{nombreCaso(sim)}</span><TipoBadge doc={sim} /></div>
                     </td>

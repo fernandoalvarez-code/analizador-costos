@@ -10,8 +10,6 @@ import {
   Settings,
   User,
   Menu,
-  LayoutDashboard,
-  FolderKanban,
   Calculator,
   History,
   TrendingUp,
@@ -41,16 +39,6 @@ import { cn } from "@/lib/utils";
 import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 const menuItems = [
-    {
-      href: '/dashboard',
-      label: 'Dashboard',
-      icon: LayoutDashboard,
-    },
-    {
-      href: '/cases',
-      label: 'Gestión de Casos',
-      icon: FolderKanban,
-    },
     {
       href: '/simulator/new',
       label: 'Simulador',
@@ -136,7 +124,7 @@ export default function AppHeader() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
         
         <div className="flex-shrink-0 flex items-center gap-8">
-            <Link href="/dashboard" className="flex items-center gap-2">
+            <Link href="/history" className="flex items-center gap-2">
                 <span className="text-xl font-black text-blue-700 tracking-tight uppercase">
                     Secocut <span className="text-slate-800">SRL</span>
                 </span>
@@ -144,7 +132,7 @@ export default function AppHeader() {
 
             <nav className="hidden md:flex items-center gap-1">
             {filteredMenuItems.map(item => {
-                const isActive = (pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href)));
+                const isActive = (pathname === item.href || pathname.startsWith(item.href));
                 return (
                 <Link 
                     key={item.href}
@@ -260,7 +248,7 @@ export default function AppHeader() {
               </SheetTrigger>
               <SheetContent side="left" className="p-4 w-[300px] sm:w-[340px]">
                   <nav className="grid gap-2 text-lg font-medium mt-6">
-                      <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold mb-4">
+                      <Link href="/history" className="flex items-center gap-2 text-lg font-semibold mb-4">
                            <span className="text-xl font-black text-blue-700 tracking-tight uppercase">Secocut <span className="text-slate-800">SRL</span></span>
                       </Link>
                       {filteredMenuItems.map(item => (
@@ -269,7 +257,7 @@ export default function AppHeader() {
                               href={item.href} 
                               className={cn(
                                   "flex items-center gap-4 px-2.5 py-2 text-base text-muted-foreground hover:text-foreground",
-                                  (pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))) && "text-foreground bg-slate-100 rounded-md"
+                                  (pathname === item.href || pathname.startsWith(item.href)) && "text-foreground bg-slate-100 rounded-md"
                               )}
                           >
                               <item.icon className="h-5 w-5" />
