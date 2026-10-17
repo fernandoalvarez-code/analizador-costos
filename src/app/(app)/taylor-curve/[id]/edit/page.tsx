@@ -15,6 +15,7 @@ import { updateDoc, serverTimestamp, getDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, useUser, useDoc, useMemoFirebase } from "@/firebase";
 import { guardarCaso, MENSAJE_SIN_PDF } from "@/lib/client/guardar-caso";
+import { estadoEdicionCurva, tieneTaylorInputs } from "@/lib/tipo-documento";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
@@ -54,6 +55,15 @@ export default function EditTaylorCurvePage() {
 
   const docRef = useMemoFirebase(() => doc(db, 'cuttingToolAnalyses', id), [id]);
   const { data: initialData, isLoading } = useDoc<any>(docRef);
+
+  // Solo las curvas de costos (con taylorInputs) se editan acá: un caso de éxito o una simulación se
+  // abren en su propio editor, y si el documento no existe se vuelve al historial.
+  const estadoEdicion = estadoEdicionCurva(isLoading, initialData);
+  useEffect(() => {
+    if (estadoEdicion.estado !== 'inexistente' && estadoEdicion.estado !== 'otro-tipo') return;
+    const timer = setTimeout(() => router.replace(estadoEdicion.destino), 2500);
+    return () => clearTimeout(timer);
+  }, [estadoEdicion.estado, router]);
 
   const [logos, setLogos] = useState({ company: '', brand: '' });
   const [operationType, setOperationType] = useState<'turning' | 'milling' | 'drilling'>('turning');
@@ -290,7 +300,7 @@ export default function EditTaylorCurvePage() {
   const warningFresaPremium = alertaMaterialPremium || analisisFresaPremium?.alertaGeometria;
 
   const handleSaveCase = async () => {
-    if (!user || !id) return;
+    if (!user || !id || !tieneTaylorInputs(initialData)) return;
 
     const camposCriticos = [
       { nombre: 'Velocidad actual (Vc)',    valor: vcCurrent },
@@ -311,7 +321,8 @@ export default function EditTaylorCurvePage() {
       const pdfBlob = await handleGeneratePDF('blob');
 
       const construirDoc = (pdfUrl: string) => ({
-        userId: user.uid,
+        // Se conserva el dueño: un admin que edita el caso de otro usuario no se lo queda.
+        userId: initialData.userId || user.uid,
         clientName: saveClientName,
         caseName: saveCaseName,
         annualSavings: (curveDataInfo.realAbsoluteSavings * (Number(monthlyProduction) || 0)) * 12,
@@ -574,8 +585,31 @@ export default function EditTaylorCurvePage() {
   // El informe lleva siempre 3 hojas: 1 resumen, 2 análisis gráfico (curva de costos + vida del filo) y 3 desglose técnico.
   const totalPdfPages = 3;
 
-  if (isLoading) {
+  if (estadoEdicion.estado === 'cargando') {
     return <div className="container mx-auto p-8"><Skeleton className="w-full h-[600px]" /></div>;
+  }
+
+  if (estadoEdicion.estado !== 'ok') {
+    const inexistente = estadoEdicion.estado === 'inexistente';
+    return (
+      <div className="container mx-auto p-8 max-w-xl">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 space-y-3" role="alert">
+          <h1 className="text-lg font-black text-amber-900">
+            {inexistente ? 'No se encontró el análisis' : 'Este registro no es una curva de costos'}
+          </h1>
+          <p className="text-sm text-amber-800">
+            {inexistente
+              ? 'El análisis no existe o no tenés acceso. Te llevamos al Historial.'
+              : estadoEdicion.estado === 'otro-tipo' && estadoEdicion.sinEditor
+                ? 'Las simulaciones no se editan. Te llevamos al Historial.'
+                : 'Se edita con otro editor. Te llevamos ahí en unos segundos.'}
+          </p>
+          <Button variant="outline" onClick={() => router.replace(estadoEdicion.destino)}>
+            {inexistente || estadoEdicion.sinEditor ? 'Ir al Historial' : 'Ir al editor ahora'}
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   const qActual = calcularQ(operationType, apCurrent, aeCurrent, feedCurrent, vcCurrent, dcCurrent, zCurrent);

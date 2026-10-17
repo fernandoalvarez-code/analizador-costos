@@ -56,6 +56,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency, formatoMinutosYSegundos } from "@/lib/formatters";
+import { accionesDisponibles } from "@/lib/tipo-documento";
+import TipoBadge from "@/components/app/tipo-badge";
 import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
 
 
@@ -74,6 +76,9 @@ export type CaseData = {
   results?: {
     tiempoCicloB?: number;
   }
+  // Solo se usan para deducir el tipo de documento (ver lib/tipo-documento).
+  taylorInputs?: unknown;
+  inputs?: unknown;
 };
 
 export type UserProfile = {
@@ -106,6 +111,7 @@ Logramos proyectar un ahorro anual de *${ahorro}* bajando el tiempo de ciclo a $
 
 const ActionCell = ({ caseData, user, isAdmin, onDeleteClick }: { caseData: CaseData; user: User | null; isAdmin: boolean; onDeleteClick: (caseData: CaseData) => void; }) => {
     const isOwner = user?.uid === caseData.userId;
+    const acciones = accionesDisponibles(caseData);
 
     return (
         <DropdownMenu>
@@ -123,12 +129,14 @@ const ActionCell = ({ caseData, user, isAdmin, onDeleteClick }: { caseData: Case
                         Ver / Imprimir PDF
                     </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild disabled={!isAdmin && !isOwner}>
-                    <Link href={`/cases/${caseData.id}/edit`}>
-                        <Edit className="mr-2 h-4 w-4"/>
-                        Editar
-                    </Link>
-                </DropdownMenuItem>
+                {acciones.editar && (
+                    <DropdownMenuItem asChild disabled={!isAdmin && !isOwner}>
+                        <Link href={acciones.editar}>
+                            <Edit className="mr-2 h-4 w-4"/>
+                            Editar
+                        </Link>
+                    </DropdownMenuItem>
+                )}
                  <DropdownMenuItem onClick={() => compartirPorWhatsApp(caseData)}>
                     <Share2 className="mr-2 h-4 w-4" />
                     Compartir por WhatsApp
@@ -202,6 +210,11 @@ const CasesTable = ({ casesData, isLoading, user, isAdmin }: { casesData: CaseDa
             )}
           </div>
         ),
+      },
+      {
+        id: "tipo",
+        header: "Tipo",
+        cell: ({ row }) => <TipoBadge doc={row.original} />,
       },
       {
         accessorKey: "cliente",
