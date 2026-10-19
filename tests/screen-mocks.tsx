@@ -38,10 +38,10 @@ export function typeInto(el: Element | null | undefined, value: string) {
 }
 
 const FIELD_TESTID: Record<string, string> = {
-  'Hrs/Trn': 'escala-input-horas', 'Trns/Día': 'escala-input-turnos', 'Máquinas': 'escala-input-maquinas', 'Días': 'escala-input-dias',
+  'Horas por turno': 'escala-input-horas', 'Turnos por día': 'escala-input-turnos', 'Máquinas': 'escala-input-maquinas', 'Días': 'escala-input-dias',
 };
 
-/** Campo nuevo de la Escala Comercial por su nombre corto ("Hrs/Trn", "Trns/Día", "Máquinas", "Días"). */
+/** Campo nuevo de la Escala Comercial por su nombre corto ("Horas por turno", "Turnos por día", "Máquinas", "Días"). */
 export function fieldByUnit(container: HTMLElement, unit: string): HTMLInputElement {
   const input = container.querySelector(`[data-testid="${FIELD_TESTID[unit]}"]`);
   if (!input) throw new Error(`no se encontró el campo ${unit}`);

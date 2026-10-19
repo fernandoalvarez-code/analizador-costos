@@ -93,22 +93,22 @@ export function MachineScaleFields({
 
   return (
     <div data-testid="escala-maquinas-campos" className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2">
-      {editsShifts && (<>
-        <NumberField label="Hrs/Trn" testId="escala-input-horas" value={hoursPerShift ?? ''} onChange={onHoursPerShiftChange!}
-          min={1} max={24} step="any" invalid={!!shiftNotice} />
-        <NumberField label="Trns/Día" testId="escala-input-turnos" value={shiftsPerDay ?? ''} onChange={onShiftsPerDayChange!}
-          min={1} max={5} step="1" invalid={!!shiftNotice && shiftNotice.includes('×')} />
-        {shiftNotice && <Notice testId="escala-aviso-turnos">{shiftNotice}</Notice>}
-      </>)}
       <NumberField label="Máquinas en paralelo" testId="escala-input-maquinas" value={machines} onChange={onMachinesChange}
         min={MIN_MACHINES} max={MAX_MACHINES} step="1" placeholder="Opcional" invalid={!!machinesMsg} />
+      {editsShifts && (<>
+        <NumberField label="Horas por turno" testId="escala-input-horas" value={hoursPerShift ?? ''} onChange={onHoursPerShiftChange!}
+          min={1} max={24} step="any" invalid={!!shiftNotice} />
+        <NumberField label="Turnos por día" testId="escala-input-turnos" value={shiftsPerDay ?? ''} onChange={onShiftsPerDayChange!}
+          min={1} max={5} step="1" invalid={!!shiftNotice && shiftNotice.includes('×')} />
+      </>)}
       <NumberField label="Días de trabajo por mes" testId="escala-input-dias" value={days} onChange={onDaysChange}
         min={1} max={31} step="1" invalid={!!daysMsg} />
       {machinesMsg && <Notice testId="escala-aviso-maquinas">{machinesMsg}</Notice>}
+      {editsShifts && shiftNotice && <Notice testId="escala-aviso-turnos">{shiftNotice}</Notice>}
       {daysMsg && <Notice testId="escala-aviso-dias">{daysMsg}</Notice>}
       {!editsShifts && shiftNotice && <Notice testId="escala-maquinas-aviso">{shiftNotice}</Notice>}
       <p className="col-span-2 text-[10px] text-slate-400">
-        Opcional. Con las máquinas en paralelo se muestra la utilización teórica y las máquinas evitadas. Los días de trabajo solo se usan en ese cálculo.
+        Las horas por turno, los turnos por día y los días de trabajo definen las horas disponibles por máquina. Opcional: con las máquinas en paralelo se muestra la utilización teórica y las máquinas evitadas.
       </p>
     </div>
   );

@@ -115,8 +115,8 @@ describe('computeMachineScale: N vacío o datos inválidos -> null (no se muestr
   });
 
   it.each([
-    ['Hrs/Trn = 0', { hoursPerShift: 0 }], ['Hrs/Trn negativo', { hoursPerShift: -8 }], ['Hrs/Trn vacío', { hoursPerShift: '' }],
-    ['Trns/Día = 0', { shiftsPerDay: 0 }], ['Trns/Día vacío', { shiftsPerDay: '' }], ['Trns/Día NaN', { shiftsPerDay: NaN }],
+    ['Horas por turno = 0', { hoursPerShift: 0 }], ['Horas por turno negativo', { hoursPerShift: -8 }], ['Horas por turno vacío', { hoursPerShift: '' }],
+    ['Turnos por día = 0', { shiftsPerDay: 0 }], ['Turnos por día vacío', { shiftsPerDay: '' }], ['Turnos por día NaN', { shiftsPerDay: NaN }],
     ['días = 0', { daysPerMonth: 0 }], ['días negativo', { daysPerMonth: -22 }], ['días vacío', { daysPerMonth: '' }], ['días > 31', { daysPerMonth: 32 }],
   ] as const)('%s', (_n, over) => { expect(computeMachineScale(base(over))).toBeNull(); });
 
@@ -142,24 +142,24 @@ describe('formato', () => {
   });
 });
 
-describe('horas por turno posibles: Hrs/Trn entre 1 y 24 y Hrs/Trn × Trns/Día no mayor a 24', () => {
+describe('horas por turno posibles: Horas por turno entre 1 y 24 y Horas por turno × Turnos por día no mayor a 24', () => {
   it('el caso real que falló: 10 máquinas con 8445 h por turno -> no se calcula (antes: 1.857.900 hs/mes y 0 %)', () => {
     expect(computeMachineScale(base({ machines: 10, hoursPerShift: 8445 }))).toBeNull();
-    expect(shiftHoursProblem(8445, 1)).toBe('Hrs/Trn debe estar entre 1 y 24.');
+    expect(shiftHoursProblem(8445, 1)).toBe('Horas por turno debe estar entre 1 y 24.');
   });
 
-  it.each([[1, 1], [7.5, 2], [8, 3], [12, 2], [24, 1], [1, 5], [8, 1], ['8', '3']] as const)('Hrs/Trn %s × Trns/Día %s es posible', (h, t) => {
+  it.each([[1, 1], [7.5, 2], [8, 3], [12, 2], [24, 1], [1, 5], [8, 1], ['8', '3']] as const)('Horas por turno %s × Turnos por día %s es posible', (h, t) => {
     expect(shiftHoursProblem(h, t)).toBeNull();
     expect(computeMachineScale(base({ hoursPerShift: h, shiftsPerDay: t }))).not.toBeNull();
   });
 
-  it.each([[25, 1], [8445, 1], [24.01, 1], [0.5, 1], [-8, 1], [1e9, 1]] as const)('Hrs/Trn %s fuera de 1–24: aviso y sin cálculo', (h, t) => {
-    expect(shiftHoursProblem(h, t)).toBe('Hrs/Trn debe estar entre 1 y 24.');
+  it.each([[25, 1], [8445, 1], [24.01, 1], [0.5, 1], [-8, 1], [1e9, 1]] as const)('Horas por turno %s fuera de 1–24: aviso y sin cálculo', (h, t) => {
+    expect(shiftHoursProblem(h, t)).toBe('Horas por turno debe estar entre 1 y 24.');
     expect(computeMachineScale(base({ hoursPerShift: h, shiftsPerDay: t }))).toBeNull();
   });
 
-  it.each([[8, 4], [12, 3], [24, 2], [7.5, 4], [10, 2.5]] as const)('Hrs/Trn %s × Trns/Día %s supera 24 h por día', (h, t) => {
-    expect(shiftHoursProblem(h, t)).toBe('Hrs/Trn × Trns/Día no puede superar 24 h.');
+  it.each([[8, 4], [12, 3], [24, 2], [7.5, 4], [10, 2.5]] as const)('Horas por turno %s × Turnos por día %s supera 24 h por día', (h, t) => {
+    expect(shiftHoursProblem(h, t)).toBe('Horas por turno × Turnos por día no puede superar 24 h.');
     expect(computeMachineScale(base({ hoursPerShift: h, shiftsPerDay: t }))).toBeNull();
   });
 

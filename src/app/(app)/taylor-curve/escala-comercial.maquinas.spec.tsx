@@ -130,7 +130,7 @@ describe('datos inválidos: no se muestra nada nuevo y nada se rompe', () => {
     expect(text(c)).toContain('Actual: ~350 hs/mes (≈ 2 máq.)'); // el viejo sigue visible
   });
 
-  it.each([['Hrs/Trn'], ['Trns/Día']])('con %s vacío', (unit) => {
+  it.each([['Horas por turno'], ['Turnos por día']])('con %s vacío', (unit) => {
     const c = toyota();
     typeInto(machines(c), '2');
     expect(result(c)).not.toBeNull();
@@ -154,7 +154,7 @@ describe('datos inválidos: no se muestra nada nuevo y nada se rompe', () => {
   });
 });
 
-describe('horas por turno posibles (Hrs/Trn entre 1 y 24; Hrs/Trn × Trns/Día ≤ 24)', () => {
+describe('horas por turno posibles (Horas por turno entre 1 y 24; Horas por turno × Turnos por día ≤ 24)', () => {
   const aviso = (c: HTMLElement) => c.querySelector('[data-testid="escala-aviso-turnos"]');
   const caja = (c: HTMLElement) => c.textContent ?? '';
 
@@ -166,13 +166,13 @@ describe('horas por turno posibles (Hrs/Trn entre 1 y 24; Hrs/Trn × Trns/Día �
     expect(caja(c)).toContain('Pzas / Trn (8h)');
   });
 
-  it('el caso real que falló: N=10 y Hrs/Trn=8445 -> sin tarjeta, aviso corto en el campo y sin fichas por turno', () => {
+  it('el caso real que falló: N=10 y Horas por turno=8445 -> sin tarjeta, aviso corto en el campo y sin fichas por turno', () => {
     const c = toyota();
     typeInto(machines(c), '10');
-    typeInto(fieldByUnit(c, 'Hrs/Trn'), '8445');
+    typeInto(fieldByUnit(c, 'Horas por turno'), '8445');
     expect(result(c)).toBeNull();
-    expect(aviso(c)?.textContent).toBe('⚠ Hrs/Trn debe estar entre 1 y 24.');
-    expect(fieldByUnit(c, 'Hrs/Trn').getAttribute('aria-invalid')).toBe('true');
+    expect(aviso(c)?.textContent).toBe('⚠ Horas por turno debe estar entre 1 y 24.');
+    expect(fieldByUnit(c, 'Horas por turno').getAttribute('aria-invalid')).toBe('true');
     expect(caja(c)).not.toContain('1.857.900');
     expect(caja(c)).not.toContain('Pzas / Trn');
     expect(caja(c)).not.toContain('(8445h)');
@@ -181,25 +181,25 @@ describe('horas por turno posibles (Hrs/Trn entre 1 y 24; Hrs/Trn × Trns/Día �
 
   it('el aviso también aparece con N vacío (los mismos datos alimentan la caja de productividad)', () => {
     const c = toyota();
-    typeInto(fieldByUnit(c, 'Hrs/Trn'), '25');
-    expect(aviso(c)?.textContent).toBe('⚠ Hrs/Trn debe estar entre 1 y 24.');
+    typeInto(fieldByUnit(c, 'Horas por turno'), '25');
+    expect(aviso(c)?.textContent).toBe('⚠ Horas por turno debe estar entre 1 y 24.');
     expect(caja(c)).not.toContain('Pzas / Trn');
   });
 
-  it('Hrs/Trn × Trns/Día > 24 (8 h × 4 turnos): aviso del producto y sin tarjeta', () => {
+  it('Horas por turno × Turnos por día > 24 (8 h × 4 turnos): aviso del producto y sin tarjeta', () => {
     const c = toyota();
     typeInto(machines(c), '2');
-    typeInto(fieldByUnit(c, 'Trns/Día'), '4');
+    typeInto(fieldByUnit(c, 'Turnos por día'), '4');
     expect(result(c)).toBeNull();
-    expect(aviso(c)?.textContent).toBe('⚠ Hrs/Trn × Trns/Día no puede superar 24 h.');
-    expect(fieldByUnit(c, 'Trns/Día').getAttribute('aria-invalid')).toBe('true');
+    expect(aviso(c)?.textContent).toBe('⚠ Horas por turno × Turnos por día no puede superar 24 h.');
+    expect(fieldByUnit(c, 'Turnos por día').getAttribute('aria-invalid')).toBe('true');
   });
 
   it.each([['8', '3'], ['12', '2'], ['24', '1']])('el límite es inclusivo: %s h × %s turnos (24 h) sí se calcula', (h, t) => {
     const c = toyota();
     typeInto(machines(c), '2');
-    typeInto(fieldByUnit(c, 'Hrs/Trn'), h);
-    typeInto(fieldByUnit(c, 'Trns/Día'), t);
+    typeInto(fieldByUnit(c, 'Horas por turno'), h);
+    typeInto(fieldByUnit(c, 'Turnos por día'), t);
     expect(aviso(c)).toBeNull();
     expect(result(c)).not.toBeNull();
   });
@@ -207,17 +207,17 @@ describe('horas por turno posibles (Hrs/Trn entre 1 y 24; Hrs/Trn × Trns/Día �
   it('al corregir el valor la tarjeta vuelve y el aviso desaparece', () => {
     const c = toyota();
     typeInto(machines(c), '2');
-    typeInto(fieldByUnit(c, 'Hrs/Trn'), '8445');
+    typeInto(fieldByUnit(c, 'Horas por turno'), '8445');
     expect(result(c)).toBeNull();
-    typeInto(fieldByUnit(c, 'Hrs/Trn'), '8');
+    typeInto(fieldByUnit(c, 'Horas por turno'), '8');
     expect(aviso(c)).toBeNull();
     expect(text(c)).toContain('Utilización teórica: 99 % → 67 %');
   });
 
-  it('Hrs/Trn vacío no es un error: sin aviso (la app usa 8) y sin tarjeta', () => {
+  it('Horas por turno vacío no es un error: sin aviso (la app usa 8) y sin tarjeta', () => {
     const c = toyota();
     typeInto(machines(c), '2');
-    typeInto(fieldByUnit(c, 'Hrs/Trn'), '');
+    typeInto(fieldByUnit(c, 'Horas por turno'), '');
     expect(aviso(c)).toBeNull();
     expect(result(c)).toBeNull();
   });
@@ -228,7 +228,7 @@ describe('horas por turno posibles (Hrs/Trn entre 1 y 24; Hrs/Trn × Trns/Día �
 });
 
 describe('campos: etiqueta visible ENCIMA, sin superposición, con aviso corto', () => {
-  const campos = ['escala-input-horas', 'escala-input-turnos', 'escala-input-maquinas', 'escala-input-dias'];
+  const campos = ['escala-input-maquinas', 'escala-input-horas', 'escala-input-turnos', 'escala-input-dias'];
   const aviso = (c: HTMLElement, id: string) => c.querySelector(`[data-testid="${id}"]`)?.textContent;
 
   it('los 4 campos están en el componente compartido, cada uno con su <label> asociada', () => {
@@ -241,7 +241,15 @@ describe('campos: etiqueta visible ENCIMA, sin superposición, con aviso corto',
       expect(label, `label de ${id}`).toBeTruthy();
       etiquetas.push(label!.textContent!);
     }
-    expect(etiquetas).toEqual(['Hrs/Trn', 'Trns/Día', 'Máquinas en paralelo', 'Días de trabajo por mes']);
+    expect(etiquetas).toEqual(['Máquinas en paralelo', 'Horas por turno', 'Turnos por día', 'Días de trabajo por mes']);
+  });
+
+  it('el orden en pantalla es máquinas, horas por turno, turnos por día y días; el texto de ayuda explica qué definen', () => {
+    const c = toyota();
+    const cont = c.querySelector('[data-testid="escala-maquinas-campos"]')!;
+    expect([...cont.querySelectorAll('input')].map((i) => i.dataset.testid)).toEqual(campos);
+    expect(cont.textContent).toContain('Las horas por turno, los turnos por día y los días de trabajo definen las horas disponibles por máquina.');
+    expect(cont.textContent).not.toContain('solo se usan en ese cálculo');
   });
 
   it('ninguna etiqueta va posicionada de forma absoluta dentro de los campos (era la causa del texto tapado)', () => {
@@ -256,11 +264,11 @@ describe('campos: etiqueta visible ENCIMA, sin superposición, con aviso corto',
 
   it('los 4 campos muestran lo que se escribe (valor en el estado y en el campo) y arrancan con 8 h, 1 turno, 22 días', () => {
     const c = toyota();
-    expect(fieldByUnit(c, 'Hrs/Trn').value).toBe('8');
-    expect(fieldByUnit(c, 'Trns/Día').value).toBe('1');
+    expect(fieldByUnit(c, 'Horas por turno').value).toBe('8');
+    expect(fieldByUnit(c, 'Turnos por día').value).toBe('1');
     expect(fieldByUnit(c, 'Días').value).toBe('22');
-    typeInto(fieldByUnit(c, 'Hrs/Trn'), '12'); typeInto(fieldByUnit(c, 'Trns/Día'), '2'); typeInto(fieldByUnit(c, 'Máquinas'), '10'); typeInto(fieldByUnit(c, 'Días'), '20');
-    expect([fieldByUnit(c, 'Hrs/Trn').value, fieldByUnit(c, 'Trns/Día').value, fieldByUnit(c, 'Máquinas').value, fieldByUnit(c, 'Días').value]).toEqual(['12', '2', '10', '20']);
+    typeInto(fieldByUnit(c, 'Horas por turno'), '12'); typeInto(fieldByUnit(c, 'Turnos por día'), '2'); typeInto(fieldByUnit(c, 'Máquinas'), '10'); typeInto(fieldByUnit(c, 'Días'), '20');
+    expect([fieldByUnit(c, 'Horas por turno').value, fieldByUnit(c, 'Turnos por día').value, fieldByUnit(c, 'Máquinas').value, fieldByUnit(c, 'Días').value]).toEqual(['12', '2', '10', '20']);
   });
 
   it('24.000 pzs, 10 máquinas, 8 h, 1 turno, 22 días: la tarjeta se muestra (ejemplo de Fernando)', () => {

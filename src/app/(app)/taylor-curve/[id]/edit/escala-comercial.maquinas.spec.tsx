@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { expectGolden } from '../../../../../../tests/golden';
 import { escalaComercialBase, escalaComercialBlock, installDomPolyfills, rechartsStub, typeInto } from '../../../../../../tests/screen-mocks';
 
-// Máquinas en paralelo en la pantalla de EDICIÓN. Hrs/Trn y Trns/Día se editan acá igual que en la alta: se restauran del
+// Máquinas en paralelo en la pantalla de EDICIÓN. Horas por turno y Turnos por día se editan acá igual que en la alta: se restauran del
 // caso guardado (8 h × 1 turno si es anterior a esos campos) y los usan por igual el cálculo, la pantalla, el PDF y lo guardado.
 // Caso Toyota: 350 y 237,5 hs/mes. FRÁGIL: depende de los nombres que importa de '@/firebase' y de firebase/firestore.
 const { stable, updateDoc } = vi.hoisted(() => ({
@@ -115,7 +115,7 @@ describe('horas por turno y turnos del caso guardado: se usan en toda la pantall
     expect(text(c)).not.toContain('≈ 2 máq.');
   });
 
-  it('un valor guardado inválido (Hrs/Trn vacío) apaga el bloque nuevo sin romper nada', () => {
+  it('un valor guardado inválido (Horas por turno vacío) apaga el bloque nuevo sin romper nada', () => {
     const c = open({ horasPorTurno: '', turnosPorDia: 1, machinesParallel: 2 });
     expect(result(c)).toBeNull();
     expect(text(c)).toContain('Actual: ~350 hs/mes');
@@ -136,7 +136,7 @@ describe('horas por turno y turnos del caso guardado: se usan en toda la pantall
     expect(text(c)).toContain('Actual: ~350 hs/mes (≈ 2 máq.)');
   });
 
-  it('cambiar Hrs/Trn y Trns/Día recalcula el bloque: 2 máq. × 6 h × 2 turnos × 22 días = 528 hs', () => {
+  it('cambiar Horas por turno y Turnos por día recalcula el bloque: 2 máq. × 6 h × 2 turnos × 22 días = 528 hs', () => {
     const c = open({ machinesParallel: 2 });
     typeInto(horas(c), '6');
     typeInto(turnos(c), '2');
@@ -147,17 +147,17 @@ describe('horas por turno y turnos del caso guardado: se usan en toda la pantall
     it('8445 h por turno: sin tarjeta y con aviso en el campo, también con N vacío', () => {
       const c = open({ horasPorTurno: 8445, turnosPorDia: 1, machinesParallel: 10 });
       expect(result(c)).toBeNull();
-      expect(aviso(c)?.textContent).toBe('⚠ Hrs/Trn debe estar entre 1 y 24.');
+      expect(aviso(c)?.textContent).toBe('⚠ Horas por turno debe estar entre 1 y 24.');
       cleanup();
       const sinN = open({ horasPorTurno: 8445, turnosPorDia: 1 });
       expect(result(sinN)).toBeNull();
-      expect(aviso(sinN)?.textContent).toBe('⚠ Hrs/Trn debe estar entre 1 y 24.');
+      expect(aviso(sinN)?.textContent).toBe('⚠ Horas por turno debe estar entre 1 y 24.');
     });
 
     it('8 h × 4 turnos: aviso del producto y sin tarjeta', () => {
       const c = open({ horasPorTurno: 8, turnosPorDia: 4, machinesParallel: 2 });
       expect(result(c)).toBeNull();
-      expect(aviso(c)?.textContent).toContain('Hrs/Trn × Trns/Día no puede superar 24 h.');
+      expect(aviso(c)?.textContent).toContain('Horas por turno × Turnos por día no puede superar 24 h.');
     });
 
     it('el valor inválido se conserva al guardar (no se corrige a escondidas)', async () => {
@@ -207,12 +207,14 @@ describe('consistencia: pantalla = PDF = guardado', () => {
   });
 });
 
-describe('campos en la edición: Hrs/Trn, Trns/Día, máquinas y días', () => {
+describe('campos en la edición: máquinas, horas por turno, turnos por día y días', () => {
   it('muestra los cuatro campos con etiqueta encima y sin etiquetas absolutas', () => {
     const c = open({ machinesParallel: 10 });
     const cont = c.querySelector('[data-testid="escala-maquinas-campos"]')!;
     expect(cont.querySelectorAll('.absolute')).toHaveLength(0);
-    expect([...cont.querySelectorAll('label')].map((l) => l.textContent)).toEqual(['Hrs/Trn', 'Trns/Día', 'Máquinas en paralelo', 'Días de trabajo por mes']);
+    expect(cont.textContent).toContain('Las horas por turno, los turnos por día y los días de trabajo definen las horas disponibles por máquina.');
+    expect([...cont.querySelectorAll('input')].map((i) => i.dataset.testid)).toEqual(['escala-input-maquinas', 'escala-input-horas', 'escala-input-turnos', 'escala-input-dias']);
+    expect([...cont.querySelectorAll('label')].map((l) => l.textContent)).toEqual(['Máquinas en paralelo', 'Horas por turno', 'Turnos por día', 'Días de trabajo por mes']);
   });
 
   it('Máquinas en paralelo guardado fuera de 1–100: sin tarjeta y con aviso corto', () => {

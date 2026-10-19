@@ -2,7 +2,7 @@
 
 ## Edición de la curva de costos: horas por turno y turnos por día (RESUELTO en fix/escala-turnos)
 
-La edición ahora tiene los campos Hrs/Trn y Trns/Día (los mismos componentes y validaciones que la alta), los restaura del caso
+La edición ahora tiene los campos Horas por turno y Turnos por día (los mismos componentes y validaciones que la alta), los restaura del caso
 guardado y los usa en el cálculo, el resumen de pantalla, el PDF y lo que se guarda. Los casos anteriores a esos campos abren con
 8 × 1, que es lo que se asumía. Para un caso guardado con turnos distintos de 1, los números de la edición (≈ N máq., Pzas / Trn)
 ahora coinciden con los del informe original.
