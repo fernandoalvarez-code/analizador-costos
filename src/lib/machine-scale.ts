@@ -6,7 +6,7 @@
  * fórmula de la curva. Devuelve `null` si "Máquinas en paralelo" está vacío o si algún dato es inválido:
  * en ese caso la interfaz y el PDF no muestran nada nuevo.
  *
- *   horas por máquina  = Hrs/Trn × Trns/Día × días/mes
+ *   horas por máquina  = Horas por turno × Turnos por día × días/mes
  *   horas disponibles  = N × horas por máquina
  *   utilización        = horas requeridas / horas disponibles       (teórica: sin paradas ni mantenimiento)
  *   máquinas necesarias = techo(horas requeridas / horas por máquina)
@@ -55,7 +55,7 @@ const MAX_DAYS_PER_MONTH = 31;
 export const MIN_MACHINES = 1;
 export const MAX_MACHINES = 100;
 
-/** Un día no tiene más de 24 horas: Hrs/Trn entre 1 y 24 y Hrs/Trn × Trns/Día no mayor a 24. */
+/** Un día no tiene más de 24 horas: Horas por turno entre 1 y 24 y Horas por turno × Turnos por día no mayor a 24. */
 export const MIN_HOURS_PER_SHIFT = 1;
 export const MAX_HOURS_PER_DAY = 24;
 
@@ -80,9 +80,9 @@ export function shiftHoursProblem(
 ): string | null {
   const h = toNumber(hoursPerShift);
   if (h === null) return null;
-  if (h < MIN_HOURS_PER_SHIFT || h > MAX_HOURS_PER_DAY) return `Hrs/Trn debe estar entre ${MIN_HOURS_PER_SHIFT} y ${MAX_HOURS_PER_DAY}.`;
+  if (h < MIN_HOURS_PER_SHIFT || h > MAX_HOURS_PER_DAY) return `Horas por turno debe estar entre ${MIN_HOURS_PER_SHIFT} y ${MAX_HOURS_PER_DAY}.`;
   const t = toNumber(shiftsPerDay);
-  if (t !== null && t > 0 && h * t > MAX_HOURS_PER_DAY) return `Hrs/Trn × Trns/Día no puede superar ${MAX_HOURS_PER_DAY} h.`;
+  if (t !== null && t > 0 && h * t > MAX_HOURS_PER_DAY) return `Horas por turno × Turnos por día no puede superar ${MAX_HOURS_PER_DAY} h.`;
   return null;
 }
 

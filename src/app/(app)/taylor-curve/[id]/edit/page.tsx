@@ -107,11 +107,10 @@ export default function EditTaylorCurvePage() {
   // Máquinas en paralelo (opcional). Vacío = la función está apagada y todo queda como antes.
   const [machinesParallel, setMachinesParallel] = useState<string | number>("");
   const [workDaysPerMonth, setWorkDaysPerMonth] = useState<string | number>(22);
-  // Horas por turno y turnos por día del caso guardado. Esta pantalla no los edita ni los usa en sus cálculos
-  // de siempre (8 h × 1 turno fijos): solo se restauran para el bloque de máquinas en paralelo y se CONSERVAN
-  // al guardar (antes se perdían). Ver docs/pendientes.md.
-  const [savedHoursPerShift, setSavedHoursPerShift] = useState<string | number | undefined>(undefined);
-  const [savedShiftsPerDay, setSavedShiftsPerDay] = useState<string | number | undefined>(undefined);
+  // Horas por turno y turnos por día: se editan acá igual que en la alta. Los casos guardados antes de que
+  // existieran estos campos abren con 8 h × 1 turno, que es lo que se asumía hasta ahora.
+  const [horasPorTurno, setHorasPorTurno] = useState<string | number>(8);
+  const [turnosPorDia, setTurnosPorDia] = useState<string | number>(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [saveCaseName, setSaveCaseName] = useState("");
@@ -147,27 +146,23 @@ export default function EditTaylorCurvePage() {
     operationType, materialId,
     machineCostHr, toolChangeTime, machinePowerHP, maxTorque, machineEfficiency,
     coolantInternal, drillingOrientation, profundidadAgujero, monthlyProduction,
-    // edit/page.tsx no tiene inputs de horas/turno (a diferencia de page.tsx); se
-    // mantiene el mismo 8h x 1 turno fijo que capacityCheck usaba acá antes de extraerse.
-    horasPorTurno: 8, turnosPorDia: 1, isStressTestActive,
+    horasPorTurno, turnosPorDia, isStressTestActive,
     toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent,
     tcCurrent, zCurrent, edgesCurrent, dcCurrent, aeCurrent, lifeModeCurrent,
     toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium,
     tcPremiumInput, zPremium, edgesPremium, dcPremium, aePremium, lifeModePremium,
   });
 
-  // Horas por turno / turnos GUARDADOS imposibles (8445 h…): se avisa solo si la función está en uso (N completo); con N
-  // vacío la pantalla queda idéntica a la de siempre.
-  const savedShiftProblem = shiftHoursProblem(savedHoursPerShift ?? 8, savedShiftsPerDay ?? 1);
+  // Horas por turno / turnos imposibles (8445 h…): aviso en los campos, igual que en la alta.
+  const shiftProblem = shiftHoursProblem(horasPorTurno, turnosPorDia);
 
   // null con "Máquinas en paralelo" vacío o cualquier dato inválido: entonces no se muestra nada nuevo.
-  // Usa las horas por turno y los turnos del caso guardado (8 y 1 si no los tiene).
   const machineScale = React.useMemo(() => capacityCheck
     ? computeMachineScale({
         hrsComp: capacityCheck.hrsCompExact, hrsSeco: capacityCheck.hrsSecoExact,
-        machines: machinesParallel, hoursPerShift: savedHoursPerShift ?? 8, shiftsPerDay: savedShiftsPerDay ?? 1, daysPerMonth: workDaysPerMonth,
+        machines: machinesParallel, hoursPerShift: horasPorTurno, shiftsPerDay: turnosPorDia, daysPerMonth: workDaysPerMonth,
       })
-    : null, [capacityCheck, machinesParallel, savedHoursPerShift, savedShiftsPerDay, workDaysPerMonth]);
+    : null, [capacityCheck, machinesParallel, horasPorTurno, turnosPorDia, workDaysPerMonth]);
 
   useEffect(() => {
     if (tcPremiumManual) return;
@@ -253,8 +248,8 @@ export default function EditTaylorCurvePage() {
         // Casos guardados antes de esta función no traen estos campos: máquinas vacío (apagada) y 22 días.
         setMachinesParallel(inputs.machinesParallel ?? "");
         setWorkDaysPerMonth(inputs.workDaysPerMonth ?? 22);
-        setSavedHoursPerShift(inputs.horasPorTurno);
-        setSavedShiftsPerDay(inputs.turnosPorDia);
+        setHorasPorTurno(inputs.horasPorTurno ?? 8);
+        setTurnosPorDia(inputs.turnosPorDia ?? 1);
         
         setToolNameCurrent(inputs.toolNameCurrent || "");
         setToolCostCurrent(inputs.toolCostCurrent || "");
@@ -328,10 +323,7 @@ export default function EditTaylorCurvePage() {
         dateModified: serverTimestamp(),
         taylorInputs: {
           operationType, materialId, machineCostHr, toolChangeTime, pieceName, machinePowerHP, maxTorque, machineEfficiency, profundidadAgujero, coolantInternal, drillingOrientation,
-          monthlyProduction, machinesParallel, workDaysPerMonth, lifeModeCurrent, lifeModePremium,
-          // Se conservan los del caso guardado (updateDoc reemplaza todo taylorInputs; antes se perdían al editar).
-          ...(savedHoursPerShift !== undefined && { horasPorTurno: savedHoursPerShift }),
-          ...(savedShiftsPerDay !== undefined && { turnosPorDia: savedShiftsPerDay }),
+          monthlyProduction, horasPorTurno, turnosPorDia, machinesParallel, workDaysPerMonth, lifeModeCurrent, lifeModePremium,
           toolNameCurrent, toolCostCurrent, apCurrent, feedCurrent, vcCurrent, pcsCurrent, tcCurrent, zCurrent, edgesCurrent, dcCurrent, aeCurrent,
           toolNamePremium, toolCostPremium, apPremium, feedPremium, vcPremium, pcsPremium, tcPremiumInput, zPremium, edgesPremium, dcPremium, aePremium,
         },
@@ -823,7 +815,11 @@ export default function EditTaylorCurvePage() {
                 <Input type="number" placeholder="0" className="w-full text-lg font-black text-blue-700 pl-4 pr-16 h-12 bg-slate-50 text-slate-900" value={monthlyProduction} onChange={e => setMonthlyProduction(e.target.value)} />
                 <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400">pzs/mes</span>
               </div>
-              <MachineScaleFields machines={machinesParallel} onMachinesChange={setMachinesParallel} days={workDaysPerMonth} onDaysChange={setWorkDaysPerMonth} shiftNotice={savedShiftProblem && String(machinesParallel).trim() !== '' ? `${savedShiftProblem} (valores guardados del caso)` : null} />
+              <MachineScaleFields
+                machines={machinesParallel} onMachinesChange={setMachinesParallel} days={workDaysPerMonth} onDaysChange={setWorkDaysPerMonth}
+                hoursPerShift={horasPorTurno} onHoursPerShiftChange={setHorasPorTurno}
+                shiftsPerDay={turnosPorDia} onShiftsPerDayChange={setTurnosPorDia} shiftNotice={shiftProblem}
+              />
               {capacityCheck && (
                 <div className="text-[10px] mt-1 space-y-0.5">
                   <p className="text-red-500">📊 Actual: ~{capacityCheck.hrsComp} hs/mes{!machineScale && capacityCheck.maqComp > 1 && ` (≈ ${Math.ceil(capacityCheck.maqComp)} máq.)`}</p>
@@ -1501,8 +1497,8 @@ export default function EditTaylorCurvePage() {
             tcCurrent={tcCurrent}
             tcPremiumInput={tcPremiumInput}
             toolChangeTime={toolChangeTime}
-            horasPorTurno={8}
-            turnosPorDia={1}
+            horasPorTurno={horasPorTurno}
+            turnosPorDia={turnosPorDia}
             capacityCheck={capacityCheck}
             machineScale={machineScale}
             pageNumber={1}
