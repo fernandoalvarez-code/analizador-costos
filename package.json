@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 9002",
+    "dev:emulador": "node scripts/dev-emulador.mjs",
+    "costos:emuladores": "node scripts/costos-emuladores.mjs",
+    "costos:seed": "tsx scripts/seed-costos-emulador.ts",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "NODE_ENV=production next build",
