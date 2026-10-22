@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Análisis de costos de mecanizado</title>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--ink:#1b2430;--muted:#64707f;--line:#e2e7ee;--soft:#f6f8fb;--navy:#12305a;--accent:#1f6fd1;--red:#d64545;--amber:#e3a008;--green:#2e9e5b;--red-bg:#fdecec;--green-bg:#e9f7ef;
+--k-corte:#12305a;--k-aux:#4f7cc4;--k-setup:#9db8e3;--k-herr:#e3a008;--k-camb:#f2d488;--k-scrap:#d64545}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+header{background:var(--navy);color:#fff;padding:14px 24px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{margin:0;font-size:18px} header .sub{opacity:.8;font-size:12.5px;margin-top:2px}
+header .who{font-size:12.5px;background:#ffffff1a;border-radius:8px;padding:6px 10px}
+.demo{background:#fff3cd;color:#7a5b00;font-size:12px;padding:6px 24px;border-bottom:1px solid #f0dc9a}
+main{max-width:1180px;margin:0 auto;padding:16px 16px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+h2{margin:0 0 4px;font-size:15.5px;color:var(--navy);display:flex;align-items:center;gap:8px}
+h2 .k{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:11.5px;flex-shrink:0}
+.hint{color:var(--muted);font-size:12.5px;margin:0 0 12px}
+input,select{width:100%;padding:7px 9px;border:1px solid #cdd5df;border-radius:7px;font-size:13.5px;background:#fff;font-family:inherit}
+input:focus,select:focus{outline:2px solid #1f6fd155;border-color:var(--accent)}
+label{display:block;font-size:11.5px;font-weight:600;color:#3b4552;margin-bottom:3px}
+.f small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.btn{padding:8px 14px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn.sec{background:#fff;color:var(--accent)} .btn.sm{padding:4px 10px;font-size:12px}
+.ibtn{border:0;background:none;cursor:pointer;font-size:13px;padding:3px 5px;color:var(--muted);border-radius:5px} .ibtn:hover{background:#eef1f5;color:var(--red)}
+.g{display:grid;gap:10px} .g4{grid-template-columns:repeat(4,1fr)} .g2{grid-template-columns:1fr 1fr}
+@media(max-width:760px){.g4,.g2{grid-template-columns:1fr 1fr}}
+.note{font-size:11.5px;color:var(--muted)}
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin-bottom:16px;flex-wrap:wrap}
+.tab{border:0;background:none;padding:10px 16px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit}
+.tab.on{color:var(--navy);border-bottom-color:var(--accent)}
+.tab .st{font-size:11px;font-weight:600;background:var(--soft);border-radius:8px;padding:1px 7px;margin-left:6px}
+.pane{display:none}.pane.on{display:block}
+/* selector de pieza */
+.psel{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:14px}
+.psel .lbl{font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.psel .cur{font-size:16px;font-weight:800;color:var(--navy)}
+.psel .meta{font-size:12.5px;color:var(--muted)}
+.psel .sp{flex:1}
+.psel input{width:240px}
+.subtabs{display:flex;gap:6px;margin-bottom:14px}
+.subtab{border:1px solid #cdd5df;background:#fff;border-radius:18px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);font-family:inherit}
+.subtab.on{background:var(--navy);border-color:var(--navy);color:#fff}
+/* resumen */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+@media(max-width:760px){.kpis{grid-template-columns:1fr 1fr}}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.kpi .l{font-size:11.5px;color:var(--muted)} .kpi .v{font-size:20px;font-weight:800;margin-top:2px} .kpi .s{font-size:11px;color:var(--muted)}
+.insight{border-radius:12px;padding:14px 18px;background:#eef5ff;border:1px solid #cfe0f7;margin-bottom:14px;font-size:13.5px}
+.insight .t{font-size:11.5px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.insight ul{margin:4px 0 0;padding-left:18px} .insight li{margin:2px 0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media(max-width:900px){.two{grid-template-columns:1fr}}
+.two.w{grid-template-columns:1.2fr 1fr}
+.brow{display:grid;grid-template-columns:170px 1fr 96px;gap:10px;align-items:center;margin:7px 0;font-size:12.5px}
+.brow .lb b{display:block;font-size:12.5px} .brow .lb span{font-size:11px;color:var(--muted)}
+.brow.click{cursor:pointer;border-radius:6px} .brow.click:hover{background:#f6f9fd}
+.track{height:20px;background:#f0f3f7;border-radius:5px;overflow:hidden;display:flex;position:relative}
+.track div{height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;overflow:hidden;white-space:nowrap}
+.brow .v{text-align:right;font-variant-numeric:tabular-nums;font-weight:700} .brow .v small{display:block;font-weight:500;color:var(--muted);font-size:11px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.sq{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:10px}
+.toolbar .f{min-width:160px}
+.list{width:100%;border-collapse:collapse;font-size:13px}
+.list th{font-size:11px;color:var(--muted);font-weight:700;text-align:left;padding:8px;border-bottom:2px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+.list th.r,.list td.r{text-align:right}
+.list th.sorted{color:var(--navy)}
+.list td{padding:8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.list tbody tr{cursor:pointer} .list tbody tr:hover{background:#f6f9fd}
+.list .rk{color:var(--muted);font-weight:700}
+.minibar{height:6px;background:#eef1f5;border-radius:3px;margin-top:3px;overflow:hidden} .minibar div{height:100%;background:var(--navy)}
+.pill{display:inline-block;font-size:11px;padding:1px 8px;border-radius:9px;font-weight:600;color:#fff}
+.pager{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12.5px;color:var(--muted);flex-wrap:wrap;gap:8px}
+.tablewrap{overflow-x:auto}
+/* carga */
+.strip{display:flex;gap:16px;align-items:center;flex-wrap:wrap;background:#eef5ff;border:1px solid #cfe0f7;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px}
+.strip b{color:var(--navy)} .strip .sp{flex:1}
+.route{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.rhead,.rrow{display:grid;grid-template-columns:62px 1.6fr 1.2fr 80px 90px 70px 64px;gap:8px;align-items:center;padding:9px 12px}
+.rhead{background:var(--soft);font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.rrow{border-top:1px solid var(--line);cursor:pointer;font-size:13.5px}
+.rrow:hover{background:#f9fbfe}
+.rrow .num{background:var(--navy);color:#fff;border-radius:6px;padding:2px 0;font-weight:700;font-size:12px;text-align:center}
+.rrow.top .num{background:var(--red)}
+.rrow .r{text-align:right;font-variant-numeric:tabular-nums}
+.rrow .pct{font-size:12px;color:var(--muted);text-align:right}
+.rrow .chev{text-align:right;color:var(--accent);font-size:12px;font-weight:600}
+.redit{display:none;border-top:1px solid var(--line);background:#fbfcfe;padding:14px 16px}
+.redit.open{display:block}
+.grp{margin-bottom:12px}
+.grp h4{margin:0 0 8px;font-size:12px;color:var(--navy);text-transform:uppercase;letter-spacing:.04em}
+.ttable{width:100%;border-collapse:collapse;font-size:12.5px}
+.ttable th{text-align:left;font-size:11px;color:var(--muted);font-weight:600;padding:4px;border-bottom:1px solid var(--line)}
+.ttable td{padding:4px} .ttable td input{padding:5px 7px;font-size:12.5px}
+@media(max-width:760px){.rhead{display:none}.rrow{grid-template-columns:52px 1fr 80px 50px}.rrow .hm{display:none}}
+/* diagnóstico */
+.headline{border-radius:12px;padding:16px 18px;background:var(--red-bg);border:1px solid #f3c4c4;margin-bottom:14px}
+.headline .t{font-size:11.5px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.05em}
+.headline .b{font-size:20px;font-weight:800;margin:4px 0}
+.headline .s{font-size:13.5px;color:#3b4552}
+.matrix{width:100%;border-collapse:collapse;font-size:12.5px}
+.matrix th{font-size:11px;color:var(--muted);font-weight:700;text-align:right;padding:7px 8px;border-bottom:2px solid var(--line)}
+.matrix th:first-child{text-align:left}
+.matrix td{padding:7px 8px;text-align:right;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--line)}
+.matrix td:first-child{text-align:left}
+.matrix tr.tot td{font-weight:800;border-top:2px solid var(--line);border-bottom:0}
+.matrix td.hot{font-weight:700}
+.opp{display:grid;grid-template-columns:30px 1fr auto;gap:12px;align-items:start;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fff}
+.opp .rkc{width:26px;height:26px;border-radius:50%;background:var(--navy);color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center}
+.opp .tg{display:inline-block;font-size:10.5px;font-weight:700;border-radius:8px;padding:1px 7px;margin-right:6px;color:#fff;vertical-align:middle}
+.opp .t{font-weight:700;font-size:13.5px} .opp .d{font-size:12.5px;color:#3b4552;margin-top:3px}
+.opp .sup{font-size:11px;color:var(--muted);margin-top:4px}
+.opp .rr{text-align:right;min-width:140px}
+.opp .usd{font-weight:800;color:var(--green);font-size:16px} .opp .usd small{display:block;font-size:11px;color:var(--muted);font-weight:500}
+.potential{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--green-bg);border:1px solid #bfe5cf;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px}
+.potential b{color:var(--green);font-size:17px}
+.mtable{width:100%;max-width:620px;border-collapse:collapse} .mtable td{padding:4px}
+.incid{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.incid .track{height:24px}
+.incid .txt{font-size:12.5px;color:#3b4552;margin-top:6px}
+.ttable td.c{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:12.5px}
+.ttable th.c{text-align:right}
+.peso{display:inline-block;white-space:nowrap;font-size:10.5px;font-weight:700;border-radius:8px;padding:1px 7px;color:#fff}
+.sens{font-size:11.5px;color:#3b4552;line-height:1.5;background:#f6f8fb;border-radius:7px;padding:8px 10px}
+.ttable.inc td{border-bottom:1px solid var(--line);padding:6px 4px}
+.slot{border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin-bottom:10px;background:#fff}
+.slot .ttable td input[type=number]{min-width:62px}
+.slot .ttable td select{min-width:150px;padding:5px 6px;font-size:12.5px}
+.slot{overflow-x:auto}
+.slothd{display:flex;gap:10px;align-items:center;margin-bottom:4px}
+tr.onopt td{background:#eef5ff} tr.offopt td{background:#fafbfc} tr.offopt input{color:#5b6676}
+.selr{display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer} .selr input{width:auto}
+.dpos{color:var(--red);font-weight:700} .dneg{color:var(--green);font-weight:700}
+input.tm{font-variant-numeric:tabular-nums;text-align:right;min-width:70px}
+.ttable.inc .sec{color:var(--muted)} .ttable.inc th.sec{font-weight:600}
+.qm{display:inline-flex;width:15px;height:15px;border-radius:50%;background:#dfe5ee;color:#3b4552;font-size:10.5px;font-weight:800;align-items:center;justify-content:center;cursor:help}
+.chg{margin-top:8px;padding:7px 10px;border-radius:7px;background:#f6f8fb;font-size:12.5px;line-height:2}
+.chg .btn{margin-left:8px}
+.chg.good{background:var(--green-bg);color:#1f6b40} .chg.bad{background:var(--red-bg);color:#9b2c2c}
+.prodmode{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.pmopts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px} @media(max-width:760px){.pmopts{grid-template-columns:1fr}}
+.pmo{display:flex;gap:8px;align-items:flex-start;border:2px solid var(--line);border-radius:9px;padding:9px 11px;cursor:pointer;font-size:13px;font-weight:400;color:var(--ink);margin:0}
+.pmo input{width:auto;margin-top:3px} .pmo small{display:block;font-size:11.5px;color:var(--muted)}
+.pmo.on{border-color:var(--accent);background:#f3f8ff}
+.lotinfo{margin-top:10px;font-size:12.5px;padding:8px 10px;border-radius:7px;background:#f6f8fb}
+.lotinfo.ok{background:#eef5ff} .lotinfo.warn{background:#fff6e5;border:1px solid #f3d9a4}
+.lifew{color:#9a6b00!important;font-weight:600}
+.verdict{font-size:13px;padding:8px 10px;border-radius:8px;margin:4px 0 10px;background:#f6f8fb}
+.verdict.ok{background:var(--green-bg);color:#1f6b40} .verdict.go{background:#fff6e5;border:1px solid #f3d9a4}
+.verdict .btn{margin-left:8px}
+.ocards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.ocard{border:2px solid var(--line);border-radius:10px;padding:10px 12px;background:#fbfcfd}
+.ocard.on{border-color:var(--navy);background:#fff;box-shadow:0 2px 8px #12305a14}
+.ochd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.oname{font-weight:600;margin-bottom:8px}
+.ogrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}
+.ogrid label{font-size:10.5px;color:var(--muted);font-weight:600;margin-bottom:1px}
+.ogrid input{padding:5px 7px;font-size:13px}
+.olife{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:12px;color:#3b4552}
+.olife input{width:90px;padding:4px 6px;font-size:12.5px}
+.ores{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.ores .big{font-size:20px;font-weight:800;color:var(--navy)} .ores .r{text-align:right;font-size:12.5px}
+.rotbtn{border:1px dashed #cdd5df;background:#fff;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;color:var(--muted);white-space:nowrap;font-family:inherit}
+.rotbtn.has{border:1px solid #f3c4c4;background:var(--red-bg);color:var(--red);font-weight:700}
+.rotbox{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;padding:6px 4px 10px;font-size:12.5px}
+.rotbox>div{width:200px} .rotbox label{font-size:11px}
+footer{color:var(--muted);font-size:11.5px;text-align:center;margin-top:10px}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Análisis de costos de mecanizado</h1><div class="sub">Diagnóstico de costo por pieza y por operación · SECOCUT</div></div>
+  <div class="who">🏭 Autopartes Ejemplo S.A. · Planta Rafaela</div>
+</header>
+<div class="demo">⚠ Prototipo con <b>datos ficticios</b> (100 piezas de ejemplo). Todo se edita a mano y se recalcula al instante.</div>
+
+<main>
+  <div class="tabs">
+    <button class="tab on" data-tab="planta">📊 Resumen de planta</button>
+    <button class="tab" data-tab="pieza">🔍 Análisis por pieza</button>
+    <button class="tab" data-tab="maq">⚙ Mis máquinas</button>
+  </div>
+
+  <!-- ============ RESUMEN DE PLANTA ============ -->
+  <div class="pane on" id="p-planta">
+    <div class="kpis" id="pk"></div>
+    <div class="insight" id="pinsight"></div>
+    <div class="two w">
+      <div class="card">
+        <h2><span class="k">1</span>¿Qué piezas concentran el costo?</h2>
+        <p class="hint">Las 10 piezas de mayor costo anual de mecanizado. Hacé clic para analizar una.</p>
+        <div id="ppareto"></div>
+      </div>
+      <div class="card">
+        <h2><span class="k">2</span>¿En qué máquinas?</h2>
+        <p class="hint">Costo anual de mecanizado que pasa por cada máquina.</p>
+        <div id="pmaq"></div>
+        <h2 style="margin-top:16px"><span class="k">3</span>¿En qué rubros?</h2>
+        <div id="prub"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2><span class="k">4</span>Todas las piezas</h2>
+      <p class="hint">Buscá, filtrá y ordená. Hacé clic en una fila para ver su diagnóstico.</p>
+      <div class="toolbar">
+        <div class="f" style="flex:1"><label>Buscar pieza</label><input id="q" placeholder="Nombre o código…"></div>
+        <div class="f"><label>Pasa por la máquina</label><select id="fm"></select></div>
+        <div class="f"><label>Rubro principal</label><select id="fr"></select></div>
+        <button class="btn sec" id="newPart">+ Nueva pieza</button>
+      </div>
+      <div class="tablewrap"><table class="list" id="plist"></table></div>
+      <div class="pager" id="pager"></div>
+    </div>
+  </div>
+
+  <!-- ============ PIEZA ============ -->
+  <div class="pane" id="p-pieza">
+    <div class="psel">
+      <div><div class="lbl">Pieza</div><div class="cur" id="curName"></div><div class="meta" id="curMeta"></div></div>
+      <span class="sp"></span>
+      <input id="pfind" list="plistdl" placeholder="🔎 Cambiar de pieza…"><datalist id="plistdl"></datalist>
+      <button class="btn sec sm" id="dupPart">Duplicar</button>
+      <button class="btn sec sm" id="backPlanta">← Resumen de planta</button>
+    </div>
+    <div class="subtabs"><button class="subtab" data-sub="diag">Diagnóstico</button><button class="subtab" data-sub="carga">Cargar / editar datos</button></div>
+
+    <div id="s-carga" style="display:none">
+      <div class="strip" id="strip"></div>
+      <div class="card">
+        <h2><span class="k">A</span>Datos de la pieza</h2>
+        <p class="hint">El volumen se usa para el costo anual. El modo de producción define cómo se reparte el setup entre las piezas.</p>
+        <div class="g g4">
+          <div class="f"><label>Código y nombre</label><input data-p="name"></div>
+          <div class="f"><label>Piezas por año</label><input type="number" data-p="vol"></div>
+          <div class="f"><label>¿Quién pone el material?</label><select data-p="msrc"><option value="own">Yo (compro el material)</option><option value="cli">El cliente (trabajo a façon)</option></select></div>
+          <div class="f" id="fMat"><label>Costo del material por pieza (USD)</label><input type="number" step="any" data-p="mat"><small>Se pierde cuando una pieza va a scrap</small></div>
+          <div class="f" id="fCh"><label>¿Te cobra las piezas que se pierden?</label><select data-p="chg"><option value="no">No</option><option value="si">Sí</option></select></div>
+          <div class="f" id="fMatCh"><label>Lo que te cobra por pieza perdida (USD)</label><input type="number" step="any" data-p="match"></div>
+        </div>
+        <div class="prodmode">
+          <label>Modo de producción</label>
+          <div class="pmopts">
+            <label class="pmo"><input type="radio" name="pmode" value="lote"> <span><b>Por lotes</b><small>Cargo las piezas por lote</small></span></label>
+            <label class="pmo"><input type="radio" name="pmode" value="lpy"> <span><b>Por lotes</b><small>Cargo cuántos lotes hago por año</small></span></label>
+            <label class="pmo"><input type="radio" name="pmode" value="ded"> <span><b>Máquina dedicada</b><small>Producción continua todo el año</small></span></label>
+          </div>
+          <div class="g g4" style="margin-top:10px">
+            <div class="f" id="fLot"><label>Piezas por lote</label><input type="number" data-p="lot"><small>Piezas por cada preparación</small></div>
+            <div class="f" id="fLpy"><label>Lotes por año</label><input type="number" data-p="lpy"><small>Ej. una vez por mes = 12</small></div>
+          </div>
+          <div class="lotinfo" id="lotinfo"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2><span class="k">B</span>Ruta de operaciones</h2>
+        <p class="hint">Una fila por operación, en orden. Hacé clic en una fila para editar tiempos y herramientas.</p>
+        <div class="route">
+          <div class="rhead"><div>Op</div><div>Operación</div><div class="hm">Máquina</div><div class="r">Tiempo/pza</div><div class="r">USD/pza</div><div class="r">% pieza</div><div></div></div>
+          <div id="route"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:12px;gap:10px;flex-wrap:wrap">
+          <button class="btn sec" id="addOp">+ Agregar operación</button>
+          <button class="btn" id="goDiag">Ver diagnóstico →</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="s-diag">
+      <div id="headline"></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="two w">
+        <div class="card"><h2><span class="k">1</span>¿Dónde está el costo?</h2><p class="hint">Operaciones de mayor a menor, separadas por rubro.</p><div id="byOp"></div><div class="legend" id="leg"></div></div>
+        <div class="card"><h2><span class="k">2</span>¿En qué se va?</h2><p class="hint">Rubros de la pieza, de mayor a menor.</p><div id="byType"></div></div>
+      </div>
+      <div class="card"><h2><span class="k">3</span>Detalle por operación y rubro</h2><p class="hint">USD por pieza. Las celdas más oscuras son las de mayor costo.</p><div class="tablewrap"><table class="matrix" id="matrix"></table></div></div>
+      <div class="card"><h2><span class="k">4</span>¿Qué hacer? · Oportunidades priorizadas</h2><p class="hint">Ordenadas por ahorro anual estimado. Supuestos conservadores, a confirmar con ensayo en planta.</p><div id="potential"></div><div id="opps"></div></div>
+    </div>
+  </div>
+
+  <!-- ============ MÁQUINAS ============ -->
+  <div class="pane" id="p-maq">
+    <div class="card">
+      <h2>Mis máquinas y costo hora</h2>
+      <p class="hint">Se carga una vez y se usa en todas las piezas. Incluí operario, energía, amortización y gastos de la máquina.</p>
+      <table class="mtable"><tbody id="machines"></tbody></table>
+      <button class="btn sec sm" id="addMq" style="margin-top:8px">+ Agregar máquina</button>
+    </div>
+  </div>
+  <footer>SECOCUT · Prototipo · Los resultados son sugerencias sujetas a las variables de cada cliente.</footer>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const K=[['corte','Tiempo de corte','var(--k-corte)'],['aux','Tiempos muertos','var(--k-aux)'],['setup','Preparación','var(--k-setup)'],['herr','Herramientas','var(--k-herr)'],['camb','Cambios de herr.','var(--k-camb)'],['scrap','Scrap','var(--k-scrap)']];
+const S={
+ machines:[{id:'T1',n:'Torno CNC 1',r:30},{id:'T2',n:'Torno CNC 2',r:30},{id:'CV1',n:'Centro vertical 1',r:35},{id:'CV2',n:'Centro vertical 2',r:35},{id:'CH1',n:'Centro horizontal',r:45}],
+ parts:[
+  {name:'CAR-001 Carcasa',vol:25000,lot:500,mat:9.5,ops:[
+    {n:'Planeado 2 caras',m:'CV2',tc:.8,ta:.6,su:45,sc:.3,tools:[{n:'Fresa planear Ø80 · inserto octagonal',p:25,z:8,f:9,u:2,v:120,cm:6}]},
+    {n:'Desbaste y contorno',m:'CH1',tc:3.2,ta:1.0,su:60,sc:.5,tools:[{n:'Fresa alto avance Ø32',p:20,z:4,f:4,v:85,cm:6},{n:'Fresa enteriza Ø12',p:50,z:1,f:1,v:180,cm:4}]},
+    {n:'Agujereado',m:'CV1',tc:.6,ta:.5,su:30,sc:1.2,tools:[{n:'Broca enteriza Ø8,5 5×D',p:180,z:1,f:1,v:180,cm:5},{n:'Broca de inserto Ø25',p:25,z:2,f:2,v:950,cm:4}]},
+    {n:'Roscado M10 (6 roscas)',m:'CV1',tc:.5,ta:.3,su:20,sc:1.0,tools:[{n:'Macho M10×1,5',p:75,z:1,f:1,u:6,v:900,cm:4}]},
+    {n:'Torneado alojamiento',m:'T1',tc:1.1,ta:.7,su:40,sc:.3,tools:[{n:'Inserto CNMG 120408',p:10,z:1,f:4,v:105,cm:2}]},
+  ]},
+  {name:'SOP-002 Soporte',vol:40000,lot:1000,mat:6,ops:[
+    {n:'Torneado',m:'T1',tc:.9,ta:.5,su:30,sc:.2,tools:[{n:'Inserto CNMG 120408',p:10,z:1,f:4,v:210,cm:2}]},
+    {n:'Ranurado',m:'CV2',tc:.9,ta:1.4,su:45,sc:.4,tools:[{n:'Fresa enteriza Ø12',p:50,z:1,f:1,v:180,cm:4}]},
+    {n:'Agujereado',m:'CV1',tc:.3,ta:.4,su:25,sc:.3,tools:[{n:'Broca enteriza Ø6,8',p:60,z:1,f:1,v:900,cm:4}]},
+  ]},
+ ],
+ cur:0, open:null, page:0, sort:'anual', dir:-1, sub:'diag', allOpps:false
+};
+/* ---- 98 piezas ficticias generadas ---- */
+(function gen(){
+  let seed=7; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647, pick=a=>a[Math.floor(rnd()*a.length)], rr=(a,b)=>a+rnd()*(b-a), r2=x=>Math.round(x*100)/100;
+  const names=['Brida','Eje','Buje','Tapa','Cubo','Perno especial','Manguito','Pivote','Horquilla','Soporte','Carcasa','Engranaje','Separador','Placa base','Acople','Rótula','Bridón','Casquillo','Palanca','Cuerpo de válvula'];
+  const OPS=[
+   ()=>({n:'Torneado exterior',m:pick(['T1','T2']),tc:r2(rr(.4,2)),ta:r2(rr(.2,1)),su:Math.round(rr(20,50)),sc:r2(rr(0,.6)),tools:[{n:'Inserto CNMG 120408',p:10,z:1,f:4,v:Math.round(rr(80,260)),cm:2}]}),
+   ()=>({n:'Torneado interior',m:pick(['T1','T2']),tc:r2(rr(.3,1.5)),ta:r2(rr(.2,.8)),su:Math.round(rr(20,45)),sc:r2(rr(0,.8)),tools:[{n:'Inserto DCMT 11T304',p:9,z:1,f:2,v:Math.round(rr(60,200)),cm:3}]}),
+   ()=>({n:'Fresado de caras',m:pick(['CV1','CV2']),tc:r2(rr(.4,1.8)),ta:r2(rr(.3,1.2)),su:Math.round(rr(30,60)),sc:r2(rr(0,.5)),tools:[{n:'Fresa planear Ø63',p:22,z:6,f:8,v:Math.round(rr(40,140)),cm:6}]}),
+   ()=>({n:'Desbaste',m:pick(['CV1','CV2','CH1']),tc:r2(rr(1,4)),ta:r2(rr(.4,1.5)),su:Math.round(rr(40,80)),sc:r2(rr(0,.6)),tools:[{n:'Fresa alto avance Ø32',p:20,z:4,f:4,v:Math.round(rr(50,150)),cm:6}]}),
+   ()=>({n:'Agujereado',m:pick(['CV1','CV2']),tc:r2(rr(.2,.9)),ta:r2(rr(.2,.7)),su:Math.round(rr(20,40)),sc:r2(rr(.1,1.5)),tools:[{n:'Broca enteriza Ø'+pick(['6,8','8,5','10,2','12']),p:Math.round(rr(50,180)),z:1,f:1,v:Math.round(rr(150,1000)),cm:5}]}),
+   ()=>({n:'Roscado',m:pick(['CV1','CV2']),tc:r2(rr(.2,.7)),ta:r2(rr(.1,.4)),su:Math.round(rr(15,30)),sc:r2(rr(.2,1.2)),tools:[{n:'Macho M'+pick(['8','10','12']),p:Math.round(rr(30,80)),z:1,f:1,v:Math.round(rr(150,900)),cm:4}]}),
+   ()=>({n:'Ranurado',m:pick(['CV1','CV2']),tc:r2(rr(.4,1.5)),ta:r2(rr(.3,1.5)),su:Math.round(rr(30,50)),sc:r2(rr(0,.6)),tools:[{n:'Fresa enteriza Ø'+pick(['8','10','12','16']),p:Math.round(rr(35,90)),z:1,f:1,v:Math.round(rr(100,400)),cm:4}]}),
+  ];
+  for(let i=3;i<=100;i++){
+    const nm=pick(names), code=nm.slice(0,3).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'')+'-'+String(i).padStart(3,'0');
+    const nops=2+Math.floor(rnd()*4), ops=[]; for(let j=0;j<nops;j++) ops.push(pick(OPS)());
+    const vol=Math.round(Math.exp(rr(Math.log(800),Math.log(45000)))/100)*100;
+    S.parts.push({name:code+' '+nm,vol,lot:pick([100,200,300,500,1000]),mat:r2(rr(1.5,12)),ops});
+  }
+})();
+
+/* tiempo de corte por herramienta */
+S.parts.forEach(p=>p.ops.forEach(o=>{ const sp={'Desbaste y contorno':[2.4,.8],'Agujereado':[.45,.15]}[o.n];
+  o.tools.forEach((t,j)=>{ if(t.tc===undefined) t.tc = sp&&sp.length===o.tools.length ? sp[j] : Math.round(n0(o.tc)/o.tools.length*100)/100; }); delete o.tc; }));
+function n0(v){const x=parseFloat(v);return isNaN(x)?0:x;}
+/* cada herramienta = posición con opciones; solo la seleccionada entra en la cuenta */
+S.parts.forEach(p=>p.ops.forEach(o=>{ o.tools=o.tools.map(t=>t.opts?t:{sel:0,opts:[t]}); }));
+(function seedAlts(){ const c=S.parts[0];
+  c.ops[1].tools[0].opts.push({n:'Seco alto avance · vc +30%',p:28,z:4,f:4,v:85,cm:6,tc:1.85});
+  c.ops[2].tools[0].opts.push({n:'Seco broca refrig. interna + mandril hidráulico',p:200,z:1,f:1,v:510,cm:5,tc:.36});
+  c.ops[2].tools[0].opts.push({n:'Competidor X · broca económica',p:120,z:1,f:1,v:150,cm:5,tc:.45}); })();
+const A=t=>t.opts[t.sel]||t.opts[0];
+/* vida útil: en minutos de corte por filo (lu='min', campo T) o en usos (lu='usos', campos v y u) */
+const pzF=a=>Math.max(.01,n0(a.v)); /* v = piezas por filo (medido) */
+S.parts.forEach(p=>p.ops.forEach(o=>o.tools.forEach(t=>t.opts.forEach(a=>{ if(a.u&&n0(a.u)>1){ a.v=Math.round(n0(a.v)/n0(a.u)); } delete a.u; delete a.lu; delete a.T; }))));
+const opTc=o=>o.tools.reduce((s,t)=>s+n0(A(t).tc),0);
+const P=()=>S.parts[S.cur];
+const effMat=p=> (p.msrc==='cli') ? (p.chg==='si'? n0(p.match):0) : n0(p.mat);
+const effLot=p=>{ const v=Math.max(1,n0(p.vol)); if(p.mode==='ded') return v; if(p.mode==='lpy') return Math.max(1,v/Math.max(1,n0(p.lpy))); return Math.max(1,n0(p.lot)); };
+S.parts.forEach(p=>{ if(!p.mode){ p.mode='lote'; p.lpy=Math.round(n0(p.vol)/Math.max(1,n0(p.lot))); } });
+const rate=id=>(S.machines.find(m=>m.id===id)||{r:0}).r;
+const mname=id=>(S.machines.find(m=>m.id===id)||{n:'—'}).n;
+const n=v=>{const x=parseFloat(v);return isNaN(x)?0:x;};
+const u3=x=>x.toLocaleString('es-AR',{minimumFractionDigits:3,maximumFractionDigits:3});
+const u2=x=>x.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const m1=x=>x.toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1});
+const usd=x=>'USD '+Math.round(x).toLocaleString('es-AR');
+const kusd=x=>x>=1e6?'USD '+(x/1e6).toLocaleString('es-AR',{maximumFractionDigits:2})+' M':x>=1e4?'USD '+Math.round(x/1000).toLocaleString('es-AR')+' k':usd(x);
+const pc=x=>Math.round(x)+'%';
+const mmss=min=>{const t=Math.round(n0(min)*60); return Math.floor(t/60)+':'+String(t%60).padStart(2,'0');};
+const fmtT=min=>mmss(min)+' min';
+/* entrada única mm:ss → minutos. "1:30" = 1 min 30 s · "0:27" = 27 s · "5" = 5 min */
+const parseT=v=>{ v=String(v).trim().replace(',','.'); if(!v) return 0; if(v.includes(':')){ const [m,s2]=v.split(':'); return n0(m)+n0(s2)/60; } return n0(v); };
+const tIn=(attrs,min)=>`<input type="text" inputmode="numeric" class="tm" placeholder="mm:ss" ${attrs} data-u="t" value="${mmss(min)}">`;
+const sec=min=>Math.round(n0(min)*600)/10;
+const opn=i=>'Op '+(i+1)*10;
+const KC=Object.fromEntries(K.map(k=>[k[0],k]));
+
+/* ---------- CÁLCULO ---------- */
+function calcPart(p){
+  let acc=effMat(p); const res=[];
+  p.ops.forEach((o,i)=>{
+    const h=rate(o.m)/60, lot=effLot(p);
+    const c={corte:0, aux:n(o.ta)*h, setup:n(o.su)/lot*h, herr:0, camb:0, scrap:0, tools:[]};
+    o.tools.map(A).forEach(t=>{ const v=Math.max(1,n(t.v)), f=Math.max(1,n(t.f)), z=Math.max(1,n(t.z)||1);
+      const pf=pzF(t), he=z*n(t.p)/(pf*f), ca=n(t.cm)*h/pf, cc=n(t.tc)*h, rq=n0(t.rb)/100/pf, rt=rq*n0(t.rx)*h, lost=rq*n0(t.rs)/100; c.corte+=cc; c.herr+=he; c.camb+=ca+rt; c.tools.push({t,he,ca,cc,rt,lost,rot:rt}); });
+    const before=c.corte+c.aux+c.setup+c.herr+c.camb; acc+=before; c.accV=acc;
+    c.tools.forEach(x=>{ x.rsc=x.lost*acc; x.rot=x.rt+x.rsc; });
+    c.scrap=n(o.sc)/100*acc + c.tools.reduce((s2,x)=>s2+x.rsc,0); acc+=c.scrap;
+    c.tot=before+c.scrap; c.min=opTc(o)+n(o.ta)+n(o.su)/lot; c.i=i; c.o=o; res.push(c);
+  });
+  const tot=res.reduce((s,c)=>s+c.tot,0)||1e-9;
+  const byType={}; K.forEach(k=>byType[k[0]]=res.reduce((s,c)=>s+c[k[0]],0));
+  const top=res.slice().sort((a,b)=>b.tot-a.tot)[0];
+  const topType=K.slice().sort((a,b)=>byType[b[0]]-byType[a[0]])[0][0];
+  return {ops:res,tot,byType,top,topType,mins:res.reduce((s,c)=>s+c.min,0)};
+}
+function opportunities(r,p){
+  const vol=n(p.vol), L=[];
+  r.ops.forEach(c=>{
+    const op=`${opn(c.i)} · ${c.o.n}`, o=c.o;
+    if(c.corte/c.tot>.45) L.push({cat:'Productividad',col:'var(--k-corte)',s:c.corte*.2*vol,op,t:'El tiempo de corte domina la operación',d:`Representa el ${pc(c.corte/c.tot*100)} del costo de la operación. Una herramienta de mayor rendimiento o mejores parámetros bajan el tiempo.`,sup:'Supuesto: −20% del tiempo de corte',cmp:1});
+    if(n(o.ta)>.6*opTc(o)&&c.aux>.05) L.push({cat:'Tiempos muertos',col:'var(--k-aux)',s:c.aux*.3*vol,op,t:'Mucho tiempo fuera de corte',d:`${fmtT(o.ta)} por pieza sin cortar contra ${fmtT(opTc(o))} de corte. Revisar sujeción, carga y descarga, y recorridos en vacío.`,sup:'Supuesto: −30% de tiempos muertos'});
+    if(c.setup/c.tot>.12) L.push({cat:'Preparación',col:'var(--k-setup)',s:c.setup*.4*vol,op,t:'Setup pesado para el tamaño de lote',d:`El setup es el ${pc(c.setup/c.tot*100)} del costo con lotes de ${Math.round(effLot(p)).toLocaleString('es-AR')} piezas. Preset de herramientas fuera de máquina o fijación rápida.`,sup:'Supuesto: −40% del setup'});
+    c.tools.forEach(x=>{ if(x.rot/c.tot>.05) L.push({cat:'Roturas',col:'var(--k-scrap)',s:x.rot*.6*vol,op,t:`${x.t.n} se rompe seguido`,d:`${n0(x.t.rb)}% de los cambios son por rotura: cuestan USD ${u3(x.rot)} por pieza entre parada extra y piezas perdidas. Revisar estabilidad, runout, parámetros y evacuación de viruta.`,sup:'Supuesto: −60% de las roturas',cmp:1});
+      const sh=(x.he+x.ca)/c.tot;
+      if(sh>.18) L.push({cat:'Herramienta',col:'var(--k-herr)',s:(x.he+x.ca)*.35*vol,op,t:`${x.t.n} pesa mucho`,d:`Herramienta más cambios = ${pc(sh*100)} de la operación (USD ${u3(x.he+x.ca)} por pieza). Revisar vida (${Math.round(pzF(x.t)).toLocaleString('es-AR')} piezas por filo), roturas y alternativas.`,sup:'Supuesto: −35% del costo de herramienta',cmp:1}); });
+    if(c.scrap/c.tot>.08) L.push({cat:'Calidad',col:'var(--k-scrap)',s:c.scrap*.5*vol,op,t:'El scrap es caro en este punto',d:`${n(o.sc)}% de piezas perdidas con todo el valor acumulado hasta acá (USD ${u3(c.scrap)} por pieza). Buscar la causa: rotura de herramienta, medida o sujeción.`,sup:'Supuesto: −50% del scrap'});
+  });
+  return L.sort((a,b)=>b.s-a.s);
+}
+function plant(){
+  const rows=S.parts.map((p,i)=>{const r=calcPart(p), L=opportunities(r,p); return {i,p,r,anual:r.tot*n(p.vol),pza:r.tot,pot:L.reduce((s,o)=>s+o.s,0),nopp:L.length};});
+  const tot=rows.reduce((s,x)=>s+x.anual,0)||1;
+  const byM={}; S.machines.forEach(m=>byM[m.id]=0);
+  const byT={}; K.forEach(k=>byT[k[0]]=0);
+  rows.forEach(x=>{ const v=n(x.p.vol); x.r.ops.forEach(c=>{ byM[c.o.m]=(byM[c.o.m]||0)+c.tot*v; K.forEach(k=>byT[k[0]]+=c[k[0]]*v); }); });
+  return {rows,tot,byM,byT,pot:rows.reduce((s,x)=>s+x.pot,0)};
+}
+
+/* ---------- NAVEGACIÓN ---------- */
+function tab(t){ document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===t)); document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==='p-'+t)); if(t==='planta') renderPlant(); window.scrollTo({top:0}); }
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
+function sub(s){ S.sub=s; document.querySelectorAll('.subtab').forEach(b=>b.classList.toggle('on',b.dataset.sub===s)); $('s-carga').style.display=s==='carga'?'':'none'; $('s-diag').style.display=s==='diag'?'':'none'; }
+document.querySelectorAll('.subtab').forEach(b=>b.onclick=()=>sub(b.dataset.sub));
+function openPart(i,s){ S.cur=i; S.open=null; S.allOpps=false; renderPiece(); sub(s||'diag'); tab('pieza'); }
+$('goDiag').onclick=()=>{sub('diag');window.scrollTo({top:0,behavior:'smooth'});};
+$('backPlanta').onclick=()=>tab('planta');
+$('pfind').onchange=()=>{ const v=$('pfind').value, i=S.parts.findIndex(p=>p.name===v); if(i>=0){ $('pfind').value=''; openPart(i,S.sub); } };
+$('dupPart').onclick=()=>{ const c=JSON.parse(JSON.stringify(P())); c.name=c.name+' (copia)'; S.parts.push(c); openPart(S.parts.length-1,'carga'); };
+$('newPart').onclick=()=>{ S.parts.push({name:'NUE-'+String(S.parts.length+1).padStart(3,'0')+' Nueva pieza',vol:10000,lot:500,mat:0,ops:[]}); openPart(S.parts.length-1,'carga'); };
+
+/* ---------- RESUMEN DE PLANTA ---------- */
+function renderPlant(){
+  const pl=plant(), rows=pl.rows.slice().sort((a,b)=>b.anual-a.anual);
+  let acc=0, n80=0; for(const x of rows){ acc+=x.anual; n80++; if(acc/pl.tot>=.8) break; }
+  const top10=rows.slice(0,10), top10s=top10.reduce((s,x)=>s+x.anual,0);
+  const tt=K.slice().sort((a,b)=>pl.byT[b[0]]-pl.byT[a[0]])[0], mt=S.machines.slice().sort((a,b)=>pl.byM[b.id]-pl.byM[a.id])[0];
+  const toolShare=(pl.byT.herr+pl.byT.camb)/pl.tot;
+  $('pk').innerHTML=`
+   <div class="kpi"><div class="l">Piezas analizadas</div><div class="v">${S.parts.length}</div><div class="s">${rows.reduce((s,x)=>s+n(x.p.vol),0).toLocaleString('es-AR')} piezas/año</div></div>
+   <div class="kpi"><div class="l">Costo anual de mecanizado</div><div class="v">${kusd(pl.tot)}</div><div class="s">Sin material</div></div>
+   <div class="kpi"><div class="l">Herramientas en el mecanizado</div><div class="v">${pc(toolShare*100)}</div><div class="s">Incluye cambios</div></div>
+   <div class="kpi"><div class="l">Potencial de ahorro estimado</div><div class="v" style="color:var(--green)">${kusd(pl.pot)}</div><div class="s">${pc(pl.pot/pl.tot*100)} del costo anual</div></div>`;
+  $('pinsight').innerHTML=`<div class="t">Dónde está tu mayor costo</div><ul>
+   <li><b>${n80} de ${S.parts.length} piezas</b> concentran el <b>80%</b> del costo anual de mecanizado. Las 10 primeras suman el ${pc(top10s/pl.tot*100)}.</li>
+   <li>La pieza más cara del año es <b>${rows[0].p.name}</b>: ${kusd(rows[0].anual)} (${pc(rows[0].anual/pl.tot*100)} del total).</li>
+   <li>La máquina con más costo es el <b>${mt.n}</b> (${pc(pl.byM[mt.id]/pl.tot*100)}), y el rubro principal es <b>${tt[1].toLowerCase()}</b> (${pc(pl.byT[tt[0]]/pl.tot*100)}).</li></ul>`;
+  const max=top10[0].anual; let cum=0;
+  $('ppareto').innerHTML=top10.map((x,k)=>{ cum+=x.anual; return `<div class="brow click" data-open="${x.i}" style="grid-template-columns:190px 1fr 110px"><div class="lb"><b>${k+1}. ${x.p.name}</b><span>${n(x.p.vol).toLocaleString('es-AR')} pzs · USD ${u2(x.pza)}/pza</span></div>
+    <div class="track" style="width:${x.anual/max*100}%">${K.map(kk=>{const w=x.r.byType[kk[0]]/x.r.tot*100;return w>.5?`<div style="width:${w}%;background:${kk[2]}"></div>`:''}).join('')}</div>
+    <div class="v">${kusd(x.anual)}<small>acum. ${pc(cum/pl.tot*100)}</small></div></div>`; }).join('')+`<div class="legend">${K.map(k=>`<span><span class="sq" style="background:${k[2]}"></span>${k[1]}</span>`).join('')}</div>`;
+  const ms=S.machines.slice().sort((a,b)=>pl.byM[b.id]-pl.byM[a.id]), mm=pl.byM[ms[0].id]||1;
+  $('pmaq').innerHTML=ms.map(m=>`<div class="brow" style="grid-template-columns:130px 1fr 90px"><div class="lb"><b>${m.n}</b><span>USD ${m.r}/h</span></div><div class="track"><div style="width:${pl.byM[m.id]/mm*100}%;background:var(--navy)"></div></div><div class="v">${kusd(pl.byM[m.id])}<small>${pc(pl.byM[m.id]/pl.tot*100)}</small></div></div>`).join('');
+  const ks=K.slice().sort((a,b)=>pl.byT[b[0]]-pl.byT[a[0]]), km=pl.byT[ks[0][0]]||1;
+  $('prub').innerHTML=ks.map(k=>`<div class="brow" style="grid-template-columns:130px 1fr 90px"><div class="lb"><b>${k[1]}</b></div><div class="track"><div style="width:${pl.byT[k[0]]/km*100}%;background:${k[2]}"></div></div><div class="v">${kusd(pl.byT[k[0]])}<small>${pc(pl.byT[k[0]]/pl.tot*100)}</small></div></div>`).join('');
+  document.querySelectorAll('[data-open]').forEach(e=>e.onclick=()=>openPart(+e.dataset.open));
+  // filtros
+  if(!$('fm').options.length){ $('fm').innerHTML='<option value="">Todas</option>'+S.machines.map(m=>`<option value="${m.id}">${m.n}</option>`).join(''); $('fr').innerHTML='<option value="">Todos</option>'+K.map(k=>`<option value="${k[0]}">${k[1]}</option>`).join(''); }
+  renderList(pl);
+}
+const COLS=[['rk','#',0],['name','Pieza',0],['vol','Piezas/año',1],['pza','USD/pieza',1],['anual','USD/año',1],['top','Mayor costo',0],['pot','Ahorro potencial',1]];
+function renderList(pl){
+  pl=pl||plant();
+  const q=$('q').value.toLowerCase(), fm=$('fm').value, fr=$('fr').value;
+  const ranked=pl.rows.slice().sort((a,b)=>b.anual-a.anual); ranked.forEach((x,k)=>x.rank=k+1);
+  let rows=ranked.filter(x=>(!q||x.p.name.toLowerCase().includes(q))&&(!fm||x.p.ops.some(o=>o.m===fm))&&(!fr||x.r.topType===fr));
+  const key={vol:x=>n(x.p.vol),pza:x=>x.pza,anual:x=>x.anual,pot:x=>x.pot,name:x=>x.p.name,rk:x=>x.rank}[S.sort]||(x=>x.anual);
+  rows.sort((a,b)=>{const A=key(a),B=key(b);return (A>B?1:A<B?-1:0)*S.dir;});
+  const PS=15, pages=Math.max(1,Math.ceil(rows.length/PS)); S.page=Math.min(S.page,pages-1);
+  const view=rows.slice(S.page*PS,S.page*PS+PS), amax=ranked[0]?ranked[0].anual:1;
+  $('plist').innerHTML=`<thead><tr>${COLS.map(c=>`<th class="${c[2]?'r':''} ${S.sort===c[0]?'sorted':''}" data-sort="${c[0]}">${c[1]}${S.sort===c[0]?(S.dir<0?' ▾':' ▴'):''}</th>`).join('')}</tr></thead><tbody>
+   ${view.map(x=>{const top=x.r.top; return `<tr data-open="${x.i}">
+     <td class="rk">${x.rank}</td>
+     <td><b>${x.p.name}</b><div class="note">${x.p.ops.length} operaciones</div></td>
+     <td class="r">${n(x.p.vol).toLocaleString('es-AR')}</td>
+     <td class="r">${u2(x.pza)}</td>
+     <td class="r"><b>${usd(x.anual)}</b><div class="minibar"><div style="width:${x.anual/amax*100}%"></div></div></td>
+     <td>${top?`${opn(top.i)} · ${top.o.n}<div><span class="pill" style="background:${KC[x.r.topType][2]}">${KC[x.r.topType][1]}</span></div>`:'—'}</td>
+     <td class="r" style="color:var(--green);font-weight:700">${usd(x.pot)}<div class="note">${x.nopp} oportunidades</div></td></tr>`}).join('') || '<tr><td colspan="7" class="note" style="padding:14px">Ninguna pieza coincide con el filtro.</td></tr>'}</tbody>`;
+  $('pager').innerHTML=`<span>${rows.length} piezas · página ${S.page+1} de ${pages}</span><span><button class="btn sec sm" id="pprev" ${S.page===0?'disabled':''}>← Anterior</button> <button class="btn sec sm" id="pnext" ${S.page>=pages-1?'disabled':''}>Siguiente →</button></span>`;
+  $('pprev').onclick=()=>{S.page--;renderList();}; $('pnext').onclick=()=>{S.page++;renderList();};
+  document.querySelectorAll('#plist [data-sort]').forEach(th=>th.onclick=()=>{ const k=th.dataset.sort; if(S.sort===k) S.dir*=-1; else {S.sort=k; S.dir=(k==='name'||k==='rk')?1:-1;} renderList(); });
+  document.querySelectorAll('#plist [data-open]').forEach(e=>e.onclick=()=>openPart(+e.dataset.open));
+}
+['q','fm','fr'].forEach(id=>$(id).addEventListener('input',()=>{S.page=0;renderList();}));
+
+/* ---------- PIEZA: CARGA ---------- */
+const mopts=sel=>S.machines.map(m=>`<option value="${m.id}" ${m.id===sel?'selected':''}>${m.n}</option>`).join('');
+function renderRoute(){
+  const p=P(); document.querySelectorAll('[data-p]').forEach(e=>e.value=p[e.dataset.p]??''); document.querySelectorAll('[name=pmode]').forEach(r=>r.checked=r.value===p.mode); renderLotInfo();
+  if(!p.ops.length){ $('route').innerHTML='<div style="padding:16px;color:var(--muted);font-size:13px">Todavía no hay operaciones. Agregá la primera.</div>'; return; }
+  $('route').innerHTML=p.ops.map((o,i)=>`
+   <div class="rrow" data-row="${i}" id="row${i}">
+     <div class="num">${opn(i)}</div><div><b>${o.n}</b></div><div class="hm" style="color:var(--muted)">${mname(o.m)}</div>
+     <div class="r" id="rmin${i}"></div><div class="r"><b id="rusd${i}"></b></div><div class="pct" id="rpct${i}"></div>
+     <div class="chev">${S.open===i?'Cerrar ▴':'Editar ▾'}</div>
+   </div>
+   <div class="redit ${S.open===i?'open':''}">
+     <div class="grp"><h4>Operación</h4><div class="g g2"><div class="f"><label>Nombre</label><input data-o="${i}" data-k="n" value="${o.n}"></div><div class="f"><label>Máquina</label><select data-o="${i}" data-k="m">${mopts(o.m)}</select></div></div></div>
+     <div class="grp"><h4>Incidencia de esta operación en la pieza</h4>
+       <div class="incid"><div class="track" id="obar${i}"></div><div class="txt" id="otxt${i}"></div></div></div>
+     <div class="grp"><h4>Tiempos y calidad</h4><div class="g g4">
+        <div class="f"><label>Tiempo de corte por pieza (mm:ss)</label><input id="octc${i}" class="tm" disabled value="${mmss(opTc(o))}"><small>Suma de los tiempos de cada herramienta</small></div>
+        <div class="f"><label>Tiempos muertos por pieza (mm:ss)</label>${tIn(`data-o="${i}" data-k="ta"`,o.ta)}<small>Carga, descarga, posicionamiento, medición</small></div>
+        <div class="f"><label>Setup por lote (mm:ss)</label>${tIn(`data-o="${i}" data-k="su"`,o.su)}</div>
+        <div class="f"><label>Scrap (%)</label><input type="number" step="any" data-o="${i}" data-k="sc" value="${o.sc}"></div></div></div>
+     <div class="grp"><h4>Herramientas</h4>
+       <p class="note" style="margin:-4px 0 8px"><b>Cargá lo que medís en planta:</b> filos del inserto, <b>piezas por filo</b> y <b>corte por pieza</b> de esa herramienta. La app calcula la <b>vida útil por filo</b> (piezas × corte). Si solo tenés la vida en minutos (ej. de catálogo), escribila ahí y la app calcula las piezas por filo. Cargá todas las opciones disponibles para cada posición. Solo la marcada como <b>en uso</b> entra en la cuenta; las demás quedan visibles y editables, con su comparación.</p>
+        ${o.tools.map((t,j)=>`<div class="slot">
+          <div class="slothd"><b>Herramienta ${j+1}</b><span class="note">${t.opts.length} ${t.opts.length===1?'opción':'opciones'}</span><span style="flex:1"></span><button class="btn sec sm" data-addalt="${i}:${j}">+ Opción</button><button class="ibtn" data-delt="${i}:${j}" title="Quitar herramienta">🗑️</button></div>
+          <table class="ttable"><thead><tr><th style="width:70px">En uso</th><th style="min-width:200px">Opción</th><th>Precio USD</th><th>Insertos/herr.</th><th>Filos/inserto</th><th>Piezas por filo</th><th style="background:#eef5ff">Corte por pieza (mm:ss)</th><th class="c">Vida útil por filo<br><span class="note">= piezas × corte</span></th><th>Cambio (mm:ss)</th><th>Roturas</th><th class="c">USD/pza</th><th class="c">vs. en uso</th><th class="c">Precio máx.</th><th></th></tr></thead><tbody>
+          ${t.opts.map((a,k)=>{const on=k===t.sel; const at=`data-o="${i}" data-t="${j}" data-a="${k}"`; return `<tr class="${on?'onopt':'offopt'}">
+            <td><label class="selr"><input type="radio" name="sel${i}_${j}" data-sel="${i}:${j}:${k}" ${on?'checked':''}> ${on?'<span class="peso" style="background:var(--navy)">En uso</span>':'<span class="note">Usar</span>'}</label></td>
+            <td><input ${at} data-k="n" value="${a.n}"></td><td><input type="number" step="any" ${at} data-k="p" value="${a.p}"></td><td><input type="number" ${at} data-k="z" value="${a.z}"></td><td><input type="number" ${at} data-k="f" value="${a.f}"></td><td><input type="number" step="any" ${at} data-k="v" value="${a.v}" id="ov${i}_${j}_${k}" title="Piezas que hace cada filo antes del cambio (dato medido)"></td><td style="background:#eef5ff">${tIn(at+' data-k="tc"',a.tc)}</td>
+            <td class="c"><input type="text" class="tm" id="oT${i}_${j}_${k}" ${at} data-k="T" data-u="t" value="${mmss(n0(a.v)*n0(a.tc))}" title="Podés editarla: si cargás la vida en minutos (ej. de catálogo), la app calcula las piezas por filo"><div class="note" id="oTn${i}_${j}_${k}"></div></td>
+            <td>${tIn(at+' data-k="cm"',a.cm)}</td>
+            <td><button class="rotbtn ${n0(a.rb)>0?'has':''}" data-rot="${i}_${j}_${k}">${n0(a.rb)>0?`⚠ ${n0(a.rb)}%`:'+ Roturas'}</button></td>
+            <td class="c"><b id="ou${i}_${j}_${k}"></b></td><td class="c" id="od${i}_${j}_${k}"></td><td class="c" id="om${i}_${j}_${k}"></td>
+            <td>${t.opts.length>1&&!on?`<button class="ibtn" data-delalt="${i}:${j}:${k}" title="Quitar opción">✕</button>`:''}</td></tr>
+            <tr class="rotrow ${on?'onopt':'offopt'}" style="${S.rotOpen&&S.rotOpen[i+'_'+j+'_'+k]?'':'display:none'}"><td></td><td colspan="13"><div class="rotbox">
+              <b>Roturas de "${a.n}"</b>
+              <div><label>% de los cambios que son por rotura</label><input type="number" step="any" ${at} data-k="rb" value="${a.rb||0}" placeholder="ej. 30"></div>
+              <div><label>Tiempo extra por rotura (mm:ss)</label>${tIn(at+' data-k="rx"',a.rx||0)}</div>
+              <div><label>% de roturas que tiran la pieza</label><input type="number" step="any" ${at} data-k="rs" value="${a.rs||0}" placeholder="ej. 50"></div>
+              <span class="note">Además del cambio normal: sacar el pedazo roto, revisar la pieza, rehacer.</span></div></td></tr>`}).join('')}
+          </tbody></table></div>`).join('')}
+       <h4 style="margin:14px 0 6px">Incidencia de cada herramienta en la pieza</h4>
+       <table class="ttable inc"><thead><tr><th>Herramienta</th><th class="c" style="background:#eef5ff">Costo USD/pza</th><th class="c">Cambio al editar</th><th class="c">Tiempo de corte</th><th class="c">Consumo</th><th class="c">Cambios</th><th class="c">Roturas</th><th class="c sec">Participación en la pieza</th><th class="c sec">Participación en la op.</th><th class="sec">Sensibilidad al precio <span class="qm" title="Indica cuánto se nota el precio de la herramienta en el costo de la operación (consumo + cambios ÷ costo de la operación). No es cuánto cuesta: eso es la columna Costo USD/pza. Si bajás el tiempo de máquina, la operación cuesta menos y esta participación sube aunque la herramienta cueste lo mismo.">?</span></th></tr></thead><tbody id="tinc${i}"></tbody></table>
+       <div class="sens" id="tsens${i}" style="margin-top:8px"></div>
+       <div style="display:flex;justify-content:space-between;margin-top:8px"><button class="btn sec sm" data-addt="${i}">+ Herramienta</button><button class="ibtn" data-delop="${i}">🗑️ Eliminar operación</button></div>
+     </div>
+   </div>`).join('');
+  document.querySelectorAll('[data-row]').forEach(r=>r.onclick=()=>{const i=+r.dataset.row;S.open=S.open===i?null:i; if(S.open!==null) setBase(i); renderRoute();updatePiece();});
+}
+function renderMat(){ const p=P(); p.msrc=p.msrc||'own'; p.chg=p.chg||'no'; $('fMat').style.display=p.msrc==='own'?'':'none'; $('fCh').style.display=p.msrc==='cli'?'':'none'; $('fMatCh').style.display=(p.msrc==='cli'&&p.chg==='si')?'':'none'; }
+function renderLotInfo(){
+  renderMat();
+  const p=P(), L=effLot(p), sets=n0(p.vol)/L;
+  $('fLot').style.display=p.mode==='lote'?'':'none'; $('fLpy').style.display=p.mode==='lpy'?'':'none';
+  document.querySelectorAll('.pmo').forEach(e=>e.classList.toggle('on',e.querySelector('input').value===p.mode));
+  let cls='', t='';
+  if(p.mode==='ded'){ cls='ok'; t=`<b>1 preparación por año</b> · el setup no incide en el costo por pieza. En producción continua el ahorro está en el <b>tiempo de corte</b>, los <b>tiempos muertos</b> y los <b>cambios de herramienta</b>.`; }
+  else { t=`= <b>${Math.round(sets).toLocaleString('es-AR')} preparaciones por año</b> · lotes de <b>${Math.round(L).toLocaleString('es-AR')} piezas</b>`;
+    if(L<50||sets>2000){ cls='warn'; t+=` · ⚠ Es un valor poco habitual: revisá que el dato sea correcto. Si la máquina hace esta pieza todo el año, elegí <b>Máquina dedicada</b>.`; } else cls='ok'; }
+  $('lotinfo').className='lotinfo '+cls; $('lotinfo').innerHTML=t;
+}
+function setBase(i){ const r=calcPart(P()), c=r.ops[i]; if(!c){S.base=null;return;} S.base={part:S.cur,op:i,opTot:c.tot,pz:r.tot,t:c.tools.map(x=>x.cc+x.he+x.ca+x.rot)}; }
+const dlt=d=>Math.abs(d)<.0005?'<span class="note">—</span>':`<span class="${d<0?'dneg':'dpos'}">${d<0?'−':'+'}${u3(Math.abs(d))}</span>`;
+function updatePiece(){
+  const p=P(), r=calcPart(p);
+  $('curName').textContent=p.name||'Sin nombre';
+  $('curMeta').textContent=p.ops.length?`USD ${u2(r.tot)} por pieza · ${usd(r.tot*n(p.vol))} por año · ${n(p.vol).toLocaleString('es-AR')} piezas`:'Sin operaciones cargadas';
+  r.ops.forEach(c=>{ if(!$('rmin'+c.i)) return; $('rmin'+c.i).textContent=fmtT(c.min); $('rusd'+c.i).textContent=u3(c.tot); $('rpct'+c.i).textContent=pc(c.tot/r.tot*100); $('row'+c.i).classList.toggle('top',c===r.top); });
+  r.ops.forEach(c=>{ if(!$('obar'+c.i)) return;
+    $('obar'+c.i).innerHTML=K.map(k=>{const w=c[k[0]]/c.tot*100;return w>.5?`<div style="width:${w}%;background:${k[2]}" title="${k[1]}: USD ${u3(c[k[0]])}">${w>9?({corte:'Corte',aux:'Muertos',setup:'Setup',herr:'Herram.',camb:'Cambios',scrap:'Scrap'})[k[0]]+' '+pc(w):''}</div>`:''}).join('');
+    const tk=K.slice().sort((a,b)=>c[b[0]]-c[a[0]])[0];
+    $('otxt'+c.i).innerHTML=`Esta operación cuesta <b>USD ${u3(c.tot)} por pieza</b> = <b>${pc(c.tot/r.tot*100)} de la pieza</b> (${usd(c.tot*n(p.vol))}/año). Lo que más pesa es <b>${tk[1].toLowerCase()}</b> (${pc(c[tk[0]]/c.tot*100)}).`
+      + (S.base&&S.base.op===c.i&&S.base.part===S.cur ? (()=>{const d=c.tot-S.base.opTot, dp=r.tot-S.base.pz; return Math.abs(d)<.0005 ? `<div class="chg">Editá tiempos, vidas o precios: acá vas a ver cuánto cambia la operación respecto a cómo estaba al abrirla. <button class="btn sec sm" data-rebase="${c.i}">Fijar valores actuales como base</button></div>` : `<div class="chg ${d<0?'good':'bad'}">Cambio desde que abriste la operación: <b>${d<0?'−':'+'}USD ${u3(Math.abs(d))} por pieza</b> en la operación · pieza ${dp<0?'−':'+'}${(Math.abs(dp)/S.base.pz*100).toLocaleString('es-AR',{maximumFractionDigits:1})}% · <b>${d<0?'ahorro':'sobrecosto'} de ${usd(Math.abs(d)*n(p.vol))}/año</b> <button class="btn sec sm" data-rebase="${c.i}">Fijar como nueva base</button></div>`;})() : '');
+    if($('octc'+c.i)) $('octc'+c.i).value=mmss(opTc(c.o));
+    const lines=[], rows=[], f2=v=>v.toLocaleString('es-AR',{maximumFractionDigits:2}), u=v=>u3(v);
+    c.tools.forEach((x,j)=>{ const tot=x.cc+x.he+x.ca+x.rot, cons=x.he+x.ca, sop=cons/c.tot, spz=tot/r.tot;
+      const lv=sop<.05?['Bajo','var(--green)']:sop<.15?['Medio','var(--amber)']:['Alto','var(--red)'];
+      const b0=S.base&&S.base.op===c.i&&S.base.part===S.cur?S.base.t[j]:undefined;
+      rows.push(`<tr><td>${x.t.n}<div class="note">${mmss(x.t.tc)} de corte</div></td><td class="c" style="background:#eef5ff;font-size:14px"><b>${u(tot)}</b></td><td class="c">${dlt(b0===undefined?0:tot-b0)}</td><td class="c">${u(x.cc)}</td><td class="c">${u(x.he)}</td><td class="c">${u(x.ca)}</td><td class="c">${x.rot>0?u(x.rot):'<span class="note">—</span>'}</td><td class="c sec">${(spz*100).toLocaleString('es-AR',{maximumFractionDigits:1})}%</td><td class="c sec">${pc(tot/c.tot*100)}</td><td class="sec"><span class="peso" style="background:${lv[1]}" title="Mide cuánto se nota el precio, no cuánto cuesta. Consumo + cambios = ${(sop*100).toLocaleString('es-AR',{maximumFractionDigits:1})}% del costo de la operación">${lv[0]} · ${(sop*100).toLocaleString('es-AR',{maximumFractionDigits:1})}%</span></td></tr>`);
+      const dPrice=.10*x.he/r.tot*100, dLife=(1-1/1.1)*cons/r.tot*100, dFast=(1-1/1.1)*(x.cc+cons)/r.tot*100, dTay=(.4641*cons-(1-1/1.1)*x.cc)/r.tot*100;
+      lines.push(`<b>${x.t.n}</b> · Precio +10% → pieza <b>+${f2(dPrice)}%</b> · Vida +10% → pieza <b>−${f2(dLife)}%</b> · <span style="color:var(--green)">Corta 10% más rápido con la misma vida → pieza <b>−${f2(dFast)}%</b></span> · Subir vc 10% con la misma herramienta (vida −32%, Taylor) → pieza <b style="color:${dTay<0?'var(--green)':'var(--red)'}">${dTay<0?'−':'+'}${f2(Math.abs(dTay))}%</b>`); });
+    $('tinc'+c.i).innerHTML=rows.join('');
+    const hh=rate(c.o.m)/60, vol=n(p.vol);
+    c.o.tools.forEach((t,j)=>{ const cost=a=>{const pf=pzF(a),f=Math.max(1,n(a.f)),z=Math.max(1,n(a.z)||1), rq=n0(a.rb)/100/pf, ro=rq*n0(a.rx)*hh + rq*n0(a.rs)/100*c.accV; return {tot:n(a.tc)*hh+z*n(a.p)/(pf*f)+n(a.cm)*hh/pf+ro, other:n(a.tc)*hh+n(a.cm)*hh/pf+ro, k:pf*f/z, pf};};
+      const base=cost(A(t));
+      t.opts.forEach((a,k)=>{ const ce=cost(a), id=`${c.i}_${j}_${k}`; if(!$('ou'+id)) return;
+        $('ou'+id).textContent=u3(ce.tot);
+        { const Tm=n0(a.v)*n0(a.tc), tf=$('oT'+id), nt=$('oTn'+id); if(tf&&document.activeElement!==tf) tf.value=mmss(Tm);
+          if(nt){ nt.className='note '+(Tm<5||Tm>90?'lifew':''); nt.textContent = Tm>90? `${(Tm/60).toLocaleString('es-AR',{maximumFractionDigits:1})} h · muy alta, verificar` : Tm<5? 'muy baja, verificar' : `${Math.round(n0(a.v)*n0(a.f)).toLocaleString('es-AR')} pzs por inserto`; } }
+        if(k===t.sel){ $('od'+id).innerHTML='<span class="note">base</span>'; $('om'+id).textContent=''; return; }
+        const d=ce.tot-base.tot, pmax=(base.tot-ce.other)*ce.k;
+        if(Math.abs(d)<.0005){ $('od'+id).innerHTML='<span class="note">igual</span>'; $('om'+id).innerHTML=pmax>0?`USD ${u2(pmax)}`:''; return; }
+        $('od'+id).innerHTML=`<span class="${d<0?'dneg':'dpos'}">${d<0?'−':'+'}${u3(Math.abs(d))}</span><div class="note">${d<0?'ahorra':'cuesta'} ${usd(Math.abs(d)*vol)}/año · ${d<0?'−':'+'}${(Math.abs(d)/r.tot*100).toLocaleString('es-AR',{maximumFractionDigits:1})}% pieza</div>`;
+        $('om'+id).innerHTML= pmax>0 ? `USD ${u2(pmax)}<div class="note">hoy ${u2(n(a.p))}</div>` : '<span class="note">no empata</span>';
+      });
+    });
+    $('tsens'+c.i).innerHTML=lines.join('<br>');
+  });
+  $('strip').innerHTML = p.ops.length ? `<span>Costo de mecanizado: <b>USD ${u2(r.tot)} por pieza</b></span><span>Anual: <b>${usd(r.tot*n(p.vol))}</b></span><span>Tiempo: <b>${fmtT(r.mins)} por pieza</b></span><span class="sp"></span><span>Mayor costo: <b style="color:var(--red)">${opn(r.top.i)} · ${r.top.o.n}</b></span>` : '<span>Agregá operaciones para ver el costo.</span>';
+  renderDiag(p,r);
+}
+function renderPiece(){
+  $('plistdl').innerHTML=S.parts.map(p=>`<option value="${p.name}">`).join('');
+  renderRoute(); updatePiece();
+}
+
+/* ---------- PIEZA: DIAGNÓSTICO ---------- */
+function renderDiag(p,r){
+  const vol=n(p.vol);
+  if(!p.ops.length){ ['kpis','byOp','byType','matrix','opps','potential'].forEach(i=>$(i).innerHTML=''); $('headline').innerHTML='<div class="card">Cargá la ruta de operaciones para ver el diagnóstico.</div>'; return; }
+  const top=r.top, tk=K.slice().sort((a,b)=>top[b[0]]-top[a[0]])[0], typeTop=KC[r.topType];
+  $('headline').innerHTML=`<div class="headline"><div class="t">Mayor costo de esta pieza</div>
+    <div class="b">${opn(top.i)} · ${top.o.n} = ${pc(top.tot/r.tot*100)} del costo de mecanizado</div>
+    <div class="s">USD ${u3(top.tot)} por pieza · ${usd(top.tot*vol)} por año. Dentro de esta operación lo que más pesa es <b>${tk[1].toLowerCase()}</b> (${pc(top[tk[0]]/top.tot*100)}). En toda la pieza, el rubro principal es <b>${typeTop[1].toLowerCase()}</b> (${pc(r.byType[typeTop[0]]/r.tot*100)}).</div></div>`;
+  const toolTot=r.byType.herr+r.byType.camb;
+  $('kpis').innerHTML=`
+   <div class="kpi"><div class="l">Mecanizado por pieza</div><div class="v">USD ${u2(r.tot)}</div><div class="s">${fmtT(r.mins)} por pieza</div></div>
+   ${p.msrc==="cli" ? `<div class="kpi"><div class="l">Material</div><div class="v" style="font-size:16px">Lo pone el cliente</div><div class="s">${p.chg==="si"?"Te cobra USD "+u2(n(p.match))+" por pieza perdida":"No te cobra el scrap"}</div></div>` : `<div class="kpi"><div class="l">Pieza con material</div><div class="v">USD ${u2(r.tot+n(p.mat))}</div><div class="s">Material USD ${u2(n(p.mat))}</div></div>`}
+   <div class="kpi"><div class="l">Mecanizado anual</div><div class="v">${usd(r.tot*vol)}</div><div class="s">${vol.toLocaleString('es-AR')} piezas</div></div>
+   <div class="kpi"><div class="l">Herramientas en el mecanizado</div><div class="v">${pc(toolTot/r.tot*100)}</div><div class="s">Incluye cambios</div></div>`;
+  const ops=r.ops.slice().sort((a,b)=>b.tot-a.tot), max=ops[0].tot;
+  $('byOp').innerHTML=ops.map(c=>`<div class="brow"><div class="lb"><b>${opn(c.i)} · ${c.o.n}</b><span>${mname(c.o.m)}</span></div>
+    <div><div class="track" style="width:${Math.max(4,c.tot/max*100)}%">${K.map(k=>{const w=c[k[0]]/c.tot*100;return w>.5?`<div style="width:${w}%;background:${k[2]}" title="${k[1]}: USD ${u3(c[k[0]])}">${w>22&&c.tot/max>.45?pc(w):''}</div>`:''}).join('')}</div></div>
+    <div class="v">${u3(c.tot)}<small>${pc(c.tot/r.tot*100)}</small></div></div>`).join('');
+  $('leg').innerHTML=K.map(k=>`<span><span class="sq" style="background:${k[2]}"></span>${k[1]}</span>`).join('');
+  const ks=K.slice().sort((a,b)=>r.byType[b[0]]-r.byType[a[0]]), tmax=r.byType[ks[0][0]]||1;
+  $('byType').innerHTML=ks.map(k=>`<div class="brow" style="grid-template-columns:130px 1fr 80px"><div class="lb"><b>${k[1]}</b></div><div class="track"><div style="width:${r.byType[k[0]]/tmax*100}%;background:${k[2]}"></div></div><div class="v">${u3(r.byType[k[0]])}<small>${pc(r.byType[k[0]]/r.tot*100)}</small></div></div>`).join('');
+  const cmax=Math.max(...r.ops.flatMap(c=>K.map(k=>c[k[0]])));
+  const cell=v=>{const a=v/cmax; return `<td class="${a>.5?'hot':''}" style="background:rgba(214,69,69,${(a*.35).toFixed(2)})">${u3(v)}</td>`;};
+  $('matrix').innerHTML=`<thead><tr><th>Operación</th>${K.map(k=>`<th><span class="sq" style="background:${k[2]}"></span>${k[1]}</th>`).join('')}<th>Total</th><th>%</th></tr></thead><tbody>
+    ${r.ops.map(c=>`<tr><td><b>${opn(c.i)}</b> · ${c.o.n}</td>${K.map(k=>cell(c[k[0]])).join('')}<td><b>${u3(c.tot)}</b></td><td>${pc(c.tot/r.tot*100)}</td></tr>`).join('')}
+    <tr class="tot"><td>Total pieza</td>${K.map(k=>`<td>${u3(r.byType[k[0]])}</td>`).join('')}<td>${u3(r.tot)}</td><td>100%</td></tr>
+    <tr><td class="note">% del total</td>${K.map(k=>`<td class="note">${pc(r.byType[k[0]]/r.tot*100)}</td>`).join('')}<td></td><td></td></tr></tbody>`;
+  const L=opportunities(r,p), totS=L.reduce((s,o)=>s+o.s,0), SHOW=S.allOpps?L.length:5;
+  $('potential').innerHTML = L.length ? `<div class="potential"><span>${L.length} oportunidades en esta pieza</span><span><b>≈ ${usd(totS)}/año</b> · ${pc(totS/(r.tot*vol)*100)} del costo de mecanizado</span></div>`:'';
+  $('opps').innerHTML = L.length ? L.slice(0,SHOW).map((o,i)=>`<div class="opp"><div class="rkc">${i+1}</div>
+    <div><div><span class="tg" style="background:${o.col}">${o.cat}</span><span class="note">${o.op}</span></div><div class="t">${o.t}</div><div class="d">${o.d}</div><div class="sup">${o.sup}</div></div>
+    <div class="rr"><div class="usd">≈ ${usd(o.s)}<small>por año</small></div>${o.cmp?'<button class="btn sec sm" style="margin-top:6px" onclick="alert(\'En la app: abre el comparador A vs. B con los datos de esta operación ya cargados.\')">Comparar alternativa →</button>':''}</div></div>`).join('')
+    + (L.length>5?`<div style="text-align:center"><button class="btn sec sm" id="moreOpps">${S.allOpps?'Ver solo las 5 principales':'Ver las '+L.length+' oportunidades'}</button></div>`:'')
+    : '<p class="note">Sin desvíos relevantes con estos datos.</p>';
+  if($('moreOpps')) $('moreOpps').onclick=()=>{S.allOpps=!S.allOpps;renderDiag(P(),calcPart(P()));};
+}
+
+/* ---------- MÁQUINAS ---------- */
+function renderMachines(){
+  $('machines').innerHTML=`<tr><td><label>Máquina</label></td><td style="width:170px"><label>Costo hora (USD/h)</label></td><td style="width:40px"></td></tr>`+S.machines.map((m,i)=>`<tr><td><input data-mq="${i}" data-k="n" value="${m.n}"></td><td><input type="number" data-mq="${i}" data-k="r" value="${m.r}"></td><td><button class="ibtn" data-delmq="${i}" title="Eliminar">🗑️</button></td></tr>`).join('');
+}
+
+/* ---------- EVENTOS ---------- */
+document.addEventListener('input',e=>{
+  const d=e.target.dataset; let v=e.target.value; if(d.u==='t') v=String(parseT(v));
+  if(e.target.name==='pmode'){ P().mode=e.target.value; renderLotInfo(); }
+  else if(d.p!==undefined){ P()[d.p]=e.target.type==='number'?n(v):v; if(d.p==='lot'||d.p==='lpy'||d.p==='vol'||d.p==='msrc'||d.p==='chg') renderLotInfo(); }
+  else if(d.mq!==undefined){ S.machines[+d.mq][d.k]=d.k==='r'?n(v):v; $('fm').innerHTML=''; return; }
+  else if(d.o!==undefined){ const o=P().ops[+d.o]; if(d.t!==undefined){ const sl=o.tools[+d.t], ka=d.a!==undefined?+d.a:sl.sel, op=sl.opts[ka]; if(d.k==='T'){ const tc=n0(op.tc); if(tc>0){ op.v=Math.round(n0(v)/tc*10)/10; const vf=$(`ov${d.o}_${d.t}_${ka}`); if(vf) vf.value=op.v; } } else op[d.k]=v; } else { o[d.k]=v; if(d.k==='n'||d.k==='m'){ const row=$('row'+d.o); row.children[1].innerHTML='<b>'+o.n+'</b>'; row.children[2].textContent=mname(o.m); } } }
+  else return;
+  updatePiece();
+});
+document.addEventListener('change',e=>{ if(e.target.dataset.u==='t') e.target.value=mmss(parseT(e.target.value)); if(e.target.dataset.k==='rb'){ renderRoute(); updatePiece(); } if(e.target.dataset.rr){ renderRoute(); updatePiece(); } });
+document.addEventListener('click',e=>{
+  const d=e.target.dataset;
+  if(d.rot!==undefined){ S.rotOpen=S.rotOpen||{}; S.rotOpen[d.rot]=!S.rotOpen[d.rot]; renderRoute(); updatePiece(); return; }
+  if(d.rebase!==undefined){ setBase(+d.rebase); updatePiece(); return; }
+  if(d.sel!==undefined){ const [i,j,k]=d.sel.split(':').map(Number); P().ops[i].tools[j].sel=k; renderRoute(); updatePiece(); return; }
+  if(d.addalt!==undefined){ const [i,j]=d.addalt.split(':').map(Number), sl=P().ops[i].tools[j]; sl.opts.push(Object.assign({},A(sl),{n:'Alternativa '+sl.opts.length})); renderRoute(); updatePiece(); return; }
+  if(d.delalt!==undefined){ const [i,j,k]=d.delalt.split(':').map(Number), sl=P().ops[i].tools[j]; sl.opts.splice(k,1); if(sl.sel>k) sl.sel--; renderRoute(); updatePiece(); return; }
+  if(d.delop!==undefined){ P().ops.splice(+d.delop,1); S.open=null; renderPiece(); }
+  else if(d.addt!==undefined){ P().ops[+d.addt].tools.push({sel:0,opts:[{n:'Herramienta',p:10,z:1,f:1,v:100,cm:3,tc:.5}]}); renderRoute(); updatePiece(); }
+  else if(d.delt!==undefined){ const [i,j]=d.delt.split(':').map(Number); P().ops[i].tools.splice(j,1); renderRoute(); updatePiece(); }
+  else if(d.delmq!==undefined){ if(S.machines.length>1){ S.machines.splice(+d.delmq,1); $('fm').innerHTML=''; renderMachines(); } }
+});
+$('addOp').onclick=()=>{ P().ops.push({n:'Nueva operación',m:S.machines[0].id,ta:.5,su:30,sc:0,tools:[{sel:0,opts:[{n:'Herramienta',p:10,z:1,f:1,v:100,cm:3,tc:1}]}]}); S.open=P().ops.length-1; renderRoute(); updatePiece(); };
+$('addMq').onclick=()=>{ S.machines.push({id:'M'+Date.now(),n:'Nueva máquina',r:30}); $('fm').innerHTML=''; renderMachines(); };
+
+renderMachines(); renderPiece(); sub('diag'); renderPlant();
+</script>
+</body>
+</html>
