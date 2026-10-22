@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
-import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, deleteField, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
 import { createRulesTestEnv, secocutVerified } from './helpers';
 
 describe('/users', () => {
@@ -67,6 +67,62 @@ describe('/users', () => {
     it('un usuario NO cambia el rol de otro', async () => { await assertFails(updateDoc(doc(as('ana'), 'users/beto'), { role: 'admin' })); });
     it('un usuario edita su nombre sin tocar el rol', async () => { await assertSucceeds(updateDoc(doc(as('ana'), 'users/ana'), { name: 'Ana' })); });
     it('un usuario NO edita el nombre de otro', async () => { await assertFails(updateDoc(doc(as('ana'), 'users/beto'), { name: 'X' })); });
+  });
+
+  // empresaId y empresasAsignadas definen a qué empresa cliente accede cada usuario: SOLO las escribe el servidor (Admin SDK).
+  // Ni el dueño ni un admin desde el cliente. El dueño solo cambia id/email/name; el admin, solo role.
+  describe('empresaId y empresasAsignadas: solo el servidor', () => {
+    beforeEach(async () => {
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'users/cliente'), { id: 'cliente', email: 'cliente@cliente.com', role: 'user', empresaId: 'emp-a' });
+        await setDoc(doc(ctx.firestore(), 'users/vendedor'), { id: 'vendedor', email: 'vendedor@secocut.com', role: 'user', empresasAsignadas: ['emp-a'] });
+      });
+    });
+    const perfil = (uid: string, over: Record<string, unknown> = {}) => ({ id: uid, email: `${uid}@secocut.com`, role: 'user', ...over });
+
+    it('crear el propio perfil con empresaId: denegado', async () => {
+      await assertFails(setDoc(doc(as('nuevo'), 'users/nuevo'), perfil('nuevo', { empresaId: 'emp-a' })));
+    });
+    it('crear el propio perfil con empresasAsignadas: denegado', async () => {
+      await assertFails(setDoc(doc(as('nuevo'), 'users/nuevo'), perfil('nuevo', { empresasAsignadas: ['emp-a'] })));
+    });
+    it('un usuario sin empresa NO se escribe una empresaId ni empresasAsignadas', async () => {
+      await assertFails(updateDoc(doc(as('ana'), 'users/ana'), { empresaId: 'emp-a' }));
+      await assertFails(updateDoc(doc(as('ana'), 'users/ana'), { empresasAsignadas: ['emp-a'] }));
+    });
+    it('un cliente NO cambia su empresaId a la de otro, ni la borra, ni se asigna empresas', async () => {
+      await assertFails(updateDoc(doc(as('cliente'), 'users/cliente'), { empresaId: 'emp-b' }));
+      await assertFails(updateDoc(doc(as('cliente'), 'users/cliente'), { empresasAsignadas: ['emp-a', 'emp-b'] }));
+      await assertFails(updateDoc(doc(as('cliente'), 'users/cliente'), { empresaId: deleteField() }));
+    });
+    it('un vendedor NO se amplía sus empresasAsignadas', async () => {
+      await assertFails(updateDoc(doc(as('vendedor'), 'users/vendedor'), { empresasAsignadas: ['emp-a', 'emp-b'] }));
+    });
+    it('mezclar un campo permitido con empresaId tampoco pasa', async () => {
+      await assertFails(updateDoc(doc(as('cliente'), 'users/cliente'), { name: 'Cliente', empresaId: 'emp-b' }));
+    });
+    it('el dueño no puede escribir campos fuera de id, email y name', async () => {
+      await assertFails(updateDoc(doc(as('ana'), 'users/ana'), { isAdmin: true }));
+    });
+    it('el dueño sigue editando id, email y name', async () => {
+      await assertSucceeds(updateDoc(doc(as('cliente'), 'users/cliente'), { name: 'Cliente Uno' }));
+      await assertSucceeds(updateDoc(doc(as('cliente'), 'users/cliente'), { email: 'otro@cliente.com' }));
+    });
+    it('el merge de layout.tsx sobre un perfil que ya tiene empresaId (no cambia valores) sigue pasando', async () => {
+      await assertSucceeds(setDoc(doc(as('cliente'), 'users/cliente'), { id: 'cliente', email: 'cliente@cliente.com', role: 'user' }, { merge: true }));
+    });
+    it('un admin NO asigna empresaId ni empresasAsignadas desde el cliente', async () => {
+      await assertFails(updateDoc(doc(as('admin1'), 'users/ana'), { empresaId: 'emp-a' }));
+      await assertFails(updateDoc(doc(as('admin1'), 'users/ana'), { empresasAsignadas: ['emp-a'] }));
+      await assertFails(updateDoc(doc(as('admin1'), 'users/cliente'), { empresaId: 'emp-b' }));
+    });
+    it('un admin NO cambia el rol y la empresa en la misma escritura', async () => {
+      await assertFails(updateDoc(doc(as('admin1'), 'users/ana'), { role: 'admin', empresaId: 'emp-a' }));
+    });
+    it('un admin sigue cambiando SOLO el rol de otro usuario, y no otros campos', async () => {
+      await assertSucceeds(updateDoc(doc(as('admin1'), 'users/cliente'), { role: 'admin' }));
+      await assertFails(updateDoc(doc(as('admin1'), 'users/ana'), { name: 'Cambiado por el admin' }));
+    });
   });
 
   it('nadie borra perfiles, ni un admin', async () => {
