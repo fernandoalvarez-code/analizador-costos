@@ -22,6 +22,7 @@ import {
 import { getStorage } from "firebase/storage"; 
 import { getAuth, onAuthStateChanged, User, createUserWithEmailAndPassword, signInWithEmailAndPassword, Auth, updateProfile } from "firebase/auth";
 import { useState, useEffect, useMemo, DependencyList } from "react";
+import { conectarEmuladoresSiCorresponde } from "./emulators";
 
 // --- 1. CONFIGURACIÓN ---
 const firebaseConfig = {
@@ -38,6 +39,14 @@ const app: FirebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebas
 const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app); 
+
+// Modo emulador local: solo con NEXT_PUBLIC_USE_EMULATORS === 'true', fuera de producción y con un projectId "demo-...".
+// En cualquier otro caso no hace nada. (Las variables NEXT_PUBLIC_* se leen literales para que Next las incorpore al build.)
+conectarEmuladoresSiCorresponde(auth, db, {
+  useEmulators: process.env.NEXT_PUBLIC_USE_EMULATORS,
+  nodeEnv: process.env.NODE_ENV,
+  projectId: firebaseConfig.projectId,
+});
 
 // --- 3. HOOKS PERSONALIZADOS ---
 export const useFirestore = () => db;
