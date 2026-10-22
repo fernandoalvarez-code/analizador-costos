@@ -3,16 +3,23 @@ import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebas
 import { doc, setDoc } from 'firebase/firestore';
 import { createRulesTestEnv, secocutVerified } from './helpers';
 
-// Prueba de humo de la infraestructura: caracteriza isSecucutEmail() sobre una
-// colección existente (ai_agents), antes de agregar reglas nuevas.
-describe('isSecucutEmail (ai_agents, reglas actuales)', () => {
+// Prueba de humo de la infraestructura: caracteriza isSecocutAdmin() (que incluye isSecucutEmail())
+// sobre una colección existente (ai_agents). El detalle completo está en agentes-privacidad.spec.ts.
+describe('isSecocutAdmin (escritura de ai_agents)', () => {
   let env: RulesTestEnvironment;
   beforeAll(async () => { env = await createRulesTestEnv(); });
   afterAll(async () => { await env.cleanup(); });
 
-  it('permite escribir a un @secocut.com verificado', async () => {
+  it('permite escribir a un admin @secocut.com verificado', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), 'users/u1'), { id: 'u1', role: 'admin' }); });
     const db = env.authenticatedContext('u1', secocutVerified()).firestore();
     await assertSucceeds(setDoc(doc(db, 'ai_agents/a1'), { nombre: 'x' }));
+  });
+
+  it('rechaza a un @secocut.com verificado que no es admin', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), 'users/u0'), { id: 'u0', role: 'user' }); });
+    const db = env.authenticatedContext('u0', secocutVerified()).firestore();
+    await assertFails(setDoc(doc(db, 'ai_agents/a0'), { nombre: 'x' }));
   });
 
   it('rechaza a un @secocut.com sin email verificado', async () => {

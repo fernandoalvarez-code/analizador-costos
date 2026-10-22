@@ -11,7 +11,7 @@ import {
   deleteKnowledgeEntry,
 } from '@/lib/agents/firestore';
 import type { KnowledgeEntry, KnowledgeEntryInput } from '@/lib/agents/types';
-import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
+import AdminGate from "@/components/app/admin-gate";
 
 // ── Tailwind consts ───────────────────────────────────
 const CARD = 'rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-2';
@@ -515,7 +515,7 @@ function EditEntryModal({
   );
 }
 
-export default function AdminKnowledgePage() {
+function AdminKnowledgeContent() {
   const { user } = useUser();
   const [entries, setEntries] = useState<KnowledgeEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -525,8 +525,6 @@ export default function AdminKnowledgePage() {
   const [editEntry, setEditEntry] = useState<KnowledgeEntry | null>(null);
   const [filterCat, setFilterCat] = useState<string>('');
 
-  const isAdmin = isVerifiedSecocutUser(user);
-
   const load = async () => {
     setLoading(true);
     const list = await listKnowledgeEntries(filterCat || undefined);
@@ -534,19 +532,10 @@ export default function AdminKnowledgePage() {
     setLoading(false);
   };
 
-  // No se lee nada hasta confirmar el rol: un usuario sin acceso vería rechazos de las reglas.
+  // Este componente solo se monta dentro de AdminGate, es decir, para un admin SECOCUT con el perfil ya confirmado.
   useEffect(() => {
-    if (!isAdmin) return;
     load();
-  }, [filterCat, isAdmin]);
-
-  if (!isAdmin) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-400 text-sm">
-        Acceso restringido a administradores SECOCUT.
-      </div>
-    );
-  }
+  }, [filterCat]);
 
   const handleCreate = async (data: KnowledgeEntryInput) => {
     await createKnowledgeEntry({ ...data, createdBy: user?.email ?? '' });
@@ -674,5 +663,13 @@ export default function AdminKnowledgePage() {
         />
       )}
     </div>
+  );
+}
+
+export default function AdminKnowledgePage() {
+  return (
+    <AdminGate>
+      <AdminKnowledgeContent />
+    </AdminGate>
   );
 }

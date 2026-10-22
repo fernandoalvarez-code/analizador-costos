@@ -25,6 +25,14 @@ service cloud.firestore {
              request.auth.token.email.matches('.*@secocut\\.com');
     }
 
+    // Administrador SECOCUT: rol 'admin' en users/{uid} Y email verificado @secocut.com. Un admin de otro
+    // dominio, o con el email sin verificar, NO cumple. exists() va antes del get(): sin perfil no hay error.
+    function isSecocutAdmin() {
+      return isSecucutEmail() &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
     match /users/{userId} {
       // Cada usuario lee su propio perfil; un admin lee cualquiera. (Ninguna pantalla lee el perfil de otro.)
       allow get: if isOwner(userId) || isRequestingUserAdmin();
@@ -83,12 +91,12 @@ service cloud.firestore {
     // ── Agentes IA ────────────────────────────────────
     match /ai_agents/{agentId} {
       allow read: if isSecucutEmail();
-      allow write: if isSecucutEmail() || isRequestingUserAdmin();
+      allow write: if isSecocutAdmin();
     }
 
     match /knowledge_entries/{entryId} {
       allow read: if isSecucutEmail();
-      allow write: if isSecucutEmail() || isRequestingUserAdmin();
+      allow write: if isSecocutAdmin();
     }
 
     // Contadores de uso diario de las rutas /api: solo los escribe el servidor (Admin SDK).
@@ -99,8 +107,12 @@ service cloud.firestore {
     match /chat_sessions/{sessionId} {
       // Solo se puede crear una sesión propia (antes se podía crear a nombre de cualquier userId).
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // Cada usuario ve y maneja solo lo que creó; el admin SECOCUT ve todo. Una sesión sin campo userId
+      // (anterior a esta regla) la ve solo el admin SECOCUT: sin el campo, isOwner(...) da error y solo
+      // la otra rama del || puede permitir. Escrito así (igual que analisis_costos) para que una consulta
+      // con where('userId', '==', uid) sea demostrable por Firestore.
       allow read, update, delete: if request.auth != null &&
-        (isOwner(resource.data.userId) || isSecucutEmail() || isRequestingUserAdmin());
+        (isOwner(resource.data.userId) || isSecocutAdmin());
     }
 
   }
