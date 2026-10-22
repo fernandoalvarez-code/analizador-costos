@@ -5,7 +5,7 @@ import { Plus, Bot, Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-react
 import { useUser } from '@/firebase';
 import { listAgents, createAgent, updateAgent, deleteAgent } from '@/lib/agents/firestore';
 import type { Agent, AgentInput } from '@/lib/agents/types';
-import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
+import AdminGate from "@/components/app/admin-gate";
 
 // ── Tailwind consts ───────────────────────────────────
 const CARD = 'rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-3';
@@ -208,14 +208,12 @@ function AgentModal({
   );
 }
 
-export default function AdminAgentsPage() {
+function AdminAgentsContent() {
   const { user } = useUser();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{ open: boolean; agent?: Agent }>({ open: false });
   const [seeding, setSeeding] = useState(false);
-
-  const isAdmin = isVerifiedSecocutUser(user);
 
   const load = async () => {
     setLoading(true);
@@ -224,19 +222,10 @@ export default function AdminAgentsPage() {
     setLoading(false);
   };
 
-  // No se lee nada hasta confirmar el rol: un usuario sin acceso vería rechazos de las reglas.
+  // Este componente solo se monta dentro de AdminGate, es decir, para un admin SECOCUT con el perfil ya confirmado.
   useEffect(() => {
-    if (!isAdmin) return;
     load();
-  }, [isAdmin]);
-
-  if (!isAdmin) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-400 text-sm">
-        Acceso restringido a administradores SECOCUT.
-      </div>
-    );
-  }
+  }, []);
 
   const handleCreate = async (data: AgentInput) => {
     await createAgent({ ...data, createdBy: user?.email ?? '' });
@@ -365,5 +354,13 @@ export default function AdminAgentsPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function AdminAgentsPage() {
+  return (
+    <AdminGate>
+      <AdminAgentsContent />
+    </AdminGate>
   );
 }

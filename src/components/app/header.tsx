@@ -78,11 +78,6 @@ export default function AppHeader() {
 
   const isSecocutEmployee = isVerifiedSecocutUser(user);
 
-  const filteredMenuItems = menuItems.filter(item => {
-    if (isSecocutEmployee) return true;
-    return ['/history', '/taylor-curve'].includes(item.href);
-  });
-
   // Las notificaciones tienen destinatario (recipientId = dueño del caso): cada usuario lee solo las
   // suyas y los admins leen todas (reglas: recipientId == uid o admin). Hay que saber el rol ANTES de
   // armar la consulta, porque una consulta sin filtro es rechazada para un no admin.
@@ -92,6 +87,16 @@ export default function AppHeader() {
   }, [firestore, user]);
   const { data: profile, isLoading: isLoadingProfile } = useDoc<{ role?: string }>(profileRef);
   const isAdmin = profile?.role === 'admin';
+
+  // "Agentes IA" es solo para el admin SECOCUT: perfil ya cargado, rol admin y email verificado @secocut.com.
+  // Mientras el perfil carga queda oculto.
+  const isSecocutAdmin = !isLoadingProfile && profile?.role === 'admin' && isSecocutEmployee;
+
+  const filteredMenuItems = menuItems.filter(item => {
+    if (item.href === '/admin/agents/test') return isSecocutAdmin;
+    if (isSecocutEmployee) return true;
+    return ['/history', '/taylor-curve'].includes(item.href);
+  });
 
   const notificationsQuery = useMemoFirebase(() => {
     if (!firestore || !user || isLoadingProfile) return null;

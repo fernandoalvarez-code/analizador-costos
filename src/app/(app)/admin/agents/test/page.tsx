@@ -5,7 +5,7 @@ import { useUser } from '@/firebase';
 import { listAgents, listUserSessions, deleteChatSession } from '@/lib/agents/firestore';
 import type { Agent, ChatSession } from '@/lib/agents/types';
 import AgentChat from '@/components/agents/AgentChat';
-import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
+import AdminGate from "@/components/app/admin-gate";
 
 // Título de referencia de una sesión — la primera pregunta del usuario, limpia
 function sessionTitle(session: ChatSession): string {
@@ -18,35 +18,32 @@ function sessionTitle(session: ChatSession): string {
   return line.length > 48 ? line.slice(0, 48) + '…' : line;
 }
 
-export default function AgentTestPage() {
+function AgentTestContent() {
   const { user } = useUser();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selected, setSelected] = useState<Agent | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
-  const isAdmin = isVerifiedSecocutUser(user);
-
-  // No se lee nada hasta confirmar el rol: un usuario sin acceso vería rechazos de las reglas.
+  // Este componente solo se monta dentro de AdminGate, es decir, para un admin SECOCUT con el perfil ya confirmado.
   useEffect(() => {
-    if (!isAdmin) return;
     listAgents(false).then((list) => {
       const order = ['tecnico', 'comercial', 'vendedor'];
       const sorted = list.sort((a, b) => order.indexOf(a.slug) - order.indexOf(b.slug));
       setAgents(sorted);
       if (sorted.length > 0) setSelected(sorted[0]);
     });
-  }, [isAdmin]);
+  }, []);
 
   useEffect(() => {
-    if (!isAdmin || !selected || !user) return;
+    if (!selected || !user) return;
     listUserSessions(user.uid, selected.id)
       .then((list) => setSessions(list.slice(0, 8)))
       .catch((e) => {
         console.error('[test] listUserSessions:', e);
         setSessions([]);
       });
-  }, [isAdmin, selected, user]);
+  }, [selected, user]);
 
   const deleteSession = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation(); // evitar que también cargue la sesión
@@ -62,14 +59,6 @@ export default function AgentTestPage() {
       alert('No se pudo eliminar la conversación.');
     }
   };
-
-  if (!isAdmin) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-400 text-sm">
-        Acceso restringido.
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col gap-4">
@@ -172,5 +161,13 @@ export default function AgentTestPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AgentTestPage() {
+  return (
+    <AdminGate>
+      <AgentTestContent />
+    </AdminGate>
   );
 }

@@ -53,6 +53,8 @@ export default function AgentChat({
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const [sessionNotFound, setSessionNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [image, setImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -68,11 +70,23 @@ export default function AgentChat({
   // Cargar una sesión existente si se pasa initialSessionId
   useEffect(() => {
     if (!initialSessionId) return;
-    getChatSession(initialSessionId).then((session) => {
-      if (!session) return;
-      setMessages(session.messages.map((m) => ({ role: m.role, content: m.content })));
-      setSessionId(initialSessionId);
-    });
+    let cancelado = false;
+    setSessionLoading(true);
+    setSessionNotFound(false);
+    getChatSession(initialSessionId)
+      .then((session) => {
+        if (cancelado) return;
+        if (!session) { setSessionNotFound(true); return; }
+        setMessages(session.messages.map((m) => ({ role: m.role, content: m.content })));
+        setSessionId(initialSessionId);
+      })
+      .catch((e) => {
+        // Sin permiso, sin red o sesión inexistente: se avisa y se sale del estado de carga.
+        console.error('[AgentChat] getChatSession:', e);
+        if (!cancelado) setSessionNotFound(true);
+      })
+      .finally(() => { if (!cancelado) setSessionLoading(false); });
+    return () => { cancelado = true; };
   }, [initialSessionId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -383,7 +397,19 @@ Sé conciso. Máximo una página A4.`;
       {/* Mensajes */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
 
-        {messages.length === 0 && !isLoading && (
+        {sessionLoading && (
+          <div data-testid="sesion-cargando" role="status" className="flex-1 flex items-center justify-center gap-2 text-sm text-gray-400">
+            <Loader2 size={16} className="animate-spin" /> Cargando conversación…
+          </div>
+        )}
+
+        {sessionNotFound && !sessionLoading && (
+          <div data-testid="sesion-no-encontrada" role="alert" className="flex-1 flex items-center justify-center text-sm text-gray-500">
+            Sesión no encontrada
+          </div>
+        )}
+
+        {messages.length === 0 && !isLoading && !sessionLoading && !sessionNotFound && (
           <div className="flex-1 flex flex-col items-center justify-center text-center px-6 gap-3">
             <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
               <Bot size={24} className="text-gray-400" />
