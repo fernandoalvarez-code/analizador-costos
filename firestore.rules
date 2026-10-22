@@ -33,6 +33,40 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // ── Empresas clientes (módulo de costos de mecanizado) ────────────────────────────────────────────
+    // TODAS las ramas exigen email verificado: el registro por email y contraseña sigue abierto y sin
+    // esto alguien podría registrarse con el email de un cliente. empresaId y empresasAsignadas los
+    // escribe SOLO el servidor (Admin SDK): ver las reglas de users/{userId}.
+    function isVerifiedEmail() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    // Perfil del usuario: exists() ANTES de get() para que un usuario sin perfil dé "denegado", no error.
+    function hasUserProfile() {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Usuario de la empresa cliente (users/{uid}.empresaId).
+    function isEmpresaMember(empresaId) {
+      return isVerifiedEmail() && hasUserProfile() &&
+             userProfile().get('empresaId', null) == empresaId;
+    }
+
+    // Vendedor: @secocut verificado con la empresa en users/{uid}.empresasAsignadas.
+    function isVendedorOf(empresaId) {
+      return isSecucutEmail() && hasUserProfile() &&
+             empresaId in userProfile().get('empresasAsignadas', []);
+    }
+
+    function canAccessEmpresa(empresaId) {
+      return isSecocutAdmin() || isEmpresaMember(empresaId) || isVendedorOf(empresaId);
+    }
+
     match /users/{userId} {
       // Cada usuario lee su propio perfil; un admin lee cualquiera. (Ninguna pantalla lee el perfil de otro.)
       allow get: if isOwner(userId) || isRequestingUserAdmin();
@@ -43,10 +77,16 @@ service cloud.firestore {
                     && request.resource.data.keys().hasOnly(['id', 'email', 'role', 'name']);
       // Un admin puede cambiar el rol de OTRO usuario (solo 'user' o 'admin'), nunca el
       // propio: como quien actúa sigue siendo admin, siempre queda al menos uno.
-      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role)
+      // El dueño solo puede tocar id, email y name; el admin, solo role. empresaId y empresasAsignadas
+      // no los escribe nadie desde el cliente (ni el dueño ni un admin): solo el servidor con Admin SDK.
+      // Un merge que no cambia valores (el de (app)/layout.tsx) tiene affectedKeys vacío y pasa.
+      allow update: if (isOwner(userId)
+                        && request.resource.data.role == resource.data.role
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['id', 'email', 'name']))
                    || (isRequestingUserAdmin()
                        && request.auth.uid != userId
-                       && request.resource.data.role in ['user', 'admin']);
+                       && request.resource.data.role in ['user', 'admin']
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']));
       allow delete: if false;
     }
 
@@ -97,6 +137,46 @@ service cloud.firestore {
     match /knowledge_entries/{entryId} {
       allow read: if isSecucutEmail();
       allow write: if isSecocutAdmin();
+    }
+
+    // ── Empresas clientes: costos de mecanizado ───────────────────────────────────────────────────────
+    // Documento raíz (el match recursivo de abajo no lo cubre): lo ven los de la empresa, el vendedor
+    // asignado y el admin SECOCUT; solo el admin lo crea y lo edita; nadie lo borra.
+    match /empresas/{empresaId} {
+      allow get: if canAccessEmpresa(empresaId);
+      allow list: if isSecocutAdmin();
+      allow create, update: if isSecocutAdmin();
+      allow delete: if false;
+    }
+
+    // Lectura de todo lo que cuelga de la empresa. La ESCRITURA no es genérica a propósito: si lo fuera
+    // saltearía la auditoría exigida abajo para máquinas y piezas (un match más permisivo gana).
+    match /empresas/{empresaId}/{document=**} {
+      allow read: if canAccessEmpresa(empresaId);
+    }
+
+    // Datos COMPARTIDOS dentro de la empresa: todos sus usuarios leen, crean, editan y borran. Cada escritura
+    // deja auditoría: updatedBy es quien escribe; en la creación también createdBy; createdBy/createdAt no cambian.
+    match /empresas/{empresaId}/maquinas/{maquinaId} {
+      allow create: if canAccessEmpresa(empresaId)
+                    && request.resource.data.updatedBy == request.auth.uid
+                    && request.resource.data.createdBy == request.auth.uid;
+      allow update: if canAccessEmpresa(empresaId)
+                    && request.resource.data.updatedBy == request.auth.uid
+                    && request.resource.data.createdBy == resource.data.createdBy
+                    && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if canAccessEmpresa(empresaId);
+    }
+
+    match /empresas/{empresaId}/piezas/{piezaId} {
+      allow create: if canAccessEmpresa(empresaId)
+                    && request.resource.data.updatedBy == request.auth.uid
+                    && request.resource.data.createdBy == request.auth.uid;
+      allow update: if canAccessEmpresa(empresaId)
+                    && request.resource.data.updatedBy == request.auth.uid
+                    && request.resource.data.createdBy == resource.data.createdBy
+                    && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if canAccessEmpresa(empresaId);
     }
 
     // Contadores de uso diario de las rutas /api: solo los escribe el servidor (Admin SDK).
