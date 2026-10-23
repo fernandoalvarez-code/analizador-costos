@@ -14,6 +14,7 @@ import {
   History,
   TrendingUp,
   Bot,
+  Wrench,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -37,8 +38,14 @@ import { Skeleton } from "../ui/skeleton";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
+import { veCostosEnMenu } from "@/components/costos/modo-empresa";
 
 const menuItems = [
+    {
+      href: '/costos',
+      label: 'Costos de mecanizado',
+      icon: Wrench,
+    },
     {
       href: '/simulator/new',
       label: 'Simulador',
@@ -85,15 +92,19 @@ export default function AppHeader() {
     if (!firestore || !user) return null;
     return doc(firestore, `users/${user.uid}`);
   }, [firestore, user]);
-  const { data: profile, isLoading: isLoadingProfile } = useDoc<{ role?: string }>(profileRef);
+  const { data: profile, isLoading: isLoadingProfile } = useDoc<{ role?: string; empresaId?: string }>(profileRef);
   const isAdmin = profile?.role === 'admin';
 
   // "Agentes IA" es solo para el admin SECOCUT: perfil ya cargado, rol admin y email verificado @secocut.com.
   // Mientras el perfil carga queda oculto.
   const isSecocutAdmin = !isLoadingProfile && profile?.role === 'admin' && isSecocutEmployee;
 
+  // "Costos de mecanizado": personal SECOCUT verificado, o usuario con empresaId (perfil ya cargado).
+  const veCostos = veCostosEnMenu(user, profile, isLoadingProfile);
+
   const filteredMenuItems = menuItems.filter(item => {
     if (item.href === '/admin/agents/test') return isSecocutAdmin;
+    if (item.href === '/costos') return veCostos;
     if (isSecocutEmployee) return true;
     return ['/history', '/taylor-curve'].includes(item.href);
   });
