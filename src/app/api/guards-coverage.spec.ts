@@ -16,6 +16,20 @@ const EXPECTED: Record<string, { guard: 'requireSecucutUser' | 'requireVerifiedU
   'knowledge/upload-url/route.ts': { guard: 'requireSecucutUser', rateLimit: null },
 };
 
+// Rutas del módulo de costos: el archivo route.ts solo delega en un handler de src/lib/server/costos-handlers.ts, que es donde se
+// aplican guard → límite → body. Se declara cada ruta con sus métodos y el handler que llama, y el guard que debe usar el handler.
+const COSTOS_HANDLERS = 'src/lib/server/costos-handlers.ts';
+const COSTOS: Record<string, { method: 'GET' | 'POST' | 'DELETE'; handler: string; guard: 'requireSecocutAdmin' | 'requireVerifiedUser'; rateLimit: string }[]> = {
+  'costos/invitaciones/route.ts': [
+    { method: 'POST', handler: 'postInvitacion', guard: 'requireSecocutAdmin', rateLimit: 'costos-admin' },
+    { method: 'GET', handler: 'getInvitaciones', guard: 'requireSecocutAdmin', rateLimit: 'costos-admin' },
+  ],
+  'costos/invitaciones/[id]/route.ts': [{ method: 'DELETE', handler: 'deleteInvitacion', guard: 'requireSecocutAdmin', rateLimit: 'costos-admin' }],
+  'costos/invitaciones/mia/route.ts': [{ method: 'GET', handler: 'getInvitacionMia', guard: 'requireVerifiedUser', rateLimit: 'costos-invitacion-mia' }],
+  'costos/invitaciones/canjear/route.ts': [{ method: 'POST', handler: 'postCanjear', guard: 'requireVerifiedUser', rateLimit: 'costos-canjear' }],
+  'costos/vendedores/route.ts': [{ method: 'POST', handler: 'postVendedor', guard: 'requireSecocutAdmin', rateLimit: 'costos-admin' }],
+};
+
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const p = join(dir, name);
@@ -27,7 +41,7 @@ const routeFiles = walk(API_DIR).filter((f) => /route\.tsx?$/.test(f)).map((f) =
 
 describe('guards de las rutas /api', () => {
   it('no hay rutas sin declarar ni declaradas que ya no existen', () => {
-    expect([...routeFiles].sort()).toEqual(Object.keys(EXPECTED).sort());
+    expect([...routeFiles].sort()).toEqual([...Object.keys(EXPECTED), ...Object.keys(COSTOS)].sort());
   });
 
   it.each(Object.entries(EXPECTED))('%s usa su guard antes de leer el body', (file, exp) => {
@@ -53,6 +67,32 @@ describe('guards de las rutas /api', () => {
       const methods = [...readFileSync(join(API_DIR, file), 'utf8').matchAll(/export async function (GET|POST|PUT|PATCH|DELETE)\b/g)].map((m) => m[1]);
       expect(methods, file).toEqual(['POST']);
     }
+  });
+});
+
+describe('rutas /api/costos', () => {
+  const handlersSrc = readFileSync(COSTOS_HANDLERS, 'utf8');
+
+  it.each(Object.entries(COSTOS))('%s exporta solo los métodos declarados y delega en su handler', (file, routes) => {
+    const src = readFileSync(join(API_DIR, file), 'utf8');
+    const methods = [...src.matchAll(/export (?:async function|const) (GET|POST|PUT|PATCH|DELETE)\b/g)].map((m) => m[1]);
+    expect(methods.sort()).toEqual(routes.map((r) => r.method).sort());
+    for (const r of routes) expect(src).toMatch(new RegExp(`${r.method} = .*${r.handler}\\(`));
+    expect(src).not.toMatch(/verifyIdToken\(|req\.json\(/);
+  });
+
+  it.each(Object.values(COSTOS).flat().map((r) => [r.handler, r] as const))('%s: guard → límite → body, en ese orden', (_n, r) => {
+    const start = handlersSrc.indexOf(`export async function ${r.handler}(`);
+    expect(start).toBeGreaterThan(-1);
+    const next = handlersSrc.indexOf('export async function', start + 10);
+    const fn = handlersSrc.slice(start, next < 0 ? undefined : next);
+    const guardAt = fn.indexOf(`await ${r.guard}(`);
+    const limitAt = fn.indexOf(`rl('${r.rateLimit}'`);
+    expect(guardAt).toBeGreaterThan(-1);
+    expect(limitAt).toBeGreaterThan(guardAt);
+    const bodyAt = fn.indexOf('leerBody(');
+    if (bodyAt >= 0) expect(bodyAt).toBeGreaterThan(limitAt);
+    expect(fn).not.toMatch(/verifyIdToken\(/);
   });
 });
 
