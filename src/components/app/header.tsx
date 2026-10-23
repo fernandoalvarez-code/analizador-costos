@@ -38,7 +38,7 @@ import { Skeleton } from "../ui/skeleton";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { isVerifiedSecocutUser } from "@/lib/client/secocut-user";
-import { veCostosEnMenu } from "@/components/costos/modo-empresa";
+import { esClienteEmpresa, veCostosEnMenu } from "@/components/costos/modo-empresa";
 
 const menuItems = [
     {
@@ -102,7 +102,12 @@ export default function AppHeader() {
   // "Costos de mecanizado": personal SECOCUT verificado, o usuario con empresaId (perfil ya cargado).
   const veCostos = veCostosEnMenu(user, profile, isLoadingProfile);
 
+  // Cliente de empresa (perfil ya cargado, con empresaId, sin ser personal SECOCUT): su único destino es /costos.
+  const esCliente = !isLoadingProfile && esClienteEmpresa(user, profile);
+  const inicioHref = esCliente ? '/costos' : '/history';
+
   const filteredMenuItems = menuItems.filter(item => {
+    if (esCliente) return item.href === '/costos';
     if (item.href === '/admin/agents/test') return isSecocutAdmin;
     if (item.href === '/costos') return veCostos;
     if (isSecocutEmployee) return true;
@@ -140,7 +145,7 @@ export default function AppHeader() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
         
         <div className="flex-shrink-0 flex items-center gap-8">
-            <Link href="/history" className="flex items-center gap-2">
+            <Link href={inicioHref} className="flex items-center gap-2">
                 <span className="text-xl font-black text-blue-700 tracking-tight uppercase">
                     Secocut <span className="text-slate-800">SRL</span>
                 </span>
@@ -264,7 +269,7 @@ export default function AppHeader() {
               </SheetTrigger>
               <SheetContent side="left" className="p-4 w-[300px] sm:w-[340px]">
                   <nav className="grid gap-2 text-lg font-medium mt-6">
-                      <Link href="/history" className="flex items-center gap-2 text-lg font-semibold mb-4">
+                      <Link href={inicioHref} className="flex items-center gap-2 text-lg font-semibold mb-4">
                            <span className="text-xl font-black text-blue-700 tracking-tight uppercase">Secocut <span className="text-slate-800">SRL</span></span>
                       </Link>
                       {filteredMenuItems.map(item => (
