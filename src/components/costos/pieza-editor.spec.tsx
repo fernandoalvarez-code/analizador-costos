@@ -19,11 +19,16 @@ const MAQUINAS = [
   { id: 'CV2', nombre: 'Centro vertical 2', costoHora: 35 },
   { id: 'CH', nombre: 'Centro horizontal', costoHora: 45 },
 ];
-const repo = { crearPieza: vi.fn(), actualizarPieza: vi.fn(), duplicarPieza: vi.fn(), listarTodosLosResumenes: vi.fn() };
+const repo = { crearPieza: vi.fn(), actualizarPieza: vi.fn(), duplicarPieza: vi.fn(), listarTodosLosResumenes: vi.fn(), obtenerPieza: vi.fn() };
 
 const carcasa = (): PiezaDoc => ({ ...crearCarcasa(), id: 'car-001' }) as PiezaDoc;
-const montar = (inicial: PiezaDoc | null = carcasa()) =>
-  render(<PiezaEditor empresaId={EMP} repo={repo} inicial={inicial} maquinas={MAQUINAS} reglas={REGLAS_POR_DEFECTO} />);
+// Una pieza guardada abre en "Diagnóstico": estos tests son de la carga, así que van a "Cargar / editar datos" (el diagnóstico
+// tiene su propio archivo: diagnostico-pieza.spec.tsx).
+const montar = (inicial: PiezaDoc | null = carcasa()) => {
+  const c = render(<PiezaEditor empresaId={EMP} repo={repo} inicial={inicial} maquinas={MAQUINAS} reglas={REGLAS_POR_DEFECTO} />);
+  if (inicial) fireEvent.click(c.getByRole('tab', { name: 'Cargar / editar datos' }));
+  return c;
+};
 
 type C = ReturnType<typeof render>;
 const meta = (c: C) => c.getByTestId('meta-pieza').textContent ?? '';
@@ -45,6 +50,7 @@ beforeEach(() => {
   repo.crearPieza.mockResolvedValue('pieza-nueva');
   repo.duplicarPieza.mockResolvedValue('copia-1');
   repo.listarTodosLosResumenes.mockResolvedValue([]);
+  repo.obtenerPieza.mockResolvedValue(null);
   push.mockReset();
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -73,12 +79,12 @@ describe('pieza de control CAR-001 (SPEC 4.7)', () => {
     expect((c.getByLabelText('Piezas por año') as HTMLInputElement).value).toBe('25000');
     expect(c.getByTestId('linea-lote').textContent).toBe('= 50 preparaciones por año · lotes de 500 piezas');
   });
-  it('sub-pestañas: "Cargar / editar datos" es la activa y "Diagnóstico" muestra un placeholder', () => {
+  it('sub-pestañas: se puede pasar de "Cargar / editar datos" a "Diagnóstico" y volver', () => {
     const c = montar();
     expect(c.getByRole('tab', { name: 'Cargar / editar datos' }).getAttribute('aria-selected')).toBe('true');
     fireEvent.click(c.getByRole('tab', { name: 'Diagnóstico' }));
-    expect(c.getByTestId('placeholder-diagnostico')).toBeTruthy();
-    expect(c.queryByTestId('ruta-operaciones')).toBeNull();
+    expect(c.getByTestId('diagnostico')).toBeTruthy();
+    expect(c.queryAllByTestId('fila-operacion')).toHaveLength(0);
     fireEvent.click(c.getByRole('tab', { name: 'Cargar / editar datos' }));
     expect(c.getAllByTestId('fila-operacion')).toHaveLength(5);
   });
@@ -379,7 +385,7 @@ describe('comparar opciones de una posición (compararOpciones)', () => {
     expect(filas[0].textContent).toContain('(en uso)');
   });
   it('una opción que nunca empata muestra "no empata"', () => {
-    const c = montar(conAlternativa({ precio: 0, piezasPorFilo: 10, cortePorPiezaMin: 5 }));
+    const c = montar(conAlternativa({ precio: 1, piezasPorFilo: 10, cortePorPiezaMin: 5 })); // más cara aun regalada (precio mínimo)
     abrirOp(c, 'Agujereado');
     fireEvent.click(editor(c).getAllByText('Comparar')[0]);
     expect(editor(c).getByTestId('precio-maximo').textContent).toBe('no empata');

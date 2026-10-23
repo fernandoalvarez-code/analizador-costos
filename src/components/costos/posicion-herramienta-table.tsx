@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { avisoVidaUtilFilo, compararOpciones } from '@/lib/costos-mecanizado/calc';
 import type { CostoHoraPorMaquina, OpcionHerramienta, Pieza, PosicionHerramienta } from '@/lib/costos-mecanizado/types';
 import { CampoNumero, CampoTexto, CampoTiempo } from './campos';
 import { conSigno, numero, usd2, usd3, usd0 } from './formato';
+import { MENSAJE_COMPLETAR, opcionSinCompletar } from './opcion-completa';
 import { opcionNueva, rutaOpcion, rutaPosicion } from './validar-pieza';
 import { useCampo } from './validacion-context';
 
@@ -18,6 +19,7 @@ const CLASE_ROTURAS_CON = 'border-amber-300 bg-amber-50 text-amber-800';
 const CLASE_ROTURAS_SIN = 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50';
 const CLASE_BAJA = 'font-bold text-emerald-700';
 const CLASE_SUBE = 'font-bold text-red-600';
+const CLASE_SIN_COMPLETAR = 'mt-1 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800';
 const CLASE_AVISO_VIDA = 'mt-1 text-[10px] font-medium text-amber-700';
 
 export interface PosicionHerramientaTableProps {
@@ -28,16 +30,30 @@ export interface PosicionHerramientaTableProps {
   costoHora: CostoHoraPorMaquina;
   onChange: (fn: (p: PosicionHerramienta) => PosicionHerramienta) => void;
   onQuitar: () => void;
+  /** "Comparar alternativa" desde el diagnóstico: esta posición se muestra con la comparación abierta. `token` cambia en cada pedido. */
+  foco?: { posicionId: string; token: number } | null;
 }
 
 /** Una posición de herramienta: la opción EN USO y las alternativas, con "Comparar" (compararOpciones). */
-export default function PosicionHerramientaTable({ opId, indice, pos, pieza, costoHora, onChange, onQuitar }: PosicionHerramientaTableProps) {
+export default function PosicionHerramientaTable({ opId, indice, pos, pieza, costoHora, onChange, onQuitar, foco }: PosicionHerramientaTableProps) {
   const [comparando, setComparando] = useState(false);
+  const raiz = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (foco && foco.posicionId === pos.id) {
+      setComparando(true);
+      raiz.current?.scrollIntoView?.({ block: 'center' });
+    }
+    // solo cuando llega un pedido nuevo
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [foco?.token, foco?.posicionId]);
   const [rotOpen, setRotOpen] = useState<ReadonlySet<string>>(new Set());
   const { error: errorPosicion } = useCampo(rutaPosicion(opId, pos.id));
 
   // Costo de cada opción con la cuenta completa del motor (la misma que usa el resumen).
   const comparacion = useMemo(() => compararOpciones(pieza, costoHora, opId, pos.id), [pieza, costoHora, opId, pos.id]);
+  // Una opción sin completar (precio 0, corte 0:00 o nombre por defecto) no se compara: daría un costo cero y un "ahorro" falso.
+  const incompletas = useMemo(() => new Set(pos.opciones.filter(opcionSinCompletar).map((o) => o.id)), [pos.opciones]);
+  const enUsoSinCompletar = incompletas.has(pos.opciones[Math.min(Math.max(0, pos.seleccionada), pos.opciones.length - 1)]?.id ?? '');
   const porOpcion = useMemo(() => new Map(comparacion.map((c) => [c.opcionId, c])), [comparacion]);
 
   const cambiarOpcion = (optId: string, cambios: Partial<OpcionHerramienta>) =>
@@ -45,7 +61,7 @@ export default function PosicionHerramientaTable({ opId, indice, pos, pieza, cos
   const alternarRoturas = (optId: string) => setRotOpen((s) => { const n = new Set(s); if (n.has(optId)) n.delete(optId); else n.add(optId); return n; });
 
   return (
-    <div className={CLASE_CAJA} data-testid="posicion-herramienta">
+    <div ref={raiz} id={`posicion-${pos.id}`} className={CLASE_CAJA} data-testid="posicion-herramienta">
       <div className="flex flex-wrap items-center gap-2">
         <b className="text-sm text-slate-800">Herramienta {indice + 1}</b>
         <span className="text-xs text-slate-500">{pos.opciones.length} {pos.opciones.length === 1 ? 'opción' : 'opciones'}</span>
@@ -82,7 +98,10 @@ export default function PosicionHerramientaTable({ opId, indice, pos, pieza, cos
                         {enUso ? <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-bold text-white">En uso</span> : <span className="text-slate-400">Usar</span>}
                       </label>
                     </td>
-                    <td className={CLASE_TD}><CampoTexto ruta={r('nombre')} nombre="Nombre de la opción" value={o.nombre} onChange={(v) => cambiarOpcion(o.id, { nombre: v })} /></td>
+                    <td className={CLASE_TD}>
+                      <CampoTexto ruta={r('nombre')} nombre="Nombre de la opción" value={o.nombre} onChange={(v) => cambiarOpcion(o.id, { nombre: v })} />
+                      {opcionSinCompletar(o) && <p className={CLASE_SIN_COMPLETAR} data-testid="sin-completar">Sin completar</p>}
+                    </td>
                     <td className={CLASE_TD}><CampoNumero ruta={r('precio')} nombre="Precio USD" value={o.precio} onChange={(v) => cambiarOpcion(o.id, { precio: v })} /></td>
                     <td className={CLASE_TD}><CampoNumero ruta={r('insertosPorHerramienta')} nombre="Insertos por herramienta" value={o.insertosPorHerramienta} onChange={(v) => cambiarOpcion(o.id, { insertosPorHerramienta: v })} /></td>
                     <td className={CLASE_TD}><CampoNumero ruta={r('filosPorInserto')} nombre="Filos por inserto" value={o.filosPorInserto} onChange={(v) => cambiarOpcion(o.id, { filosPorInserto: v })} /></td>
@@ -141,7 +160,9 @@ export default function PosicionHerramientaTable({ opId, indice, pos, pieza, cos
                   <tr key={c.opcionId} data-testid="fila-comparacion">
                     <td className={CLASE_TD}>{c.nombre}{c.esEnUso && <span className="ml-1 text-xs text-slate-500">(en uso)</span>}</td>
                     <td className={`${CLASE_TD} tabular-nums`}>{usd3(c.costoOpcion)}</td>
-                    {c.esEnUso ? (
+                    {incompletas.has(c.opcionId) || enUsoSinCompletar ? (
+                      <td colSpan={3} className={`${CLASE_TD} text-amber-700`} data-testid="completar-datos">{MENSAJE_COMPLETAR}</td>
+                    ) : c.esEnUso ? (
                       <><td className={`${CLASE_TD} text-slate-500`}>base</td><td className={`${CLASE_TD} text-slate-500`}>base</td><td className={`${CLASE_TD} tabular-nums`}>{usd2(pos.opciones.find((x) => x.id === c.opcionId)?.precio ?? 0)}</td></>
                     ) : (
                       <>
