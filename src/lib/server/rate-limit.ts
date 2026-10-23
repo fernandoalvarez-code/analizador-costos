@@ -16,13 +16,22 @@ import { initializeAdminApp } from '@/firebase/auth/admin-app';
  * Si una variable falta o no es un entero >= 0, se usa el valor por defecto de abajo.
  */
 
-export type RateLimitRoute = 'chat' | 'agents-chat' | 'suggest-cutting-data' | 'savings-suggestions';
+export type RateLimitRoute =
+  | 'chat' | 'agents-chat' | 'suggest-cutting-data' | 'savings-suggestions'
+  // Módulo de costos (invitaciones y asignaciones): intentos por usuario y por día.
+  | 'costos-admin' | 'costos-invitacion-mia' | 'costos-canjear';
 
 const DEFAULT_LIMITS: Record<RateLimitRoute, { user: number; global: number }> = {
   'chat': { user: 40, global: 300 },
   'agents-chat': { user: 40, global: 300 },
   'suggest-cutting-data': { user: 40, global: 300 },
   'savings-suggestions': { user: 20, global: 300 },
+  // Administración de invitaciones y vendedores (solo admin SECOCUT).
+  'costos-admin': { user: 200, global: 2000 },
+  // Consulta de "mi invitación" al entrar a /costos.
+  'costos-invitacion-mia': { user: 200, global: 5000 },
+  // Canje de una invitación: pocos intentos por usuario y día.
+  'costos-canjear': { user: 10, global: 500 },
 };
 
 const ENV_PREFIX: Record<RateLimitRoute, string> = {
@@ -30,6 +39,9 @@ const ENV_PREFIX: Record<RateLimitRoute, string> = {
   'agents-chat': 'AGENTS_CHAT',
   'suggest-cutting-data': 'SUGGEST_CUTTING_DATA',
   'savings-suggestions': 'SAVINGS_SUGGESTIONS',
+  'costos-admin': 'COSTOS_ADMIN',
+  'costos-invitacion-mia': 'COSTOS_INVITACION_MIA',
+  'costos-canjear': 'COSTOS_CANJEAR',
 };
 
 function envInt(name: string, fallback: number, env: Record<string, string | undefined>): number {

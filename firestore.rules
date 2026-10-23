@@ -179,6 +179,12 @@ service cloud.firestore {
       allow delete: if canAccessEmpresa(empresaId);
     }
 
+    // Invitaciones a empresas clientes: cerradas a los clientes. Las crea, lista, revoca y canjea SOLO el servidor
+    // (rutas /api/costos/invitaciones con Admin SDK), que es también quien escribe users/{uid}.empresaId.
+    match /invitaciones/{invitacionId} {
+      allow read, write: if false;
+    }
+
     // Contadores de uso diario de las rutas /api: solo los escribe el servidor (Admin SDK).
     match /rate_limits/{counterId} {
       allow read, write: if false;
