@@ -21,6 +21,9 @@ const CLASE_BAJA = 'font-bold text-emerald-700';
 const CLASE_SUBE = 'font-bold text-red-600';
 const CLASE_SIN_COMPLETAR = 'mt-1 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800';
 const CLASE_AVISO_VIDA = 'mt-1 text-[10px] font-medium text-amber-700';
+const CLASE_VIDA_VERIFICADA = 'mt-1 flex items-center gap-1.5 text-[10px] font-medium text-slate-600 whitespace-nowrap';
+const CLASE_MARCA_VERIFICADO = 'rounded bg-emerald-50 px-1.5 py-0.5 font-bold text-emerald-700';
+const TEXTO_VIDA_VERIFICADA = 'Confirmo que la vida útil por filo es la medida en planta';
 
 export interface PosicionHerramientaTableProps {
   opId: string;
@@ -58,6 +61,30 @@ export default function PosicionHerramientaTable({ opId, indice, pos, pieza, cos
 
   const cambiarOpcion = (optId: string, cambios: Partial<OpcionHerramienta>) =>
     onChange((p) => ({ ...p, opciones: p.opciones.map((o) => (o.id === optId ? { ...o, ...cambios } : o)) }));
+  // Piezas por filo, corte por pieza y vida útil (que recalcula piezas por filo) cambian el dato de la vida: si cambia de verdad, la
+  // marca "Dato verificado" se borra sola. Cualquier otro campo no la toca.
+  const cambiarDatoDeVida = (optId: string, cambios: Pick<Partial<OpcionHerramienta>, 'piezasPorFilo' | 'cortePorPiezaMin'>) =>
+    onChange((p) => ({
+      ...p,
+      opciones: p.opciones.map((o) => {
+        if (o.id !== optId) return o;
+        const nueva = { ...o, ...cambios };
+        const cambio = nueva.piezasPorFilo !== o.piezasPorFilo || nueva.cortePorPiezaMin !== o.cortePorPiezaMin;
+        if (cambio) delete nueva.vidaVerificada;
+        return nueva;
+      }),
+    }));
+  // Se guarda solo true: desmarcar quita el campo.
+  const marcarVidaVerificada = (optId: string, verificada: boolean) =>
+    onChange((p) => ({
+      ...p,
+      opciones: p.opciones.map((o) => {
+        if (o.id !== optId) return o;
+        const nueva = { ...o };
+        if (verificada) nueva.vidaVerificada = true; else delete nueva.vidaVerificada;
+        return nueva;
+      }),
+    }));
   const alternarRoturas = (optId: string) => setRotOpen((s) => { const n = new Set(s); if (n.has(optId)) n.delete(optId); else n.add(optId); return n; });
 
   return (
@@ -105,13 +132,23 @@ export default function PosicionHerramientaTable({ opId, indice, pos, pieza, cos
                     <td className={CLASE_TD}><CampoNumero ruta={r('precio')} nombre="Precio USD" value={o.precio} onChange={(v) => cambiarOpcion(o.id, { precio: v })} /></td>
                     <td className={CLASE_TD}><CampoNumero ruta={r('insertosPorHerramienta')} nombre="Insertos por herramienta" value={o.insertosPorHerramienta} onChange={(v) => cambiarOpcion(o.id, { insertosPorHerramienta: v })} /></td>
                     <td className={CLASE_TD}><CampoNumero ruta={r('filosPorInserto')} nombre="Filos por inserto" value={o.filosPorInserto} onChange={(v) => cambiarOpcion(o.id, { filosPorInserto: v })} /></td>
-                    <td className={CLASE_TD}><CampoNumero ruta={r('piezasPorFilo')} nombre="Piezas por filo" title="Piezas que hace cada filo antes del cambio (dato medido en planta)" value={o.piezasPorFilo} onChange={(v) => cambiarOpcion(o.id, { piezasPorFilo: v })} /></td>
-                    <td className={`${CLASE_TD} bg-blue-50/40`}><CampoTiempo ruta={r('cortePorPiezaMin')} nombre="Corte por pieza (mm:ss)" value={o.cortePorPiezaMin} onChange={(v) => cambiarOpcion(o.id, { cortePorPiezaMin: v })} /></td>
+                    <td className={CLASE_TD}><CampoNumero ruta={r('piezasPorFilo')} nombre="Piezas por filo" title="Piezas que hace cada filo antes del cambio (dato medido en planta)" value={o.piezasPorFilo} onChange={(v) => cambiarDatoDeVida(o.id, { piezasPorFilo: v })} /></td>
+                    <td className={`${CLASE_TD} bg-blue-50/40`}><CampoTiempo ruta={r('cortePorPiezaMin')} nombre="Corte por pieza (mm:ss)" value={o.cortePorPiezaMin} onChange={(v) => cambiarDatoDeVida(o.id, { cortePorPiezaMin: v })} /></td>
                     <td className={CLASE_TD}>
                       {/* Editable: si se carga la vida en minutos (p. ej. de catálogo), se calculan las piezas por filo = vida / corte */}
                       <CampoTiempo ruta={r('vidaUtilFilo')} nombre="Vida útil por filo (mm:ss)" title="Podés editarla: si cargás la vida en minutos, la app calcula las piezas por filo" value={vida}
-                        onChange={(v) => { if (o.cortePorPiezaMin > 0) cambiarOpcion(o.id, { piezasPorFilo: v / o.cortePorPiezaMin }); }} />
-                      {aviso && <p className={CLASE_AVISO_VIDA} data-testid="aviso-vida">⚠ {aviso}</p>}
+                        onChange={(v) => { if (o.cortePorPiezaMin > 0) cambiarDatoDeVida(o.id, { piezasPorFilo: v / o.cortePorPiezaMin }); }} />
+                      {/* Fuera de 5–90 min: aviso, o —con "Dato verificado" marcado— solo la marca. Dentro de rango no se muestra nada (la marca guardada se conserva). */}
+                      {aviso && !o.vidaVerificada && <p className={CLASE_AVISO_VIDA} data-testid="aviso-vida">⚠ {aviso}</p>}
+                      {aviso && (
+                        <div className={CLASE_VIDA_VERIFICADA}>
+                          <label className="flex items-center gap-1 cursor-pointer" title={TEXTO_VIDA_VERIFICADA}>
+                            <input type="checkbox" checked={o.vidaVerificada === true} onChange={(e) => marcarVidaVerificada(o.id, e.target.checked)} />
+                            Dato verificado
+                          </label>
+                          {o.vidaVerificada && <span className={CLASE_MARCA_VERIFICADO} data-testid="vida-verificada">Verificado</span>}
+                        </div>
+                      )}
                     </td>
                     <td className={CLASE_TD}><CampoTiempo ruta={r('cambioMin')} nombre="Cambio (mm:ss)" value={o.cambioMin} onChange={(v) => cambiarOpcion(o.id, { cambioMin: v })} /></td>
                     <td className={CLASE_TD}>

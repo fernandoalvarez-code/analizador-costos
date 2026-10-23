@@ -38,6 +38,11 @@ export interface OpcionHerramienta {
   roturaExtraMin?: number;
   /** % de roturas que tiran la pieza. */
   roturaScrapPct?: number;
+  /**
+   * Quien cargó el dato confirma que la vida útil por filo es la medida en planta (silencia el aviso de "fuera de 5–90 min").
+   * Solo se guarda cuando es true. No entra en ningún cálculo ni en el resumen; la interfaz la borra si cambia el dato.
+   */
+  vidaVerificada?: boolean;
 }
 
 export interface PosicionHerramienta {
