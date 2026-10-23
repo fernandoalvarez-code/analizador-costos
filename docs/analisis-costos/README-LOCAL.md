@@ -22,6 +22,21 @@ Requisitos: Node y Java (los emuladores lo necesitan; si no está en el PATH per
    Además, la aplicación solo conecta los emuladores si se cumplen las TRES condiciones: `NEXT_PUBLIC_USE_EMULATORS === 'true'`,
    `NODE_ENV !== 'production'` y un projectId que empieza con `demo-` (ver `src/firebase/emulators.ts`).
 
+### Rutas `/api` en modo emulador
+
+Las rutas `/api/costos/**` (invitaciones, canje, vendedores) y las de IA usan el Admin SDK en el servidor de Next. Para que ese servidor hable con los
+emuladores (y no con Firebase real), hay que pasarle estas variables al arrancar `npm run dev:emulador`; el script las hereda tal cual:
+
+```
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 \
+FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 \
+GCLOUD_PROJECT=demo-costos \
+npm run dev:emulador
+```
+
+Sin ellas, la pantalla de costos funciona igual (usa el SDK del navegador), pero las rutas `/api` fallan al verificar el token. Son variables del emulador,
+sin ninguna clave; no van en `apphosting.yaml` ni en `.env.local`.
+
 `npm run dev` (arranque normal) y `npm run build` no cambian: sin la variable no se conecta ningún emulador.
 `.env.local.example` solo documenta la variable; no va en `apphosting.yaml` ni en variables de producción.
 

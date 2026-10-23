@@ -183,6 +183,16 @@ describe('capa de datos de costos de mecanizado', () => {
       expect(d?.resumen.costoPieza).toBeCloseTo(1, 9);
       await expect(repo('a1').duplicarPieza(EMP, 'no-existe')).rejects.toThrow(/no existe/);
     });
+    it('duplicar conserva la marca vidaVerificada de las opciones (el campo viaja con la pieza)', async () => {
+      await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), `empresas/${EMP}/maquinas/m1`), { nombre: 'M1', costoHora: 60 }); });
+      const original = piezaSimple('P-1');
+      original.operaciones[0].herramientas[0].opciones[0].vidaVerificada = true;
+      const id = await repo('a1').crearPieza(EMP, original);
+      const copia = await repo('a2').duplicarPieza(EMP, id);
+      const d = await leerAdmin<Pieza & { resumen: { costoPieza: number } }>(`empresas/${EMP}/piezas/${copia}`);
+      expect(d?.operaciones[0].herramientas[0].opciones[0].vidaVerificada).toBe(true);
+      expect(d?.resumen.costoPieza).toBeCloseTo(1, 9); // la marca no entra en el cálculo
+    });
     it('eliminar borra la pieza', async () => {
       await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), `empresas/${EMP}/maquinas/m1`), { nombre: 'M1', costoHora: 60 }); });
       const id = await repo('a1').crearPieza(EMP, piezaSimple('P-1'));
