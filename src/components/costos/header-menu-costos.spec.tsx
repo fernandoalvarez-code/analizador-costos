@@ -68,3 +68,35 @@ describe('menú: Costos de mecanizado', () => {
     expect(links(render(<Header />).container)).toEqual(expect.arrayContaining(['Simulador', 'Historial de Análisis', 'Curva de Costos', ITEM]));
   });
 });
+
+describe('menú del cliente de empresa', () => {
+  const CLIENTE = { data: { role: 'user', empresaId: 'emp-a' }, isLoading: false };
+  const logos = (c: HTMLElement) => [...c.querySelectorAll('a')].filter((a) => /Secocut/i.test(a.textContent ?? '')).map((a) => a.getAttribute('href'));
+
+  it('ve solo "Costos de mecanizado": ni Simulador, ni Historial, ni Curva de Costos', () => {
+    state.profile = CLIENTE;
+    expect(links(render(<Header />).container)).toEqual([ITEM]);
+  });
+  it('el logo apunta a /costos', () => {
+    state.profile = CLIENTE;
+    expect(logos(render(<Header />).container)).toEqual(['/costos']);
+  });
+  it('mientras el perfil carga no cambia nada para un usuario sin empresa (sigue viendo Historial y Curva de Costos)', () => {
+    const c = render(<Header />).container;
+    expect(links(c)).toEqual(['Historial de Análisis', 'Curva de Costos']);
+    expect(logos(c)).toEqual(['/history']);
+  });
+  it('un usuario sin empresaId conserva su menú y el logo a /history', () => {
+    state.profile = { data: { role: 'user' }, isLoading: false };
+    const c = render(<Header />).container;
+    expect(links(c)).toEqual(['Historial de Análisis', 'Curva de Costos']);
+    expect(logos(c)).toEqual(['/history']);
+  });
+  it('personal SECOCUT con empresaId no se trata como cliente', () => {
+    state.user = { uid: 'u2', email: 'vendedor@secocut.com', emailVerified: true };
+    state.profile = CLIENTE;
+    const c = render(<Header />).container;
+    expect(links(c)).toEqual(expect.arrayContaining(['Simulador', 'Historial de Análisis', 'Curva de Costos', ITEM]));
+    expect(logos(c)).toEqual(['/history']);
+  });
+});

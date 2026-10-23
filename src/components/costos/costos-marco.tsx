@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEmpresa } from './empresa-context';
 import SelectorEmpresa from './selector-empresa';
+import InvitacionPendiente from './invitacion-pendiente';
 
 const CLASE_AVISO = 'rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600';
 
@@ -38,7 +39,7 @@ export default function CostosMarco({ children }: { children: React.ReactNode })
           <Button type="button" variant="outline" size="sm" onClick={recargar}>Reintentar</Button>
         </div>
       )}
-      {estado === 'sin-empresa' && <div data-testid="costos-sin-empresa" role="alert" className={CLASE_AVISO}>No tenés empresa asignada.</div>}
+      {estado === 'sin-empresa' && <InvitacionPendiente />}
       {estado === 'sin-empresas' && (
         <div data-testid="costos-sin-empresas" role="alert" className={CLASE_AVISO}>
           {modo === 'admin' ? 'Todavía no hay empresas. Creá la primera con «+ Nueva empresa».' : 'No tenés empresas asignadas.'}

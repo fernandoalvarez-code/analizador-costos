@@ -2,8 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // FRÁGIL: si falla tras tocar la ruta, revisar el orden guard → límite → validación → IA y que
 // los módulos mockeados (admin-app, firebase-admin/auth, rate-limit, el flujo de IA) sigan igual.
-const { verifyIdToken, enforceRateLimit, suggestToolingChanges } = vi.hoisted(() => ({
-  verifyIdToken: vi.fn(), enforceRateLimit: vi.fn(), suggestToolingChanges: vi.fn(),
+const { verifyIdToken, enforceRateLimit, suggestToolingChanges, leerPerfil } = vi.hoisted(() => ({
+  verifyIdToken: vi.fn(), enforceRateLimit: vi.fn(), suggestToolingChanges: vi.fn(), leerPerfil: vi.fn(),
+}));
+// Admin SDK de Firestore simulado: users/{uid} lo resuelve leerPerfil (perímetro del cliente de empresa).
+vi.mock('firebase-admin/firestore', () => ({
+  getFirestore: () => ({ doc: (path: string) => ({ get: async () => leerPerfil(path) }) }),
 }));
 vi.mock('@/firebase/auth/admin-app', () => ({ initializeAdminApp: async () => ({}) }));
 vi.mock('firebase-admin/auth', () => ({ getAuth: () => ({ verifyIdToken }) }));
@@ -26,6 +30,7 @@ const post = (authorization?: string, body: unknown = valid) => new Request('htt
 
 beforeEach(() => {
   vi.clearAllMocks();
+  leerPerfil.mockResolvedValue({ exists: false, get: () => undefined });
   enforceRateLimit.mockResolvedValue({ ok: true });
   suggestToolingChanges.mockResolvedValue({ suggestions: '### Análisis General' });
 });
@@ -74,5 +79,22 @@ describe('/api/savings-suggestions', () => {
     const res = await POST(post('Bearer t'));
     expect(res.status).toBe(502);
     expect(JSON.stringify(await res.json())).not.toContain('ABC');
+  });
+
+  it('403 genérico a un cliente de empresa (users/{uid}.empresaId, no @secocut), sin límite ni IA', async () => {
+    verifyIdToken.mockResolvedValue(decoded({ uid: 'cli1' }));
+    leerPerfil.mockResolvedValue({ exists: true, get: (c: string) => (c === 'empresaId' ? 'emp-a' : undefined) });
+    const res = await POST(post('Bearer t'));
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'Sin permisos' });
+    expect(enforceRateLimit).not.toHaveBeenCalled();
+    expect(suggestToolingChanges).not.toHaveBeenCalled();
+  });
+
+  it('falla cerrado: si no se puede leer el perfil, 403 y no llama a la IA', async () => {
+    verifyIdToken.mockResolvedValue(decoded());
+    leerPerfil.mockRejectedValue(new Error('caído'));
+    expect((await POST(post('Bearer t'))).status).toBe(403);
+    expect(suggestToolingChanges).not.toHaveBeenCalled();
   });
 });

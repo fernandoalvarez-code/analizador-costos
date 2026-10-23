@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolverModo, veCostosEnMenu } from '@/components/costos/modo-empresa';
+import { esClienteEmpresa, resolverModo, rutaPermitidaCliente, veCostosEnMenu } from '@/components/costos/modo-empresa';
 
 const secocut = { email: 'ana@secocut.com', emailVerified: true };
 const secocutSinVerificar = { email: 'ana@secocut.com', emailVerified: false };
@@ -59,4 +59,31 @@ describe('veCostosEnMenu', () => {
   it('@secocut sin verificar y sin empresaId: no lo ve', () => {
     expect(veCostosEnMenu(secocutSinVerificar, {}, false)).toBe(false);
   });
+});
+
+describe('esClienteEmpresa', () => {
+  const externo = { email: 'jefe@autopartes.test', emailVerified: true };
+  const personal = { email: 'vendedor@secocut.com', emailVerified: true };
+  it('con empresaId y sin ser personal SECOCUT verificado: es cliente', () => {
+    expect(esClienteEmpresa(externo, { empresaId: 'emp-a' })).toBe(true);
+    expect(esClienteEmpresa({ email: 'x@secocut.com', emailVerified: false }, { empresaId: 'emp-a' })).toBe(true);
+  });
+  it('sin empresaId, perfil vacío o inexistente: no es cliente', () => {
+    expect(esClienteEmpresa(externo, {})).toBe(false);
+    expect(esClienteEmpresa(externo, { empresaId: '' })).toBe(false);
+    expect(esClienteEmpresa(externo, null)).toBe(false);
+  });
+  it('personal SECOCUT verificado nunca es cliente, aunque tenga empresaId', () => {
+    expect(esClienteEmpresa(personal, { empresaId: 'emp-a' })).toBe(false);
+  });
+});
+
+describe('rutaPermitidaCliente', () => {
+  it.each(['/costos', '/costos/maquinas', '/costos/piezas/p1', '/settings', '/settings/x'])('%s se permite', (r) => {
+    expect(rutaPermitidaCliente(r)).toBe(true);
+  });
+  it.each(['/', '/login', '/history', '/taylor-curve', '/taylor-curve/1/edit', '/simulator/new', '/admin/agents', '/cases', '/dashboard', '/costos-falso', '/settingsx', ''])('%s se redirige', (r) => {
+    expect(rutaPermitidaCliente(r)).toBe(false);
+  });
+  it('sin ruta no se permite', () => { expect(rutaPermitidaCliente(null)).toBe(false); });
 });

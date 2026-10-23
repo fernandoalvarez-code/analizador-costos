@@ -1,4 +1,5 @@
 import { requireVerifiedUser } from '@/lib/server/auth-guards';
+import { requireNotEmpresaCliente } from '@/lib/server/perimetro-cliente';
 import { enforceRateLimit } from '@/lib/server/rate-limit';
 import { SavingsInsightsSchema } from '@/lib/schemas';
 import { suggestToolingChanges } from '@/ai/flows/suggest-tooling-changes';
@@ -10,6 +11,8 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   const auth = await requireVerifiedUser(req);
   if (!auth.ok) return auth.response;
+  const perimetro = await requireNotEmpresaCliente(auth.user);
+  if (!perimetro.ok) return perimetro.response;
 
   const limit = await enforceRateLimit('savings-suggestions', auth.user.uid);
   if (!limit.ok) return limit.response;

@@ -37,3 +37,22 @@ export function veCostosEnMenu(
   if (isVerifiedSecocutUser(user)) return true;
   return !perfilCargando && typeof perfil?.empresaId === 'string' && perfil.empresaId !== '';
 }
+
+const tieneEmpresa = (perfil: { empresaId?: string } | null | undefined) => typeof perfil?.empresaId === 'string' && perfil.empresaId !== '';
+
+/**
+ * ¿Es un "cliente de empresa"? Tiene users/{uid}.empresaId y NO es personal SECOCUT verificado. Mismo criterio que
+ * requireNotEmpresaCliente en el servidor. Solo gobierna qué se muestra; la protección real está en reglas y rutas /api.
+ */
+export function esClienteEmpresa(
+  user: { email?: string | null; emailVerified?: boolean } | null | undefined,
+  perfil: { empresaId?: string } | null | undefined,
+): boolean {
+  return !isVerifiedSecocutUser(user) && tieneEmpresa(perfil);
+}
+
+/** Rutas que un cliente de empresa puede ver: /costos y todo lo que cuelga de /costos/, y /settings. Cualquier otra lo manda a /costos. */
+export function rutaPermitidaCliente(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  return ['/costos', '/settings'].some((base) => pathname === base || pathname.startsWith(`${base}/`));
+}

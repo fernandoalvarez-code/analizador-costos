@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { requireVerifiedUser } from '@/lib/server/auth-guards';
+import { requireNotEmpresaCliente } from '@/lib/server/perimetro-cliente';
 import { enforceRateLimit } from '@/lib/server/rate-limit';
 
 export async function POST(req: Request) {
   try {
     const auth = await requireVerifiedUser(req);
     if (!auth.ok) return auth.response;
+    const perimetro = await requireNotEmpresaCliente(auth.user);
+    if (!perimetro.ok) return perimetro.response;
     const limit = await enforceRateLimit('suggest-cutting-data', auth.user.uid);
     if (!limit.ok) return limit.response;
 

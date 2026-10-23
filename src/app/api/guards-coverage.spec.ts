@@ -70,6 +70,16 @@ describe('guards de las rutas /api', () => {
   });
 });
 
+describe('perímetro del cliente de empresa en las rutas de IA con requireVerifiedUser', () => {
+  it.each(['chat/route.ts', 'suggest-cutting-data/route.ts', 'savings-suggestions/route.ts'])('%s rechaza al cliente de empresa después del guard y antes del límite', (file) => {
+    const src = readFileSync(join(API_DIR, file), 'utf8');
+    const guardAt = src.indexOf('await requireVerifiedUser(');
+    const perimetroAt = src.indexOf('await requireNotEmpresaCliente(auth.user)');
+    expect(perimetroAt).toBeGreaterThan(guardAt);
+    expect(src.indexOf('enforceRateLimit(')).toBeGreaterThan(perimetroAt);
+  });
+});
+
 describe('rutas /api/costos', () => {
   const handlersSrc = readFileSync(COSTOS_HANDLERS, 'utf8');
 

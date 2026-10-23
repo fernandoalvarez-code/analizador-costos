@@ -14,9 +14,10 @@ describe('menú e inicio apuntan al Historial', () => {
     expect(menu).not.toMatch(/href:\s*'\/cases'/);
     for (const h of ['/simulator/new', '/history', '/taylor-curve', '/admin/agents/test']) expect(menu).toContain(`href: '${h}'`);
   });
-  it('el logo del header (escritorio y móvil) lleva a /history', () => {
+  it('el logo del header (escritorio y móvil) lleva a /history (a /costos para el cliente de empresa)', () => {
     expect(header).not.toContain('href="/dashboard"');
-    expect(header.match(/<Link href="\/history"/g)?.length).toBe(2);
+    expect(header).toContain("const inicioHref = esCliente ? '/costos' : '/history';");
+    expect(header.match(/<Link href=\{inicioHref\}/g)?.length).toBe(2);
   });
   it('login y registro redirigen a /history', () => {
     for (const p of ['src/app/(auth)/login/page.tsx', 'src/app/(auth)/signup/page.tsx']) {

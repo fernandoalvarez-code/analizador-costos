@@ -3,7 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // Acceso a las rutas de IA con el Admin SDK simulado. FRÁGIL: si falla tras tocar una ruta,
 // revisar que el guard siga siendo lo primero que se ejecuta y que los módulos mockeados
 // (admin-app, firebase-admin/auth, openai, lib/agents/firestore-admin) sigan siendo los mismos.
-const { verifyIdToken, enforceRateLimit } = vi.hoisted(() => ({ verifyIdToken: vi.fn(), enforceRateLimit: vi.fn() }));
+const { verifyIdToken, enforceRateLimit, leerPerfil } = vi.hoisted(() => ({ verifyIdToken: vi.fn(), enforceRateLimit: vi.fn(), leerPerfil: vi.fn() }));
+// Admin SDK de Firestore simulado: users/{uid} lo resuelve leerPerfil (perímetro del cliente de empresa).
+vi.mock('firebase-admin/firestore', () => ({
+  getFirestore: () => ({ doc: (path: string) => ({ get: async () => leerPerfil(path) }) }),
+}));
 vi.mock('@/lib/server/rate-limit', () => ({ enforceRateLimit }));
 vi.mock('@/firebase/auth/admin-app', () => ({ initializeAdminApp: async () => ({}) }));
 vi.mock('firebase-admin/auth', () => ({ getAuth: () => ({ verifyIdToken }) }));
@@ -27,7 +31,9 @@ const post = (authorization?: string) => new Request('http://localhost/api/x', {
   method: 'POST', headers: { ...(authorization ? { authorization } : {}), 'content-type': 'application/json' }, body: '{}',
 }) as never;
 
-beforeEach(() => { vi.clearAllMocks(); enforceRateLimit.mockResolvedValue({ ok: true }); });
+const sinPerfil = { exists: false, get: () => undefined };
+const perfilConEmpresa = (empresaId: string) => ({ exists: true, get: (campo: string) => (campo === 'empresaId' ? empresaId : undefined) });
+beforeEach(() => { vi.clearAllMocks(); enforceRateLimit.mockResolvedValue({ ok: true }); leerPerfil.mockResolvedValue(sinPerfil); });
 
 // Rutas de la curva de costos: cualquier cuenta verificada y no anónima (cualquier dominio).
 describe.each([['/api/chat', chat], ['/api/suggest-cutting-data', suggest]] as const)('%s (requireVerifiedUser)', (_n, POST) => {
@@ -91,3 +97,36 @@ describe.each([['chat', 'chat', chat, 'u1'], ['suggest-cutting-data', 'suggest-c
       expect(enforceRateLimit).not.toHaveBeenCalled();
     });
   });
+
+// Perímetro del cliente de empresa: la curva de costos y el chat de IA no son para quien tiene users/{uid}.empresaId y no es @secocut.
+describe.each([['/api/chat', chat], ['/api/suggest-cutting-data', suggest]] as const)('%s: cliente de empresa', (_n, POST) => {
+  it('403 genérico a un cliente de empresa, sin consultar el límite ni llamar a la IA', async () => {
+    verifyIdToken.mockResolvedValue(decoded({ uid: 'cli1', email: 'jefe@autopartes.test' }));
+    leerPerfil.mockResolvedValue(perfilConEmpresa('emp-a'));
+    const res = await POST(post('Bearer t'));
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'Sin permisos' });
+    expect(leerPerfil).toHaveBeenCalledWith('users/cli1');
+    expect(enforceRateLimit).not.toHaveBeenCalled();
+  });
+  it('falla cerrado: si no se puede leer el perfil, 403', async () => {
+    verifyIdToken.mockResolvedValue(decoded({ uid: 'cli1', email: 'jefe@autopartes.test' }));
+    leerPerfil.mockRejectedValue(new Error('firestore caído (detalle interno)'));
+    const res = await POST(post('Bearer t'));
+    expect(res.status).toBe(403);
+    expect(JSON.stringify(await res.json())).not.toContain('detalle');
+  });
+  it('un usuario sin empresaId sigue funcionando como hoy', async () => {
+    verifyIdToken.mockResolvedValue(decoded({ uid: 'u9', email: 'cliente@gmail.com' }));
+    const status = (await POST(post('Bearer t'))).status;
+    expect([401, 403]).not.toContain(status);
+    expect(enforceRateLimit).toHaveBeenCalled();
+  });
+  it('personal SECOCUT con empresaId pasa (no es cliente) y ni siquiera se lee su perfil', async () => {
+    verifyIdToken.mockResolvedValue(decoded());
+    leerPerfil.mockResolvedValue(perfilConEmpresa('emp-a'));
+    const status = (await POST(post('Bearer t'))).status;
+    expect([401, 403]).not.toContain(status);
+    expect(leerPerfil).not.toHaveBeenCalled();
+  });
+});
