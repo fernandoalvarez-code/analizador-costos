@@ -11,16 +11,20 @@ const CLASE_OPCION = 'flex items-center gap-2 text-sm text-slate-700';
 export interface DatosPiezaFormProps {
   pieza: Pieza;
   onChange: (fn: (p: Pieza) => Pieza) => void;
+  /** Aviso (no bloqueante) si el código ya existe en la empresa. */
+  avisoCodigo?: string | null;
+  /** Se llama al editar el código (el editor carga la lista de códigos una sola vez, no en cada tecla). */
+  onCodigoEditado?: () => void;
 }
 
 /** A. Datos de la pieza: código y nombre, piezas por año, material y modo de producción. */
-export default function DatosPiezaForm({ pieza, onChange }: DatosPiezaFormProps) {
+export default function DatosPiezaForm({ pieza, onChange, avisoCodigo, onCodigoEditado }: DatosPiezaFormProps) {
   const m = pieza.material;
   return (
     <section className={CLASE_SECCION} aria-labelledby="titulo-datos">
       <h3 id="titulo-datos" className="text-lg font-bold text-slate-800">A. Datos de la pieza</h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <CampoTexto ruta="codigo" etiqueta="Código" value={pieza.codigo} placeholder="Ej: CAR-001" onChange={(v) => onChange((p) => ({ ...p, codigo: v }))} />
+        <CampoTexto ruta="codigo" etiqueta="Código" value={pieza.codigo} placeholder="Ej: CAR-001" aviso={avisoCodigo} onChange={(v) => { onCodigoEditado?.(); onChange((p) => ({ ...p, codigo: v })); }} />
         <CampoTexto ruta="nombre" etiqueta="Nombre" value={pieza.nombre} placeholder="Ej: Carcasa" onChange={(v) => onChange((p) => ({ ...p, nombre: v }))} />
         <CampoNumero ruta="volumenAnual" etiqueta="Piezas por año" value={pieza.volumenAnual} onChange={(v) => onChange((p) => ({ ...p, volumenAnual: v }))} />
       </div>

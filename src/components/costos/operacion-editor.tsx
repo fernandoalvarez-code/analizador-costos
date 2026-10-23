@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { ETIQUETA_CORTA_RUBRO, FONDO_RUBRO, TEXTO_SOBRE_RUBRO } from './colores-rubro';
 import { ETIQUETA_RUBRO, RUBROS, type CostoHoraPorMaquina, type Operacion, type Pieza, type ResultadoOperacion, type ResultadoPieza, type Rubro } from '@/lib/costos-mecanizado/types';
 import { CampoNumero, CampoTexto, CampoTiempo, CLASE_ETIQUETA } from './campos';
 import IncidenciaHerramientasTable, { type BaseOperacion } from './incidencia-herramientas-table';
@@ -13,10 +14,6 @@ import { useCampo } from './validacion-context';
 
 const CLASE_GRUPO = 'space-y-3';
 const CLASE_TITULO = 'text-sm font-bold text-slate-800';
-const COLOR_RUBRO: Record<Rubro, string> = {
-  corte: 'bg-blue-500', tiemposMuertos: 'bg-slate-400', preparacion: 'bg-violet-500', herramientas: 'bg-amber-500', cambios: 'bg-orange-400', scrap: 'bg-red-500',
-};
-const ABREV_RUBRO: Record<Rubro, string> = { corte: 'Corte', tiemposMuertos: 'Muertos', preparacion: 'Setup', herramientas: 'Herram.', cambios: 'Cambios', scrap: 'Scrap' };
 const CLASE_CAMBIO_BUENO = 'rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900';
 const CLASE_CAMBIO_MALO = 'rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900';
 const CLASE_CAMBIO_NEUTRO = 'rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600';
@@ -32,6 +29,7 @@ export interface OperacionEditorProps {
   onFijarBase: () => void;
   onChange: (fn: (op: Operacion) => Operacion) => void;
   onEliminar: () => void;
+  foco?: { posicionId: string; token: number } | null;
 }
 
 function SelectorMaquina({ op, maquinas, onChange }: { op: Operacion; maquinas: Array<{ id: string; nombre: string }>; onChange: (id: string) => void }) {
@@ -53,7 +51,7 @@ function SelectorMaquina({ op, maquinas, onChange }: { op: Operacion; maquinas: 
 }
 
 /** Editor de una operación: incidencia, cambio desde la apertura, tiempos y calidad, herramientas e incidencia por herramienta. */
-export default function OperacionEditor({ op, resOp, resultado, pieza, maquinas, costoHora, base, onFijarBase, onChange, onEliminar }: OperacionEditorProps) {
+export default function OperacionEditor({ op, resOp, resultado, pieza, maquinas, costoHora, base, onFijarBase, onChange, onEliminar, foco }: OperacionEditorProps) {
   const vol = resultado.volumenAnual;
   const totalPieza = resultado.costoPieza;
   const principal = [...RUBROS].sort((a, b) => resOp[b] - resOp[a])[0];
@@ -77,8 +75,8 @@ export default function OperacionEditor({ op, resOp, resultado, pieza, maquinas,
           {RUBROS.map((r) => {
             const w = resOp.totalOp > 0 ? (resOp[r] / resOp.totalOp) * 100 : 0;
             return w > 0.5 ? (
-              <div key={r} className={`${COLOR_RUBRO[r]} text-[10px] font-bold text-white flex items-center justify-center overflow-hidden`} style={{ width: `${w}%` }} title={`${ETIQUETA_RUBRO[r]}: ${usd3(resOp[r])}`}>
-                {w > 9 ? `${ABREV_RUBRO[r]} ${numero(w, 0)} %` : ''}
+              <div key={r} className={`${FONDO_RUBRO[r]} ${TEXTO_SOBRE_RUBRO[r]} text-[10px] font-bold flex items-center justify-center overflow-hidden`} style={{ width: `${w}%` }} title={`${ETIQUETA_RUBRO[r]}: ${usd3(resOp[r])}`}>
+                {w > 9 ? `${ETIQUETA_CORTA_RUBRO[r]} ${numero(w, 0)} %` : ''}
               </div>
             ) : null;
           })}
@@ -124,7 +122,7 @@ export default function OperacionEditor({ op, resOp, resultado, pieza, maquinas,
         </p>
         {op.herramientas.map((pos, i) => (
           <PosicionHerramientaTable
-            key={pos.id} opId={op.id} indice={i} pos={pos} pieza={pieza} costoHora={costoHora}
+            key={pos.id} opId={op.id} indice={i} pos={pos} pieza={pieza} costoHora={costoHora} foco={foco}
             onChange={(fn) => onChange((o) => ({ ...o, herramientas: o.herramientas.map((p) => (p.id === pos.id ? fn(p) : p)) }))}
             onQuitar={() => onChange((o) => ({ ...o, herramientas: o.herramientas.filter((p) => p.id !== pos.id) }))}
           />

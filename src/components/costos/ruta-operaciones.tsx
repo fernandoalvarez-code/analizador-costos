@@ -26,10 +26,11 @@ export interface RutaOperacionesProps {
   onCambiarOp: (opId: string, fn: (op: Operacion) => Operacion) => void;
   onEliminarOp: (opId: string) => void;
   onAgregarOp: () => void;
+  foco?: { posicionId: string; token: number } | null;
 }
 
 /** B. Ruta de operaciones: la de mayor costo con el número en rojo; clic en una fila para editarla. */
-export default function RutaOperaciones({ pieza, resultado, maquinas, costoHora, abierta, base, onAbrir, onFijarBase, onCambiarOp, onEliminarOp, onAgregarOp }: RutaOperacionesProps) {
+export default function RutaOperaciones({ pieza, resultado, maquinas, costoHora, abierta, base, onAbrir, onFijarBase, onCambiarOp, onEliminarOp, onAgregarOp, foco }: RutaOperacionesProps) {
   const nombreMaquina = (id: string) => maquinas.find((m) => m.id === id)?.nombre ?? '—';
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4" aria-labelledby="titulo-ruta">
@@ -70,7 +71,7 @@ export default function RutaOperaciones({ pieza, resultado, maquinas, costoHora,
                   <div className="rounded-lg bg-slate-50/60">
                     <OperacionEditor
                       op={op} resOp={res} resultado={resultado} pieza={pieza} maquinas={maquinas} costoHora={costoHora} base={base}
-                      onFijarBase={onFijarBase} onChange={(fn) => onCambiarOp(op.id, fn)} onEliminar={() => onEliminarOp(op.id)}
+                      onFijarBase={onFijarBase} onChange={(fn) => onCambiarOp(op.id, fn)} onEliminar={() => onEliminarOp(op.id)} foco={foco}
                     />
                   </div>
                 )}

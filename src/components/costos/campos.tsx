@@ -9,6 +9,7 @@ import { useCampo } from './validacion-context';
 export const CLASE_ETIQUETA = 'block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1 leading-tight';
 const CLASE_ERROR = 'mt-1 text-xs font-medium text-red-600';
 const CLASE_AYUDA = 'mt-1 text-[10px] text-slate-400';
+const CLASE_AVISO = 'mt-1 text-xs font-medium text-amber-700';
 
 interface Base {
   ruta: string;
@@ -20,21 +21,22 @@ interface Base {
   className?: string;
 }
 
-function Envoltura({ etiqueta, ayuda, error, children, className }: { etiqueta?: string; ayuda?: string; error?: string; children: React.ReactNode; className?: string }) {
+function Envoltura({ etiqueta, ayuda, aviso, error, children, className }: { etiqueta?: string; ayuda?: string; aviso?: string | null; error?: string; children: React.ReactNode; className?: string }) {
   return (
     <div className={`min-w-0 ${className ?? ''}`}>
       {etiqueta && <span className={CLASE_ETIQUETA}>{etiqueta}</span>}
       {children}
       {error && <p className={CLASE_ERROR} role="alert">{error}</p>}
-      {ayuda && !error && <p className={CLASE_AYUDA}>{ayuda}</p>}
+      {aviso && !error && <p className={CLASE_AVISO} data-testid="aviso-campo">⚠ {aviso}</p>}
+      {ayuda && !error && !aviso && <p className={CLASE_AYUDA}>{ayuda}</p>}
     </div>
   );
 }
 
-export function CampoTexto({ ruta, etiqueta, nombre, ayuda, className, value, onChange, placeholder }: Base & { value: string; onChange: (v: string) => void; placeholder?: string }) {
+export function CampoTexto({ ruta, etiqueta, nombre, ayuda, aviso, className, value, onChange, placeholder }: Base & { value: string; onChange: (v: string) => void; placeholder?: string; aviso?: string | null }) {
   const { error, tocar } = useCampo(ruta);
   return (
-    <Envoltura etiqueta={etiqueta} ayuda={ayuda} error={error} className={className}>
+    <Envoltura etiqueta={etiqueta} ayuda={ayuda} aviso={aviso} error={error} className={className}>
       <Input
         aria-label={nombre ?? etiqueta} value={value} placeholder={placeholder} aria-invalid={error ? true : undefined}
         className={`h-10 bg-white text-slate-900 font-medium ${error ? 'border-red-500' : ''}`}
