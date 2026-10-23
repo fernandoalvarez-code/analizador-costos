@@ -254,7 +254,7 @@ export function calcResumen(pieza: Pieza, costoHoraPorMaquina: CostoHoraPorMaqui
   const lista = mejoras(r, pieza, reglas);
   return {
     costoPieza: r.costoPieza, costoAnual: r.costoAnual, minutosPieza: r.minutosPieza,
-    opMayorCosto: r.opMayorCosto, rubroPrincipal: r.rubroPrincipal,
+    opMayorCosto: r.opMayorCosto, opMayorCostoNombre: r.operaciones.find((o) => o.opId === r.opMayorCosto)?.nombre ?? '', rubroPrincipal: r.rubroPrincipal,
     porRubroUsdPza: r.porRubroUsdPza, porMaquinaUsdPza: r.porMaquinaUsdPza, maquinaIds: r.maquinaIds,
     ahorroPotencialAnual: lista.reduce((s, m) => s + m.ahorroAnual, 0), cantMejoras: lista.length,
     calcVersion: CALC_VERSION, reglasVersion: reglas.reglasVersion,

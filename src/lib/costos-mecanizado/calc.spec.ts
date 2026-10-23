@@ -280,6 +280,7 @@ describe('calcResumen (ADDENDUM punto 4: por pieza, sin material)', () => {
   it('minutos por pieza, op de mayor costo, rubro principal, máquinas y versiones', () => {
     cercano(resumen.minutosPieza, 9.69); // corte 6,2 (0,8+3,2+0,6+0,5+1,1) + muertos 3,1 + setup (45+60+30+20+40)/500 = 0,39
     expect(resumen.opMayorCosto).toBe('op20');
+    expect(resumen.opMayorCostoNombre).toBe('Desbaste y contorno');
     expect(resumen.rubroPrincipal).toBe('corte');
     expect(resumen.maquinaIds).toEqual(['CV2', 'CH', 'CV1', 'T1']);
     expect(resumen.calcVersion).toBe(CALC_VERSION);
@@ -296,6 +297,29 @@ describe('calcResumen (ADDENDUM punto 4: por pieza, sin material)', () => {
     expect(resumen.cantMejoras).toBe(10);
     expect(resumen.ahorroPotencialAnual).toBeGreaterThan(12000); // solo la de Productividad en Op20 ya son 12.000
     expect(calcResumen(crearCarcasa(), COSTO_HORA, { ...REGLAS_POR_DEFECTO, reglasVersion: 7 }).reglasVersion).toBe(7);
+  });
+});
+
+describe('resumen: nombre de la operación de mayor costo y versión', () => {
+  it('CAR-001: la operación de mayor costo es "Desbaste y contorno" (Op20, 3,896 USD/pza)', () => {
+    const r = calcResumen(crearCarcasa(), COSTO_HORA);
+    expect(r.opMayorCosto).toBe('op20');
+    expect(r.opMayorCostoNombre).toBe('Desbaste y contorno');
+  });
+  it('una pieza sin operaciones: id y nombre vacíos ("")', () => {
+    const vacia: Pieza = { ...crearCarcasa(), operaciones: [] };
+    const r = calcResumen(vacia, COSTO_HORA);
+    expect(r.opMayorCosto).toBe('');
+    expect(r.opMayorCostoNombre).toBe('');
+  });
+  it('si cambia la operación más cara, cambia el nombre (Op10 pasa a ser la de mayor costo con 10 veces el tiempo de corte)', () => {
+    const p = crearCarcasa();
+    p.operaciones[0].herramientas[0].opciones[0].cortePorPiezaMin = 80; // Planeado: 0,8 -> 80 min
+    expect(calcResumen(p, COSTO_HORA).opMayorCostoNombre).toBe('Planeado 2 caras');
+  });
+  it('CALC_VERSION subió a 2 (se agregó opMayorCostoNombre al resumen) y el resumen la guarda', () => {
+    expect(CALC_VERSION).toBe(2);
+    expect(calcResumen(crearCarcasa(), COSTO_HORA).calcVersion).toBe(2);
   });
 });
 

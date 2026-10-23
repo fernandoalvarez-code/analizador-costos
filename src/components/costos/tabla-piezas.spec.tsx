@@ -72,12 +72,12 @@ describe('orden por columna', () => {
     ordenarPor(c, 'rubroPrincipal');
     expect(codigos(c)).toEqual(['B-002', 'C-003', 'A-001']);
   });
-  it('operación de mayor costo: op40 (C) · op20 (A) · op10 (B) de mayor a menor', () => {
+  it('operación de mayor costo (por su nombre): Roscado (C) · Planeado (B) · Desbaste (A) de Z a A; al revés ascendente', () => {
     const c = montar();
     ordenarPor(c, 'opMayorCosto');
-    expect(codigos(c)).toEqual(['C-003', 'A-001', 'B-002']);
+    expect(codigos(c)).toEqual(['C-003', 'B-002', 'A-001']);
     ordenarPor(c, 'opMayorCosto');
-    expect(codigos(c)).toEqual(['B-002', 'A-001', 'C-003']);
+    expect(codigos(c)).toEqual(['A-001', 'B-002', 'C-003']);
   });
   it('los números se ordenan como números, no como texto (9 < 10 < 100)', () => {
     const filas = [PIEZA_A, PIEZA_B, PIEZA_C].map((f, i) => ({ ...f, resumen: { ...f.resumen, costoPieza: [100, 9, 10][i] } }));
@@ -213,7 +213,7 @@ describe('filas', () => {
     expect(fila).toContain('USD 10,0000');
     expect(fila).toContain('USD 10.000');
     expect(fila).toContain('9:30');
-    expect(fila).toContain('Op 20');
+    expect(fila).toContain('Desbaste');
     expect(fila).toContain('Tiempo de corte');
     expect(fila).toContain('USD 2.000');
   });
@@ -223,9 +223,23 @@ describe('filas', () => {
     expect(push).toHaveBeenCalledWith('/costos/piezas/b');
     expect(c.getAllByTestId('fila-pieza')[0].querySelector('a')?.getAttribute('href')).toBe('/costos/piezas/a');
   });
-  it('la operación se muestra "Op N" si el id es del tipo op20 y "—" si el id es generado por la pantalla de carga', () => {
-    const filas = [{ ...PIEZA_A, resumen: { ...PIEZA_A.resumen, opMayorCosto: 'op-lq3x1ab' } }];
-    expect(montar(filas).getAllByTestId('fila-pieza')[0].textContent).toContain('—');
+  it('la operación de mayor costo se muestra con su NOMBRE, no con el id', () => {
+    const c = montar();
+    const celdas = c.getAllByTestId('fila-pieza').map((f) => f.textContent ?? '');
+    expect(celdas[0]).toContain('Desbaste');
+    expect(celdas[0]).not.toContain('op20');
+    expect(celdas[1]).toContain('Planeado');
+    expect(celdas[2]).toContain('Roscado');
+  });
+  it('un resumen anterior al campo (sin opMayorCostoNombre) usa el id como respaldo', () => {
+    const { opMayorCostoNombre: _n, ...sinNombre } = PIEZA_A.resumen; void _n;
+    const filas = [{ ...PIEZA_A, resumen: sinNombre as never }];
+    expect(montar(filas).getAllByTestId('fila-pieza')[0].textContent).toContain('op20');
+  });
+  it('una pieza sin operaciones (nombre vacío) muestra "—"', () => {
+    const filas = [{ ...PIEZA_A, resumen: { ...PIEZA_A.resumen, opMayorCosto: '', opMayorCostoNombre: '' } }];
+    const fila = montar(filas).getAllByTestId('fila-pieza')[0];
+    expect(within(fila).getAllByRole('cell')[5].textContent).toBe('—');
   });
   it('"+ Nueva pieza" lleva a la pieza nueva', () => {
     expect(montar().getByText('+ Nueva pieza').closest('a')?.getAttribute('href')).toBe('/costos/piezas/nueva');
@@ -239,5 +253,10 @@ describe('filas', () => {
   it('una calcVersion distinta también marca la pieza', () => {
     const filas = [{ ...PIEZA_A, resumen: { ...PIEZA_A.resumen, calcVersion: 0 } }];
     expect(montar(filas).getByTestId('insignia-reglas-fila')).toBeTruthy();
+  });
+  it('un resumen de la versión anterior (calcVersion 1, sin el nombre de la operación) aparece como desactualizado', () => {
+    const filas = [{ ...PIEZA_A, resumen: { ...PIEZA_A.resumen, calcVersion: 1 } }, { ...PIEZA_B, resumen: { ...PIEZA_B.resumen, calcVersion: 2 } }];
+    const c = montar(filas);
+    expect(c.getAllByTestId('fila-pieza').map((f) => !!within(f).queryByTestId('insignia-reglas-fila'))).toEqual([true, false]);
   });
 });
