@@ -1,10 +1,11 @@
 import 'server-only';
+import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { initializeAdminApp } from '@/firebase/auth/admin-app';
 import { requireVerifiedUser, type VerifyIdToken } from '@/lib/server/auth-guards';
 import { requireSecocutAdmin, type ReadUserRole } from '@/lib/server/costos-guards';
 import {
-  asignarVendedor, canjearInvitacion, crearInvitacion, esEmailValido, esIdValido, invitacionPara, listarInvitaciones, normalizarEmail,
+  asignarVendedor, canjearInvitacion, type AuthLookup, crearInvitacion, esEmailValido, esIdValido, invitacionPara, listarInvitaciones, normalizarEmail,
   revocarInvitacion,
 } from '@/lib/server/costos-invitaciones';
 import { enforceRateLimit, type CounterStore } from '@/lib/server/rate-limit';
@@ -16,11 +17,13 @@ export interface CostosDeps {
   verify?: VerifyIdToken;
   readRole?: ReadUserRole;
   db?: Firestore;
+  auth?: AuthLookup;
   store?: CounterStore;
   now?: Date;
 }
 
 const getDb = async (deps: CostosDeps) => deps.db ?? getFirestore(await initializeAdminApp());
+const getAuthLookup = async (deps: CostosDeps): Promise<AuthLookup> => deps.auth ?? getAuth(await initializeAdminApp());
 const rl = (route: 'costos-admin' | 'costos-invitacion-mia' | 'costos-canjear', uid: string, deps: CostosDeps) =>
   enforceRateLimit(route, uid, { store: deps.store, now: deps.now });
 
@@ -97,6 +100,6 @@ export async function postVendedor(req: Request, deps: CostosDeps = {}): Promise
   const body = await leerBody(req);
   const email = typeof body?.email === 'string' ? normalizarEmail(body.email) : '';
   if (!body || !esIdValido(body.empresaId) || !esEmailValido(email) || (body.accion !== 'asignar' && body.accion !== 'quitar')) return solicitudInvalida();
-  const r = await asignarVendedor(await getDb(deps), { email, empresaId: body.empresaId, accion: body.accion });
+  const r = await asignarVendedor(await getDb(deps), await getAuthLookup(deps), { email, empresaId: body.empresaId, accion: body.accion });
   return r === 'ok' ? Response.json({ ok: true }) : noEncontrado();
 }
