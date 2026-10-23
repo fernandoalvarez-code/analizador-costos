@@ -1,6 +1,6 @@
 // Filtros, orden y paginación de la tabla de piezas: se aplican sobre los resúmenes ya cargados en memoria.
 import type { FilaPieza } from '@/lib/costos-mecanizado/firestore';
-import { CALC_VERSION, ETIQUETA_RUBRO, type Rubro } from '@/lib/costos-mecanizado/types';
+import { CALC_VERSION, ETIQUETA_RUBRO, type ResumenPieza, type Rubro } from '@/lib/costos-mecanizado/types';
 
 export const PIEZAS_POR_PAGINA = 15;
 
@@ -23,12 +23,13 @@ export function resumenDesactualizado(f: FilaPieza, reglasVersion: number): bool
 }
 
 /**
- * El resumen guarda el id de la operación de mayor costo, no su nombre. Las del seed y las de la forma "op20" se muestran como "Op 20";
- * las ids generadas por la pantalla de carga no dicen su posición, así que se muestran como "—".
+ * Operación de mayor costo, tal como se muestra: el NOMBRE guardado en el resumen ("" si la pieza no tiene operaciones, que se muestra
+ * "—"). Los resúmenes anteriores a ese campo no lo tienen: se usa el id como respaldo hasta que se recalculen.
  */
-export function etiquetaOperacion(opId: string | undefined | null): string {
-  const m = /^op(\d+)$/i.exec(opId ?? '');
-  return m ? `Op ${m[1]}` : '—';
+export function nombreOperacion(resumen: Pick<ResumenPieza, 'opMayorCosto'> & Partial<Pick<ResumenPieza, 'opMayorCostoNombre'>> | undefined | null): string {
+  if (!resumen) return '—';
+  const texto = typeof resumen.opMayorCostoNombre === 'string' ? resumen.opMayorCostoNombre : resumen.opMayorCosto;
+  return texto && texto.trim() !== '' ? texto : '—';
 }
 
 export function etiquetaRubro(r: Rubro | null | undefined): string {
@@ -48,7 +49,7 @@ export function filtrarPiezas(filas: FilaPieza[], f: Filtros): FilaPieza[] {
 const valorTexto: Partial<Record<ColumnaOrden, (p: FilaPieza) => string>> = {
   codigo: (p) => p.codigo,
   nombre: (p) => p.nombre,
-  opMayorCosto: (p) => p.resumen?.opMayorCosto ?? '',
+  opMayorCosto: (p) => (p.resumen ? nombreOperacion(p.resumen) : ''),
   rubroPrincipal: (p) => etiquetaRubro(p.resumen?.rubroPrincipal),
 };
 const valorNumero: Partial<Record<ColumnaOrden, (p: FilaPieza) => number>> = {

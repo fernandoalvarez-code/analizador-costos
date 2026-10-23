@@ -6,7 +6,7 @@ export const RUBROS_VACIOS: Record<Rubro, number> = { corte: 0, tiemposMuertos: 
 
 export function resumen(parcial: Partial<ResumenPieza> & Pick<ResumenPieza, 'costoPieza' | 'costoAnual'>): ResumenPieza {
   return {
-    minutosPieza: 1, opMayorCosto: 'op10', rubroPrincipal: 'corte', porRubroUsdPza: { ...RUBROS_VACIOS }, porMaquinaUsdPza: {}, maquinaIds: [],
+    minutosPieza: 1, opMayorCosto: 'op10', opMayorCostoNombre: 'Planeado', rubroPrincipal: 'corte', porRubroUsdPza: { ...RUBROS_VACIOS }, porMaquinaUsdPza: {}, maquinaIds: [],
     ahorroPotencialAnual: 0, cantMejoras: 0, calcVersion: CALC_VERSION, reglasVersion: 0, ...parcial,
   };
 }
@@ -23,21 +23,21 @@ export const MAQUINAS = [{ id: 'm1', nombre: 'Torno CNC' }, { id: 'm2', nombre: 
 export const PIEZA_A: FilaPieza = {
   id: 'a', codigo: 'A-001', nombre: 'Zeta', volumenAnual: 1000,
   resumen: resumen({
-    costoPieza: 10, costoAnual: 10000, minutosPieza: 9.5, opMayorCosto: 'op20', rubroPrincipal: 'corte', ahorroPotencialAnual: 2000, cantMejoras: 3,
+    costoPieza: 10, costoAnual: 10000, minutosPieza: 9.5, opMayorCosto: 'op20', opMayorCostoNombre: 'Desbaste', rubroPrincipal: 'corte', ahorroPotencialAnual: 2000, cantMejoras: 3,
     porRubroUsdPza: { corte: 5, tiemposMuertos: 1, preparacion: 0.5, herramientas: 2, cambios: 0.5, scrap: 1 }, porMaquinaUsdPza: { m1: 6, m2: 4 }, maquinaIds: ['m1', 'm2'],
   }),
 };
 export const PIEZA_B: FilaPieza = {
   id: 'b', codigo: 'B-002', nombre: 'Alfa', volumenAnual: 500,
   resumen: resumen({
-    costoPieza: 8, costoAnual: 4000, minutosPieza: 5, opMayorCosto: 'op10', rubroPrincipal: 'herramientas', ahorroPotencialAnual: 500, cantMejoras: 1,
+    costoPieza: 8, costoAnual: 4000, minutosPieza: 5, opMayorCosto: 'op10', opMayorCostoNombre: 'Planeado', rubroPrincipal: 'herramientas', ahorroPotencialAnual: 500, cantMejoras: 1,
     porRubroUsdPza: { corte: 4, tiemposMuertos: 1, preparacion: 0.5, herramientas: 1.5, cambios: 0.5, scrap: 0.5 }, porMaquinaUsdPza: { m1: 8 }, maquinaIds: ['m1'],
   }),
 };
 export const PIEZA_C: FilaPieza = {
   id: 'c', codigo: 'C-003', nombre: 'Mu', volumenAnual: 2000,
   resumen: resumen({
-    costoPieza: 1, costoAnual: 2000, minutosPieza: 0.5, opMayorCosto: 'op40', rubroPrincipal: 'scrap', ahorroPotencialAnual: 100, cantMejoras: 1,
+    costoPieza: 1, costoAnual: 2000, minutosPieza: 0.5, opMayorCosto: 'op40', opMayorCostoNombre: 'Roscado', rubroPrincipal: 'scrap', ahorroPotencialAnual: 100, cantMejoras: 1,
     porRubroUsdPza: { corte: 0.5, tiemposMuertos: 0.1, preparacion: 0.1, herramientas: 0.2, cambios: 0.05, scrap: 0.05 }, porMaquinaUsdPza: { m2: 1 }, maquinaIds: ['m2'],
   }),
 };

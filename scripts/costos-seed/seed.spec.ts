@@ -86,11 +86,19 @@ describe('datos del seed', () => {
     const d = documentoPieza(piezaCarcasa(), MAQUINAS_A, ADMIN_UID, AHORA) as unknown as Record<string, unknown> & { resumen: Record<string, unknown> };
     expect(Math.abs((d.resumen.costoPieza as number) - 9.357)).toBeLessThan(0.001);
     expect(d.resumen.calcVersion).toBe(CALC_VERSION);
+    expect(d.resumen.opMayorCostoNombre).toBe('Desbaste y contorno'); // el seed genera el nombre de la operación de mayor costo
     expect(d.resumen.reglasVersion).toBe(0);
     expect(d.resumen.maquinaIds).toEqual(['centro-vertical-2', 'centro-horizontal', 'centro-vertical-1', 'torno-cnc-1']);
     expect(d).toMatchObject({ codigo: 'CAR-001', createdBy: ADMIN_UID, updatedBy: ADMIN_UID, createdAt: AHORA, updatedAt: AHORA });
     expect('id' in d).toBe(false);
     expect(JSON.stringify(d)).not.toContain('undefined');
+  });
+  it('las 98 piezas generadas y la de la empresa B también llevan opMayorCostoNombre (no vacío)', () => {
+    const nombres = generarPiezasAleatorias().map((p) => (documentoPieza(p, MAQUINAS_A, ADMIN_UID, 0) as unknown as { resumen: { opMayorCostoNombre: string } }).resumen.opMayorCostoNombre);
+    expect(nombres).toHaveLength(98);
+    for (const n of nombres) expect(n.length).toBeGreaterThan(0);
+    const b = documentoPieza(piezaBrida(), MAQUINAS_B, ADMIN_UID, 0) as unknown as { resumen: { opMayorCostoNombre: string } };
+    expect(b.resumen.opMayorCostoNombre).toBe('Fresado de caras y agujeros');
   });
   it('el documento de la máquina lleva auditoría', () => {
     expect(documentoMaquina(MAQUINAS_A[0], ADMIN_UID, AHORA)).toEqual({

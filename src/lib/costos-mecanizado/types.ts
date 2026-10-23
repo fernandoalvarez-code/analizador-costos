@@ -91,6 +91,8 @@ export interface ResumenPieza {
   minutosPieza: number;
   /** id de la operación de mayor costo ('' si no hay operaciones). */
   opMayorCosto: string;
+  /** Nombre de la operación de mayor costo ('' si no hay operaciones): es lo que muestra el resumen de planta. */
+  opMayorCostoNombre: string;
   rubroPrincipal: Rubro | null;
   porRubroUsdPza: Record<Rubro, number>;
   /** USD/pza por máquina. */
@@ -254,5 +256,8 @@ export const REGLAS_POR_DEFECTO: ReglasCostos = {
   reglasVersion: 0,
 };
 
-/** Versión de las fórmulas del motor: sube cuando cambia algún cálculo (los resúmenes guardados quedan desactualizados). */
-export const CALC_VERSION = 1;
+/**
+ * Versión de las fórmulas y del contenido del resumen: sube cuando cambia algún cálculo o se agrega un campo al resumen (los resúmenes
+ * guardados quedan desactualizados). 2: se agregó opMayorCostoNombre.
+ */
+export const CALC_VERSION = 2;

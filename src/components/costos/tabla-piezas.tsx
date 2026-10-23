@@ -10,7 +10,7 @@ import { toMmss } from '@/lib/costos-mecanizado/time';
 import { ETIQUETA_RUBRO, RUBROS } from '@/lib/costos-mecanizado/types';
 import { numero, usd0, usd4 } from './formato';
 import {
-  etiquetaOperacion, etiquetaRubro, filtrarPiezas, ordenarPiezas, paginar, resumenDesactualizado, PIEZAS_POR_PAGINA,
+  nombreOperacion, etiquetaRubro, filtrarPiezas, ordenarPiezas, paginar, resumenDesactualizado, PIEZAS_POR_PAGINA,
   type ColumnaOrden, type Filtros, type Sentido,
 } from './planta-utils';
 
@@ -109,7 +109,7 @@ export default function TablaPiezas({ filas, maquinas, reglasVersion }: TablaPie
                   <td className="p-3 text-right tabular-nums">{usd4(f.resumen?.costoPieza ?? 0)}</td>
                   <td className="p-3 text-right tabular-nums font-bold">{usd0(f.resumen?.costoAnual ?? 0)}</td>
                   <td className="p-3 text-right tabular-nums text-slate-500">{toMmss(f.resumen?.minutosPieza ?? 0)}</td>
-                  <td className="p-3 text-slate-600" title={f.resumen?.opMayorCosto}>{etiquetaOperacion(f.resumen?.opMayorCosto)}</td>
+                  <td className="p-3 text-slate-600">{nombreOperacion(f.resumen)}</td>
                   <td className="p-3 text-slate-600">{etiquetaRubro(f.resumen?.rubroPrincipal)}</td>
                   <td className="p-3 text-right tabular-nums font-bold text-emerald-700">{usd0(f.resumen?.ahorroPotencialAnual ?? 0)}</td>
                 </tr>
