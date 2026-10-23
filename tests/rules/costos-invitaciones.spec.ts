@@ -9,6 +9,7 @@ import type { VerifyIdToken } from '@/lib/server/auth-guards';
 import {
   deleteInvitacion, getInvitacionMia, getInvitaciones, postCanjear, postInvitacion, postVendedor, type CostosDeps,
 } from '@/lib/server/costos-handlers';
+import type { AuthLookup } from '@/lib/server/costos-invitaciones';
 import { requireSecocutAdmin } from '@/lib/server/costos-guards';
 
 // Rutas /api/costos/** (handlers) contra el emulador de Firestore con el Admin SDK. Los tokens se inyectan: "Bearer <clave>" → claims.
@@ -38,6 +39,11 @@ const call = (clave?: string, init: { method?: string; body?: unknown; url?: str
 
 describe('rutas /api/costos (emulador)', () => {
   let app: App; let db: Firestore; let env: RulesTestEnvironment; let deps: CostosDeps;
+  // Firebase Auth simulado (solo corre el emulador de Firestore): email → cuenta.
+  const cuentas: Record<string, { uid: string; email: string; emailVerified: boolean }> = {};
+  const auth: AuthLookup = {
+    getUserByEmail: async (email) => { const c = cuentas[email]; if (!c) throw new Error('auth/user-not-found (detalle interno)'); return c; },
+  };
 
   beforeAll(async () => {
     app = initializeApp({ projectId: RULES_TEST_PROJECT_ID }, 'costos-invitaciones-test');
@@ -54,9 +60,12 @@ describe('rutas /api/costos (emulador)', () => {
   beforeEach(async () => {
     await env.clearFirestore();
     deps = {
-      verify, db, now: AHORA, store: createFirestoreStore(db),
+      verify, db, auth, now: AHORA, store: createFirestoreStore(db),
       readRole: async (uid) => { const s = await db.doc(`users/${uid}`).get(); return s.exists ? s.get('role') : undefined; },
     };
+    for (const k of Object.keys(cuentas)) delete cuentas[k];
+    cuentas['vend@secocut.com'] = { uid: 'vend1', email: 'vend@secocut.com', emailVerified: true };
+    cuentas['cli@cliente.com'] = { uid: 'cli1', email: 'cli@cliente.com', emailVerified: true };
     await db.doc('empresas/e1').set({ nombre: 'Metalúrgica Uno' });
     await db.doc('empresas/e2').set({ nombre: 'Metalúrgica Dos' });
     await db.doc('users/admin1').set({ id: 'admin1', email: 'admin@secocut.com', role: 'admin' });
@@ -313,6 +322,35 @@ describe('rutas /api/costos (emulador)', () => {
       const b = await vend('admin', { email: 'vend@secocut.com', empresaId: 'no-existe', accion: 'asignar' });
       expect([a.status, b.status]).toEqual([404, 404]);
       expect(await a.json()).toEqual(await b.json());
+    });
+    it('email copiado en el perfil de OTRO usuario: se asigna al dueño real de la cuenta, no al del perfil', async () => {
+      await db.doc('users/impostor').set({ id: 'impostor', email: 'vend@secocut.com', role: 'user' });
+      expect((await vend('admin', { email: 'vend@secocut.com', empresaId: 'e1', accion: 'asignar' })).status).toBe(200);
+      expect((await db.doc('users/vend1').get()).get('empresasAsignadas')).toEqual(['e1']);
+      expect((await db.doc('users/impostor').get()).get('empresasAsignadas')).toBeUndefined();
+    });
+    it('perfil con email @secocut copiado pero sin cuenta @secocut en Auth → 404 y no se toca', async () => {
+      await db.doc('users/impostor').set({ id: 'impostor', email: 'jefe@secocut.com', role: 'user' });
+      const r = await vend('admin', { email: 'jefe@secocut.com', empresaId: 'e1', accion: 'asignar' });
+      expect(r.status).toBe(404);
+      expect((await db.doc('users/impostor').get()).get('empresasAsignadas')).toBeUndefined();
+    });
+    it('cuenta @secocut sin email verificado → 404 genérico', async () => {
+      cuentas['vend@secocut.com'] = { uid: 'vend1', email: 'vend@secocut.com', emailVerified: false };
+      const r = await vend('admin', { email: 'vend@secocut.com', empresaId: 'e1', accion: 'asignar' });
+      expect(r.status).toBe(404);
+      await sinMotivo(r);
+      expect((await db.doc('users/vend1').get()).get('empresasAsignadas')).toBeUndefined();
+    });
+    it('email inexistente en Auth → 404 genérico (igual que los demás) y sin filtrar el error de Auth', async () => {
+      const r = await vend('admin', { email: 'nadie@secocut.com', empresaId: 'e1', accion: 'asignar' });
+      expect(r.status).toBe(404);
+      expect(await r.json()).toEqual({ error: 'No encontrado' });
+    });
+    it('cuenta de Auth sin perfil en users → 404 y no se crea el perfil', async () => {
+      cuentas['sinperfil@secocut.com'] = { uid: 'sp1', email: 'sinperfil@secocut.com', emailVerified: true };
+      expect((await vend('admin', { email: 'sinperfil@secocut.com', empresaId: 'e1', accion: 'asignar' })).status).toBe(404);
+      expect((await db.doc('users/sp1').get()).exists).toBe(false);
     });
     it('acción inválida → 400', async () => {
       expect((await vend('admin', { email: 'vend@secocut.com', empresaId: 'e1', accion: 'borrar' })).status).toBe(400);

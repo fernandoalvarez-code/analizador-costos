@@ -142,16 +142,36 @@ export async function canjearInvitacion(db: Firestore, args: { invitacionId: str
 // ── Vendedores ─────────────────────────────────────────────────────────────────────────────────────────────────────
 export type ResultadoVendedor = 'ok' | 'no-encontrado';
 
-/** Asigna o quita una empresa a un usuario SECOCUT con perfil existente. Cualquier otro caso es "no-encontrado" (genérico). */
-export async function asignarVendedor(db: Firestore, args: { email: string; empresaId: string; accion: 'asignar' | 'quitar' }): Promise<ResultadoVendedor> {
+/** Lo único que se usa de Firebase Auth (inyectable en los tests). */
+export interface AuthLookup {
+  getUserByEmail(email: string): Promise<{ uid: string; email?: string; emailVerified: boolean }>;
+}
+
+/**
+ * Asigna o quita una empresa a un usuario SECOCUT. El uid se resuelve con Firebase Auth (fuente de verdad del email), NO buscando el
+ * campo email de `users`, que un usuario podría copiar en su perfil. Se exige cuenta con email verificado y @secocut.com y perfil
+ * `users/{uid}` existente. Cualquier otro caso (o error de Auth) es "no-encontrado": genérico, sin revelar el motivo.
+ */
+export async function asignarVendedor(db: Firestore, auth: AuthLookup, args: { email: string; empresaId: string; accion: 'asignar' | 'quitar' }): Promise<ResultadoVendedor> {
   const email = normalizarEmail(args.email);
   if (!esEmailSecocut(email)) return 'no-encontrado';
+  let cuenta: Awaited<ReturnType<AuthLookup['getUserByEmail']>>;
+  try {
+    cuenta = await auth.getUserByEmail(email);
+  } catch {
+    return 'no-encontrado';
+  }
+  if (!cuenta.emailVerified || !cuenta.email || !esEmailSecocut(cuenta.email)) return 'no-encontrado';
   if (args.accion === 'asignar') {
     const empresa = await db.doc(`empresas/${args.empresaId}`).get();
     if (!empresa.exists) return 'no-encontrado';
   }
-  const snap = await db.collection('users').where('email', '==', email).limit(2).get();
-  if (snap.size !== 1) return 'no-encontrado';
-  await snap.docs[0].ref.update({ empresasAsignadas: args.accion === 'asignar' ? FieldValue.arrayUnion(args.empresaId) : FieldValue.arrayRemove(args.empresaId) });
+  const userRef = db.doc(`users/${cuenta.uid}`);
+  try {
+    // update falla si el perfil no existe: no se crea un perfil de otro usuario.
+    await userRef.update({ empresasAsignadas: args.accion === 'asignar' ? FieldValue.arrayUnion(args.empresaId) : FieldValue.arrayRemove(args.empresaId) });
+  } catch {
+    return 'no-encontrado';
+  }
   return 'ok';
 }
