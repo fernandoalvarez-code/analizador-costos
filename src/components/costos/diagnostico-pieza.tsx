@@ -4,7 +4,9 @@ import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { materialEfectivo } from '@/lib/costos-mecanizado/calc';
 import { toMmss } from '@/lib/costos-mecanizado/time';
-import { ETIQUETA_RUBRO, RUBROS, type MejoraCosto, type Pieza, type ResultadoPieza, type Rubro } from '@/lib/costos-mecanizado/types';
+import type { MejoraDescartadaVista } from '@/lib/costos-mecanizado/mejoras';
+import { ETIQUETA_MOTIVO_DESCARTE, ETIQUETA_RUBRO, RUBROS, type MejoraCosto, type MotivoDescarteTipo, type Pieza, type ResultadoPieza, type Rubro } from '@/lib/costos-mecanizado/types';
+import DescartarMejoraDialog from './descartar-mejora-dialog';
 import { ETIQUETA_CORTA_RUBRO, FONDO_CATEGORIA, FONDO_RUBRO, TEXTO_SOBRE_RUBRO } from './colores-rubro';
 import { numero, porcentaje0, usd0, usd2, usd3, usd4 } from './formato';
 
@@ -14,6 +16,9 @@ const CLASE_KPI = 'rounded-lg border border-slate-200 bg-white px-4 py-3';
 const CLASE_TH = 'p-2 text-[10px] font-bold uppercase tracking-wide text-slate-500';
 const MAX_MEJORAS_VISIBLES = 5;
 const LEYENDA_SUPUESTOS = 'Supuestos conservadores, a confirmar con ensayo en planta.';
+const CLASE_DESCARTADA = 'rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-1 text-sm';
+const CLASE_YA_NO_SE_SUGIERE = 'inline-block rounded bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800';
+const fechaHora = (iso: string) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }); };
 
 /** El texto de cada mejora termina con la leyenda general; en la tarjeta se muestra solo el supuesto y la leyenda va una vez al pie. */
 const sinLeyenda = (supuesto: string) => supuesto.split('. Supuestos conservadores')[0].replace(/\.$/, '');
@@ -25,11 +30,18 @@ export interface DiagnosticoPiezaProps {
   /** El resumen guardado se calculó con otras reglas que las actuales de settings/reglasCostos (solo informativo). */
   reglasDesactualizadas: boolean;
   onCompararAlternativa: (m: MejoraCosto) => void;
+  /** Mejoras descartadas guardadas en la pieza (registro visible). */
+  descartadas?: MejoraDescartadaVista[];
+  /** Si no se pasa, no se ofrece "Descartar" ni "Reactivar" (solo lectura). */
+  onDescartar?: (m: MejoraCosto, tipo: MotivoDescarteTipo, motivo: string) => void;
+  onReactivar?: (clave: string) => void;
 }
 
 /** Sub-pestaña "Diagnóstico": se calcula en vivo sobre el estado de la pieza, así que siempre coincide con lo cargado. */
-export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, reglasDesactualizadas, onCompararAlternativa }: DiagnosticoPiezaProps) {
+export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, reglasDesactualizadas, onCompararAlternativa, descartadas = [], onDescartar, onReactivar }: DiagnosticoPiezaProps) {
   const [verTodas, setVerTodas] = useState(false);
+  const [aDescartar, setADescartar] = useState<MejoraCosto | null>(null);
+  const [verDescartadas, setVerDescartadas] = useState(false);
 
   const ops = resultado.operaciones;
   const total = resultado.costoPieza;
@@ -219,9 +231,14 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
                     <p className="mt-1 text-sm font-bold">{x.titulo}</p>
                     <p className="mt-0.5 text-sm text-slate-700">{x.explicacion}</p>
                     <p className="mt-1 text-xs text-slate-500">{sinLeyenda(x.supuesto)}</p>
-                    {x.puedeComparar && (
-                      <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => onCompararAlternativa(x)}>Comparar alternativa</Button>
-                    )}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {x.puedeComparar && (
+                        <Button type="button" size="sm" variant="outline" onClick={() => onCompararAlternativa(x)}>Comparar alternativa</Button>
+                      )}
+                      {onDescartar && (
+                        <Button type="button" size="sm" variant="ghost" aria-label={`Descartar mejora: ${x.titulo}`} onClick={() => setADescartar(x)}>Descartar</Button>
+                      )}
+                    </div>
                   </div>
                   <div className="min-w-[8rem] text-right">
                     <p className="text-base font-extrabold text-emerald-700" data-testid="ahorro-mejora">≈ {usd0(x.ahorroAnual)}/año</p>
@@ -241,6 +258,47 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
         )}
         <p className="text-xs text-slate-500" data-testid="leyenda-supuestos">{LEYENDA_SUPUESTOS}</p>
       </section>
+
+      {/* 6. Registro de mejoras descartadas */}
+      {descartadas.length > 0 && (
+        <section className={CLASE_TARJETA} aria-labelledby="titulo-descartadas" data-testid="mejoras-descartadas">
+          <h3 id="titulo-descartadas" className="m-0">
+            <button type="button" className={`${CLASE_TITULO} flex w-full items-center justify-between text-left`} aria-expanded={verDescartadas} aria-controls="lista-descartadas" onClick={() => setVerDescartadas((v) => !v)}>
+              <span>Mejoras descartadas ({descartadas.length})</span>
+              <span aria-hidden="true" className="text-sm text-slate-500">{verDescartadas ? '▲' : '▼'}</span>
+            </button>
+          </h3>
+          {verDescartadas && (
+            <ul id="lista-descartadas" className="space-y-3">
+              {descartadas.map((d) => {
+                const opIdx = pieza.operaciones.findIndex((o) => o.id === d.opId);
+                return (
+                  <li key={d.clave} className={CLASE_DESCARTADA} data-testid="mejora-descartada">
+                    <p>
+                      <span className={`mr-2 inline-block rounded-lg px-2 py-0.5 text-[10.5px] font-bold ${FONDO_CATEGORIA[d.categoria] ?? ''}`} data-testid="categoria-descartada">{d.categoria}</span>
+                      <span className="text-xs text-slate-500">{opIdx >= 0 ? `${numeroOp(d.opId)} · ${d.opNombre}` : 'operación eliminada'}</span>
+                    </p>
+                    {d.mejora && <p className="font-bold">{d.mejora.titulo}</p>}
+                    <p data-testid="motivo-descartada"><b>{ETIQUETA_MOTIVO_DESCARTE[d.descarte.motivoTipo] ?? d.descarte.motivoTipo}:</b> {d.descarte.motivo}</p>
+                    <p className="text-xs text-slate-500" data-testid="autor-descartada">Descartada por {d.descarte.porEmail} · {fechaHora(d.descarte.fecha)}</p>
+                    <p className="text-xs text-slate-500" data-testid="ahorro-descartada">Ahorro estimado al descartar: ≈ {usd0(d.descarte.ahorroAnualAlDescartar)}/año</p>
+                    {!d.vigente && <p className={CLASE_YA_NO_SE_SUGIERE} data-testid="ya-no-se-sugiere">ya no se sugiere con los datos actuales</p>}
+                    {onReactivar && (
+                      <div><Button type="button" size="sm" variant="outline" aria-label={`Reactivar mejora ${d.categoria}`} onClick={() => onReactivar(d.clave)}>Reactivar</Button></div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
+
+      <DescartarMejoraDialog
+        mejora={aDescartar}
+        onCancelar={() => setADescartar(null)}
+        onConfirmar={(m, tipo, motivo) => { setADescartar(null); onDescartar?.(m, tipo, motivo); }}
+      />
     </div>
   );
 }

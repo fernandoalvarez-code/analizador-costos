@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { calcPieza } from '@/lib/costos-mecanizado/calc';
 import type { FilaPieza, PiezaDoc, RepositorioCostos } from '@/lib/costos-mecanizado/firestore';
-import { mejoras } from '@/lib/costos-mecanizado/mejoras';
+import { mejoras, mejorasDescartadas } from '@/lib/costos-mecanizado/mejoras';
 import { toMmss } from '@/lib/costos-mecanizado/time';
-import type { MejoraCosto, Operacion, Pieza, ReglasCostos } from '@/lib/costos-mecanizado/types';
+import type { MejoraCosto, MotivoDescarteTipo, Operacion, Pieza, ReglasCostos } from '@/lib/costos-mecanizado/types';
 import DatosPiezaForm from './datos-pieza-form';
 import DiagnosticoPieza from './diagnostico-pieza';
 import { numero, usd0, usd4 } from './formato';
@@ -58,6 +58,8 @@ export interface PiezaEditorProps {
   inicial: PiezaDoc | null;
   maquinas: Array<{ id: string; nombre: string; costoHora: number }>;
   reglas: ReglasCostos;
+  /** Quien edita: queda en el registro de las mejoras que descarta. Sin él no se ofrece "Descartar". */
+  usuario?: { uid: string; email: string };
 }
 
 /** La pieza sin los campos que no se editan (id, resumen y auditoría). */
@@ -98,7 +100,7 @@ function BuscadorPiezas({ resumenes, cargarResumenes, actualId, onIr }: { resume
   );
 }
 
-export default function PiezaEditor({ empresaId, repo, inicial, maquinas, reglas }: PiezaEditorProps) {
+export default function PiezaEditor({ empresaId, repo, inicial, maquinas, reglas, usuario }: PiezaEditorProps) {
   const router = useRouter();
   const [pieza, setPieza] = useState<Pieza>(() => aPieza(inicial));
   const [id, setId] = useState<string | null>(inicial?.id ?? null);
@@ -122,6 +124,7 @@ export default function PiezaEditor({ empresaId, repo, inicial, maquinas, reglas
   const resultado = useMemo(() => calcPieza(pieza, costoHora), [pieza, costoHora]);
   const errores = useMemo(() => validarPieza(pieza, maquinaIds), [pieza, maquinaIds]);
   const listaMejoras = useMemo(() => mejoras(resultado, pieza, reglas), [resultado, pieza, reglas]);
+  const listaDescartadas = useMemo(() => mejorasDescartadas(resultado, pieza, reglas), [resultado, pieza, reglas]);
 
   const hayCambiosSinGuardar = SIN_GUARDAR.has(estado);
   const confirmarSalida = useAvisoSalida(hayCambiosSinGuardar);
@@ -278,6 +281,26 @@ export default function PiezaEditor({ empresaId, repo, inicial, maquinas, reglas
     if (posicionId) setFoco({ posicionId, token: Date.now() });
   };
 
+  /** Descarta una mejora con motivo: se guarda en la pieza por el mismo camino de siempre (guardado automático y detección de conflicto). */
+  const descartarMejora = (m: MejoraCosto, tipo: MotivoDescarteTipo, motivo: string) => {
+    if (!usuario) return;
+    editar((p) => ({
+      ...p,
+      mejorasDescartadas: {
+        ...(p.mejorasDescartadas ?? {}),
+        [m.clave]: { motivoTipo: tipo, motivo, por: usuario.uid, porEmail: usuario.email, fecha: new Date().toISOString(), ahorroAnualAlDescartar: m.ahorroAnual },
+      },
+    }));
+  };
+  /** Reactiva: quita la entrada. Si era la última queda `{}` (no se borra el campo: la actualización en Firestore reemplaza el mapa). */
+  const reactivarMejora = (clave: string) => {
+    editar((p) => {
+      const resto = { ...(p.mejorasDescartadas ?? {}) };
+      delete resto[clave];
+      return { ...p, mejorasDescartadas: resto };
+    });
+  };
+
   const duplicar = async () => {
     if (!id) return;
     try {
@@ -331,7 +354,10 @@ export default function PiezaEditor({ empresaId, repo, inicial, maquinas, reglas
       </div>
 
       {pestana === 'diagnostico' && (
-        <DiagnosticoPieza pieza={pieza} resultado={resultado} mejorasLista={listaMejoras} reglasDesactualizadas={reglasDesactualizadas} onCompararAlternativa={compararAlternativa} />
+        <DiagnosticoPieza
+          pieza={pieza} resultado={resultado} mejorasLista={listaMejoras} reglasDesactualizadas={reglasDesactualizadas} onCompararAlternativa={compararAlternativa}
+          descartadas={listaDescartadas} onDescartar={usuario ? descartarMejora : undefined} onReactivar={usuario ? reactivarMejora : undefined}
+        />
       )}
 
       {pestana === 'datos' && (

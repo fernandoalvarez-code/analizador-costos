@@ -317,9 +317,9 @@ describe('resumen: nombre de la operación de mayor costo y versión', () => {
     p.operaciones[0].herramientas[0].opciones[0].cortePorPiezaMin = 80; // Planeado: 0,8 -> 80 min
     expect(calcResumen(p, COSTO_HORA).opMayorCostoNombre).toBe('Planeado 2 caras');
   });
-  it('CALC_VERSION subió a 2 (se agregó opMayorCostoNombre al resumen) y el resumen la guarda', () => {
-    expect(CALC_VERSION).toBe(2);
-    expect(calcResumen(crearCarcasa(), COSTO_HORA).calcVersion).toBe(2);
+  it('CALC_VERSION subió a 3 (el ahorro potencial cuenta solo las mejoras activas) y el resumen la guarda', () => {
+    expect(CALC_VERSION).toBe(3);
+    expect(calcResumen(crearCarcasa(), COSTO_HORA).calcVersion).toBe(3);
   });
 });
 
