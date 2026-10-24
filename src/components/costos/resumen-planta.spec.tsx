@@ -306,3 +306,22 @@ describe('Mejoras realizadas vs potencial: aviso de logrado sin mejoras registra
     expect((await montarYCargar()).queryByTestId('tablero-logrado-sin-mejoras')).toBeNull();
   });
 });
+
+describe('Mejoras realizadas vs potencial: línea "Descartado (no aplicable)"', () => {
+  const con = (f: (typeof TRES_PIEZAS)[number], parcial: Record<string, unknown>) => ({ ...f, resumen: { ...f.resumen, ...parcial } });
+  it('suma lo descartado vigente de las piezas con resumen vigente (12.000 + 500 = 12.500); no cambia pendiente ni potencial total', async () => {
+    repo.listarTodosLosResumenes.mockResolvedValue([
+      con(PIEZA_A, { descartadoAnual: 12000, ahorroPotencialAnual: 2000 }),
+      con(PIEZA_B, { descartadoAnual: 500, ahorroPotencialAnual: 500 }),
+      con(PIEZA_C, { descartadoAnual: 99999, ahorroPotencialAnual: 100, calcVersion: CALC_VERSION - 1 }), // desactualizada: no suma
+    ]);
+    const c = await montarYCargar();
+    expect(texto(c, 'tablero-descartado')).toBe('Descartado (no aplicable): USD 12.500/año');
+    expect(texto(c, 'tablero-pendiente')).toContain('USD 2.500');
+    expect(texto(c, 'tablero-potencial-total')).toContain('USD 2.500');
+  });
+  it('sin nada descartado no se muestra la línea', async () => {
+    const c = await montarYCargar();
+    expect(c.queryByTestId('tablero-descartado')).toBeNull();
+  });
+});

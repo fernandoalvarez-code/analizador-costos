@@ -32,6 +32,8 @@ export interface TableroMejoras {
   /** logrado / potencialTotal como fracción 0–1 (0 si no hay potencial). */
   fraccionLograda: number;
   cantImplementadas: number;
+  /** Suma de resumen.descartadoAnual (lo descartado por no aplicable, vigente) de las piezas con resumen vigente. No entra en pendiente ni potencial total. */
+  descartado: number;
   /** Piezas con resumen vigente pero SIN línea base: no suman al logrado. */
   sinLineaBase: number;
   /** Piezas con el resumen desactualizado: quedan FUERA de las sumas. */
@@ -48,6 +50,7 @@ export function tableroMejoras(filas: FilaPieza[], reglasVersion: number): Table
   let logrado = 0;
   let pendiente = 0;
   let cantImplementadas = 0;
+  let descartado = 0;
   let sinLineaBase = 0;
   let excluidas = 0;
   let ultimaMejora: TableroMejoras['ultimaMejora'] = null;
@@ -59,12 +62,13 @@ export function tableroMejoras(filas: FilaPieza[], reglasVersion: number): Table
     if (!r || resumenDesactualizado(f, reglasVersion)) { excluidas += 1; continue; }
     pendiente += num(r.ahorroPotencialAnual);
     cantImplementadas += num(r.cantImplementadas);
+    descartado += num(r.descartadoAnual);
     if (r.tieneLineaBase === true) logrado += num(r.logradoAnual); else sinLineaBase += 1;
   }
   const potencialTotal = logrado + pendiente;
   return {
     logrado, pendiente, potencialTotal, fraccionLograda: potencialTotal > 0 ? Math.min(1, Math.max(0, logrado / potencialTotal)) : 0,
-    cantImplementadas, sinLineaBase, excluidas, ultimaMejora,
+    cantImplementadas, descartado, sinLineaBase, excluidas, ultimaMejora,
   };
 }
 

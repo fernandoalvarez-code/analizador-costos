@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { nombreOperacion, resumenDesactualizado, tableroMejoras } from '@/components/costos/planta-utils';
 import { PIEZA_A, PIEZA_B, PIEZA_C } from '@/components/costos/planta-datos-prueba';
 
-// Los números de versión están escritos a mano: el resumen "de la versión anterior" tiene calcVersion 1 y el actual es el 5 (2: opMayorCostoNombre; 3: el ahorro potencial cuenta solo las mejoras activas; 4: logradoAnual y cantImplementadas; 5: línea base).
+// Los números de versión están escritos a mano: el resumen "de la versión anterior" tiene calcVersion 1 y el actual es el 6 (2: opMayorCostoNombre; 3: el ahorro potencial cuenta solo las mejoras activas; 4: logradoAnual y cantImplementadas; 5: línea base; 6: descartadoAnual).
 describe('resumenDesactualizado', () => {
   it('un resumen con calcVersion 1 (anterior a opMayorCostoNombre) está desactualizado aunque las reglas coincidan', () => {
     const f = { ...PIEZA_A, resumen: { ...PIEZA_A.resumen, calcVersion: 1, reglasVersion: 0 } };
@@ -20,12 +20,16 @@ describe('resumenDesactualizado', () => {
     const f = { ...PIEZA_A, resumen: { ...PIEZA_A.resumen, calcVersion: 4, reglasVersion: 500 } };
     expect(resumenDesactualizado(f, 500)).toBe(true);
   });
-  it('un resumen con calcVersion 5 y las mismas reglas está al día', () => {
+  it('un resumen con calcVersion 5 (anterior a descartadoAnual) está desactualizado aunque las reglas coincidan', () => {
     const f = { ...PIEZA_A, resumen: { ...PIEZA_A.resumen, calcVersion: 5, reglasVersion: 500 } };
+    expect(resumenDesactualizado(f, 500)).toBe(true);
+  });
+  it('un resumen con calcVersion 6 y las mismas reglas está al día', () => {
+    const f = { ...PIEZA_A, resumen: { ...PIEZA_A.resumen, calcVersion: 6, reglasVersion: 500 } };
     expect(resumenDesactualizado(f, 500)).toBe(false);
   });
   it('otra versión de reglas, o un resumen que falta, también cuentan como desactualizado', () => {
-    expect(resumenDesactualizado({ ...PIEZA_A, resumen: { ...PIEZA_A.resumen, calcVersion: 5, reglasVersion: 100 } }, 500)).toBe(true);
+    expect(resumenDesactualizado({ ...PIEZA_A, resumen: { ...PIEZA_A.resumen, calcVersion: 6, reglasVersion: 100 } }, 500)).toBe(true);
     expect(resumenDesactualizado({ ...PIEZA_A, resumen: undefined as never }, 0)).toBe(true);
   });
 });
@@ -89,5 +93,21 @@ describe('tableroMejoras (mejoras realizadas vs potencial)', () => {
     const viejo = { ...PIEZA_A, resumen: { ...PIEZA_A.resumen } as Record<string, unknown> };
     delete viejo.resumen.logradoAnual; delete viejo.resumen.tieneLineaBase; delete viejo.resumen.cantImplementadas;
     expect(tableroMejoras([viejo as never], 0)).toMatchObject({ logrado: 0, pendiente: 2000, cantImplementadas: 0, sinLineaBase: 1 });
+  });
+  it('descartado: suma descartadoAnual SOLO de las piezas con resumen vigente (no de las desactualizadas) y no entra en pendiente ni potencial total', () => {
+    const filas = [
+      con(PIEZA_A, { descartadoAnual: 12000, ahorroPotencialAnual: 2000 }),
+      con(PIEZA_B, { descartadoAnual: 500, ahorroPotencialAnual: 500 }),
+      { ...PIEZA_C, id: 'd', codigo: 'D-004', resumen: { ...PIEZA_C.resumen, descartadoAnual: 99999, ahorroPotencialAnual: 100, calcVersion: 5 } }, // desactualizada
+    ];
+    const t = tableroMejoras(filas, 0);
+    expect(t.descartado).toBe(12500);
+    expect(t.pendiente).toBe(2500);
+    expect(t.potencialTotal).toBe(2500);
+  });
+  it('un resumen viejo sin descartadoAnual cuenta como 0', () => {
+    const viejo = { ...PIEZA_A, resumen: { ...PIEZA_A.resumen } as Record<string, unknown> };
+    delete viejo.resumen.descartadoAnual;
+    expect(tableroMejoras([viejo as never], 0).descartado).toBe(0);
   });
 });

@@ -111,6 +111,8 @@ export interface ResumenPieza {
   tieneLineaBase: boolean;
   /** Cantidad de mejoras registradas como implementadas (hitos del historial). */
   cantImplementadas: number;
+  /** USD/año descartados por no aplicables: suma de ahorroAnualAlDescartar de las mejoras descartadas VIGENTES (las que hoy todavía se dispararían). No suma al pendiente. */
+  descartadoAnual: number;
   /** registradaEn (ISO) y email de quien registró la implementación más reciente. */
   ultimaMejoraFecha?: string;
   ultimaMejoraPor?: string;
@@ -364,6 +366,6 @@ export const REGLAS_POR_DEFECTO: ReglasCostos = {
  * Versión de las fórmulas y del contenido del resumen: sube cuando cambia algún cálculo o se agrega un campo al resumen (los resúmenes
  * guardados quedan desactualizados). 2: se agregó opMayorCostoNombre. 3: ahorroPotencialAnual y cantMejoras cuentan solo las mejoras
  * activas (las descartadas con motivo no suman). 4: el resumen suma logradoAnual y cantImplementadas (mejoras implementadas). 5: el logrado se mide desde la línea base (tieneLineaBase,
- * ultimaMejoraFecha, ultimaMejoraPor).
+ * ultimaMejoraFecha, ultimaMejoraPor). 6: el resumen suma descartadoAnual (lo descartado vigente, para el tablero de planta).
  */
-export const CALC_VERSION = 5;
+export const CALC_VERSION = 6;
