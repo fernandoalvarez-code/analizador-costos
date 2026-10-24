@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useEmpresa } from '@/components/costos/empresa-context';
 import ResumenPlanta from '@/components/costos/resumen-planta';
-import AccesoClientes from '@/components/costos/acceso-clientes';
 
 const CLASE_TARJETA = 'rounded-xl border border-slate-200 bg-white p-6 shadow-sm';
 const CLASE_ENLACE = 'inline-flex items-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50 transition-colors';
@@ -21,8 +20,6 @@ export default function CostosPage() {
       <div className="flex flex-wrap gap-3">
         <Link href="/costos/maquinas" className={CLASE_ENLACE}>Mis máquinas</Link>
       </div>
-      {/* Solo admin SECOCUT: invitaciones y vendedores de la empresa elegida */}
-      {modo === 'admin' && <AccesoClientes key={`acceso-${empresa.id}`} empresaId={empresa.id} />}
       {/* key: al cambiar de empresa se descarta todo el estado (filtros, página, resúmenes) */}
       <ResumenPlanta key={empresa.id} empresaId={empresa.id} repo={repo} esAdmin={modo === 'admin'} />
     </div>

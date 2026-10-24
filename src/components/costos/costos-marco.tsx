@@ -1,10 +1,11 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEmpresa } from './empresa-context';
-import SelectorEmpresa from './selector-empresa';
+import SelectorEmpresa, { RUTA_GESTION_CLIENTES } from './selector-empresa';
 import InvitacionPendiente from './invitacion-pendiente';
 
 const CLASE_AVISO = 'rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600';
@@ -42,7 +43,9 @@ export default function CostosMarco({ children }: { children: React.ReactNode })
       {estado === 'sin-empresa' && <InvitacionPendiente />}
       {estado === 'sin-empresas' && (
         <div data-testid="costos-sin-empresas" role="alert" className={CLASE_AVISO}>
-          {modo === 'admin' ? 'Todavía no hay empresas. Creá la primera con «+ Nueva empresa».' : 'No tenés empresas asignadas.'}
+          {modo === 'admin'
+            ? <>Todavía no hay empresas. Creá la primera en <Link href={RUTA_GESTION_CLIENTES} className="font-bold text-blue-700 hover:underline">Configuración → Empresas y accesos</Link>.</>
+            : 'No tenés empresas asignadas.'}
         </div>
       )}
       {estado === 'listo' && children}

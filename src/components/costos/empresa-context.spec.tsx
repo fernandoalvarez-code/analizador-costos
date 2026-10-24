@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Selector de empresa y compuerta del módulo: cliente con empresa fija, vendedor con las suyas, admin con todas (y "+ Nueva empresa"),
+// Selector de empresa y compuerta del módulo: cliente con empresa fija, vendedor con las suyas, admin con todas (y el enlace "Gestionar clientes"),
 // sin empresas, y el perfil que no llega. FRÁGIL: depende de los nombres que importa empresa-context.tsx de '@/firebase'.
 const { state, FIRESTORE } = vi.hoisted(() => {
   const FIRESTORE = {};
@@ -140,71 +140,29 @@ describe('vendedor: selector con sus empresas asignadas', () => {
   });
 });
 
-describe('admin: selector con todas las empresas y "+ Nueva empresa"', () => {
+describe('admin: selector con todas las empresas (crear empresas se hace en Configuración)', () => {
   beforeEach(() => {
     state.user = personal('admin-secocut');
     state.perfil = { data: { role: 'admin' }, isLoading: false };
   });
-  it('lista todas (listarEmpresas) y ofrece "+ Nueva empresa"', async () => {
+  it('lista todas (listarEmpresas); ya no ofrece "+ Nueva empresa" y sí el enlace "Gestionar clientes" a Configuración', async () => {
     const c = montar();
     await c.findByTestId('contenido');
     expect(state.repo.listarEmpresas).toHaveBeenCalledTimes(1);
     expect(opciones(c.container)).toEqual(['Autopartes Ejemplo S.A.', 'Metalúrgica Ejemplo S.R.L.']);
-    expect(c.getByText('+ Nueva empresa')).toBeTruthy();
-  });
-  it('crea una empresa con nombre y plantas opcionales, la agrega y la selecciona', async () => {
-    const c = montar();
-    await c.findByTestId('contenido');
-    fireEvent.click(c.getByText('+ Nueva empresa'));
-    fireEvent.change(c.getByLabelText('Nombre'), { target: { value: '  Taller Nuevo  ' } });
-    fireEvent.change(c.getByLabelText(/Plantas/), { target: { value: 'Planta 1, , Planta 2, Planta 1' } });
-    fireEvent.click(c.getByText('Crear'));
-    await waitFor(() => expect(state.repo.crearEmpresa).toHaveBeenCalledWith({ nombre: 'Taller Nuevo', plantas: ['Planta 1', 'Planta 2'] }));
-    await waitFor(() => expect(opciones(c.container)).toContain('Taller Nuevo'));
-    expect(selector(c.container)!.value).toBe('emp-nueva');
-    expect(c.queryByTestId('form-nueva-empresa')).toBeNull(); // el formulario se cierra
-    expect(window.localStorage.getItem('costos:empresa:admin-secocut')).toBe('emp-nueva');
-  });
-  it('las plantas son opcionales', async () => {
-    const c = montar();
-    await c.findByTestId('contenido');
-    fireEvent.click(c.getByText('+ Nueva empresa'));
-    fireEvent.change(c.getByLabelText('Nombre'), { target: { value: 'Sin plantas' } });
-    fireEvent.click(c.getByText('Crear'));
-    await waitFor(() => expect(state.repo.crearEmpresa).toHaveBeenCalledWith({ nombre: 'Sin plantas', plantas: [] }));
-  });
-  it('el nombre es obligatorio: mensaje visible y no se escribe nada', async () => {
-    const c = montar();
-    await c.findByTestId('contenido');
-    fireEvent.click(c.getByText('+ Nueva empresa'));
-    fireEvent.click(c.getByText('Crear'));
-    expect(c.getByRole('alert').textContent).toBe('El nombre de la empresa es obligatorio.');
-    expect(state.repo.crearEmpresa).not.toHaveBeenCalled();
-  });
-  it('si falla la creación, muestra el error y deja el formulario abierto', async () => {
-    state.repo.crearEmpresa.mockRejectedValue(new Error('permission-denied'));
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    const c = montar();
-    await c.findByTestId('contenido');
-    fireEvent.click(c.getByText('+ Nueva empresa'));
-    fireEvent.change(c.getByLabelText('Nombre'), { target: { value: 'Nueva' } });
-    fireEvent.click(c.getByText('Crear'));
-    expect((await c.findByRole('alert')).textContent).toBe('No se pudo crear la empresa. Reintentá.');
-    expect(c.getByTestId('form-nueva-empresa')).toBeTruthy();
-  });
-  it('"Cancelar" cierra el formulario', async () => {
-    const c = montar();
-    await c.findByTestId('contenido');
-    fireEvent.click(c.getByText('+ Nueva empresa'));
-    fireEvent.click(c.getByText('Cancelar'));
+    expect(c.queryByText('+ Nueva empresa')).toBeNull();
     expect(c.queryByTestId('form-nueva-empresa')).toBeNull();
+    expect(c.getByTestId('enlace-gestionar-clientes').getAttribute('href')).toBe('/settings#empresas-y-accesos');
+    expect(c.getByTestId('enlace-gestionar-clientes').textContent).toBe('Gestionar clientes');
   });
-  it('sin ninguna empresa todavía: mensaje y "+ Nueva empresa" disponible', async () => {
+  it('sin ninguna empresa todavía: el mensaje manda a Configuración → Empresas y accesos', async () => {
     state.repo.listarEmpresas.mockResolvedValue([]);
     const c = montar();
-    expect((await c.findByTestId('costos-sin-empresas')).textContent).toMatch(/Todavía no hay empresas/);
+    const aviso = await c.findByTestId('costos-sin-empresas');
+    expect(aviso.textContent).toBe('Todavía no hay empresas. Creá la primera en Configuración → Empresas y accesos.');
+    expect(within(aviso).getByRole('link').getAttribute('href')).toBe('/settings#empresas-y-accesos');
     expect(c.queryByTestId('contenido')).toBeNull();
-    expect(c.getByText('+ Nueva empresa')).toBeTruthy();
+    expect(c.queryByText('+ Nueva empresa')).toBeNull();
   });
 });
 

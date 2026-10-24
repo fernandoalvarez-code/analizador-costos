@@ -36,6 +36,7 @@ import {
 import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth, updateDocumentNonBlocking, doc, storage } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import UsersManagement from '@/components/app/users-management';
+import EmpresasYAccesos from '@/components/costos/empresas-y-accesos';
 import { Auth } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { setDoc, onSnapshot } from 'firebase/firestore';
@@ -241,6 +242,8 @@ export default function SettingsPage() {
 
         {/* OTRAS SECCIONES (ADMIN Y USUARIO) */}
         {isAdmin && <UsersManagement />}
+        {/* Administración de clientes del módulo de costos: solo admin SECOCUT verificado (misma condición que UsersManagement). El provider de empresas vive acá adentro. */}
+        {isAdmin && <EmpresasYAccesos />}
         
         {/* La tarjeta "Apariencia" se quitó junto con forcedTheme="light":
             el selector no tenía efecto y confundía. Devolverla cuando el tema
