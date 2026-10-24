@@ -62,12 +62,12 @@ describe('Parte A: pestaña por defecto y diagnóstico en vivo', () => {
   });
   it('el diagnóstico se recalcula con lo cargado: al subir el precio de la broca cambian los KPIs', () => {
     const c = montar(carcasa(), { irADatos: false });
-    expect(c.getByTestId('kpi-mecanizado').textContent).toContain('USD 9,3570');
+    expect(c.getByTestId('kpi-mecanizado').textContent).toContain('USD 9,36');
     fireEvent.click(c.getByRole('tab', { name: 'Cargar / editar datos' }));
     abrirOp(c, 'Agujereado');
     escribir(editor(c).getAllByLabelText('Precio USD')[0], '360');
     fireEvent.click(c.getByRole('tab', { name: 'Diagnóstico' }));
-    expect(c.getByTestId('kpi-mecanizado').textContent).toContain('USD 10,3822');
+    expect(c.getByTestId('kpi-mecanizado').textContent).toContain('USD 10,38'); // 10,3822 exacto
   });
   it('una pieza nueva sin operaciones, al pasar a Diagnóstico, pide cargar una operación', () => {
     const c = montar(null);
@@ -141,7 +141,7 @@ describe('Parte B a): opciones sin completar no se comparan', () => {
     escribir(caja().getAllByLabelText('Corte por pieza (mm:ss)')[1], '0:27');
     expect(caja().queryByTestId('sin-completar')).toBeNull();
     expect(caja().queryByTestId('completar-datos')).toBeNull();
-    expect(caja().getByTestId('delta-pieza').textContent).toMatch(/USD\/pza$/);
+    expect(caja().getByTestId('delta-pieza').textContent).toMatch(/^[+−]USD \d+,\d{2}\/pza$/);
     expect(caja().getByTestId('precio-maximo')).toBeTruthy();
   });
   it('si falta uno solo de los tres datos (p. ej. el corte) sigue sin compararse', () => {

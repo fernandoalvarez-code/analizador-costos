@@ -16,12 +16,17 @@ export function numero(n: number, decimales: number): string {
 export const usd0 = (n: number) => `USD ${numero(n, 0)}`;
 export const usd2 = (n: number) => `USD ${numero(n, 2)}`;
 /**
- * USD POR PIEZA (4 decimales, como el caso de control del SPEC: 9,3570). Una sola regla en todo el módulo: costo por pieza con 4 decimales; importes y
- * ahorros ANUALES enteros (usd0); porcentajes como siempre. Solo al mostrar: el cálculo nunca se redondea.
+ * REGLA ÚNICA de formato de importes del módulo de costos (solo al MOSTRAR: el cálculo nunca se redondea):
+ *  - Importe por pieza (USD/pza): 2 decimales con redondeo decimal estable (`usdPza`: "USD 1,51"; `numeroPza` para celdas sin unidad).
+ *    Mayor que 0 y menor que 0,005 → "<USD 0,01"; exactamente 0 → "USD 0,00".
+ *  - Diferencias por pieza: signo delante del prefijo y unidad siempre igual (`deltaPza`: "−USD 0,29/pza", "+USD 0,05/pza").
+ *  - Importes y ahorros ANUALES: enteros (`usd0`: "USD 5.708/año").
+ *  - Precios y precios máximos (inserto, "Precio máximo"): 2 decimales (`usd2`).
+ *  - Porcentajes, tiempos (mm:ss) y demás: sin cambios.
+ *  - Unidad SIEMPRE en el mismo orden: prefijo "USD " delante del número y sufijo "/pza" o "/año" cuando corresponda.
+ *  - DETALLE EXACTO: cada importe por pieza redondeado lleva title="USD 1,5077 exacto" (`exactoPza`; `conExacto` lo anexa a un tooltip existente).
  */
-export const usd4 = (n: number) => `USD ${numero(n, 4)}`;
+export { TOLERANCIA_IGUAL, conExacto, deltaPza, exactoPza, numeroPza, redondear, usdPza } from '@/lib/costos-mecanizado/importes';
 /** Porcentaje a partir de una fracción: 0,5316 -> "53 %". */
 export const porcentaje0 = (fraccion: number) => `${numero(fraccion * 100, 0)} %`;
 export const porcentaje1 = (valorPct: number) => `${numero(valorPct, 1)} %`;
-/** Con signo explícito: +0,123 / −0,123. */
-export const conSigno = (n: number, decimales: number) => `${n < 0 ? '−' : '+'}${numero(Math.abs(n), decimales)}`;

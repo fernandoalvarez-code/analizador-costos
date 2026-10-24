@@ -57,17 +57,18 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe('pieza de control CAR-001 (SPEC 4.7)', () => {
-  it('la barra superior muestra 9,3570 USD/pza y 233.926 USD/año', () => {
+  it('la barra superior muestra USD 9,36 por pieza (9,3570 exacto en el tooltip) y 233.926 USD/año', () => {
     const c = montar();
     expect(c.getByTestId('nombre-pieza').textContent).toBe('Carcasa');
-    expect(meta(c)).toContain('USD 9,3570 por pieza');
+    expect(meta(c)).toContain('USD 9,36 por pieza');
+    expect(c.getByTestId('meta-pieza').querySelector('b')!.getAttribute('title')).toBe('USD 9,3570 exacto');
     expect(meta(c)).toContain('USD 233.926 por año');
     expect(meta(c)).toContain('25.000 piezas');
   });
-  it('la ruta muestra el costo de cada operación (1,3303 · 3,8959 · 1,9190 · 1,1821 · 1,0297) y la de mayor costo con el número en rojo', () => {
+  it('la ruta muestra el costo de cada operación (1,33 · 3,90 · 1,92 · 1,18 · 1,03) y la de mayor costo con el número en rojo', () => {
     const c = montar();
     const filas = c.getAllByTestId('fila-operacion');
-    expect(filas.map((f) => within(f).getByTestId('usd-operacion').textContent)).toEqual(['1,3303', '3,8959', '1,9190', '1,1821', '1,0297']);
+    expect(filas.map((f) => within(f).getByTestId('usd-operacion').textContent)).toEqual(['1,33', '3,90', '1,92', '1,18', '1,03']);
     expect(filas.map((f) => within(f).getByTestId('numero-operacion').textContent)).toEqual(['Op 10', 'Op 20', 'Op 30', 'Op 40', 'Op 50']);
     expect(filas.map((f) => f.getAttribute('data-tope'))).toEqual(['false', 'true', 'false', 'false', 'false']);
     expect(within(filas[1]).getByTestId('numero-operacion').className).toContain('text-red-600');
@@ -135,7 +136,8 @@ describe('recálculo en vivo sin perder el foco', () => {
     const c = montar();
     escribir(c.getByLabelText('Piezas por lote'), '100');
     expect(c.getByTestId('linea-lote').textContent).toBe('= 250 preparaciones por año · lotes de 100 piezas');
-    expect(meta(c)).toContain('USD 10,3435 por pieza'); // oráculo del SPEC (lote de 100)
+    expect(meta(c)).toContain('USD 10,34 por pieza'); // oráculo del SPEC (lote de 100): 10,3435
+    expect(c.getByTestId('meta-pieza').querySelector('b')!.getAttribute('title')).toBe('USD 10,3435 exacto');
   });
 });
 
@@ -324,7 +326,7 @@ describe('cambio desde que abriste la operación', () => {
     escribir(editor(c).getAllByLabelText('Precio USD')[0], '360'); // la broca pasa de 180 a 360: +1,00 de consumo y +1,2 % de scrap
     const txt = editor(c).getByTestId('cambio-operacion').textContent ?? '';
     expect(txt).toContain('Cambio desde que abriste la operación');
-    expect(txt).toContain('+1,0120 USD por pieza');
+    expect(txt).toContain('+USD 1,01/pza'); // +1,0120 exacto
     expect(txt).toMatch(/cuesta USD [\d.]+ por año/);
     fireEvent.click(editor(c).getByText('Fijar como nueva base'));
     expect(editor(c).getByTestId('cambio-operacion').textContent).toMatch(/Editá tiempos, vidas o precios/);
@@ -334,7 +336,7 @@ describe('cambio desde que abriste la operación', () => {
     abrirOp(c, 'Agujereado');
     escribir(editor(c).getAllByLabelText('Precio USD')[0], '90');
     const txt = editor(c).getByTestId('cambio-operacion').textContent ?? '';
-    expect(txt).toContain('−0,5060 USD por pieza');
+    expect(txt).toContain('−USD 0,51/pza'); // −0,5060 exacto
     expect(txt).toMatch(/ahorra USD/);
   });
   it('la incidencia por herramienta muestra "Cambio al editar" contra la base', () => {
@@ -342,7 +344,7 @@ describe('cambio desde que abriste la operación', () => {
     abrirOp(c, 'Agujereado');
     expect(editor(c).getAllByTestId('cambio-herramienta')[0].textContent).toBe('—');
     escribir(editor(c).getAllByLabelText('Precio USD')[0], '360');
-    expect(editor(c).getAllByTestId('cambio-herramienta')[0].textContent).toMatch(/^\+1,0/);
+    expect(editor(c).getAllByTestId('cambio-herramienta')[0].textContent).toMatch(/^\+USD 1,0\d\/pza$/); // +1,0… exacto
   });
 });
 
@@ -351,7 +353,7 @@ describe('incidencia y sensibilidades (Broca Ø8,5 de Op30)', () => {
     const c = montar();
     abrirOp(c, 'Agujereado');
     const fila = editor(c).getAllByTestId('fila-incidencia')[0];
-    expect(within(fila).getByTestId('costo-herramienta').textContent).toBe('USD 1,2787'); // corte 0,2625 + consumo 1,0 + cambios 0,0162
+    expect(within(fila).getByTestId('costo-herramienta').textContent).toBe('USD 1,28'); // corte 0,2625 + consumo 1,0 + cambios 0,0162 = 1,2787 exacto
     expect(within(fila).getByTestId('costo-herramienta').className).toContain('font-bold');
     expect(editor(c).getByTestId('ayuda-sensibilidad').getAttribute('title')).toMatch(/cuánto se nota el precio/);
     expect(fila.textContent).toMatch(/Alto/); // (consumo + cambios) / total de la operación = 53 %
@@ -373,13 +375,13 @@ describe('comparar opciones de una posición (compararOpciones)', () => {
     p.operaciones[2].herramientas[0].opciones.push({ ...ALTERNATIVA_OP30, ...extra });
     return p;
   };
-  it('muestra delta USD/pza (−0,6708), USD/año (ahorra USD 16.771) y precio máximo (USD 542,12)', () => {
+  it('muestra delta USD/pza (−0,6708 → −USD 0,67/pza), USD/año (ahorra USD 16.771) y precio máximo (USD 542,12)', () => {
     const c = montar(conAlternativa());
     abrirOp(c, 'Agujereado');
     fireEvent.click(editor(c).getAllByText('Comparar')[0]);
     const filas = editor(c).getAllByTestId('fila-comparacion');
     expect(filas).toHaveLength(2);
-    expect(within(filas[1]).getByTestId('delta-pieza').textContent).toBe('−0,6708 USD/pza');
+    expect(within(filas[1]).getByTestId('delta-pieza').textContent).toBe('−USD 0,67/pza');
     expect(within(filas[1]).getByTestId('delta-anual').textContent).toBe('ahorra USD 16.771/año');
     expect(within(filas[1]).getByTestId('precio-maximo').textContent).toBe('USD 542,12');
     expect(filas[0].textContent).toContain('(en uso)');

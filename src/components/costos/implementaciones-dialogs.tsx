@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { IMPLEMENTACION_NOTA_MAX, IMPLEMENTACION_NOTA_MIN, LINEA_BASE_NOTA_MAX, type Implementacion, type MejoraCosto } from '@/lib/costos-mecanizado/types';
-import { usd0, usd4 } from './formato';
+import { exactoPza, usd0, usdPza } from './formato';
 
 const CLASE_CAMPO = 'w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm';
 const CLASE_ETIQUETA = 'block text-sm font-bold text-slate-700 mb-1';
@@ -163,7 +163,7 @@ export function FijarLineaBaseDialog({ abierto, costoActual, rehacer, onCancelar
         <DialogHeader>
           <DialogTitle>{rehacer ? 'Rehacer línea base' : 'Fijar línea base'}</DialogTitle>
           <DialogDescription>
-            El costo guardado de la pieza, {usd4(costoActual)} por pieza, queda como punto de partida del ahorro logrado. Fijala cuando la carga de la pieza esté terminada y validada.
+            El costo guardado de la pieza, <span title={exactoPza(costoActual)}>{usdPza(costoActual)} por pieza</span>, queda como punto de partida del ahorro logrado. Fijala cuando la carga de la pieza esté terminada y validada.
           </DialogDescription>
         </DialogHeader>
         {rehacer && <p className={CLASE_AVISO_FIJO} data-testid="aviso-rehacer-linea-base">{AVISO_REHACER_LINEA_BASE}</p>}

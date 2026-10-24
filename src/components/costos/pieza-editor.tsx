@@ -13,7 +13,7 @@ import { toMmss } from '@/lib/costos-mecanizado/time';
 import type { Implementacion, LineaBase, MejoraCosto, MotivoDescarteTipo, Operacion, Pieza, ReglasCostos } from '@/lib/costos-mecanizado/types';
 import DatosPiezaForm from './datos-pieza-form';
 import DiagnosticoPieza from './diagnostico-pieza';
-import { numero, usd0, usd4 } from './formato';
+import { exactoPza, numero, usd0, usdPza } from './formato';
 import type { BaseOperacion } from './incidencia-herramientas-table';
 import RutaOperaciones from './ruta-operaciones';
 import { useAvisoSalida } from './use-aviso-salida';
@@ -359,7 +359,7 @@ export default function PiezaEditor({ empresaId, repo, inicial, maquinas, reglas
           <h2 className="text-xl font-bold text-slate-800 truncate" data-testid="nombre-pieza">{pieza.nombre || (id ? 'Sin nombre' : 'Nueva pieza')}</h2>
           <p className="text-sm text-slate-600" data-testid="meta-pieza">
             {hayOperaciones
-              ? <><b>{usd4(resultado.costoPieza)} por pieza</b> · <b>{usd0(resultado.costoAnual)} por año</b> · {numero(resultado.volumenAnual, 0)} piezas · {toMmss(resultado.minutosPieza)} min por pieza</>
+              ? <><b title={exactoPza(resultado.costoPieza)}>{usdPza(resultado.costoPieza)} por pieza</b> · <b>{usd0(resultado.costoAnual)} por año</b> · {numero(resultado.volumenAnual, 0)} piezas · {toMmss(resultado.minutosPieza)} min por pieza</>
               : 'Sin operaciones cargadas'}
           </p>
         </div>
