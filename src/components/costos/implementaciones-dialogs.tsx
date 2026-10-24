@@ -3,13 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { IMPLEMENTACION_NOTA_MAX, IMPLEMENTACION_NOTA_MIN, type Implementacion, type MejoraCosto } from '@/lib/costos-mecanizado/types';
-import { usd0 } from './formato';
+import { IMPLEMENTACION_NOTA_MAX, IMPLEMENTACION_NOTA_MIN, LINEA_BASE_NOTA_MAX, type Implementacion, type MejoraCosto } from '@/lib/costos-mecanizado/types';
+import { usd0, usd4 } from './formato';
 
 const CLASE_CAMPO = 'w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm';
 const CLASE_ETIQUETA = 'block text-sm font-bold text-slate-700 mb-1';
 const CLASE_AVISO_FIJO = 'rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900';
-export const AVISO_PUNTO_DE_PARTIDA = 'Registrá la mejora ANTES de cargar los datos nuevos: el costo actual queda como punto de partida.';
+export const AVISO_PUNTO_DE_PARTIDA = 'Registrá qué se cambió: queda como historial de la pieza.';
+export const AVISO_REHACER_LINEA_BASE = 'Esto reinicia el acumulado de ahorro logrado: lo logrado hasta ahora se pierde como acumulado (los hitos quedan en el historial).';
 export const MENSAJE_NOTA_OBLIGATORIA = `La nota es obligatoria: escribí al menos ${IMPLEMENTACION_NOTA_MIN} caracteres sobre qué se cambió.`;
 export const MENSAJE_FECHA_FUTURA = 'La fecha no puede ser futura.';
 export const MENSAJE_FECHA_OBLIGATORIA = 'Ingresá la fecha en que se implementó.';
@@ -113,6 +114,44 @@ export function AnularImplementacionDialog({ implementacion, onCancelar, onConfi
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onCancelar}>Cancelar</Button>
           <Button type="button" onClick={() => implementacion && onConfirmar(implementacion.id)} data-testid="confirmar-anular-implementacion">Anular registro</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export interface FijarLineaBaseDialogProps {
+  abierto: boolean;
+  /** Costo actual de la pieza (USD/pieza, sin material): queda como línea base. */
+  costoActual: number;
+  /** Ya hay una línea base: se está rehaciendo y hay que confirmar el reinicio del acumulado. */
+  rehacer: boolean;
+  onCancelar: () => void;
+  onConfirmar: (nota: string) => void;
+}
+
+/** Diálogo para fijar (o rehacer) la línea base: nota opcional de hasta 500 caracteres. No usa window.confirm. */
+export function FijarLineaBaseDialog({ abierto, costoActual, rehacer, onCancelar, onConfirmar }: FijarLineaBaseDialogProps) {
+  const [nota, setNota] = useState('');
+  useEffect(() => { if (abierto) setNota(''); }, [abierto]);
+  return (
+    <Dialog open={abierto} onOpenChange={(a) => { if (!a) onCancelar(); }}>
+      <DialogContent data-testid="dialogo-linea-base" className="bg-white">
+        <DialogHeader>
+          <DialogTitle>{rehacer ? 'Rehacer línea base' : 'Fijar línea base'}</DialogTitle>
+          <DialogDescription>
+            El costo guardado de la pieza, {usd4(costoActual)} por pieza, queda como punto de partida del ahorro logrado. Fijala cuando la carga de la pieza esté terminada y validada.
+          </DialogDescription>
+        </DialogHeader>
+        {rehacer && <p className={CLASE_AVISO_FIJO} data-testid="aviso-rehacer-linea-base">{AVISO_REHACER_LINEA_BASE}</p>}
+        <div>
+          <label htmlFor="linea-base-nota" className={CLASE_ETIQUETA}>Nota (opcional)</label>
+          <textarea id="linea-base-nota" className={CLASE_CAMPO} rows={3} maxLength={LINEA_BASE_NOTA_MAX} value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Ej.: carga validada con el jefe de planta" />
+          <p className="mt-1 text-right text-xs text-slate-500 tabular-nums">{nota.trim().length}/{LINEA_BASE_NOTA_MAX}</p>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onCancelar}>Cancelar</Button>
+          <Button type="button" onClick={() => onConfirmar(nota.trim())} data-testid="confirmar-linea-base">{rehacer ? 'Rehacer línea base' : 'Fijar línea base'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -317,9 +317,9 @@ describe('resumen: nombre de la operación de mayor costo y versión', () => {
     p.operaciones[0].herramientas[0].opciones[0].cortePorPiezaMin = 80; // Planeado: 0,8 -> 80 min
     expect(calcResumen(p, COSTO_HORA).opMayorCostoNombre).toBe('Planeado 2 caras');
   });
-  it('CALC_VERSION subió a 4 (el resumen suma logradoAnual y cantImplementadas) y el resumen la guarda', () => {
-    expect(CALC_VERSION).toBe(4);
-    expect(calcResumen(crearCarcasa(), COSTO_HORA).calcVersion).toBe(4);
+  it('CALC_VERSION subió a 5 (el logrado se mide desde la línea base) y el resumen la guarda', () => {
+    expect(CALC_VERSION).toBe(5);
+    expect(calcResumen(crearCarcasa(), COSTO_HORA).calcVersion).toBe(5);
   });
 });
 

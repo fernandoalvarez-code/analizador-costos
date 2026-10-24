@@ -15,6 +15,8 @@ const CLASE_TARJETA = 'rounded-xl border border-slate-200 bg-white p-5 space-y-3
 const CLASE_TITULO = 'text-base font-bold text-[#12305a]';
 const CLASE_KPI = 'rounded-lg border border-slate-200 bg-white px-4 py-3';
 const TOP_PIEZAS = 10;
+/** ISO -> DD/MM/AAAA en hora local. */
+const fechaDeISO = (iso: string) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? iso : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; };
 const TEXTO_LOGRADO_NEGATIVO = 'text-red-700';
 const TEXTO_LOGRADO_POSITIVO = 'text-emerald-700';
 
@@ -193,6 +195,16 @@ export default function ResumenPlanta({ empresaId, repo, esAdmin }: ResumenPlant
             <div className="mt-1 h-2 rounded bg-slate-100"><div className="h-2 rounded bg-emerald-600" style={{ width: `${tablero.fraccionLograda * 100}%` }} /></div>
           </div>
         </div>
+        {tablero.ultimaMejora && (
+          <p className="text-xs text-slate-600" data-testid="tablero-ultima-mejora">
+            Última mejora de la planta: {fechaDeISO(tablero.ultimaMejora.fecha)}, {tablero.ultimaMejora.por}, pieza {tablero.ultimaMejora.codigo}
+          </p>
+        )}
+        {tablero.sinLineaBase > 0 && (
+          <p className="text-xs text-slate-600" data-testid="tablero-sin-linea-base">
+            {tablero.sinLineaBase} {tablero.sinLineaBase === 1 ? 'pieza sin línea base' : 'piezas sin línea base'} (no {tablero.sinLineaBase === 1 ? 'suma' : 'suman'} al logrado).
+          </p>
+        )}
         {tablero.excluidas > 0 && (
           <p className="text-xs text-amber-800" data-testid="tablero-excluidas">
             No incluye {tablero.excluidas} {tablero.excluidas === 1 ? 'pieza con el resumen calculado' : 'piezas con el resumen calculado'} con reglas anteriores.

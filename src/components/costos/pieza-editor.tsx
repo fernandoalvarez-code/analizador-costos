@@ -10,7 +10,7 @@ import { calcPieza } from '@/lib/costos-mecanizado/calc';
 import type { FilaPieza, PiezaDoc, RepositorioCostos } from '@/lib/costos-mecanizado/firestore';
 import { mejoras, mejorasDescartadas } from '@/lib/costos-mecanizado/mejoras';
 import { toMmss } from '@/lib/costos-mecanizado/time';
-import type { Implementacion, MejoraCosto, MotivoDescarteTipo, Operacion, Pieza, ReglasCostos } from '@/lib/costos-mecanizado/types';
+import type { Implementacion, LineaBase, MejoraCosto, MotivoDescarteTipo, Operacion, Pieza, ReglasCostos } from '@/lib/costos-mecanizado/types';
 import DatosPiezaForm from './datos-pieza-form';
 import DiagnosticoPieza from './diagnostico-pieza';
 import { numero, usd0, usd4 } from './formato';
@@ -293,8 +293,8 @@ export default function PiezaEditor({ empresaId, repo, inicial, maquinas, reglas
     }));
   };
   /**
-   * Registra una mejora como implementada. El punto de partida es el costo de la pieza en este momento: el botón solo se habilita con la pieza
-   * guardada y sin cambios pendientes, así que coincide con lo guardado. La mejora sigue en la lista hasta que los datos nuevos dejen de dispararla.
+   * Registra una mejora como implementada (hito del historial: fecha, nota y autor). No exige la pieza guardada: el ahorro logrado no sale de acá,
+   * sino de la línea base. La mejora sigue en la lista hasta que los datos nuevos dejen de dispararla. `costoPiezaAntes` queda como dato histórico.
    */
   const marcarImplementada = (m: MejoraCosto, fecha: string, nota: string) => {
     if (!usuario) return;
@@ -307,6 +307,21 @@ export default function PiezaEditor({ empresaId, repo, inicial, maquinas, reglas
         costoPiezaAntes, ahorroEstimadoAnual: m.ahorroAnual,
       };
       return { ...p, implementaciones: [...(p.implementaciones ?? []), nueva] };
+    });
+  };
+  /**
+   * Fija (o rehace) la línea base: el costo de la pieza en este momento. El botón solo se habilita con la pieza guardada y sin cambios pendientes,
+   * así que coincide con lo guardado. Al rehacerla, la anterior pasa a `lineasBaseAnteriores` (historial de solo lectura).
+   */
+  const fijarLineaBase = (nota: string) => {
+    if (!usuario) return;
+    editar((p) => {
+      const r = calcPieza(p, costoHora);
+      const nueva: LineaBase = {
+        costoPiezaBase: r.costoPieza, fecha: new Date().toISOString(), por: usuario.uid, porEmail: usuario.email, volumenAnualBase: r.volumenAnual,
+        ...(nota ? { nota } : {}),
+      };
+      return { ...p, ...(p.lineaBase ? { lineasBaseAnteriores: [...(p.lineasBaseAnteriores ?? []), p.lineaBase] } : {}), lineaBase: nueva };
     });
   };
   /** Anula un registro (corregir un error): quita la entrada; el campo queda como [] para que la actualización reemplace el arreglo. */
@@ -379,7 +394,7 @@ export default function PiezaEditor({ empresaId, repo, inicial, maquinas, reglas
           pieza={pieza} resultado={resultado} mejorasLista={listaMejoras} reglasDesactualizadas={reglasDesactualizadas} onCompararAlternativa={compararAlternativa}
           descartadas={listaDescartadas} onDescartar={usuario ? descartarMejora : undefined} onReactivar={usuario ? reactivarMejora : undefined}
           onMarcarImplementada={usuario ? marcarImplementada : undefined} onAnularImplementacion={usuario ? anularImplementacion : undefined}
-          puedeMarcarImplementada={!!id && !hayCambiosSinGuardar}
+          onFijarLineaBase={usuario ? fijarLineaBase : undefined} puedeFijarLineaBase={!!id && !hayCambiosSinGuardar}
         />
       )}
 

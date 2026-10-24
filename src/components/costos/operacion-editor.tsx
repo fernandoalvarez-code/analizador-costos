@@ -110,7 +110,7 @@ export default function OperacionEditor({ op, resOp, resultado, pieza, maquinas,
           <h4 className={CLASE_TITULO}>Mejoras realizadas en esta operación</h4>
           <ul className="space-y-1 text-sm text-slate-700">
             {implementacionesOp.map((im) => (
-              <li key={im.id} data-testid="realizada-operacion"><b>{fechaCorta(im.fecha)}</b> · {im.categoria}: {im.nota}</li>
+              <li key={im.id} data-testid="realizada-operacion"><b>{fechaCorta(im.fecha)}</b> · {im.categoria}: {im.nota} — {im.porEmail}</li>
             ))}
           </ul>
         </div>
