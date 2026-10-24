@@ -8,13 +8,15 @@ import type { FilaPieza, RepositorioCostos, ResultadoRecalculo } from '@/lib/cos
 import { ETIQUETA_RUBRO, RUBROS } from '@/lib/costos-mecanizado/types';
 import { FONDO_RUBRO } from './colores-rubro';
 import { numero, porcentaje0, usd0 } from './formato';
-import { resumenDesactualizado } from './planta-utils';
+import { resumenDesactualizado, tableroMejoras } from './planta-utils';
 import TablaPiezas from './tabla-piezas';
 
 const CLASE_TARJETA = 'rounded-xl border border-slate-200 bg-white p-5 space-y-3';
 const CLASE_TITULO = 'text-base font-bold text-[#12305a]';
 const CLASE_KPI = 'rounded-lg border border-slate-200 bg-white px-4 py-3';
 const TOP_PIEZAS = 10;
+const TEXTO_LOGRADO_NEGATIVO = 'text-red-700';
+const TEXTO_LOGRADO_POSITIVO = 'text-emerald-700';
 
 type RepoPlanta = Pick<RepositorioCostos, 'listarTodosLosResumenes' | 'listarMaquinas' | 'leerReglas' | 'recalcularResumenesDesactualizados'>;
 
@@ -97,6 +99,7 @@ export default function ResumenPlanta({ empresaId, repo, esAdmin }: ResumenPlant
   }
 
   const total = planta.costoAnual;
+  const tablero = tableroMejoras(datos.filas, datos.reglasVersion);
   const desactualizadas = datos.filas.filter((f) => resumenDesactualizado(f, datos.reglasVersion)).length;
   const top = planta.pareto.slice(0, TOP_PIEZAS);
   const filaDe = (id: string) => datos.filas.find((f) => f.id === id);
@@ -164,6 +167,38 @@ export default function ResumenPlanta({ empresaId, repo, esAdmin }: ResumenPlant
           <p className="text-[11px] text-slate-500">{porcentaje0(total > 0 ? planta.ahorroPotencialAnual / total : 0)} del costo · por año</p>
         </div>
       </div>
+
+      {/* 1 bis. Mejoras realizadas vs potencial (solo piezas con resumen vigente) */}
+      <section className={CLASE_TARJETA} aria-labelledby="titulo-mejoras-planta" data-testid="mejoras-realizadas-planta">
+        <h3 id="titulo-mejoras-planta" className={CLASE_TITULO}>Mejoras realizadas vs potencial</h3>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className={CLASE_KPI} data-testid="tablero-logrado">
+            <p className="text-xs text-slate-500">Logrado</p>
+            <p className={`text-xl font-extrabold ${tablero.logrado < 0 ? TEXTO_LOGRADO_NEGATIVO : TEXTO_LOGRADO_POSITIVO}`}>{usd0(tablero.logrado)}</p>
+            <p className="text-[11px] text-slate-500">por año · {numero(tablero.cantImplementadas, 0)} {tablero.cantImplementadas === 1 ? 'mejora implementada' : 'mejoras implementadas'}</p>
+          </div>
+          <div className={CLASE_KPI} data-testid="tablero-pendiente">
+            <p className="text-xs text-slate-500">Pendiente</p>
+            <p className="text-xl font-extrabold">{usd0(tablero.pendiente)}</p>
+            <p className="text-[11px] text-slate-500">por año · mejoras activas</p>
+          </div>
+          <div className={CLASE_KPI} data-testid="tablero-potencial-total">
+            <p className="text-xs text-slate-500">Potencial total</p>
+            <p className="text-xl font-extrabold">{usd0(tablero.potencialTotal)}</p>
+            <p className="text-[11px] text-slate-500">logrado + pendiente</p>
+          </div>
+          <div className={CLASE_KPI} data-testid="tablero-pct-logrado">
+            <p className="text-xs text-slate-500">Logrado del potencial</p>
+            <p className="text-xl font-extrabold">{porcentaje0(tablero.fraccionLograda)}</p>
+            <div className="mt-1 h-2 rounded bg-slate-100"><div className="h-2 rounded bg-emerald-600" style={{ width: `${tablero.fraccionLograda * 100}%` }} /></div>
+          </div>
+        </div>
+        {tablero.excluidas > 0 && (
+          <p className="text-xs text-amber-800" data-testid="tablero-excluidas">
+            No incluye {tablero.excluidas} {tablero.excluidas === 1 ? 'pieza con el resumen calculado' : 'piezas con el resumen calculado'} con reglas anteriores.
+          </p>
+        )}
+      </section>
 
       {/* 2. Dónde está tu mayor costo */}
       <section className="rounded-xl border border-[#f3c4c4] bg-[#fdecec] p-5 space-y-1" aria-labelledby="titulo-mayor-planta" data-testid="mayor-costo-planta">

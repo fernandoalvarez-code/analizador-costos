@@ -21,11 +21,11 @@ function montar(pieza: Pieza = crearCarcasa(), opciones: { reglasDesactualizadas
 const num = (texto: string | null) => Number((texto ?? '').replace(/\./g, '').replace(',', '.'));
 
 describe('1. Mayor costo de esta pieza', () => {
-  it('Op20 es la operación de mayor costo: 42 % del mecanizado, 3,896 USD/pza y ≈ 97.399 USD/año', () => {
+  it('Op20 es la operación de mayor costo: 42 % del mecanizado, 3,8959 USD/pza y ≈ 97.399 USD/año', () => {
     const { c } = montar();
     expect(c.getByTestId('mayor-costo-titulo').textContent).toBe('Op 20 · Desbaste y contorno = 42 % del costo de mecanizado');
     const detalle = c.getByTestId('mayor-costo-detalle').textContent ?? '';
-    expect(detalle).toMatch(/^USD 3,896 por pieza · USD 97\.39\d por año/);
+    expect(detalle).toMatch(/^USD 3,8959 por pieza · USD 97\.39\d por año/);
   });
   it('el rubro que más pesa dentro de la operación (tiempo de corte, 62 %) y en toda la pieza (tiempo de corte, 43 %)', () => {
     const { c } = montar();
@@ -73,18 +73,18 @@ describe('2. KPIs', () => {
 });
 
 describe('3. ¿Dónde está el costo? y ¿En qué se va?', () => {
-  it('operaciones de mayor a menor: Op20 3,896 · Op30 1,919 · Op10 1,330 · Op40 1,182 · Op50 1,030', () => {
+  it('operaciones de mayor a menor: Op20 3,8959 · Op30 1,9190 · Op10 1,3303 · Op40 1,1821 · Op50 1,0297', () => {
     const { c } = montar();
     const filas = c.getAllByTestId('barra-operacion').map((b) => b.textContent ?? '');
     expect(filas.map((t) => t.match(/Op \d+/)?.[0])).toEqual(['Op 20', 'Op 30', 'Op 10', 'Op 40', 'Op 50']);
-    expect(filas[0]).toContain('3,896');
+    expect(filas[0]).toContain('3,8959');
     expect(filas[0]).toContain('42 %');
   });
-  it('rubros de mayor a menor: corte 4,058 · herramientas 2,434 · tiempos muertos 1,917 · scrap 0,536 · preparación 0,241 · cambios 0,172', () => {
+  it('rubros de mayor a menor: corte 4,0583 · herramientas 2,4336 · tiempos muertos 1,9167 · scrap 0,5359 · preparación 0,2408 · cambios 0,1717', () => {
     const { c } = montar();
     const barras = c.getAllByTestId('barra-rubro');
     expect(barras.map((b) => b.getAttribute('data-rubro'))).toEqual(['corte', 'herramientas', 'tiemposMuertos', 'scrap', 'preparacion', 'cambios']);
-    expect(barras.map((b) => b.textContent?.match(/\d+,\d{3}/)?.[0])).toEqual(['4,058', '2,434', '1,917', '0,536', '0,241', '0,172']);
+    expect(barras.map((b) => b.textContent?.match(/\d+,\d{4}/)?.[0])).toEqual(['4,0583', '2,4336', '1,9167', '0,5359', '0,2408', '0,1717']);
   });
   it('los colores de los rubros son los del prototipo (--k-corte #12305a, --k-herr #e3a008, --k-scrap #d64545…)', () => {
     const { c } = montar();
@@ -94,16 +94,16 @@ describe('3. ¿Dónde está el costo? y ¿En qué se va?', () => {
 });
 
 describe('4. Matriz operación × rubro', () => {
-  it('los totales por operación suman la pieza (9,357) y la fila de total por rubro también', () => {
+  it('los totales por operación suman la pieza (9,3570) y la fila de total por rubro también', () => {
     const { c } = montar();
     const porOp = c.getAllByTestId('total-operacion').map((e) => num(e.textContent));
-    expect(porOp).toEqual([1.33, 3.896, 1.919, 1.182, 1.03]);
-    expect(Math.abs(porOp.reduce((s, v) => s + v, 0) - 9.357)).toBeLessThan(0.003);
+    expect(porOp).toEqual([1.3303, 3.8959, 1.919, 1.1821, 1.0297]);
+    expect(Math.abs(porOp.reduce((s, v) => s + v, 0) - 9.357)).toBeLessThan(0.0005);
     const fila = within(c.getByTestId('fila-total-matriz'));
-    expect(fila.getByTestId('total-pieza-matriz').textContent).toBe('9,357');
+    expect(fila.getByTestId('total-pieza-matriz').textContent).toBe('9,3570');
     const porRubro = [...c.getByTestId('fila-total-matriz').querySelectorAll('td[data-rubro]')].map((e) => num(e.textContent));
-    expect(porRubro).toEqual([4.058, 1.917, 0.241, 2.434, 0.172, 0.536]);
-    expect(Math.abs(porRubro.reduce((s, v) => s + v, 0) - 9.357)).toBeLessThan(0.003);
+    expect(porRubro).toEqual([4.0583, 1.9167, 0.2408, 2.4336, 0.1717, 0.5359]);
+    expect(Math.abs(porRubro.reduce((s, v) => s + v, 0) - 9.357)).toBeLessThan(0.0005);
   });
   it('cada operación suma sus rubros; la de mayor costo en un rubro tiene la celda más oscura', () => {
     const { c } = montar();

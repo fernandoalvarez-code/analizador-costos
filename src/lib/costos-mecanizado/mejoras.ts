@@ -2,7 +2,8 @@
 import type { CategoriaMejora, MejoraCosto, MejoraDescartada, Pieza, ReglasCostos, ResultadoOperacion, ResultadoPieza } from './types';
 import { REGLAS_POR_DEFECTO } from './types';
 
-const usd = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+// Costo POR PIEZA con 4 decimales (la misma regla que el resto del módulo); solo al mostrar, nunca en el cálculo.
+const usd = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 const pc = (ratio: number) => `${Math.round(ratio * 100)} %`;
 const AVISO_SUPUESTOS = 'Supuestos conservadores, a confirmar con ensayo en planta.';
 

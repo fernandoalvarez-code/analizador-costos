@@ -255,7 +255,7 @@ describe('filas', () => {
     expect(montar(filas).getByTestId('insignia-reglas-fila')).toBeTruthy();
   });
   it('un resumen de la versión anterior (calcVersion 1, sin el nombre de la operación) aparece como desactualizado', () => {
-    const filas = [{ ...PIEZA_A, resumen: { ...PIEZA_A.resumen, calcVersion: 1 } }, { ...PIEZA_B, resumen: { ...PIEZA_B.resumen, calcVersion: 3 } }];
+    const filas = [{ ...PIEZA_A, resumen: { ...PIEZA_A.resumen, calcVersion: 1 } }, { ...PIEZA_B, resumen: { ...PIEZA_B.resumen, calcVersion: 4 } }];
     const c = montar(filas);
     expect(c.getAllByTestId('fila-pieza').map((f) => !!within(f).queryByTestId('insignia-reglas-fila'))).toEqual([true, false]);
   });

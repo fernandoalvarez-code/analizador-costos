@@ -3,7 +3,7 @@
 import React from 'react';
 import type { Operacion, ResultadoOperacion, Sensibilidad } from '@/lib/costos-mecanizado/types';
 import { toMmss } from '@/lib/costos-mecanizado/time';
-import { conSigno, numero, porcentaje0, porcentaje1, usd3 } from './formato';
+import { conSigno, numero, porcentaje0, porcentaje1, usd4 } from './formato';
 
 const CLASE_TH = 'p-2 text-[10px] font-bold uppercase tracking-wide text-left whitespace-nowrap';
 const CLASE_TH_GRIS = `${CLASE_TH} text-slate-400`;
@@ -75,14 +75,14 @@ export default function IncidenciaHerramientasTable({ op, resOp, base }: Inciden
               return (
                 <tr key={h.posicionId} data-testid="fila-incidencia">
                   <td className={CLASE_TD}>{h.nombre}<div className="text-xs text-slate-400">{toMmss(cortePorPosicion(op, h.posicionId))} de corte</div></td>
-                  <td className={`${CLASE_TD} bg-blue-50/40 font-bold text-base`} data-testid="costo-herramienta">{usd3(h.costoHerr)}</td>
+                  <td className={`${CLASE_TD} bg-blue-50/40 font-bold text-base`} data-testid="costo-herramienta">{usd4(h.costoHerr)}</td>
                   <td className={CLASE_TD} data-testid="cambio-herramienta">
-                    {Math.abs(d) < 0.0005 ? <span className={CLASE_GRIS}>—</span> : <span className={d < 0 ? CLASE_BAJA : CLASE_SUBE}>{conSigno(d, 3)}</span>}
+                    {Math.abs(d) < 0.00005 ? <span className={CLASE_GRIS}>—</span> : <span className={d < 0 ? CLASE_BAJA : CLASE_SUBE}>{conSigno(d, 4)}</span>}
                   </td>
-                  <td className={CLASE_TD}>{numero(h.corte, 3)}</td>
-                  <td className={CLASE_TD}>{numero(h.consumo, 3)}</td>
-                  <td className={CLASE_TD}>{numero(h.cambios, 3)}</td>
-                  <td className={CLASE_TD}>{h.rotTiempo + h.scrapRot > 0 ? numero(h.rotTiempo + h.scrapRot, 3) : <span className={CLASE_GRIS}>—</span>}</td>
+                  <td className={CLASE_TD}>{numero(h.corte, 4)}</td>
+                  <td className={CLASE_TD}>{numero(h.consumo, 4)}</td>
+                  <td className={CLASE_TD}>{numero(h.cambios, 4)}</td>
+                  <td className={CLASE_TD}>{h.rotTiempo + h.scrapRot > 0 ? numero(h.rotTiempo + h.scrapRot, 4) : <span className={CLASE_GRIS}>—</span>}</td>
                   <td className={`${CLASE_TD} ${CLASE_GRIS}`}>{porcentaje1(h.partPieza * 100)}</td>
                   <td className={`${CLASE_TD} ${CLASE_GRIS}`}>{porcentaje0(h.partOp)}</td>
                   <td className={`${CLASE_TD} ${CLASE_GRIS}`}><span className={CLASE_NIVEL[h.nivelSensPrecio]}>{h.nivelSensPrecio}</span> ({porcentaje0(h.sensPrecio)})</td>

@@ -249,3 +249,36 @@ describe('6. Resumen desactualizado y "Recalcular resúmenes"', () => {
     expect((c.getByText('Recalcular resúmenes') as HTMLButtonElement).disabled).toBe(false);
   });
 });
+
+describe('Mejoras realizadas vs potencial (tarjeta del tablero)', () => {
+  const con = (f: (typeof TRES_PIEZAS)[number], parcial: Record<string, number>) => ({ ...f, resumen: { ...f.resumen, ...parcial } });
+  it('Logrado 700 · Pendiente 2.500 · Potencial total 3.200 · 22 % logrado · 3 mejoras implementadas (A: 1.000/2.000, B: −300/500; C desactualizada no suma)', async () => {
+    repo.listarTodosLosResumenes.mockResolvedValue([
+      con(PIEZA_A, { logradoAnual: 1000, ahorroPotencialAnual: 2000, cantImplementadas: 1 }),
+      con(PIEZA_B, { logradoAnual: -300, ahorroPotencialAnual: 500, cantImplementadas: 2 }),
+      con(PIEZA_C, { logradoAnual: 999, ahorroPotencialAnual: 999, cantImplementadas: 9, calcVersion: CALC_VERSION - 1 }),
+    ]);
+    const c = await montarYCargar();
+    expect(texto(c, 'tablero-logrado')).toContain('USD 700');
+    expect(texto(c, 'tablero-logrado')).toContain('3 mejoras implementadas');
+    expect(texto(c, 'tablero-pendiente')).toContain('USD 2.500');
+    expect(texto(c, 'tablero-potencial-total')).toContain('USD 3.200');
+    expect(texto(c, 'tablero-pct-logrado')).toContain('22 %'); // 700 / 3.200 = 21,875 %
+    expect(texto(c, 'tablero-excluidas')).toBe('No incluye 1 pieza con el resumen calculado con reglas anteriores.');
+    // la leyenda general del tablero sigue avisando de las piezas desactualizadas
+    expect(c.getByTestId('aviso-desactualizadas')).toBeTruthy();
+  });
+  it('sin implementaciones: Logrado USD 0, y no hay leyenda de excluidas', async () => {
+    const c = await montarYCargar();
+    expect(texto(c, 'tablero-logrado')).toContain('USD 0');
+    expect(texto(c, 'tablero-pendiente')).toContain('USD 2.600');
+    expect(texto(c, 'tablero-pct-logrado')).toContain('0 %');
+    expect(c.queryByTestId('tablero-excluidas')).toBeNull();
+  });
+  it('un logrado negativo se muestra negativo', async () => {
+    repo.listarTodosLosResumenes.mockResolvedValue([con(PIEZA_A, { logradoAnual: -500, ahorroPotencialAnual: 2000, cantImplementadas: 1 })]);
+    const c = await montarYCargar();
+    expect(texto(c, 'tablero-logrado')).toContain('USD −500');
+    expect(texto(c, 'tablero-potencial-total')).toContain('USD 1.500');
+  });
+});

@@ -22,6 +22,39 @@ export function resumenDesactualizado(f: FilaPieza, reglasVersion: number): bool
   return !r || r.reglasVersion !== reglasVersion || r.calcVersion !== CALC_VERSION;
 }
 
+export interface TableroMejoras {
+  /** Suma de resumen.logradoAnual de las piezas con resumen vigente (USD/año). */
+  logrado: number;
+  /** Suma de ahorroPotencialAnual (solo mejoras activas) de las piezas con resumen vigente. */
+  pendiente: number;
+  /** logrado + pendiente. */
+  potencialTotal: number;
+  /** logrado / potencialTotal como fracción 0–1 (0 si no hay potencial). */
+  fraccionLograda: number;
+  cantImplementadas: number;
+  /** Piezas con el resumen desactualizado: quedan FUERA de las sumas. */
+  excluidas: number;
+}
+
+/**
+ * "Mejoras realizadas vs potencial" de la planta. Un resumen desactualizado (otras reglas o versión de fórmulas) no se suma: no trae
+ * logradoAnual ni cuenta el ahorro igual que los vigentes. El logrado puede ser negativo (se muestra tal cual).
+ */
+export function tableroMejoras(filas: FilaPieza[], reglasVersion: number): TableroMejoras {
+  let logrado = 0;
+  let pendiente = 0;
+  let cantImplementadas = 0;
+  let excluidas = 0;
+  for (const f of filas) {
+    if (!f.resumen || resumenDesactualizado(f, reglasVersion)) { excluidas += 1; continue; }
+    logrado += num(f.resumen.logradoAnual);
+    pendiente += num(f.resumen.ahorroPotencialAnual);
+    cantImplementadas += num(f.resumen.cantImplementadas);
+  }
+  const potencialTotal = logrado + pendiente;
+  return { logrado, pendiente, potencialTotal, fraccionLograda: potencialTotal > 0 ? Math.min(1, Math.max(0, logrado / potencialTotal)) : 0, cantImplementadas, excluidas };
+}
+
 /**
  * Operación de mayor costo, tal como se muestra: el NOMBRE guardado en el resumen ("" si la pieza no tiene operaciones, que se muestra
  * "—"). Los resúmenes anteriores a ese campo no lo tienen: se usa el id como respaldo hasta que se recalculen.

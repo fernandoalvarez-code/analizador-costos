@@ -105,6 +105,10 @@ export interface ResumenPieza {
   maquinaIds: string[];
   ahorroPotencialAnual: number;
   cantMejoras: number;
+  /** USD/año logrado por las mejoras implementadas (ver implementaciones.ts): (costo de la primera "antes" − costo actual) × volumen actual. */
+  logradoAnual: number;
+  /** Cantidad de mejoras registradas como implementadas. */
+  cantImplementadas: number;
   calcVersion: number;
   reglasVersion: number;
 }
@@ -137,6 +141,37 @@ export interface MejoraDescartada {
   ahorroAnualAlDescartar: number;
 }
 
+/** Registro de que una mejora se implementó: deja el costo de la pieza "antes" como punto de partida para medir cuánto bajó de verdad. */
+export interface Implementacion {
+  /** Único dentro de la pieza. */
+  id: string;
+  categoria: CategoriaMejora;
+  opId: string;
+  /** Nombre de la operación al registrar. */
+  opNombre: string;
+  posicionId?: string;
+  /** Clave estable de la mejora (`claveMejora` de mejoras.ts). */
+  claveMejora: string;
+  /** Título de la mejora al registrar. */
+  titulo: string;
+  /** YYYY-MM-DD: cuándo se implementó (la elige el usuario; no futura). */
+  fecha: string;
+  /** Qué se cambió: de IMPLEMENTACION_NOTA_MIN a IMPLEMENTACION_NOTA_MAX caracteres. */
+  nota: string;
+  /** uid y email de quien la registró. */
+  por: string;
+  porEmail: string;
+  /** ISO 8601. */
+  registradaEn: string;
+  /** USD/pieza del costo de mecanizado (sin material) de la pieza al registrar. */
+  costoPiezaAntes: number;
+  /** Ahorro anual estimado de la mejora al registrar (solo informativo). */
+  ahorroEstimadoAnual: number;
+}
+
+export const IMPLEMENTACION_NOTA_MIN = 5;
+export const IMPLEMENTACION_NOTA_MAX = 500;
+
 export interface Pieza {
   id?: string;
   codigo: string;
@@ -155,6 +190,8 @@ export interface Pieza {
    * siguen válidas. Al reactivar la última se deja `{}` (no se borra el campo) para que la actualización en Firestore reemplace el mapa.
    */
   mejorasDescartadas?: Record<string, MejoraDescartada>;
+  /** Mejoras implementadas, en orden cronológico de registro (se agrega al final). Opcional: las piezas existentes siguen válidas. */
+  implementaciones?: Implementacion[];
   resumen?: ResumenPieza;
 }
 
@@ -299,6 +336,6 @@ export const REGLAS_POR_DEFECTO: ReglasCostos = {
 /**
  * Versión de las fórmulas y del contenido del resumen: sube cuando cambia algún cálculo o se agrega un campo al resumen (los resúmenes
  * guardados quedan desactualizados). 2: se agregó opMayorCostoNombre. 3: ahorroPotencialAnual y cantMejoras cuentan solo las mejoras
- * activas (las descartadas con motivo no suman).
+ * activas (las descartadas con motivo no suman). 4: el resumen suma logradoAnual y cantImplementadas (mejoras implementadas).
  */
-export const CALC_VERSION = 3;
+export const CALC_VERSION = 4;

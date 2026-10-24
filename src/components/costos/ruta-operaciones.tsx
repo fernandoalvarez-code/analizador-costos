@@ -58,7 +58,7 @@ export default function RutaOperaciones({ pieza, resultado, maquinas, costoHora,
                     <span role="cell" className="font-bold">{op.nombre || 'Sin nombre'}</span>
                     <span role="cell" className="text-slate-500">{nombreMaquina(op.maquinaId)}</span>
                     <span role="cell" className="text-right tabular-nums">{toMmss(res?.minutosOp ?? 0)}</span>
-                    <span role="cell" className={`text-right tabular-nums ${esTope ? CLASE_NUM_TOPE : 'font-bold'}`} data-testid="usd-operacion">{numero(res?.totalOp ?? 0, 3)}</span>
+                    <span role="cell" className={`text-right tabular-nums ${esTope ? CLASE_NUM_TOPE : 'font-bold'}`} data-testid="usd-operacion">{numero(res?.totalOp ?? 0, 4)}</span>
                     <span role="cell" className="text-right tabular-nums text-slate-500">{porcentaje0(resultado.costoPieza > 0 ? (res?.totalOp ?? 0) / resultado.costoPieza : 0)}</span>
                     <span role="cell" className="text-right">
                       <Button type="button" size="sm" variant="ghost" aria-expanded={abiertaEsta} aria-label={`${abiertaEsta ? 'Cerrar' : 'Editar'} ${op.nombre || 'operación'}`} onClick={() => onAbrir(abiertaEsta ? null : op.id)}>

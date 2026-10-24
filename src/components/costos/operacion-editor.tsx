@@ -6,7 +6,7 @@ import { ETIQUETA_CORTA_RUBRO, FONDO_RUBRO, TEXTO_SOBRE_RUBRO } from './colores-
 import { ETIQUETA_RUBRO, RUBROS, type CostoHoraPorMaquina, type Operacion, type Pieza, type ResultadoOperacion, type ResultadoPieza, type Rubro } from '@/lib/costos-mecanizado/types';
 import { CampoNumero, CampoTexto, CampoTiempo, CLASE_ETIQUETA } from './campos';
 import IncidenciaHerramientasTable, { type BaseOperacion } from './incidencia-herramientas-table';
-import { conSigno, numero, porcentaje0, usd0, usd3 } from './formato';
+import { conSigno, numero, porcentaje0, usd0, usd4 } from './formato';
 import PosicionHerramientaTable from './posicion-herramienta-table';
 import TimeInput from './time-input';
 import { posicionNueva, rutaOp } from './validar-pieza';
@@ -31,6 +31,9 @@ export interface OperacionEditorProps {
   onEliminar: () => void;
   foco?: { posicionId: string; token: number } | null;
 }
+
+/** YYYY-MM-DD -> DD/MM/AAAA (sin pasar por Date: no depende de la zona horaria). */
+const fechaCorta = (iso: string) => { const [a, m, d] = iso.split('-'); return a && m && d ? `${d}/${m}/${a}` : iso; };
 
 function SelectorMaquina({ op, maquinas, onChange }: { op: Operacion; maquinas: Array<{ id: string; nombre: string }>; onChange: (id: string) => void }) {
   const { error, tocar } = useCampo(rutaOp(op.id, 'maquinaId'));
@@ -58,6 +61,8 @@ export default function OperacionEditor({ op, resOp, resultado, pieza, maquinas,
   const baseOp = base && base.opId === op.id ? base : null;
   const d = baseOp ? resOp.totalOp - baseOp.totalOp : 0;
   const dPieza = baseOp ? totalPieza - baseOp.totalPieza : 0;
+  // Registro de mejoras implementadas en esta operación (sin cifra: el logro se mide a nivel pieza)
+  const implementacionesOp = (pieza.implementaciones ?? []).filter((im) => im.opId === op.id);
 
   return (
     <div className="space-y-6 p-4" data-testid="operacion-editor">
@@ -75,17 +80,17 @@ export default function OperacionEditor({ op, resOp, resultado, pieza, maquinas,
           {RUBROS.map((r) => {
             const w = resOp.totalOp > 0 ? (resOp[r] / resOp.totalOp) * 100 : 0;
             return w > 0.5 ? (
-              <div key={r} className={`${FONDO_RUBRO[r]} ${TEXTO_SOBRE_RUBRO[r]} text-[10px] font-bold flex items-center justify-center overflow-hidden`} style={{ width: `${w}%` }} title={`${ETIQUETA_RUBRO[r]}: ${usd3(resOp[r])}`}>
+              <div key={r} className={`${FONDO_RUBRO[r]} ${TEXTO_SOBRE_RUBRO[r]} text-[10px] font-bold flex items-center justify-center overflow-hidden`} style={{ width: `${w}%` }} title={`${ETIQUETA_RUBRO[r]}: ${usd4(resOp[r])}`}>
                 {w > 9 ? `${ETIQUETA_CORTA_RUBRO[r]} ${numero(w, 0)} %` : ''}
               </div>
             ) : null;
           })}
         </div>
         <p className="text-sm text-slate-700" data-testid="texto-incidencia">
-          Esta operación cuesta <b>{usd3(resOp.totalOp)} por pieza</b> = <b>{porcentaje0(totalPieza > 0 ? resOp.totalOp / totalPieza : 0)} de la pieza</b> ({usd0(resOp.totalOp * vol)}/año).
+          Esta operación cuesta <b>{usd4(resOp.totalOp)} por pieza</b> = <b>{porcentaje0(totalPieza > 0 ? resOp.totalOp / totalPieza : 0)} de la pieza</b> ({usd0(resOp.totalOp * vol)}/año).
           {' '}Lo que más pesa es <b>{ETIQUETA_RUBRO[principal].toLowerCase()}</b> ({porcentaje0(resOp.totalOp > 0 ? resOp[principal] / resOp.totalOp : 0)}).
         </p>
-        {baseOp && (Math.abs(d) < 0.0005 ? (
+        {baseOp && (Math.abs(d) < 0.00005 ? (
           <div className={`${CLASE_CAMBIO_NEUTRO} flex flex-wrap items-center gap-3`} data-testid="cambio-operacion">
             <span>Editá tiempos, vidas o precios: acá vas a ver cuánto cambia la operación respecto a cómo estaba al abrirla.</span>
             <Button type="button" size="sm" variant="outline" onClick={onFijarBase}>Fijar como nueva base</Button>
@@ -93,12 +98,23 @@ export default function OperacionEditor({ op, resOp, resultado, pieza, maquinas,
         ) : (
           <div className={`${d < 0 ? CLASE_CAMBIO_BUENO : CLASE_CAMBIO_MALO} flex flex-wrap items-center gap-3`} data-testid="cambio-operacion">
             <span>
-              Cambio desde que abriste la operación: <b>{conSigno(d, 3)} USD por pieza</b> en la operación · pieza <b>{conSigno(dPieza, 3)} USD</b> ({d < 0 ? 'ahorra' : 'cuesta'} <b>{usd0(Math.abs(d) * vol)}</b> por año).
+              Cambio desde que abriste la operación: <b>{conSigno(d, 4)} USD por pieza</b> en la operación · pieza <b>{conSigno(dPieza, 4)} USD</b> ({d < 0 ? 'ahorra' : 'cuesta'} <b>{usd0(Math.abs(d) * vol)}</b> por año).
             </span>
             <Button type="button" size="sm" variant="outline" onClick={onFijarBase}>Fijar como nueva base</Button>
           </div>
         ))}
       </div>
+
+      {implementacionesOp.length > 0 && (
+        <div className={CLASE_GRUPO} data-testid="realizadas-operacion">
+          <h4 className={CLASE_TITULO}>Mejoras realizadas en esta operación</h4>
+          <ul className="space-y-1 text-sm text-slate-700">
+            {implementacionesOp.map((im) => (
+              <li key={im.id} data-testid="realizada-operacion"><b>{fechaCorta(im.fecha)}</b> · {im.categoria}: {im.nota}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className={CLASE_GRUPO}>
         <h4 className={CLASE_TITULO}>Tiempos y calidad</h4>

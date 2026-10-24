@@ -15,8 +15,10 @@ export function numero(n: number, decimales: number): string {
 
 export const usd0 = (n: number) => `USD ${numero(n, 0)}`;
 export const usd2 = (n: number) => `USD ${numero(n, 2)}`;
-export const usd3 = (n: number) => `USD ${numero(n, 3)}`;
-/** USD por pieza a nivel de pieza (4 decimales, como el caso de control del SPEC: 9,3570). */
+/**
+ * USD POR PIEZA (4 decimales, como el caso de control del SPEC: 9,3570). Una sola regla en todo el módulo: costo por pieza con 4 decimales; importes y
+ * ahorros ANUALES enteros (usd0); porcentajes como siempre. Solo al mostrar: el cálculo nunca se redondea.
+ */
 export const usd4 = (n: number) => `USD ${numero(n, 4)}`;
 /** Porcentaje a partir de una fracción: 0,5316 -> "53 %". */
 export const porcentaje0 = (fraccion: number) => `${numero(fraccion * 100, 0)} %`;

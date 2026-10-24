@@ -64,10 +64,10 @@ describe('pieza de control CAR-001 (SPEC 4.7)', () => {
     expect(meta(c)).toContain('USD 233.926 por año');
     expect(meta(c)).toContain('25.000 piezas');
   });
-  it('la ruta muestra el costo de cada operación (1,330 · 3,896 · 1,919 · 1,182 · 1,030) y la de mayor costo con el número en rojo', () => {
+  it('la ruta muestra el costo de cada operación (1,3303 · 3,8959 · 1,9190 · 1,1821 · 1,0297) y la de mayor costo con el número en rojo', () => {
     const c = montar();
     const filas = c.getAllByTestId('fila-operacion');
-    expect(filas.map((f) => within(f).getByTestId('usd-operacion').textContent)).toEqual(['1,330', '3,896', '1,919', '1,182', '1,030']);
+    expect(filas.map((f) => within(f).getByTestId('usd-operacion').textContent)).toEqual(['1,3303', '3,8959', '1,9190', '1,1821', '1,0297']);
     expect(filas.map((f) => within(f).getByTestId('numero-operacion').textContent)).toEqual(['Op 10', 'Op 20', 'Op 30', 'Op 40', 'Op 50']);
     expect(filas.map((f) => f.getAttribute('data-tope'))).toEqual(['false', 'true', 'false', 'false', 'false']);
     expect(within(filas[1]).getByTestId('numero-operacion').className).toContain('text-red-600');
@@ -324,7 +324,7 @@ describe('cambio desde que abriste la operación', () => {
     escribir(editor(c).getAllByLabelText('Precio USD')[0], '360'); // la broca pasa de 180 a 360: +1,00 de consumo y +1,2 % de scrap
     const txt = editor(c).getByTestId('cambio-operacion').textContent ?? '';
     expect(txt).toContain('Cambio desde que abriste la operación');
-    expect(txt).toContain('+1,012 USD por pieza');
+    expect(txt).toContain('+1,0120 USD por pieza');
     expect(txt).toMatch(/cuesta USD [\d.]+ por año/);
     fireEvent.click(editor(c).getByText('Fijar como nueva base'));
     expect(editor(c).getByTestId('cambio-operacion').textContent).toMatch(/Editá tiempos, vidas o precios/);
@@ -334,7 +334,7 @@ describe('cambio desde que abriste la operación', () => {
     abrirOp(c, 'Agujereado');
     escribir(editor(c).getAllByLabelText('Precio USD')[0], '90');
     const txt = editor(c).getByTestId('cambio-operacion').textContent ?? '';
-    expect(txt).toContain('−0,506 USD por pieza');
+    expect(txt).toContain('−0,5060 USD por pieza');
     expect(txt).toMatch(/ahorra USD/);
   });
   it('la incidencia por herramienta muestra "Cambio al editar" contra la base', () => {
@@ -351,7 +351,7 @@ describe('incidencia y sensibilidades (Broca Ø8,5 de Op30)', () => {
     const c = montar();
     abrirOp(c, 'Agujereado');
     const fila = editor(c).getAllByTestId('fila-incidencia')[0];
-    expect(within(fila).getByTestId('costo-herramienta').textContent).toBe('USD 1,279'); // corte 0,2625 + consumo 1,0 + cambios 0,0162
+    expect(within(fila).getByTestId('costo-herramienta').textContent).toBe('USD 1,2787'); // corte 0,2625 + consumo 1,0 + cambios 0,0162
     expect(within(fila).getByTestId('costo-herramienta').className).toContain('font-bold');
     expect(editor(c).getByTestId('ayuda-sensibilidad').getAttribute('title')).toMatch(/cuánto se nota el precio/);
     expect(fila.textContent).toMatch(/Alto/); // (consumo + cambios) / total de la operación = 53 %
@@ -373,13 +373,13 @@ describe('comparar opciones de una posición (compararOpciones)', () => {
     p.operaciones[2].herramientas[0].opciones.push({ ...ALTERNATIVA_OP30, ...extra });
     return p;
   };
-  it('muestra delta USD/pza (−0,671), USD/año (ahorra USD 16.771) y precio máximo (USD 542,12)', () => {
+  it('muestra delta USD/pza (−0,6708), USD/año (ahorra USD 16.771) y precio máximo (USD 542,12)', () => {
     const c = montar(conAlternativa());
     abrirOp(c, 'Agujereado');
     fireEvent.click(editor(c).getAllByText('Comparar')[0]);
     const filas = editor(c).getAllByTestId('fila-comparacion');
     expect(filas).toHaveLength(2);
-    expect(within(filas[1]).getByTestId('delta-pieza').textContent).toBe('−0,671 USD/pza');
+    expect(within(filas[1]).getByTestId('delta-pieza').textContent).toBe('−0,6708 USD/pza');
     expect(within(filas[1]).getByTestId('delta-anual').textContent).toBe('ahorra USD 16.771/año');
     expect(within(filas[1]).getByTestId('precio-maximo').textContent).toBe('USD 542,12');
     expect(filas[0].textContent).toContain('(en uso)');
