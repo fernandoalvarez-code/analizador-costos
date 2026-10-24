@@ -6,7 +6,7 @@ import { ETIQUETA_CORTA_RUBRO, FONDO_RUBRO, TEXTO_SOBRE_RUBRO } from './colores-
 import { ETIQUETA_RUBRO, RUBROS, type CostoHoraPorMaquina, type Operacion, type Pieza, type ResultadoOperacion, type ResultadoPieza, type Rubro } from '@/lib/costos-mecanizado/types';
 import { CampoNumero, CampoTexto, CampoTiempo, CLASE_ETIQUETA } from './campos';
 import IncidenciaHerramientasTable, { type BaseOperacion } from './incidencia-herramientas-table';
-import { conSigno, numero, porcentaje0, usd0, usd4 } from './formato';
+import { TOLERANCIA_IGUAL, conExacto, deltaPza, exactoPza, numero, porcentaje0, usd0, usdPza } from './formato';
 import PosicionHerramientaTable from './posicion-herramienta-table';
 import TimeInput from './time-input';
 import { posicionNueva, rutaOp } from './validar-pieza';
@@ -80,17 +80,17 @@ export default function OperacionEditor({ op, resOp, resultado, pieza, maquinas,
           {RUBROS.map((r) => {
             const w = resOp.totalOp > 0 ? (resOp[r] / resOp.totalOp) * 100 : 0;
             return w > 0.5 ? (
-              <div key={r} className={`${FONDO_RUBRO[r]} ${TEXTO_SOBRE_RUBRO[r]} text-[10px] font-bold flex items-center justify-center overflow-hidden`} style={{ width: `${w}%` }} title={`${ETIQUETA_RUBRO[r]}: ${usd4(resOp[r])}`}>
+              <div key={r} className={`${FONDO_RUBRO[r]} ${TEXTO_SOBRE_RUBRO[r]} text-[10px] font-bold flex items-center justify-center overflow-hidden`} style={{ width: `${w}%` }} title={conExacto(`${ETIQUETA_RUBRO[r]}: ${usdPza(resOp[r])}`, resOp[r])}>
                 {w > 9 ? `${ETIQUETA_CORTA_RUBRO[r]} ${numero(w, 0)} %` : ''}
               </div>
             ) : null;
           })}
         </div>
         <p className="text-sm text-slate-700" data-testid="texto-incidencia">
-          Esta operación cuesta <b>{usd4(resOp.totalOp)} por pieza</b> = <b>{porcentaje0(totalPieza > 0 ? resOp.totalOp / totalPieza : 0)} de la pieza</b> ({usd0(resOp.totalOp * vol)}/año).
+          Esta operación cuesta <b title={exactoPza(resOp.totalOp)}>{usdPza(resOp.totalOp)} por pieza</b> = <b>{porcentaje0(totalPieza > 0 ? resOp.totalOp / totalPieza : 0)} de la pieza</b> ({usd0(resOp.totalOp * vol)}/año).
           {' '}Lo que más pesa es <b>{ETIQUETA_RUBRO[principal].toLowerCase()}</b> ({porcentaje0(resOp.totalOp > 0 ? resOp[principal] / resOp.totalOp : 0)}).
         </p>
-        {baseOp && (Math.abs(d) < 0.00005 ? (
+        {baseOp && (Math.abs(d) < TOLERANCIA_IGUAL ? (
           <div className={`${CLASE_CAMBIO_NEUTRO} flex flex-wrap items-center gap-3`} data-testid="cambio-operacion">
             <span>Editá tiempos, vidas o precios: acá vas a ver cuánto cambia la operación respecto a cómo estaba al abrirla.</span>
             <Button type="button" size="sm" variant="outline" onClick={onFijarBase}>Fijar como nueva base</Button>
@@ -98,7 +98,7 @@ export default function OperacionEditor({ op, resOp, resultado, pieza, maquinas,
         ) : (
           <div className={`${d < 0 ? CLASE_CAMBIO_BUENO : CLASE_CAMBIO_MALO} flex flex-wrap items-center gap-3`} data-testid="cambio-operacion">
             <span>
-              Cambio desde que abriste la operación: <b>{conSigno(d, 4)} USD por pieza</b> en la operación · pieza <b>{conSigno(dPieza, 4)} USD</b> ({d < 0 ? 'ahorra' : 'cuesta'} <b>{usd0(Math.abs(d) * vol)}</b> por año).
+              Cambio desde que abriste la operación: <b title={exactoPza(d)}>{deltaPza(d)}</b> en la operación · pieza <b title={exactoPza(dPieza)}>{deltaPza(dPieza)}</b> ({d < 0 ? 'ahorra' : 'cuesta'} <b>{usd0(Math.abs(d) * vol)}</b> por año).
             </span>
             <Button type="button" size="sm" variant="outline" onClick={onFijarBase}>Fijar como nueva base</Button>
           </div>

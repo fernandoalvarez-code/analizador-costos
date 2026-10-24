@@ -158,10 +158,10 @@ describe('casilla "Dato verificado"', () => {
 
   it('los oráculos de CAR-001 no cambian: 9,3570 USD/pza y 233.926 USD/año, antes y después de marcar la casilla', () => {
     const c = montar();
-    expect(meta(c)).toContain('USD 9,3570 por pieza');
+    expect(meta(c)).toContain('USD 9,36 por pieza'); // 9,3570 exacto
     expect(meta(c)).toContain('USD 233.926 por año');
     fireEvent.click(casillas(c)[0]);
-    expect(meta(c)).toContain('USD 9,3570 por pieza');
+    expect(meta(c)).toContain('USD 9,36 por pieza'); // 9,3570 exacto
     expect(meta(c)).toContain('USD 233.926 por año');
   });
 });

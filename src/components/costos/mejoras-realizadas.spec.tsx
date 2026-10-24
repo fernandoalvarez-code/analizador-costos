@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PiezaEditor, { DEBOUNCE_GUARDADO_PIEZA_MS } from '@/components/costos/pieza-editor';
 import { hoyISO } from '@/components/costos/implementaciones-dialogs';
-import { numero, usd0, usd4 } from '@/components/costos/formato';
+import { numero, usd0, usdPza } from '@/components/costos/formato';
 import type { PiezaDoc } from '@/lib/costos-mecanizado/firestore';
 import { REGLAS_POR_DEFECTO, type Implementacion, type LineaBase, type Pieza } from '@/lib/costos-mecanizado/types';
 import { crearCarcasa } from '../../../tests/fixtures/costos-control';
@@ -135,7 +135,7 @@ describe('fijar la línea base', () => {
     const c = montar();
     fireEvent.click(botonLineaBase(c));
     expect(within(dialogo('dialogo-linea-base')).getByText('Fijar línea base', { selector: 'h2' })).toBeTruthy();
-    expect(dialogo('dialogo-linea-base').textContent).toContain('USD 9,3570 por pieza');
+    expect(dialogo('dialogo-linea-base').textContent).toContain('USD 9,36 por pieza'); // 9,3570 exacto
     expect(within(document.body).queryByTestId('aviso-rehacer-linea-base')).toBeNull();
     expect(confirmar).not.toHaveBeenCalled();
   });
@@ -144,7 +144,7 @@ describe('fijar la línea base', () => {
     fijarLineaBase(c, 'Carga validada con el jefe de planta');
     expect(c.queryByTestId('sin-linea-base')).toBeNull();
     expect(c.getByTestId('texto-logrado-pendiente').textContent).toBe('Logrado ≈ USD 0/año · Pendiente ≈ USD 44.015/año · Potencial total USD 44.015/año');
-    expect(c.getByTestId('linea-base-info').textContent).toBe(`Línea base: USD 9,3570 por pieza, fijada el ${fechaLocal(new Date())} por ana@secocut.com — Carga validada con el jefe de planta`);
+    expect(c.getByTestId('linea-base-info').textContent).toBe(`Línea base: USD 9,36 por pieza, fijada el ${fechaLocal(new Date())} por ana@secocut.com — Carga validada con el jefe de planta`);
     expect(c.getByTestId('ultima-mejora').textContent).toBe('Todavía no se registraron mejoras');
     expect(botonLineaBase(c).textContent).toBe('Rehacer línea base');
     await avanzar(DEBOUNCE_GUARDADO_PIEZA_MS);
@@ -377,20 +377,20 @@ describe('por operación', () => {
   });
 });
 
-describe('formato de decimales: costo por pieza con 4 decimales, anuales enteros', () => {
-  it('numero y usd4: 12,075 se ve USD 12,0750; los anuales con usd0 no llevan decimales', () => {
-    expect(usd4(12.075)).toBe('USD 12,0750');
-    expect(usd4(2.167)).toBe('USD 2,1670');
+describe('formato de importes: costo por pieza con 2 decimales, anuales enteros (la regla completa está en importes.spec.ts)', () => {
+  it('usdPza y usd0: 12,075 se ve USD 12,08; los anuales con usd0 no llevan decimales', () => {
+    expect(usdPza(12.075)).toBe('USD 12,08');
+    expect(usdPza(2.167)).toBe('USD 2,17');
     expect(numero(9.35702, 4)).toBe('9,3570');
     expect(usd0(12000.4)).toBe('USD 12.000');
   });
-  it('el banner "Mayor costo" muestra el costo por pieza con 4 decimales (USD 3,8959) y el anual entero', () => {
+  it('el banner "Mayor costo" muestra el costo por pieza con 2 decimales (USD 3,90; 3,8959 exacto) y el anual entero', () => {
     const c = montar();
-    expect(c.getByTestId('mayor-costo-detalle').textContent).toMatch(/^USD 3,8959 por pieza · USD 97\.399 por año/);
+    expect(c.getByTestId('mayor-costo-detalle').textContent).toMatch(/^USD 3,90 por pieza · USD 97\.399 por año/);
   });
-  it('cada mejora muestra el ahorro por pieza con 4 decimales: Productividad Op20 = 20 % × 2,40 = USD 0,4800 por pieza', () => {
+  it('cada mejora muestra el ahorro por pieza con 2 decimales: Productividad Op20 = 20 % × 2,40 = USD 0,48 por pieza', () => {
     const c = montar();
-    expect(c.getAllByTestId('mejora')[0].textContent).toContain('USD 0,4800 por pieza');
+    expect(c.getAllByTestId('mejora')[0].textContent).toContain('USD 0,48 por pieza');
     expect(c.getAllByTestId('mejora')[0].textContent).toContain('≈ USD 12.000/año');
   });
 });

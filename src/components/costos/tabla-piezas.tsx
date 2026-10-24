@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import type { FilaPieza } from '@/lib/costos-mecanizado/firestore';
 import { toMmss } from '@/lib/costos-mecanizado/time';
 import { ETIQUETA_RUBRO, RUBROS } from '@/lib/costos-mecanizado/types';
-import { numero, usd0, usd4 } from './formato';
+import { exactoPza, numero, usd0, usdPza } from './formato';
 import {
   nombreOperacion, etiquetaRubro, filtrarPiezas, ordenarPiezas, paginar, resumenDesactualizado, PIEZAS_POR_PAGINA,
   type ColumnaOrden, type Filtros, type Sentido,
@@ -106,7 +106,7 @@ export default function TablaPiezas({ filas, maquinas, reglasVersion }: TablaPie
                     {vieja && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800" data-testid="insignia-reglas-fila" title="El resumen de esta pieza se calculó con otras reglas.">calculado con reglas anteriores</span>}
                   </td>
                   <td className="p-3">{f.nombre}</td>
-                  <td className="p-3 text-right tabular-nums">{usd4(f.resumen?.costoPieza ?? 0)}</td>
+                  <td className="p-3 text-right tabular-nums" title={exactoPza(f.resumen?.costoPieza ?? 0)}>{usdPza(f.resumen?.costoPieza ?? 0)}</td>
                   <td className="p-3 text-right tabular-nums font-bold">{usd0(f.resumen?.costoAnual ?? 0)}</td>
                   <td className="p-3 text-right tabular-nums text-slate-500">{toMmss(f.resumen?.minutosPieza ?? 0)}</td>
                   <td className="p-3 text-slate-600">{nombreOperacion(f.resumen)}</td>

@@ -1,9 +1,10 @@
 // Mejoras priorizadas (SPEC sección 6 + ADDENDUM puntos 3 y 7). Las reglas usan ">" ESTRICTO: un valor exacto en el umbral no dispara.
 import type { CategoriaMejora, MejoraCosto, MejoraDescartada, Pieza, ReglasCostos, ResultadoOperacion, ResultadoPieza } from './types';
+import { usdPza } from './importes';
 import { REGLAS_POR_DEFECTO } from './types';
 
-// Costo POR PIEZA con 4 decimales (la misma regla que el resto del módulo); solo al mostrar, nunca en el cálculo.
-const usd = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+// Importes por pieza de las explicaciones: la misma regla que el resto del módulo (2 decimales; ver importes.ts). Solo al mostrar, nunca en el cálculo.
+const usd = usdPza;
 const pc = (ratio: number) => `${Math.round(ratio * 100)} %`;
 const AVISO_SUPUESTOS = 'Supuestos conservadores, a confirmar con ensayo en planta.';
 
@@ -101,7 +102,7 @@ function todasLasMejoras(resultado: ResultadoPieza, reglas: ReglasCostos): Mejor
       if (costoRoturas / t > reglas.roturas.umbralPct / 100) {
         candidatas.push({
           categoria: 'Roturas', op, posicionId: h.posicionId, titulo: `${h.nombre} se rompe seguido`,
-          explicacion: `Las roturas cuestan USD ${usd(costoRoturas)} por pieza entre parada extra y piezas perdidas (${pc(costoRoturas / t)} de la operación). Revisar estabilidad, runout, parámetros y evacuación de viruta.`,
+          explicacion: `Las roturas cuestan ${usd(costoRoturas)} por pieza entre parada extra y piezas perdidas (${pc(costoRoturas / t)} de la operación). Revisar estabilidad, runout, parámetros y evacuación de viruta.`,
           supuesto: `Supuesto: −${reglas.roturas.ahorroPct} % de las roturas`,
           ahorroPorPieza: (costoRoturas * reglas.roturas.ahorroPct) / 100, puedeComparar: true,
         });
@@ -111,7 +112,7 @@ function todasLasMejoras(resultado: ResultadoPieza, reglas: ReglasCostos): Mejor
       if (herrMasCambios / t > reglas.herramienta.umbralPct / 100) {
         candidatas.push({
           categoria: 'Herramienta', op, posicionId: h.posicionId, titulo: `${h.nombre} pesa mucho`,
-          explicacion: `Herramienta más cambios = ${pc(herrMasCambios / t)} de la operación (USD ${usd(herrMasCambios)} por pieza). Revisar vida, roturas y alternativas.`,
+          explicacion: `Herramienta más cambios = ${pc(herrMasCambios / t)} de la operación (${usd(herrMasCambios)} por pieza). Revisar vida, roturas y alternativas.`,
           supuesto: `Supuesto: −${reglas.herramienta.ahorroPct} % del costo de herramienta`,
           ahorroPorPieza: (herrMasCambios * reglas.herramienta.ahorroPct) / 100, puedeComparar: true,
         });
@@ -122,7 +123,7 @@ function todasLasMejoras(resultado: ResultadoPieza, reglas: ReglasCostos): Mejor
     if (op.scrap / t > reglas.calidad.umbralPct / 100) {
       candidatas.push({
         categoria: 'Calidad', op, titulo: 'El scrap es caro en este punto',
-        explicacion: `El scrap es el ${pc(op.scrap / t)} de la operación, con todo el valor acumulado hasta acá (USD ${usd(op.scrap)} por pieza). Buscar la causa: rotura de herramienta, medida o sujeción.`,
+        explicacion: `El scrap es el ${pc(op.scrap / t)} de la operación, con todo el valor acumulado hasta acá (${usd(op.scrap)} por pieza). Buscar la causa: rotura de herramienta, medida o sujeción.`,
         supuesto: `Supuesto: −${reglas.calidad.ahorroPct} % del scrap`,
         ahorroPorPieza: (op.scrap * reglas.calidad.ahorroPct) / 100, puedeComparar: false,
       });

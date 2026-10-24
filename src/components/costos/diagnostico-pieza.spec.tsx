@@ -21,11 +21,12 @@ function montar(pieza: Pieza = crearCarcasa(), opciones: { reglasDesactualizadas
 const num = (texto: string | null) => Number((texto ?? '').replace(/\./g, '').replace(',', '.'));
 
 describe('1. Mayor costo de esta pieza', () => {
-  it('Op20 es la operación de mayor costo: 42 % del mecanizado, 3,8959 USD/pza y ≈ 97.399 USD/año', () => {
+  it('Op20 es la operación de mayor costo: 42 % del mecanizado, 3,90 USD/pza (3,8959 exacto) y ≈ 97.399 USD/año', () => {
     const { c } = montar();
     expect(c.getByTestId('mayor-costo-titulo').textContent).toBe('Op 20 · Desbaste y contorno = 42 % del costo de mecanizado');
     const detalle = c.getByTestId('mayor-costo-detalle').textContent ?? '';
-    expect(detalle).toMatch(/^USD 3,8959 por pieza · USD 97\.39\d por año/);
+    expect(detalle).toMatch(/^USD 3,90 por pieza · USD 97\.39\d por año/);
+    expect(c.getByTestId('mayor-costo-detalle').querySelector('span')!.getAttribute('title')).toBe('USD 3,8959 exacto');
   });
   it('el rubro que más pesa dentro de la operación (tiempo de corte, 62 %) y en toda la pieza (tiempo de corte, 43 %)', () => {
     const { c } = montar();
@@ -41,17 +42,18 @@ describe('1. Mayor costo de esta pieza', () => {
 });
 
 describe('2. KPIs', () => {
-  it('mecanizado por pieza 9,3570 USD (9:41 min) y anual 233.926 USD con 25.000 piezas', () => {
+  it('mecanizado por pieza USD 9,36 (9,3570 exacto; 9:41 min) y anual 233.926 USD con 25.000 piezas', () => {
     const { c } = montar();
-    expect(c.getByTestId('kpi-mecanizado').textContent).toContain('USD 9,3570');
+    expect(c.getByTestId('kpi-mecanizado').textContent).toContain('USD 9,36');
+    expect(c.getByTestId('kpi-mecanizado').querySelector('p.text-xl')!.getAttribute('title')).toBe('USD 9,3570 exacto');
     expect(c.getByTestId('kpi-mecanizado').textContent).toContain('9:41 min por pieza');
     expect(c.getByTestId('kpi-anual').textContent).toContain('USD 233.926');
     expect(c.getByTestId('kpi-anual').textContent).toContain('25.000 piezas');
   });
-  it('pieza con material = mecanizado + material: 9,3570 + 9,50 = 18,8570', () => {
+  it('pieza con material = mecanizado + material: 9,3570 + 9,50 = 18,8570 → se muestra USD 18,86', () => {
     const { c } = montar();
     expect(c.getByTestId('kpi-material').textContent).toContain('Pieza con material');
-    expect(c.getByTestId('kpi-material').textContent).toContain('USD 18,8570');
+    expect(c.getByTestId('kpi-material').textContent).toContain('USD 18,86');
     expect(c.getByTestId('kpi-material').textContent).toContain('Mecanizado + material USD 9,50');
   });
   it('herramientas en el mecanizado: (herramientas + cambios) / mecanizado = (2,4336 + 0,1717) / 9,3570 = 28 %', () => {
@@ -73,18 +75,18 @@ describe('2. KPIs', () => {
 });
 
 describe('3. ¿Dónde está el costo? y ¿En qué se va?', () => {
-  it('operaciones de mayor a menor: Op20 3,8959 · Op30 1,9190 · Op10 1,3303 · Op40 1,1821 · Op50 1,0297', () => {
+  it('operaciones de mayor a menor: Op20 3,90 · Op30 1,92 · Op10 1,33 · Op40 1,18 · Op50 1,03', () => {
     const { c } = montar();
     const filas = c.getAllByTestId('barra-operacion').map((b) => b.textContent ?? '');
     expect(filas.map((t) => t.match(/Op \d+/)?.[0])).toEqual(['Op 20', 'Op 30', 'Op 10', 'Op 40', 'Op 50']);
-    expect(filas[0]).toContain('3,8959');
+    expect(filas[0]).toContain('3,90');
     expect(filas[0]).toContain('42 %');
   });
-  it('rubros de mayor a menor: corte 4,0583 · herramientas 2,4336 · tiempos muertos 1,9167 · scrap 0,5359 · preparación 0,2408 · cambios 0,1717', () => {
+  it('rubros de mayor a menor: corte 4,06 · herramientas 2,43 · tiempos muertos 1,92 · scrap 0,54 · preparación 0,24 · cambios 0,17', () => {
     const { c } = montar();
     const barras = c.getAllByTestId('barra-rubro');
     expect(barras.map((b) => b.getAttribute('data-rubro'))).toEqual(['corte', 'herramientas', 'tiemposMuertos', 'scrap', 'preparacion', 'cambios']);
-    expect(barras.map((b) => b.textContent?.match(/\d+,\d{4}/)?.[0])).toEqual(['4,0583', '2,4336', '1,9167', '0,5359', '0,2408', '0,1717']);
+    expect(barras.map((b) => b.textContent?.match(/\d+,\d{2}/)?.[0])).toEqual(['4,06', '2,43', '1,92', '0,54', '0,24', '0,17']);
   });
   it('los colores de los rubros son los del prototipo (--k-corte #12305a, --k-herr #e3a008, --k-scrap #d64545…)', () => {
     const { c } = montar();
@@ -94,22 +96,22 @@ describe('3. ¿Dónde está el costo? y ¿En qué se va?', () => {
 });
 
 describe('4. Matriz operación × rubro', () => {
-  it('los totales por operación suman la pieza (9,3570) y la fila de total por rubro también', () => {
+  it('los totales por operación suman la pieza (9,36) y la fila de total por rubro también', () => {
     const { c } = montar();
     const porOp = c.getAllByTestId('total-operacion').map((e) => num(e.textContent));
-    expect(porOp).toEqual([1.3303, 3.8959, 1.919, 1.1821, 1.0297]);
-    expect(Math.abs(porOp.reduce((s, v) => s + v, 0) - 9.357)).toBeLessThan(0.0005);
+    expect(porOp).toEqual([1.33, 3.9, 1.92, 1.18, 1.03]);
+    expect(Math.abs(porOp.reduce((s, v) => s + v, 0) - 9.357)).toBeLessThan(0.03); // 5 celdas redondeadas a 2 decimales: hasta 5 × 0,005
     const fila = within(c.getByTestId('fila-total-matriz'));
-    expect(fila.getByTestId('total-pieza-matriz').textContent).toBe('9,3570');
+    expect(fila.getByTestId('total-pieza-matriz').textContent).toBe('9,36');
     const porRubro = [...c.getByTestId('fila-total-matriz').querySelectorAll('td[data-rubro]')].map((e) => num(e.textContent));
-    expect(porRubro).toEqual([4.0583, 1.9167, 0.2408, 2.4336, 0.1717, 0.5359]);
-    expect(Math.abs(porRubro.reduce((s, v) => s + v, 0) - 9.357)).toBeLessThan(0.0005);
+    expect(porRubro).toEqual([4.06, 1.92, 0.24, 2.43, 0.17, 0.54]);
+    expect(Math.abs(porRubro.reduce((s, v) => s + v, 0) - 9.357)).toBeLessThan(0.03); // 6 celdas redondeadas a 2 decimales: hasta 6 × 0,005
   });
   it('cada operación suma sus rubros; la de mayor costo en un rubro tiene la celda más oscura', () => {
     const { c } = montar();
     for (const fila of c.getAllByTestId('fila-matriz')) {
       const celdas = [...fila.querySelectorAll('td[data-rubro]')].map((e) => num(e.textContent));
-      expect(Math.abs(celdas.reduce((s, v) => s + v, 0) - num(within(fila as HTMLElement).getByTestId('total-operacion').textContent))).toBeLessThan(0.003);
+      expect(Math.abs(celdas.reduce((s, v) => s + v, 0) - num(within(fila as HTMLElement).getByTestId('total-operacion').textContent))).toBeLessThan(0.03); // celdas redondeadas a 2 decimales: hasta 6 × 0,005
     }
     const alfa = (td: Element) => Number((td as HTMLElement).style.backgroundColor.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/)?.[1] ?? 0);
     const corteOp20 = c.getAllByTestId('fila-matriz')[1].querySelector('td[data-rubro="corte"]')!; // 2,400: la celda más grande de la matriz

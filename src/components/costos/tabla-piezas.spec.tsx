@@ -205,12 +205,12 @@ describe('paginación de 15 (bordes)', () => {
 });
 
 describe('filas', () => {
-  it('muestra código, nombre, USD/pza (4 decimales), USD/año, min/pza, operación, rubro y ahorro', () => {
+  it('muestra código, nombre, USD/pza (2 decimales), USD/año, min/pza, operación, rubro y ahorro', () => {
     const c = montar();
     const fila = c.getAllByTestId('fila-pieza')[0].textContent ?? '';
     expect(fila).toContain('A-001');
     expect(fila).toContain('Zeta');
-    expect(fila).toContain('USD 10,0000');
+    expect(fila).toContain('USD 10,00');
     expect(fila).toContain('USD 10.000');
     expect(fila).toContain('9:30');
     expect(fila).toContain('Desbaste');
