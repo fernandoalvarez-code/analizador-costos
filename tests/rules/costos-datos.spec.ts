@@ -193,12 +193,12 @@ describe('capa de datos de costos de mecanizado', () => {
       expect(d?.operaciones[0].herramientas[0].opciones[0].vidaVerificada).toBe(true);
       expect(d?.resumen.costoPieza).toBeCloseTo(1, 9); // la marca no entra en el cálculo
     });
-    it('mejoras descartadas: el resumen guardado no las cuenta (calcVersion 3), duplicar las conserva y reactivar la última reemplaza el mapa', async () => {
+    it('mejoras descartadas: el resumen guardado no las cuenta (calcVersion 4), duplicar las conserva y reactivar la última reemplaza el mapa', async () => {
       await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), `empresas/${EMP}/maquinas/m1`), { nombre: 'M1', costoHora: 60 }); });
       // piezaSimple: 1 min de corte a 1 USD/min con herramienta gratuita → solo dispara Productividad (corte = 100 % > 45 %): 20 % × 1 USD × 1000 = 200 USD/año
       const sinDescarte = await repo('a1').crearPieza(EMP, piezaSimple('D-0'));
       const r0 = await leerAdmin<{ resumen: { cantMejoras: number; ahorroPotencialAnual: number; calcVersion: number } }>(`empresas/${EMP}/piezas/${sinDescarte}`);
-      expect(r0?.resumen).toMatchObject({ cantMejoras: 1, calcVersion: 3 });
+      expect(r0?.resumen).toMatchObject({ cantMejoras: 1, calcVersion: 4 });
       expect(r0?.resumen.ahorroPotencialAnual).toBeCloseTo(200, 6);
 
       const descarte = { motivoTipo: 'ya-probado' as const, motivo: 'Ya lo probamos', por: 'a1', porEmail: 'a1@cliente.com', fecha: '2026-10-23T12:00:00.000Z', ahorroAnualAlDescartar: 200 };
@@ -206,7 +206,7 @@ describe('capa de datos de costos de mecanizado', () => {
       const id = await repo('a1').crearPieza(EMP, conDescarte);
       const d1 = await leerAdmin<Pieza & { resumen: { cantMejoras: number; ahorroPotencialAnual: number; calcVersion: number } }>(`empresas/${EMP}/piezas/${id}`);
       expect(d1?.mejorasDescartadas).toEqual({ 'Productividad|op1|': descarte });
-      expect(d1?.resumen).toMatchObject({ cantMejoras: 0, ahorroPotencialAnual: 0, calcVersion: 3 });
+      expect(d1?.resumen).toMatchObject({ cantMejoras: 0, ahorroPotencialAnual: 0, calcVersion: 4 });
 
       const copia = await repo('a2').duplicarPieza(EMP, id);
       const d2 = await leerAdmin<Pieza>(`empresas/${EMP}/piezas/${copia}`);
@@ -218,6 +218,33 @@ describe('capa de datos de costos de mecanizado', () => {
       expect(d3?.mejorasDescartadas).toEqual({});
       expect(d3?.resumen.cantMejoras).toBe(1);
       expect(d3?.resumen.ahorroPotencialAnual).toBeCloseTo(200, 6);
+    });
+    it('mejoras implementadas: el resumen guardado trae logradoAnual y cantImplementadas, y duplicar NO copia las implementaciones (sí los descartes)', async () => {
+      await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), `empresas/${EMP}/maquinas/m1`), { nombre: 'M1', costoHora: 60 }); });
+      // piezaSimple cuesta 1 USD por pieza (1 min a 60 USD/h, herramienta gratuita) y vende 1.000 al año. Con un costo "antes" de 2 USD: logrado = (2 − 1) × 1.000 = 1.000 USD/año.
+      const implementacion = {
+        id: 'i1', categoria: 'Productividad' as const, opId: 'op1', opNombre: 'Op', claveMejora: 'Productividad|op1|', titulo: 'El tiempo de corte domina la operación',
+        fecha: '2026-10-20', nota: 'Se subió el avance', por: 'a1', porEmail: 'a1@cliente.com', registradaEn: '2026-10-20T12:00:00.000Z', costoPiezaAntes: 2, ahorroEstimadoAnual: 200,
+      };
+      const descarte = { motivoTipo: 'otro' as const, motivo: 'Decisión del cliente', por: 'a1', porEmail: 'a1@cliente.com', fecha: '2026-10-21T12:00:00.000Z', ahorroAnualAlDescartar: 200 };
+      const original = { ...piezaSimple('I-1'), implementaciones: [implementacion], mejorasDescartadas: { 'Productividad|op1|': descarte } };
+      const id = await repo('a1').crearPieza(EMP, original);
+      const d1 = await leerAdmin<Pieza & { resumen: { logradoAnual: number; cantImplementadas: number; calcVersion: number } }>(`empresas/${EMP}/piezas/${id}`);
+      expect(d1?.implementaciones).toEqual([implementacion]);
+      expect(d1?.resumen).toMatchObject({ cantImplementadas: 1, calcVersion: 4 });
+      expect(d1?.resumen.logradoAnual).toBeCloseTo(1000, 6);
+
+      const copia = await repo('a2').duplicarPieza(EMP, id);
+      const d2 = await leerAdmin<Pieza & { resumen: { logradoAnual: number; cantImplementadas: number } }>(`empresas/${EMP}/piezas/${copia}`);
+      expect(d2?.implementaciones).toBeUndefined(); // el historial y el punto de partida pertenecen a la pieza original
+      expect(d2?.mejorasDescartadas).toEqual({ 'Productividad|op1|': descarte }); // los descartes sí se copian
+      expect(d2?.resumen).toMatchObject({ logradoAnual: 0, cantImplementadas: 0 });
+
+      // Anular el último registro: la interfaz guarda [] y la actualización reemplaza el arreglo
+      await repo('a1').actualizarPieza(EMP, id, { ...original, implementaciones: [] });
+      const d3 = await leerAdmin<Pieza & { resumen: { logradoAnual: number; cantImplementadas: number } }>(`empresas/${EMP}/piezas/${id}`);
+      expect(d3?.implementaciones).toEqual([]);
+      expect(d3?.resumen).toMatchObject({ logradoAnual: 0, cantImplementadas: 0 });
     });
     it('eliminar borra la pieza', async () => {
       await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), `empresas/${EMP}/maquinas/m1`), { nombre: 'M1', costoHora: 60 }); });

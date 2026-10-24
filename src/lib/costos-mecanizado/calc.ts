@@ -1,5 +1,6 @@
 // Motor de cálculo de costos de mecanizado (SPEC secciones 3, 4 y 6 + ADDENDUM). Funciones PURAS: sin Firebase, sin React.
 // Notación: h = costoHora / 60 (USD por minuto) de la máquina de la operación.
+import { logradoTotalAnual } from './implementaciones';
 import { mejoras } from './mejoras';
 import {
   CALC_VERSION, RUBROS, REGLAS_POR_DEFECTO,
@@ -257,6 +258,7 @@ export function calcResumen(pieza: Pieza, costoHoraPorMaquina: CostoHoraPorMaqui
     opMayorCosto: r.opMayorCosto, opMayorCostoNombre: r.operaciones.find((o) => o.opId === r.opMayorCosto)?.nombre ?? '', rubroPrincipal: r.rubroPrincipal,
     porRubroUsdPza: r.porRubroUsdPza, porMaquinaUsdPza: r.porMaquinaUsdPza, maquinaIds: r.maquinaIds,
     ahorroPotencialAnual: lista.reduce((s, m) => s + m.ahorroAnual, 0), cantMejoras: lista.length,
+    logradoAnual: logradoTotalAnual(pieza, r), cantImplementadas: (pieza.implementaciones ?? []).length,
     calcVersion: CALC_VERSION, reglasVersion: reglas.reglasVersion,
   };
 }

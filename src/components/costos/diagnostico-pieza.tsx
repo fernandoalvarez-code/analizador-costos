@@ -3,12 +3,14 @@
 import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { materialEfectivo } from '@/lib/costos-mecanizado/calc';
+import { logroPorImplementacion } from '@/lib/costos-mecanizado/implementaciones';
 import { toMmss } from '@/lib/costos-mecanizado/time';
 import type { MejoraDescartadaVista } from '@/lib/costos-mecanizado/mejoras';
-import { ETIQUETA_MOTIVO_DESCARTE, ETIQUETA_RUBRO, RUBROS, type MejoraCosto, type MotivoDescarteTipo, type Pieza, type ResultadoPieza, type Rubro } from '@/lib/costos-mecanizado/types';
+import { ETIQUETA_MOTIVO_DESCARTE, ETIQUETA_RUBRO, RUBROS, type Implementacion, type MejoraCosto, type MotivoDescarteTipo, type Pieza, type ResultadoPieza, type Rubro } from '@/lib/costos-mecanizado/types';
 import DescartarMejoraDialog from './descartar-mejora-dialog';
+import { AnularImplementacionDialog, MarcarImplementadaDialog } from './implementaciones-dialogs';
 import { ETIQUETA_CORTA_RUBRO, FONDO_CATEGORIA, FONDO_RUBRO, TEXTO_SOBRE_RUBRO } from './colores-rubro';
-import { numero, porcentaje0, usd0, usd2, usd3, usd4 } from './formato';
+import { numero, porcentaje0, usd0, usd2, usd4 } from './formato';
 
 const CLASE_TARJETA = 'rounded-xl border border-slate-200 bg-white p-5 space-y-3';
 const CLASE_TITULO = 'text-base font-bold text-[#12305a]';
@@ -18,6 +20,11 @@ const MAX_MEJORAS_VISIBLES = 5;
 const LEYENDA_SUPUESTOS = 'Supuestos conservadores, a confirmar con ensayo en planta.';
 const CLASE_DESCARTADA = 'rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-1 text-sm';
 const CLASE_YA_NO_SE_SUGIERE = 'inline-block rounded bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800';
+const TEXTO_GUARDAR_PRIMERO = 'Guardá la pieza primero';
+const CLASE_LOGRO_NEGATIVO = 'font-bold text-red-700';
+const CLASE_LOGRO_POSITIVO = 'font-bold text-emerald-700';
+/** YYYY-MM-DD -> DD/MM/AAAA (sin pasar por Date: no depende de la zona horaria). */
+const fechaCorta = (iso: string) => { const [a, m, d] = iso.split('-'); return a && m && d ? `${d}/${m}/${a}` : iso; };
 const fechaHora = (iso: string) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }); };
 
 /** El texto de cada mejora termina con la leyenda general; en la tarjeta se muestra solo el supuesto y la leyenda va una vez al pie. */
@@ -35,18 +42,30 @@ export interface DiagnosticoPiezaProps {
   /** Si no se pasa, no se ofrece "Descartar" ni "Reactivar" (solo lectura). */
   onDescartar?: (m: MejoraCosto, tipo: MotivoDescarteTipo, motivo: string) => void;
   onReactivar?: (clave: string) => void;
+  /** Registro de mejoras implementadas. Sin `onMarcarImplementada` no se ofrece "Marcar como implementada". */
+  onMarcarImplementada?: (m: MejoraCosto, fecha: string, nota: string) => void;
+  onAnularImplementacion?: (id: string) => void;
+  /** Solo con la pieza guardada y sin cambios pendientes: el punto de partida es el costo guardado. */
+  puedeMarcarImplementada?: boolean;
 }
 
 /** Sub-pestaña "Diagnóstico": se calcula en vivo sobre el estado de la pieza, así que siempre coincide con lo cargado. */
-export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, reglasDesactualizadas, onCompararAlternativa, descartadas = [], onDescartar, onReactivar }: DiagnosticoPiezaProps) {
+export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, reglasDesactualizadas, onCompararAlternativa, descartadas = [], onDescartar, onReactivar, onMarcarImplementada, onAnularImplementacion, puedeMarcarImplementada = true }: DiagnosticoPiezaProps) {
   const [verTodas, setVerTodas] = useState(false);
   const [aDescartar, setADescartar] = useState<MejoraCosto | null>(null);
   const [verDescartadas, setVerDescartadas] = useState(false);
+  const [aImplementar, setAImplementar] = useState<MejoraCosto | null>(null);
+  const [aAnular, setAAnular] = useState<Implementacion | null>(null);
+  const [verRealizadas, setVerRealizadas] = useState(false);
 
   const ops = resultado.operaciones;
   const total = resultado.costoPieza;
   const volumen = resultado.volumenAnual;
   const numeroOp = (opId: string) => `Op ${(pieza.operaciones.findIndex((o) => o.id === opId) + 1) * 10}`;
+
+  const implementaciones = pieza.implementaciones ?? [];
+  const logros = useMemo(() => logroPorImplementacion(pieza, resultado), [pieza, resultado]);
+  const logrado = logros.reduce((s, x) => s + x, 0);
 
   const ordenadas = useMemo(() => [...ops].sort((a, b) => b.totalOp - a.totalOp), [ops]);
   const rubrosOrdenados = useMemo(() => [...RUBROS].sort((a, b) => resultado.porRubroUsdPza[b] - resultado.porRubroUsdPza[a]), [resultado]);
@@ -84,7 +103,7 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
           {numeroOp(opTope.opId)} · {opTope.nombre} = {porcentaje0(total > 0 ? opTope.totalOp / total : 0)} del costo de mecanizado
         </p>
         <p className="mt-1 text-sm text-slate-700" data-testid="mayor-costo-detalle">
-          {usd3(opTope.totalOp)} por pieza · {usd0(opTope.totalOp * volumen)} por año. Dentro de esta operación lo que más pesa es <b>{ETIQUETA_RUBRO[rubroDeLaOp].toLowerCase()}</b>{' '}
+          {usd4(opTope.totalOp)} por pieza · {usd0(opTope.totalOp * volumen)} por año. Dentro de esta operación lo que más pesa es <b>{ETIQUETA_RUBRO[rubroDeLaOp].toLowerCase()}</b>{' '}
           ({porcentaje0(opTope.totalOp > 0 ? opTope[rubroDeLaOp] / opTope.totalOp : 0)}). En toda la pieza, el rubro principal es <b>{ETIQUETA_RUBRO[rubroDePieza].toLowerCase()}</b>{' '}
           ({porcentaje0(total > 0 ? resultado.porRubroUsdPza[rubroDePieza] / total : 0)}).
         </p>
@@ -131,12 +150,12 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
               <div key={o.opId} data-testid="barra-operacion">
                 <div className="flex items-baseline justify-between gap-2 text-sm">
                   <span className="font-bold">{numeroOp(o.opId)} · {o.nombre}</span>
-                  <span className="tabular-nums">{numero(o.totalOp, 3)} <small className="text-slate-500">{porcentaje0(total > 0 ? o.totalOp / total : 0)}</small></span>
+                  <span className="tabular-nums">{numero(o.totalOp, 4)} <small className="text-slate-500">{porcentaje0(total > 0 ? o.totalOp / total : 0)}</small></span>
                 </div>
                 <div className="mt-1 flex h-5 overflow-hidden rounded bg-slate-100" style={{ width: `${Math.max(4, ordenadas[0].totalOp > 0 ? (o.totalOp / ordenadas[0].totalOp) * 100 : 0)}%` }}>
                   {RUBROS.map((r) => {
                     const w = o.totalOp > 0 ? (o[r] / o.totalOp) * 100 : 0;
-                    return w > 0.5 ? <div key={r} className={`${FONDO_RUBRO[r]} ${TEXTO_SOBRE_RUBRO[r]} text-[10px] font-bold flex items-center justify-center overflow-hidden`} style={{ width: `${w}%` }} title={`${ETIQUETA_RUBRO[r]}: ${usd3(o[r])}`} /> : null;
+                    return w > 0.5 ? <div key={r} className={`${FONDO_RUBRO[r]} ${TEXTO_SOBRE_RUBRO[r]} text-[10px] font-bold flex items-center justify-center overflow-hidden`} style={{ width: `${w}%` }} title={`${ETIQUETA_RUBRO[r]}: ${usd4(o[r])}`} /> : null;
                   })}
                 </div>
               </div>
@@ -154,7 +173,7 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
               <div key={r} data-testid="barra-rubro" data-rubro={r}>
                 <div className="flex items-baseline justify-between gap-2 text-sm">
                   <span className="font-bold">{ETIQUETA_RUBRO[r]}</span>
-                  <span className="tabular-nums">{numero(resultado.porRubroUsdPza[r], 3)} <small className="text-slate-500">{porcentaje0(total > 0 ? resultado.porRubroUsdPza[r] / total : 0)}</small></span>
+                  <span className="tabular-nums">{numero(resultado.porRubroUsdPza[r], 4)} <small className="text-slate-500">{porcentaje0(total > 0 ? resultado.porRubroUsdPza[r] / total : 0)}</small></span>
                 </div>
                 <div className="mt-1 h-3 rounded bg-slate-100">
                   <div className={`h-3 rounded ${FONDO_RUBRO[r]}`} style={{ width: `${rubrosOrdenados[0] && resultado.porRubroUsdPza[rubrosOrdenados[0]] > 0 ? (resultado.porRubroUsdPza[r] / resultado.porRubroUsdPza[rubrosOrdenados[0]]) * 100 : 0}%` }} />
@@ -186,17 +205,17 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
                   {RUBROS.map((r) => {
                     const a = celdaMax > 0 ? o[r] / celdaMax : 0;
                     return (
-                      <td key={r} className={`p-2 text-right tabular-nums ${a > 0.5 ? 'font-bold' : ''}`} data-rubro={r} style={{ backgroundColor: `rgba(214,69,69,${(a * 0.35).toFixed(2)})` }}>{numero(o[r], 3)}</td>
+                      <td key={r} className={`p-2 text-right tabular-nums ${a > 0.5 ? 'font-bold' : ''}`} data-rubro={r} style={{ backgroundColor: `rgba(214,69,69,${(a * 0.35).toFixed(2)})` }}>{numero(o[r], 4)}</td>
                     );
                   })}
-                  <td className="p-2 text-right font-bold tabular-nums" data-testid="total-operacion">{numero(o.totalOp, 3)}</td>
+                  <td className="p-2 text-right font-bold tabular-nums" data-testid="total-operacion">{numero(o.totalOp, 4)}</td>
                   <td className="p-2 text-right tabular-nums text-slate-500">{porcentaje0(total > 0 ? o.totalOp / total : 0)}</td>
                 </tr>
               ))}
               <tr className="border-t-2 border-slate-300 font-bold" data-testid="fila-total-matriz">
                 <td className="p-2">Total pieza</td>
-                {RUBROS.map((r) => <td key={r} className="p-2 text-right tabular-nums" data-rubro={r}>{numero(resultado.porRubroUsdPza[r], 3)}</td>)}
-                <td className="p-2 text-right tabular-nums" data-testid="total-pieza-matriz">{numero(total, 3)}</td><td className="p-2 text-right">100 %</td>
+                {RUBROS.map((r) => <td key={r} className="p-2 text-right tabular-nums" data-rubro={r}>{numero(resultado.porRubroUsdPza[r], 4)}</td>)}
+                <td className="p-2 text-right tabular-nums" data-testid="total-pieza-matriz">{numero(total, 4)}</td><td className="p-2 text-right">100 %</td>
               </tr>
               <tr className="text-xs text-slate-500" data-testid="fila-pct-matriz">
                 <td className="p-2">% del total</td>
@@ -235,14 +254,23 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
                       {x.puedeComparar && (
                         <Button type="button" size="sm" variant="outline" onClick={() => onCompararAlternativa(x)}>Comparar alternativa</Button>
                       )}
+                      {onMarcarImplementada && (
+                        <Button
+                          type="button" size="sm" variant="outline" disabled={!puedeMarcarImplementada} aria-label={`Marcar como implementada: ${x.titulo}`}
+                          title={puedeMarcarImplementada ? undefined : TEXTO_GUARDAR_PRIMERO} onClick={() => setAImplementar(x)}
+                        >
+                          Marcar como implementada
+                        </Button>
+                      )}
                       {onDescartar && (
                         <Button type="button" size="sm" variant="ghost" aria-label={`Descartar mejora: ${x.titulo}`} onClick={() => setADescartar(x)}>Descartar</Button>
                       )}
                     </div>
+                    {onMarcarImplementada && !puedeMarcarImplementada && <p className="mt-1 text-[11px] text-slate-500" data-testid="leyenda-guardar-primero">{TEXTO_GUARDAR_PRIMERO}.</p>}
                   </div>
                   <div className="min-w-[8rem] text-right">
                     <p className="text-base font-extrabold text-emerald-700" data-testid="ahorro-mejora">≈ {usd0(x.ahorroAnual)}/año</p>
-                    <p className="text-xs text-slate-500">{usd3(x.ahorroPorPieza)} por pieza</p>
+                    <p className="text-xs text-slate-500">{usd4(x.ahorroPorPieza)} por pieza</p>
                   </div>
                 </li>
               ))}
@@ -293,6 +321,64 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
           )}
         </section>
       )}
+
+      {/* 7. Mejoras realizadas: logrado real contra el potencial */}
+      {implementaciones.length > 0 && (
+        <section className={CLASE_TARJETA} aria-labelledby="titulo-realizadas" data-testid="mejoras-realizadas">
+          <h3 id="titulo-realizadas" className="m-0">
+            <button type="button" className={`${CLASE_TITULO} flex w-full items-center justify-between text-left`} aria-expanded={verRealizadas} aria-controls="lista-realizadas" onClick={() => setVerRealizadas((v) => !v)}>
+              <span>Mejoras realizadas ({implementaciones.length})</span>
+              <span aria-hidden="true" className="text-sm text-slate-500">{verRealizadas ? '▲' : '▼'}</span>
+            </button>
+          </h3>
+          <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-900 space-y-2" data-testid="resumen-realizadas">
+            <p data-testid="texto-logrado-pendiente">
+              Logrado ≈ {usd0(logrado)}/año · Pendiente ≈ {usd0(potencial)}/año · <b>Potencial total {usd0(logrado + potencial)}/año</b>
+            </p>
+            <div className="h-2 rounded bg-white" role="progressbar" aria-label="Logrado sobre potencial total" aria-valuemin={0} aria-valuemax={100}
+              aria-valuenow={Math.round(logrado + potencial > 0 ? Math.min(100, Math.max(0, (logrado / (logrado + potencial)) * 100)) : 0)}>
+              <div className="h-2 rounded bg-emerald-600" data-testid="barra-logrado" style={{ width: `${logrado + potencial > 0 ? Math.min(100, Math.max(0, (logrado / (logrado + potencial)) * 100)) : 0}%` }} />
+            </div>
+          </div>
+          {verRealizadas && (
+            <ul id="lista-realizadas" className="space-y-3">
+              {implementaciones.map((im, i) => {
+                const logro = logros[i] ?? 0;
+                return (
+                  <li key={im.id} className={CLASE_DESCARTADA} data-testid="mejora-realizada">
+                    <p>
+                      <span className={`mr-2 inline-block rounded-lg px-2 py-0.5 text-[10.5px] font-bold ${FONDO_CATEGORIA[im.categoria] ?? ''}`} data-testid="categoria-realizada">{im.categoria}</span>
+                      <span className="text-xs text-slate-500">{pieza.operaciones.some((o) => o.id === im.opId) ? `${numeroOp(im.opId)} · ${im.opNombre}` : `${im.opNombre} (operación eliminada)`}</span>
+                    </p>
+                    <p className="font-bold">{im.titulo}</p>
+                    <p data-testid="fecha-realizada"><b>Implementada el {fechaCorta(im.fecha)}:</b> <span data-testid="nota-realizada">{im.nota}</span></p>
+                    <p className="text-xs text-slate-500" data-testid="autor-realizada">Registrada por {im.porEmail} · {fechaHora(im.registradaEn)}</p>
+                    <p className="text-xs text-slate-500" data-testid="estimado-realizada">Estimado al registrar: ≈ {usd0(im.ahorroEstimadoAnual)}/año · costo antes {usd4(im.costoPiezaAntes)} por pieza</p>
+                    <p data-testid="logrado-realizada">
+                      Logrado: <span className={logro < 0 ? CLASE_LOGRO_NEGATIVO : CLASE_LOGRO_POSITIVO}>≈ {usd0(logro)}/año</span>
+                      {Math.abs(logro) < 0.005 && <span className="ml-2 text-xs text-slate-500" data-testid="sin-cambios-realizada">Aún sin cambios en los datos</span>}
+                    </p>
+                    {onAnularImplementacion && (
+                      <div><Button type="button" size="sm" variant="outline" aria-label={`Anular registro: ${im.titulo}`} onClick={() => setAAnular(im)}>Anular registro</Button></div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
+
+      <MarcarImplementadaDialog
+        mejora={aImplementar}
+        onCancelar={() => setAImplementar(null)}
+        onConfirmar={(m, fecha, nota) => { setAImplementar(null); onMarcarImplementada?.(m, fecha, nota); }}
+      />
+      <AnularImplementacionDialog
+        implementacion={aAnular}
+        onCancelar={() => setAAnular(null)}
+        onConfirmar={(id) => { setAAnular(null); onAnularImplementacion?.(id); }}
+      />
 
       <DescartarMejoraDialog
         mejora={aDescartar}

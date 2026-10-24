@@ -287,7 +287,10 @@ export function crearRepositorioCostos(db: Firestore, uid: string, opciones: Opc
   async function duplicarPieza(empresaId: string, piezaId: string, nuevo?: { codigo?: string; nombre?: string }): Promise<string> {
     const original = await obtenerPieza(empresaId, piezaId);
     if (!original) throw new Error('La pieza no existe.');
-    const copia: Pieza = { ...original, codigo: nuevo?.codigo ?? `${original.codigo}-copia`, nombre: nuevo?.nombre ?? original.nombre };
+    // La copia lleva los descartes, pero NO las implementaciones: ese historial y su punto de partida pertenecen a la pieza original.
+    const { implementaciones: _implementaciones, ...sinImplementaciones } = original;
+    void _implementaciones;
+    const copia: Pieza = { ...sinImplementaciones, codigo: nuevo?.codigo ?? `${original.codigo}-copia`, nombre: nuevo?.nombre ?? original.nombre };
     return crearPieza(empresaId, copia);
   }
 

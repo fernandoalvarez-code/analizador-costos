@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { avisoVidaUtilFilo, compararOpciones } from '@/lib/costos-mecanizado/calc';
 import type { CostoHoraPorMaquina, OpcionHerramienta, Pieza, PosicionHerramienta } from '@/lib/costos-mecanizado/types';
 import { CampoNumero, CampoTexto, CampoTiempo } from './campos';
-import { conSigno, numero, usd2, usd3, usd0 } from './formato';
+import { conSigno, numero, usd2, usd4, usd0 } from './formato';
 import { MENSAJE_COMPLETAR, opcionSinCompletar } from './opcion-completa';
 import { opcionNueva, rutaOpcion, rutaPosicion } from './validar-pieza';
 import { useCampo } from './validacion-context';
@@ -156,7 +156,7 @@ export default function PosicionHerramientaTable({ opId, indice, pos, pieza, cos
                         {tieneRoturas ? `⚠ ${numero(o.roturaPct ?? 0, 0)} %` : '+ Roturas'}
                       </button>
                     </td>
-                    <td className={`${CLASE_TD} font-bold tabular-nums whitespace-nowrap`} data-testid="usd-opcion">{usd3(porOpcion.get(o.id)?.costoOpcion ?? 0)}</td>
+                    <td className={`${CLASE_TD} font-bold tabular-nums whitespace-nowrap`} data-testid="usd-opcion">{usd4(porOpcion.get(o.id)?.costoOpcion ?? 0)}</td>
                     <td className={CLASE_TD}>
                       {pos.opciones.length > 1 && !enUso && (
                         <Button type="button" size="sm" variant="ghost" aria-label={`Quitar la opción ${o.nombre}`} title="Quitar opción" onClick={() => onChange((p) => ({ ...p, opciones: p.opciones.filter((x) => x.id !== o.id), seleccionada: p.seleccionada > k ? p.seleccionada - 1 : p.seleccionada }))}>✕</Button>
@@ -196,15 +196,15 @@ export default function PosicionHerramientaTable({ opId, indice, pos, pieza, cos
                 {comparacion.map((c) => (
                   <tr key={c.opcionId} data-testid="fila-comparacion">
                     <td className={CLASE_TD}>{c.nombre}{c.esEnUso && <span className="ml-1 text-xs text-slate-500">(en uso)</span>}</td>
-                    <td className={`${CLASE_TD} tabular-nums`}>{usd3(c.costoOpcion)}</td>
+                    <td className={`${CLASE_TD} tabular-nums`}>{usd4(c.costoOpcion)}</td>
                     {incompletas.has(c.opcionId) || enUsoSinCompletar ? (
                       <td colSpan={3} className={`${CLASE_TD} text-amber-700`} data-testid="completar-datos">{MENSAJE_COMPLETAR}</td>
                     ) : c.esEnUso ? (
                       <><td className={`${CLASE_TD} text-slate-500`}>base</td><td className={`${CLASE_TD} text-slate-500`}>base</td><td className={`${CLASE_TD} tabular-nums`}>{usd2(pos.opciones.find((x) => x.id === c.opcionId)?.precio ?? 0)}</td></>
                     ) : (
                       <>
-                        <td className={`${CLASE_TD} tabular-nums ${Math.abs(c.deltaPorPieza) < 0.0005 ? 'text-slate-500' : c.deltaPorPieza < 0 ? CLASE_BAJA : CLASE_SUBE}`} data-testid="delta-pieza">
-                          {Math.abs(c.deltaPorPieza) < 0.0005 ? 'igual' : `${conSigno(c.deltaPorPieza, 3)} USD/pza`}
+                        <td className={`${CLASE_TD} tabular-nums ${Math.abs(c.deltaPorPieza) < 0.00005 ? 'text-slate-500' : c.deltaPorPieza < 0 ? CLASE_BAJA : CLASE_SUBE}`} data-testid="delta-pieza">
+                          {Math.abs(c.deltaPorPieza) < 0.00005 ? 'igual' : `${conSigno(c.deltaPorPieza, 4)} USD/pza`}
                         </td>
                         <td className={`${CLASE_TD} tabular-nums ${Math.abs(c.deltaAnual) < 0.5 ? 'text-slate-500' : c.deltaAnual < 0 ? CLASE_BAJA : CLASE_SUBE}`} data-testid="delta-anual">
                           {Math.abs(c.deltaAnual) < 0.5 ? 'igual' : `${c.deltaAnual < 0 ? 'ahorra' : 'cuesta'} ${usd0(Math.abs(c.deltaAnual))}/año`}

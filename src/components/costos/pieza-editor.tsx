@@ -10,7 +10,7 @@ import { calcPieza } from '@/lib/costos-mecanizado/calc';
 import type { FilaPieza, PiezaDoc, RepositorioCostos } from '@/lib/costos-mecanizado/firestore';
 import { mejoras, mejorasDescartadas } from '@/lib/costos-mecanizado/mejoras';
 import { toMmss } from '@/lib/costos-mecanizado/time';
-import type { MejoraCosto, MotivoDescarteTipo, Operacion, Pieza, ReglasCostos } from '@/lib/costos-mecanizado/types';
+import type { Implementacion, MejoraCosto, MotivoDescarteTipo, Operacion, Pieza, ReglasCostos } from '@/lib/costos-mecanizado/types';
 import DatosPiezaForm from './datos-pieza-form';
 import DiagnosticoPieza from './diagnostico-pieza';
 import { numero, usd0, usd4 } from './formato';
@@ -18,7 +18,7 @@ import type { BaseOperacion } from './incidencia-herramientas-table';
 import RutaOperaciones from './ruta-operaciones';
 import { useAvisoSalida } from './use-aviso-salida';
 import { ValidacionProvider } from './validacion-context';
-import { operacionNueva, piezaNueva, validarPieza } from './validar-pieza';
+import { nuevoId, operacionNueva, piezaNueva, validarPieza } from './validar-pieza';
 
 /** Espera sin escribir antes de guardar automáticamente. */
 export const DEBOUNCE_GUARDADO_PIEZA_MS = 1000;
@@ -292,6 +292,27 @@ export default function PiezaEditor({ empresaId, repo, inicial, maquinas, reglas
       },
     }));
   };
+  /**
+   * Registra una mejora como implementada. El punto de partida es el costo de la pieza en este momento: el botón solo se habilita con la pieza
+   * guardada y sin cambios pendientes, así que coincide con lo guardado. La mejora sigue en la lista hasta que los datos nuevos dejen de dispararla.
+   */
+  const marcarImplementada = (m: MejoraCosto, fecha: string, nota: string) => {
+    if (!usuario) return;
+    editar((p) => {
+      const op = p.operaciones.find((o) => o.id === m.opId);
+      const costoPiezaAntes = calcPieza(p, costoHora).costoPieza;
+      const nueva: Implementacion = {
+        id: nuevoId('i'), categoria: m.categoria, opId: m.opId, opNombre: op?.nombre ?? m.opNombre, ...(m.posicionId ? { posicionId: m.posicionId } : {}),
+        claveMejora: m.clave, titulo: m.titulo, fecha, nota, por: usuario.uid, porEmail: usuario.email, registradaEn: new Date().toISOString(),
+        costoPiezaAntes, ahorroEstimadoAnual: m.ahorroAnual,
+      };
+      return { ...p, implementaciones: [...(p.implementaciones ?? []), nueva] };
+    });
+  };
+  /** Anula un registro (corregir un error): quita la entrada; el campo queda como [] para que la actualización reemplace el arreglo. */
+  const anularImplementacion = (implId: string) => {
+    editar((p) => ({ ...p, implementaciones: (p.implementaciones ?? []).filter((x) => x.id !== implId) }));
+  };
   /** Reactiva: quita la entrada. Si era la última queda `{}` (no se borra el campo: la actualización en Firestore reemplaza el mapa). */
   const reactivarMejora = (clave: string) => {
     editar((p) => {
@@ -357,6 +378,8 @@ export default function PiezaEditor({ empresaId, repo, inicial, maquinas, reglas
         <DiagnosticoPieza
           pieza={pieza} resultado={resultado} mejorasLista={listaMejoras} reglasDesactualizadas={reglasDesactualizadas} onCompararAlternativa={compararAlternativa}
           descartadas={listaDescartadas} onDescartar={usuario ? descartarMejora : undefined} onReactivar={usuario ? reactivarMejora : undefined}
+          onMarcarImplementada={usuario ? marcarImplementada : undefined} onAnularImplementacion={usuario ? anularImplementacion : undefined}
+          puedeMarcarImplementada={!!id && !hayCambiosSinGuardar}
         />
       )}
 
