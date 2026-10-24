@@ -1,5 +1,5 @@
 // Mejoras priorizadas (SPEC sección 6 + ADDENDUM puntos 3 y 7). Las reglas usan ">" ESTRICTO: un valor exacto en el umbral no dispara.
-import type { CategoriaMejora, MejoraCosto, Pieza, ReglasCostos, ResultadoOperacion, ResultadoPieza } from './types';
+import type { CategoriaMejora, MejoraCosto, MejoraDescartada, Pieza, ReglasCostos, ResultadoOperacion, ResultadoPieza } from './types';
 import { REGLAS_POR_DEFECTO } from './types';
 
 const usd = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
@@ -17,8 +17,47 @@ interface Candidata {
   puedeComparar: boolean;
 }
 
-/** Mejoras de una pieza ya calculada, ordenadas por ahorro anual (de mayor a menor). */
-export function mejoras(resultado: ResultadoPieza, _pieza: Pick<Pieza, 'operaciones'>, reglas: ReglasCostos = REGLAS_POR_DEFECTO): MejoraCosto[] {
+/** Clave estable de una mejora: usa ids (de la operación y de la posición de herramienta), no posiciones en la lista. */
+export const claveMejora = (categoria: CategoriaMejora, opId: string, posicionId?: string): string => `${categoria}|${opId}|${posicionId ?? ''}`;
+
+/** Mejoras de una pieza ya calculada, ordenadas por ahorro anual (de mayor a menor): las ACTIVAS, sin las descartadas con motivo. */
+export function mejoras(resultado: ResultadoPieza, pieza: Pick<Pieza, 'operaciones' | 'mejorasDescartadas'>, reglas: ReglasCostos = REGLAS_POR_DEFECTO): MejoraCosto[] {
+  const descartadas = pieza.mejorasDescartadas ?? {};
+  return todasLasMejoras(resultado, reglas).filter((m) => !Object.prototype.hasOwnProperty.call(descartadas, m.clave));
+}
+
+/** Una mejora descartada de la pieza, para mostrarla en el registro. `vigente`: con los datos actuales la mejora todavía se dispararía. */
+export interface MejoraDescartadaVista {
+  clave: string;
+  categoria: CategoriaMejora;
+  opId: string;
+  /** Nombre actual de la operación; '' si ya no existe. */
+  opNombre: string;
+  posicionId?: string;
+  descarte: MejoraDescartada;
+  vigente: boolean;
+  /** La mejora tal como se calcularía hoy (solo si es vigente). */
+  mejora: MejoraCosto | null;
+}
+
+/** Las mejoras descartadas que siguen guardadas en la pieza (aunque ya no se dispararían), de la más cara a la más barata al descartar. */
+export function mejorasDescartadas(resultado: ResultadoPieza, pieza: Pick<Pieza, 'operaciones' | 'mejorasDescartadas'>, reglas: ReglasCostos = REGLAS_POR_DEFECTO): MejoraDescartadaVista[] {
+  const guardadas = pieza.mejorasDescartadas ?? {};
+  const vigentes = new Map(todasLasMejoras(resultado, reglas).map((m) => [m.clave, m]));
+  return Object.entries(guardadas)
+    .map(([clave, descarte]): MejoraDescartadaVista => {
+      const [categoria, opId = '', posicionId = ''] = clave.split('|');
+      const mejora = vigentes.get(clave) ?? null;
+      return {
+        clave, categoria: categoria as CategoriaMejora, opId, opNombre: pieza.operaciones.find((o) => o.id === opId)?.nombre ?? '',
+        posicionId: posicionId || undefined, descarte, vigente: mejora !== null, mejora,
+      };
+    })
+    .sort((a, b) => b.descarte.ahorroAnualAlDescartar - a.descarte.ahorroAnualAlDescartar || a.clave.localeCompare(b.clave));
+}
+
+/** TODAS las mejoras que dispara la pieza con las reglas dadas (activas y descartadas), ordenadas por ahorro anual. */
+function todasLasMejoras(resultado: ResultadoPieza, reglas: ReglasCostos): MejoraCosto[] {
   const candidatas: Candidata[] = [];
 
   for (const op of resultado.operaciones) {
@@ -91,7 +130,7 @@ export function mejoras(resultado: ResultadoPieza, _pieza: Pick<Pieza, 'operacio
 
   return candidatas
     .map((c): MejoraCosto => ({
-      categoria: c.categoria, opId: c.op.opId, opNombre: c.op.nombre, posicionId: c.posicionId, titulo: c.titulo,
+      clave: claveMejora(c.categoria, c.op.opId, c.posicionId), categoria: c.categoria, opId: c.op.opId, opNombre: c.op.nombre, posicionId: c.posicionId, titulo: c.titulo,
       explicacion: c.explicacion, supuesto: `${c.supuesto}. ${AVISO_SUPUESTOS}`,
       ahorroPorPieza: c.ahorroPorPieza, ahorroAnual: c.ahorroPorPieza * resultado.volumenAnual, puedeComparar: c.puedeComparar,
     }))

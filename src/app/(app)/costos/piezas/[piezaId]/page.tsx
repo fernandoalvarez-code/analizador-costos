@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { useUser } from '@/firebase';
 import { useEmpresa } from '@/components/costos/empresa-context';
 import PiezaEditor from '@/components/costos/pieza-editor';
 import type { MaquinaDoc, PiezaDoc } from '@/lib/costos-mecanizado/firestore';
@@ -19,6 +20,7 @@ interface Datos {
 export default function PiezaPage() {
   const { piezaId } = useParams<{ piezaId: string }>();
   const { empresa, repo } = useEmpresa();
+  const { user } = useUser();
   const [datos, setDatos] = useState<Datos | null>(null);
   const [carga, setCarga] = useState<'cargando' | 'ok' | 'noExiste' | 'error'>('cargando');
 
@@ -68,7 +70,8 @@ export default function PiezaPage() {
         </p>
       )}
       {/* key: al cambiar de empresa o de pieza se descarta todo el estado del editor */}
-      <PiezaEditor key={`${empresa.id}:${piezaId}`} empresaId={empresa.id} repo={repo} inicial={datos.pieza} maquinas={datos.maquinas} reglas={datos.reglas} />
+      <PiezaEditor key={`${empresa.id}:${piezaId}`} empresaId={empresa.id} repo={repo} inicial={datos.pieza} maquinas={datos.maquinas} reglas={datos.reglas}
+        usuario={user ? { uid: user.uid, email: user.email ?? '' } : undefined} />
     </div>
   );
 }

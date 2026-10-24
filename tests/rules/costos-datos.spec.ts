@@ -193,6 +193,32 @@ describe('capa de datos de costos de mecanizado', () => {
       expect(d?.operaciones[0].herramientas[0].opciones[0].vidaVerificada).toBe(true);
       expect(d?.resumen.costoPieza).toBeCloseTo(1, 9); // la marca no entra en el cálculo
     });
+    it('mejoras descartadas: el resumen guardado no las cuenta (calcVersion 3), duplicar las conserva y reactivar la última reemplaza el mapa', async () => {
+      await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), `empresas/${EMP}/maquinas/m1`), { nombre: 'M1', costoHora: 60 }); });
+      // piezaSimple: 1 min de corte a 1 USD/min con herramienta gratuita → solo dispara Productividad (corte = 100 % > 45 %): 20 % × 1 USD × 1000 = 200 USD/año
+      const sinDescarte = await repo('a1').crearPieza(EMP, piezaSimple('D-0'));
+      const r0 = await leerAdmin<{ resumen: { cantMejoras: number; ahorroPotencialAnual: number; calcVersion: number } }>(`empresas/${EMP}/piezas/${sinDescarte}`);
+      expect(r0?.resumen).toMatchObject({ cantMejoras: 1, calcVersion: 3 });
+      expect(r0?.resumen.ahorroPotencialAnual).toBeCloseTo(200, 6);
+
+      const descarte = { motivoTipo: 'ya-probado' as const, motivo: 'Ya lo probamos', por: 'a1', porEmail: 'a1@cliente.com', fecha: '2026-10-23T12:00:00.000Z', ahorroAnualAlDescartar: 200 };
+      const conDescarte = { ...piezaSimple('D-1'), mejorasDescartadas: { 'Productividad|op1|': descarte } };
+      const id = await repo('a1').crearPieza(EMP, conDescarte);
+      const d1 = await leerAdmin<Pieza & { resumen: { cantMejoras: number; ahorroPotencialAnual: number; calcVersion: number } }>(`empresas/${EMP}/piezas/${id}`);
+      expect(d1?.mejorasDescartadas).toEqual({ 'Productividad|op1|': descarte });
+      expect(d1?.resumen).toMatchObject({ cantMejoras: 0, ahorroPotencialAnual: 0, calcVersion: 3 });
+
+      const copia = await repo('a2').duplicarPieza(EMP, id);
+      const d2 = await leerAdmin<Pieza>(`empresas/${EMP}/piezas/${copia}`);
+      expect(d2?.mejorasDescartadas).toEqual({ 'Productividad|op1|': descarte });
+
+      // Reactivar la última: la interfaz guarda {} (no borra el campo) y la actualización reemplaza el mapa
+      await repo('a1').actualizarPieza(EMP, id, { ...conDescarte, mejorasDescartadas: {} });
+      const d3 = await leerAdmin<Pieza & { resumen: { cantMejoras: number; ahorroPotencialAnual: number } }>(`empresas/${EMP}/piezas/${id}`);
+      expect(d3?.mejorasDescartadas).toEqual({});
+      expect(d3?.resumen.cantMejoras).toBe(1);
+      expect(d3?.resumen.ahorroPotencialAnual).toBeCloseTo(200, 6);
+    });
     it('eliminar borra la pieza', async () => {
       await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), `empresas/${EMP}/maquinas/m1`), { nombre: 'M1', costoHora: 60 }); });
       const id = await repo('a1').crearPieza(EMP, piezaSimple('P-1'));

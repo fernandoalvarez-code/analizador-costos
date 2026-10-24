@@ -109,6 +109,34 @@ export interface ResumenPieza {
   reglasVersion: number;
 }
 
+/** Por qué se descartó una mejora sugerida. */
+export type MotivoDescarteTipo = 'ya-probado' | 'limitacion-maquina' | 'exigencia-cliente' | 'calidad-tolerancia' | 'otro';
+
+export const ETIQUETA_MOTIVO_DESCARTE: Record<MotivoDescarteTipo, string> = {
+  'ya-probado': 'Ya se probó',
+  'limitacion-maquina': 'Limitación de la máquina',
+  'exigencia-cliente': 'Exigencia del cliente',
+  'calidad-tolerancia': 'Calidad o tolerancia',
+  'otro': 'Otro',
+};
+
+export const MOTIVO_DESCARTE_MIN = 5;
+export const MOTIVO_DESCARTE_MAX = 500;
+
+/** Registro de una mejora descartada: queda en la pieza, no se vuelve a sugerir ni suma al ahorro potencial hasta que se reactive. */
+export interface MejoraDescartada {
+  motivoTipo: MotivoDescarteTipo;
+  /** Obligatorio: de MOTIVO_DESCARTE_MIN a MOTIVO_DESCARTE_MAX caracteres. */
+  motivo: string;
+  /** uid y email de quien la descartó. */
+  por: string;
+  porEmail: string;
+  /** ISO 8601. */
+  fecha: string;
+  /** Ahorro anual estimado de la mejora en el momento de descartarla (USD). */
+  ahorroAnualAlDescartar: number;
+}
+
 export interface Pieza {
   id?: string;
   codigo: string;
@@ -122,6 +150,11 @@ export interface Pieza {
   material: MaterialPieza;
   /** Embebidas, en el orden de la ruta. */
   operaciones: Operacion[];
+  /**
+   * Mejoras descartadas, por clave estable `${categoria}|${opId}|${posicionId o ''}` (ids, no posiciones). Opcional: las piezas ya guardadas
+   * siguen válidas. Al reactivar la última se deja `{}` (no se borra el campo) para que la actualización en Firestore reemplace el mapa.
+   */
+  mejorasDescartadas?: Record<string, MejoraDescartada>;
   resumen?: ResumenPieza;
 }
 
@@ -225,6 +258,8 @@ export interface ComparacionOpcion {
 export type CategoriaMejora = 'Productividad' | 'Tiempos muertos' | 'Preparación' | 'Herramienta' | 'Calidad' | 'Roturas';
 
 export interface MejoraCosto {
+  /** Clave estable `${categoria}|${opId}|${posicionId o ''}`: identifica la mejora aunque cambie el orden de las operaciones. */
+  clave: string;
   categoria: CategoriaMejora;
   opId: string;
   opNombre: string;
@@ -263,6 +298,7 @@ export const REGLAS_POR_DEFECTO: ReglasCostos = {
 
 /**
  * Versión de las fórmulas y del contenido del resumen: sube cuando cambia algún cálculo o se agrega un campo al resumen (los resúmenes
- * guardados quedan desactualizados). 2: se agregó opMayorCostoNombre.
+ * guardados quedan desactualizados). 2: se agregó opMayorCostoNombre. 3: ahorroPotencialAnual y cantMejoras cuentan solo las mejoras
+ * activas (las descartadas con motivo no suman).
  */
-export const CALC_VERSION = 2;
+export const CALC_VERSION = 3;
