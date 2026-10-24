@@ -23,7 +23,7 @@ export function resumenDesactualizado(f: FilaPieza, reglasVersion: number): bool
 }
 
 export interface TableroMejoras {
-  /** Suma de resumen.logradoAnual de las piezas con resumen vigente (USD/año). */
+  /** Suma de resumen.logradoAnual de las piezas CON línea base y resumen vigente (USD/año). */
   logrado: number;
   /** Suma de ahorroPotencialAnual (solo mejoras activas) de las piezas con resumen vigente. */
   pendiente: number;
@@ -32,27 +32,40 @@ export interface TableroMejoras {
   /** logrado / potencialTotal como fracción 0–1 (0 si no hay potencial). */
   fraccionLograda: number;
   cantImplementadas: number;
+  /** Piezas con resumen vigente pero SIN línea base: no suman al logrado. */
+  sinLineaBase: number;
   /** Piezas con el resumen desactualizado: quedan FUERA de las sumas. */
   excluidas: number;
+  /** La mejora más reciente de la planta (por fecha de registro), con la pieza; null si ninguna pieza tiene mejoras registradas. */
+  ultimaMejora: { fecha: string; por: string; codigo: string } | null;
 }
 
 /**
- * "Mejoras realizadas vs potencial" de la planta. Un resumen desactualizado (otras reglas o versión de fórmulas) no se suma: no trae
- * logradoAnual ni cuenta el ahorro igual que los vigentes. El logrado puede ser negativo (se muestra tal cual).
+ * "Mejoras realizadas vs potencial" de la planta. Un resumen desactualizado (otras reglas o versión de fórmulas) no se suma: no trae los campos
+ * nuevos ni cuenta el ahorro igual que los vigentes. Una pieza sin línea base no suma al logrado. El logrado puede ser negativo (se muestra tal cual).
  */
 export function tableroMejoras(filas: FilaPieza[], reglasVersion: number): TableroMejoras {
   let logrado = 0;
   let pendiente = 0;
   let cantImplementadas = 0;
+  let sinLineaBase = 0;
   let excluidas = 0;
+  let ultimaMejora: TableroMejoras['ultimaMejora'] = null;
   for (const f of filas) {
-    if (!f.resumen || resumenDesactualizado(f, reglasVersion)) { excluidas += 1; continue; }
-    logrado += num(f.resumen.logradoAnual);
-    pendiente += num(f.resumen.ahorroPotencialAnual);
-    cantImplementadas += num(f.resumen.cantImplementadas);
+    const r = f.resumen;
+    if (r && typeof r.ultimaMejoraFecha === 'string' && (!ultimaMejora || Date.parse(r.ultimaMejoraFecha) > Date.parse(ultimaMejora.fecha))) {
+      ultimaMejora = { fecha: r.ultimaMejoraFecha, por: r.ultimaMejoraPor ?? '', codigo: f.codigo };
+    }
+    if (!r || resumenDesactualizado(f, reglasVersion)) { excluidas += 1; continue; }
+    pendiente += num(r.ahorroPotencialAnual);
+    cantImplementadas += num(r.cantImplementadas);
+    if (r.tieneLineaBase === true) logrado += num(r.logradoAnual); else sinLineaBase += 1;
   }
   const potencialTotal = logrado + pendiente;
-  return { logrado, pendiente, potencialTotal, fraccionLograda: potencialTotal > 0 ? Math.min(1, Math.max(0, logrado / potencialTotal)) : 0, cantImplementadas, excluidas };
+  return {
+    logrado, pendiente, potencialTotal, fraccionLograda: potencialTotal > 0 ? Math.min(1, Math.max(0, logrado / potencialTotal)) : 0,
+    cantImplementadas, sinLineaBase, excluidas, ultimaMejora,
+  };
 }
 
 /**

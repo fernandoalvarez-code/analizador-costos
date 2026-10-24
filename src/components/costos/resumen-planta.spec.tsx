@@ -251,34 +251,39 @@ describe('6. Resumen desactualizado y "Recalcular resúmenes"', () => {
 });
 
 describe('Mejoras realizadas vs potencial (tarjeta del tablero)', () => {
-  const con = (f: (typeof TRES_PIEZAS)[number], parcial: Record<string, number>) => ({ ...f, resumen: { ...f.resumen, ...parcial } });
-  it('Logrado 700 · Pendiente 2.500 · Potencial total 3.200 · 22 % logrado · 3 mejoras implementadas (A: 1.000/2.000, B: −300/500; C desactualizada no suma)', async () => {
+  const con = (f: (typeof TRES_PIEZAS)[number], parcial: Record<string, unknown>) => ({ ...f, resumen: { ...f.resumen, ...parcial } });
+  it('Logrado 700 · Pendiente 2.600 · Potencial total 3.300 · 21 % · 3 implementadas; 1 pieza sin línea base; 1 desactualizada; última mejora de la planta', async () => {
     repo.listarTodosLosResumenes.mockResolvedValue([
-      con(PIEZA_A, { logradoAnual: 1000, ahorroPotencialAnual: 2000, cantImplementadas: 1 }),
-      con(PIEZA_B, { logradoAnual: -300, ahorroPotencialAnual: 500, cantImplementadas: 2 }),
-      con(PIEZA_C, { logradoAnual: 999, ahorroPotencialAnual: 999, cantImplementadas: 9, calcVersion: CALC_VERSION - 1 }),
+      con(PIEZA_A, { logradoAnual: 1000, tieneLineaBase: true, ahorroPotencialAnual: 2000, cantImplementadas: 1, ultimaMejoraFecha: '2026-10-20T12:00:00.000Z', ultimaMejoraPor: 'ana@secocut.com' }),
+      con(PIEZA_B, { logradoAnual: -300, tieneLineaBase: true, ahorroPotencialAnual: 500, cantImplementadas: 2, ultimaMejoraFecha: '2026-10-25T12:00:00.000Z', ultimaMejoraPor: 'luis@secocut.com' }),
+      con(PIEZA_C, { logradoAnual: 0, tieneLineaBase: false, ahorroPotencialAnual: 100, cantImplementadas: 0 }),
+      { ...PIEZA_C, id: 'd', codigo: 'D-004', resumen: { ...PIEZA_C.resumen, logradoAnual: 999, tieneLineaBase: true, ahorroPotencialAnual: 999, cantImplementadas: 9, calcVersion: CALC_VERSION - 1 } },
     ]);
     const c = await montarYCargar();
     expect(texto(c, 'tablero-logrado')).toContain('USD 700');
     expect(texto(c, 'tablero-logrado')).toContain('3 mejoras implementadas');
-    expect(texto(c, 'tablero-pendiente')).toContain('USD 2.500');
-    expect(texto(c, 'tablero-potencial-total')).toContain('USD 3.200');
-    expect(texto(c, 'tablero-pct-logrado')).toContain('22 %'); // 700 / 3.200 = 21,875 %
+    expect(texto(c, 'tablero-pendiente')).toContain('USD 2.600');
+    expect(texto(c, 'tablero-potencial-total')).toContain('USD 3.300');
+    expect(texto(c, 'tablero-pct-logrado')).toContain('21 %'); // 700 / 3.300 = 21,2 %
+    expect(texto(c, 'tablero-sin-linea-base')).toBe('1 pieza sin línea base (no suma al logrado).');
     expect(texto(c, 'tablero-excluidas')).toBe('No incluye 1 pieza con el resumen calculado con reglas anteriores.');
-    // la leyenda general del tablero sigue avisando de las piezas desactualizadas
+    expect(texto(c, 'tablero-ultima-mejora')).toMatch(/^Última mejora de la planta: \d{2}\/\d{2}\/2026, luis@secocut\.com, pieza B-002$/);
     expect(c.getByTestId('aviso-desactualizadas')).toBeTruthy();
   });
-  it('sin implementaciones: Logrado USD 0, y no hay leyenda de excluidas', async () => {
+  it('sin implementaciones ni línea base: Logrado USD 0, las 3 piezas "sin línea base" y sin última mejora', async () => {
     const c = await montarYCargar();
     expect(texto(c, 'tablero-logrado')).toContain('USD 0');
     expect(texto(c, 'tablero-pendiente')).toContain('USD 2.600');
     expect(texto(c, 'tablero-pct-logrado')).toContain('0 %');
+    expect(texto(c, 'tablero-sin-linea-base')).toBe('3 piezas sin línea base (no suman al logrado).');
+    expect(c.queryByTestId('tablero-ultima-mejora')).toBeNull();
     expect(c.queryByTestId('tablero-excluidas')).toBeNull();
   });
   it('un logrado negativo se muestra negativo', async () => {
-    repo.listarTodosLosResumenes.mockResolvedValue([con(PIEZA_A, { logradoAnual: -500, ahorroPotencialAnual: 2000, cantImplementadas: 1 })]);
+    repo.listarTodosLosResumenes.mockResolvedValue([con(PIEZA_A, { logradoAnual: -500, tieneLineaBase: true, ahorroPotencialAnual: 2000, cantImplementadas: 1 })]);
     const c = await montarYCargar();
     expect(texto(c, 'tablero-logrado')).toContain('USD −500');
     expect(texto(c, 'tablero-potencial-total')).toContain('USD 1.500');
+    expect(c.queryByTestId('tablero-sin-linea-base')).toBeNull();
   });
 });

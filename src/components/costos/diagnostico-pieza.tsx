@@ -3,12 +3,12 @@
 import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { materialEfectivo } from '@/lib/costos-mecanizado/calc';
-import { logroPorImplementacion } from '@/lib/costos-mecanizado/implementaciones';
+import { logradoTotalAnual, ultimaImplementacion } from '@/lib/costos-mecanizado/implementaciones';
 import { toMmss } from '@/lib/costos-mecanizado/time';
 import type { MejoraDescartadaVista } from '@/lib/costos-mecanizado/mejoras';
 import { ETIQUETA_MOTIVO_DESCARTE, ETIQUETA_RUBRO, RUBROS, type Implementacion, type MejoraCosto, type MotivoDescarteTipo, type Pieza, type ResultadoPieza, type Rubro } from '@/lib/costos-mecanizado/types';
 import DescartarMejoraDialog from './descartar-mejora-dialog';
-import { AnularImplementacionDialog, MarcarImplementadaDialog } from './implementaciones-dialogs';
+import { AnularImplementacionDialog, FijarLineaBaseDialog, MarcarImplementadaDialog } from './implementaciones-dialogs';
 import { ETIQUETA_CORTA_RUBRO, FONDO_CATEGORIA, FONDO_RUBRO, TEXTO_SOBRE_RUBRO } from './colores-rubro';
 import { numero, porcentaje0, usd0, usd2, usd4 } from './formato';
 
@@ -21,8 +21,11 @@ const LEYENDA_SUPUESTOS = 'Supuestos conservadores, a confirmar con ensayo en pl
 const CLASE_DESCARTADA = 'rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-1 text-sm';
 const CLASE_YA_NO_SE_SUGIERE = 'inline-block rounded bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800';
 const TEXTO_GUARDAR_PRIMERO = 'Guardá la pieza primero';
+const TEXTO_SIN_LINEA_BASE = 'Sin línea base: todavía no se mide el ahorro logrado. Fijala cuando la carga de la pieza esté terminada y validada.';
 const CLASE_LOGRO_NEGATIVO = 'font-bold text-red-700';
-const CLASE_LOGRO_POSITIVO = 'font-bold text-emerald-700';
+const CLASE_RECUADRO_LOGRADO = 'rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-900 space-y-2';
+/** ISO -> DD/MM/AAAA en hora local. */
+const fechaDeISO = (iso: string) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? iso : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; };
 /** YYYY-MM-DD -> DD/MM/AAAA (sin pasar por Date: no depende de la zona horaria). */
 const fechaCorta = (iso: string) => { const [a, m, d] = iso.split('-'); return a && m && d ? `${d}/${m}/${a}` : iso; };
 const fechaHora = (iso: string) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }); };
@@ -45,18 +48,20 @@ export interface DiagnosticoPiezaProps {
   /** Registro de mejoras implementadas. Sin `onMarcarImplementada` no se ofrece "Marcar como implementada". */
   onMarcarImplementada?: (m: MejoraCosto, fecha: string, nota: string) => void;
   onAnularImplementacion?: (id: string) => void;
-  /** Solo con la pieza guardada y sin cambios pendientes: el punto de partida es el costo guardado. */
-  puedeMarcarImplementada?: boolean;
+  /** Línea base: se fija con la pieza GUARDADA y sin cambios pendientes (el punto de partida es el costo guardado). Sin `onFijarLineaBase` no se ofrece. */
+  onFijarLineaBase?: (nota: string) => void;
+  puedeFijarLineaBase?: boolean;
 }
 
 /** Sub-pestaña "Diagnóstico": se calcula en vivo sobre el estado de la pieza, así que siempre coincide con lo cargado. */
-export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, reglasDesactualizadas, onCompararAlternativa, descartadas = [], onDescartar, onReactivar, onMarcarImplementada, onAnularImplementacion, puedeMarcarImplementada = true }: DiagnosticoPiezaProps) {
+export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, reglasDesactualizadas, onCompararAlternativa, descartadas = [], onDescartar, onReactivar, onMarcarImplementada, onAnularImplementacion, onFijarLineaBase, puedeFijarLineaBase = true }: DiagnosticoPiezaProps) {
   const [verTodas, setVerTodas] = useState(false);
   const [aDescartar, setADescartar] = useState<MejoraCosto | null>(null);
   const [verDescartadas, setVerDescartadas] = useState(false);
   const [aImplementar, setAImplementar] = useState<MejoraCosto | null>(null);
   const [aAnular, setAAnular] = useState<Implementacion | null>(null);
   const [verRealizadas, setVerRealizadas] = useState(false);
+  const [fijandoLineaBase, setFijandoLineaBase] = useState(false);
 
   const ops = resultado.operaciones;
   const total = resultado.costoPieza;
@@ -64,8 +69,9 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
   const numeroOp = (opId: string) => `Op ${(pieza.operaciones.findIndex((o) => o.id === opId) + 1) * 10}`;
 
   const implementaciones = pieza.implementaciones ?? [];
-  const logros = useMemo(() => logroPorImplementacion(pieza, resultado), [pieza, resultado]);
-  const logrado = logros.reduce((s, x) => s + x, 0);
+  const lineaBase = pieza.lineaBase ?? null;
+  const logrado = logradoTotalAnual(pieza, resultado);
+  const ultima = ultimaImplementacion(pieza);
 
   const ordenadas = useMemo(() => [...ops].sort((a, b) => b.totalOp - a.totalOp), [ops]);
   const rubrosOrdenados = useMemo(() => [...RUBROS].sort((a, b) => resultado.porRubroUsdPza[b] - resultado.porRubroUsdPza[a]), [resultado]);
@@ -85,6 +91,7 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
   const pctHerramientas = total > 0 ? (resultado.porRubroUsdPza.herramientas + resultado.porRubroUsdPza.cambios) / total : 0;
   const m = pieza.material;
   const potencial = mejorasLista.reduce((s, x) => s + x.ahorroAnual, 0);
+  const fraccionLograda = logrado + potencial > 0 ? Math.min(1, Math.max(0, logrado / (logrado + potencial))) : 0;
   const visibles = verTodas ? mejorasLista : mejorasLista.slice(0, MAX_MEJORAS_VISIBLES);
 
   return (
@@ -227,6 +234,43 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
         </div>
       </section>
 
+      {/* 4 bis. Ahorro logrado desde la línea base */}
+      <section className={CLASE_TARJETA} aria-labelledby="titulo-logrado" data-testid="ahorro-logrado">
+        <h3 id="titulo-logrado" className={CLASE_TITULO}>Ahorro logrado</h3>
+        {lineaBase ? (
+          <div className={CLASE_RECUADRO_LOGRADO}>
+            <p data-testid="texto-logrado-pendiente">
+              Logrado ≈ <span className={logrado < 0 ? CLASE_LOGRO_NEGATIVO : ''} data-testid="valor-logrado">{usd0(logrado)}</span>/año · Pendiente ≈ {usd0(potencial)}/año · <b>Potencial total {usd0(logrado + potencial)}/año</b>
+            </p>
+            <div className="h-2 rounded bg-white" role="progressbar" aria-label="Logrado sobre potencial total" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(fraccionLograda * 100)}>
+              <div className="h-2 rounded bg-emerald-600" data-testid="barra-logrado" style={{ width: `${fraccionLograda * 100}%` }} />
+            </div>
+            <p className="text-xs" data-testid="linea-base-info">
+              Línea base: {usd4(lineaBase.costoPiezaBase)} por pieza, fijada el {fechaDeISO(lineaBase.fecha)} por {lineaBase.porEmail}
+              {lineaBase.nota ? <> — <span data-testid="linea-base-nota">{lineaBase.nota}</span></> : null}
+            </p>
+            <p className="text-xs" data-testid="ultima-mejora">
+              {ultima
+                ? <>Última mejora: {fechaDeISO(ultima.registradaEn)}, {ultima.porEmail} — {ultima.nota || ultima.titulo}</>
+                : 'Todavía no se registraron mejoras'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-slate-700" data-testid="sin-linea-base">{TEXTO_SIN_LINEA_BASE}</p>
+            <p className="text-sm text-slate-700" data-testid="potencial-sin-linea-base">Potencial ≈ {usd0(potencial)}/año ({mejorasLista.length} {mejorasLista.length === 1 ? 'mejora activa' : 'mejoras activas'})</p>
+          </div>
+        )}
+        {onFijarLineaBase && (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" size="sm" variant="outline" disabled={!puedeFijarLineaBase} title={puedeFijarLineaBase ? undefined : TEXTO_GUARDAR_PRIMERO} onClick={() => setFijandoLineaBase(true)} data-testid="boton-linea-base">
+              {lineaBase ? 'Rehacer línea base' : 'Fijar línea base'}
+            </Button>
+            {!puedeFijarLineaBase && <span className="text-xs text-slate-500" data-testid="leyenda-guardar-primero">{TEXTO_GUARDAR_PRIMERO}.</span>}
+          </div>
+        )}
+      </section>
+
       {/* 5. Mejoras priorizadas */}
       <section className={CLASE_TARJETA} aria-labelledby="titulo-mejoras" data-testid="mejoras">
         <h3 id="titulo-mejoras" className={CLASE_TITULO}>Mejoras priorizadas</h3>
@@ -255,10 +299,7 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
                         <Button type="button" size="sm" variant="outline" onClick={() => onCompararAlternativa(x)}>Comparar alternativa</Button>
                       )}
                       {onMarcarImplementada && (
-                        <Button
-                          type="button" size="sm" variant="outline" disabled={!puedeMarcarImplementada} aria-label={`Marcar como implementada: ${x.titulo}`}
-                          title={puedeMarcarImplementada ? undefined : TEXTO_GUARDAR_PRIMERO} onClick={() => setAImplementar(x)}
-                        >
+                        <Button type="button" size="sm" variant="outline" aria-label={`Marcar como implementada: ${x.titulo}`} onClick={() => setAImplementar(x)}>
                           Marcar como implementada
                         </Button>
                       )}
@@ -266,7 +307,6 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
                         <Button type="button" size="sm" variant="ghost" aria-label={`Descartar mejora: ${x.titulo}`} onClick={() => setADescartar(x)}>Descartar</Button>
                       )}
                     </div>
-                    {onMarcarImplementada && !puedeMarcarImplementada && <p className="mt-1 text-[11px] text-slate-500" data-testid="leyenda-guardar-primero">{TEXTO_GUARDAR_PRIMERO}.</p>}
                   </div>
                   <div className="min-w-[8rem] text-right">
                     <p className="text-base font-extrabold text-emerald-700" data-testid="ahorro-mejora">≈ {usd0(x.ahorroAnual)}/año</p>
@@ -322,7 +362,7 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
         </section>
       )}
 
-      {/* 7. Mejoras realizadas: logrado real contra el potencial */}
+      {/* 7. Mejoras realizadas: historial de hitos (el logrado se mide a nivel pieza, desde la línea base) */}
       {implementaciones.length > 0 && (
         <section className={CLASE_TARJETA} aria-labelledby="titulo-realizadas" data-testid="mejoras-realizadas">
           <h3 id="titulo-realizadas" className="m-0">
@@ -331,19 +371,9 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
               <span aria-hidden="true" className="text-sm text-slate-500">{verRealizadas ? '▲' : '▼'}</span>
             </button>
           </h3>
-          <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-900 space-y-2" data-testid="resumen-realizadas">
-            <p data-testid="texto-logrado-pendiente">
-              Logrado ≈ {usd0(logrado)}/año · Pendiente ≈ {usd0(potencial)}/año · <b>Potencial total {usd0(logrado + potencial)}/año</b>
-            </p>
-            <div className="h-2 rounded bg-white" role="progressbar" aria-label="Logrado sobre potencial total" aria-valuemin={0} aria-valuemax={100}
-              aria-valuenow={Math.round(logrado + potencial > 0 ? Math.min(100, Math.max(0, (logrado / (logrado + potencial)) * 100)) : 0)}>
-              <div className="h-2 rounded bg-emerald-600" data-testid="barra-logrado" style={{ width: `${logrado + potencial > 0 ? Math.min(100, Math.max(0, (logrado / (logrado + potencial)) * 100)) : 0}%` }} />
-            </div>
-          </div>
           {verRealizadas && (
             <ul id="lista-realizadas" className="space-y-3">
-              {implementaciones.map((im, i) => {
-                const logro = logros[i] ?? 0;
+              {implementaciones.map((im) => {
                 return (
                   <li key={im.id} className={CLASE_DESCARTADA} data-testid="mejora-realizada">
                     <p>
@@ -353,11 +383,7 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
                     <p className="font-bold">{im.titulo}</p>
                     <p data-testid="fecha-realizada"><b>Implementada el {fechaCorta(im.fecha)}:</b> <span data-testid="nota-realizada">{im.nota}</span></p>
                     <p className="text-xs text-slate-500" data-testid="autor-realizada">Registrada por {im.porEmail} · {fechaHora(im.registradaEn)}</p>
-                    <p className="text-xs text-slate-500" data-testid="estimado-realizada">Estimado al registrar: ≈ {usd0(im.ahorroEstimadoAnual)}/año · costo antes {usd4(im.costoPiezaAntes)} por pieza</p>
-                    <p data-testid="logrado-realizada">
-                      Logrado: <span className={logro < 0 ? CLASE_LOGRO_NEGATIVO : CLASE_LOGRO_POSITIVO}>≈ {usd0(logro)}/año</span>
-                      {Math.abs(logro) < 0.005 && <span className="ml-2 text-xs text-slate-500" data-testid="sin-cambios-realizada">Aún sin cambios en los datos</span>}
-                    </p>
+                    <p className="text-xs text-slate-500" data-testid="estimado-realizada">Estimado al registrar: ≈ {usd0(im.ahorroEstimadoAnual)}/año</p>
                     {onAnularImplementacion && (
                       <div><Button type="button" size="sm" variant="outline" aria-label={`Anular registro: ${im.titulo}`} onClick={() => setAAnular(im)}>Anular registro</Button></div>
                     )}
@@ -373,6 +399,11 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
         mejora={aImplementar}
         onCancelar={() => setAImplementar(null)}
         onConfirmar={(m, fecha, nota) => { setAImplementar(null); onMarcarImplementada?.(m, fecha, nota); }}
+      />
+      <FijarLineaBaseDialog
+        abierto={fijandoLineaBase} costoActual={resultado.costoPieza} rehacer={!!lineaBase}
+        onCancelar={() => setFijandoLineaBase(false)}
+        onConfirmar={(nota) => { setFijandoLineaBase(false); onFijarLineaBase?.(nota); }}
       />
       <AnularImplementacionDialog
         implementacion={aAnular}

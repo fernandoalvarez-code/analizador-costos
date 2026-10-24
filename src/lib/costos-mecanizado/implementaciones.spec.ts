@@ -1,120 +1,143 @@
 import { describe, expect, it } from 'vitest';
 import { calcPieza, calcResumen } from '@/lib/costos-mecanizado/calc';
-import { logradoTotalAnual, logroPorImplementacion } from '@/lib/costos-mecanizado/implementaciones';
-import { CALC_VERSION, type Implementacion, type Pieza } from '@/lib/costos-mecanizado/types';
+import { logradoTotalAnual, ultimaImplementacion } from '@/lib/costos-mecanizado/implementaciones';
+import { CALC_VERSION, type Implementacion, type LineaBase, type Pieza } from '@/lib/costos-mecanizado/types';
 import { COSTO_HORA, crearCarcasa } from '../../../tests/fixtures/costos-control';
 
-// Mejoras implementadas: logro por implementación y total, a nivel PIEZA, con el volumen ACTUAL. Oráculos de CAR-001: 9,3570 USD/pza,
-// 25.000 piezas/año (233.926 USD/año), 10 mejoras y USD 44.015 de ahorro potencial.
-const impl = (id: string, costoPiezaAntes: number, over: Partial<Implementacion> = {}): Implementacion => ({
+// Ahorro logrado desde la LÍNEA BASE, a nivel pieza, con el volumen ACTUAL. Oráculos de CAR-001: 9,3570235 USD/pza, 25.000 piezas/año
+// (233.926 USD/año), 10 mejoras y USD 44.015 de ahorro potencial.
+const VOL = 25000;
+const impl = (id: string, registradaEn: string, over: Partial<Implementacion> = {}): Implementacion => ({
   id, categoria: 'Productividad', opId: 'op20', opNombre: 'Desbaste y contorno', claveMejora: 'Productividad|op20|', titulo: 'El tiempo de corte domina la operación',
-  fecha: '2026-10-20', nota: 'Se subió el avance', por: 'u1', porEmail: 'ana@secocut.com', registradaEn: '2026-10-20T12:00:00.000Z',
-  costoPiezaAntes, ahorroEstimadoAnual: 12000, ...over,
+  fecha: '2026-10-20', nota: 'Se subió el avance', por: 'u1', porEmail: 'ana@secocut.com', registradaEn, costoPiezaAntes: 9.357, ahorroEstimadoAnual: 12000, ...over,
+});
+const base = (costoPiezaBase: number, over: Partial<LineaBase> = {}): LineaBase => ({
+  costoPiezaBase, fecha: '2026-10-19T12:00:00.000Z', por: 'u1', porEmail: 'ana@secocut.com', volumenAnualBase: VOL, ...over,
 });
 /** CAR-001 con el tiempo de corte de las herramientas de Op20 multiplicado por `factor` (dato de prueba escrito a mano). */
-const conCorteOp20 = (factor: number, implementaciones?: Implementacion[]): Pieza => {
+const conCorteOp20 = (factor: number, extra: Partial<Pieza> = {}): Pieza => {
   const p = crearCarcasa();
   for (const h of p.operaciones.find((o) => o.id === 'op20')!.herramientas) h.opciones[0].cortePorPiezaMin *= factor;
-  if (implementaciones) p.implementaciones = implementaciones;
-  return p;
+  return { ...p, ...extra };
 };
 const calc = (p: Pieza) => calcPieza(p, COSTO_HORA);
-const VOL = 25000;
+const COSTO_BASE = calc(crearCarcasa()).costoPieza; // 9,3570235
 
-describe('sin implementaciones todo da igual que antes', () => {
-  it('logrado 0 y sin logros por implementación', () => {
-    const p = crearCarcasa();
-    expect(logroPorImplementacion(p, calc(p))).toEqual([]);
-    expect(logradoTotalAnual(p, calc(p))).toBe(0);
+/**
+ * Por pieza, bajar 20 % el corte de Op20 ahorra más que el corte directo: el scrap se calcula sobre el costo acumulado de la ruta, así que baja
+ * también el de Op20 y el de las operaciones siguientes. A mano, con los % de scrap de la fixture (0,5 · 1,2 · 1,0 · 0,3).
+ */
+const AHORRO_20 = (() => {
+  const corte = 0.2 * 2.4;                                   // 0,4800 (Op20 cuesta 2,40 de corte: 3,2 min × 45/60)
+  const scrapOp20 = corte * 0.005;                           // 0,0024
+  const scrapOp30 = (corte + scrapOp20) * 0.012;             // 0,0057888
+  const scrapOp40 = (corte + scrapOp20 + scrapOp30) * 0.01;  // 0,0048819
+  const scrapOp50 = (corte + scrapOp20 + scrapOp30 + scrapOp40) * 0.003; // 0,0014792
+  return corte + scrapOp20 + scrapOp30 + scrapOp40 + scrapOp50;
+})();
+
+describe('sin línea base no se mide el ahorro logrado', () => {
+  it('logrado 0 y el resumen marca tieneLineaBase false (con o sin implementaciones)', () => {
+    const sin = crearCarcasa();
+    expect(logradoTotalAnual(sin, calc(sin))).toBe(0);
+    const conHitos = { ...conCorteOp20(0.8), implementaciones: [impl('i1', '2026-10-20T12:00:00.000Z', { costoPiezaAntes: 9.357 })] };
+    expect(logradoTotalAnual(conHitos, calc(conHitos))).toBe(0); // costoPiezaAntes NO se usa para inventar una línea base
+    const r = calcResumen(conHitos, COSTO_HORA);
+    expect(r.tieneLineaBase).toBe(false);
+    expect(r.logradoAnual).toBe(0);
+    expect(r.cantImplementadas).toBe(1);
   });
-  it('el resumen: mismos números de siempre + calcVersion 4, logradoAnual 0 y cantImplementadas 0', () => {
+  it('el resto del resumen es el de siempre: 9,3570 USD/pza, 233.926 USD/año, 10 mejoras, 44.015, calcVersion 5', () => {
     const r = calcResumen(crearCarcasa(), COSTO_HORA);
     expect(r.costoPieza.toFixed(4)).toBe('9.3570');
     expect(Math.round(r.costoAnual)).toBe(233926);
     expect(r.cantMejoras).toBe(10);
     expect(Math.round(r.ahorroPotencialAnual)).toBe(44015);
-    expect(r.calcVersion).toBe(4);
-    expect(CALC_VERSION).toBe(4);
+    expect(r.calcVersion).toBe(5);
+    expect(CALC_VERSION).toBe(5);
+    expect(r.tieneLineaBase).toBe(false);
     expect(r.logradoAnual).toBe(0);
     expect(r.cantImplementadas).toBe(0);
-  });
-  it('un arreglo vacío (queda así al anular la última) es igual que no tener el campo', () => {
-    const p = { ...crearCarcasa(), implementaciones: [] };
-    expect(logradoTotalAnual(p, calc(p))).toBe(0);
-    expect(calcResumen(p, COSTO_HORA).cantImplementadas).toBe(0);
+    expect('ultimaMejoraFecha' in r).toBe(false);
+    expect('ultimaMejoraPor' in r).toBe(false);
   });
 });
 
-describe('una implementación', () => {
-  it('sin cambios en los datos el logro es 0 (costo antes = costo actual)', () => {
-    const p = { ...crearCarcasa(), implementaciones: [impl('i1', calc(crearCarcasa()).costoPieza)] };
-    expect(logroPorImplementacion(p, calc(p))[0]).toBeCloseTo(0, 9);
-    expect(calcResumen(p, COSTO_HORA).logradoAnual).toBeCloseTo(0, 9);
-    expect(calcResumen(p, COSTO_HORA).cantImplementadas).toBe(1);
+describe('con línea base', () => {
+  it('el costo base de CAR-001 es 9,3570235 USD/pza', () => {
+    expect(COSTO_BASE).toBeCloseTo(9.3570235, 6);
   });
-  it('con menos tiempo de corte en Op20: logro = (costo antes − costo nuevo) × 25.000, con las dos piezas calculadas por separado', () => {
-    const antes = calc(crearCarcasa()).costoPieza;     // 9,3570
-    const despues = calc(conCorteOp20(0.8)).costoPieza; // Op20 con 20 % menos de corte
-    const p = conCorteOp20(0.8, [impl('i1', antes)]);
-    const logro = logroPorImplementacion(p, calc(p))[0];
-    expect(logro).toBeCloseTo((antes - despues) * VOL, 6);
-    expect(logro).toBeGreaterThan(0);
-    // Escrito a mano: la estimación de la mejora (12.000 = 20 % del corte de Op20 × 25.000) es solo el corte directo; el motor suma además la
-    // cascada de scrap (el scrap se calcula sobre el costo acumulado de la ruta). Por pieza, con los % de scrap de la fixture (0,5 · 1,2 · 1,0 · 0,3):
-    const corte = 0.2 * 2.4;                                   // 0,4800 (Op20 cuesta 2,40 de corte: 3,2 min × 45/60)
-    const scrapOp20 = corte * 0.005;                           // 0,0024
-    const scrapOp30 = (corte + scrapOp20) * 0.012;             // 0,0057888
-    const scrapOp40 = (corte + scrapOp20 + scrapOp30) * 0.01;  // 0,0048819
-    const scrapOp50 = (corte + scrapOp20 + scrapOp30 + scrapOp40) * 0.003; // 0,0014792
-    const ahorroPorPieza = corte + scrapOp20 + scrapOp30 + scrapOp40 + scrapOp50;
-    expect(ahorroPorPieza).toBeCloseTo(0.4945499, 7);
-    expect(logro).toBeCloseTo(0.4945499 * VOL, 1);             // ≈ 12.363,75 USD/año (no 12.000: la diferencia de 363,75 es la cascada de scrap)
-    expect(Math.round(logro * 100) / 100).toBe(12363.75);
-    expect(logradoTotalAnual(p, calc(p))).toBeCloseTo(logro, 9);
-    const resumen = calcResumen(p, COSTO_HORA);
-    expect(resumen.logradoAnual).toBeCloseTo(logro, 9);
-    expect(resumen.cantImplementadas).toBe(1);
+  it('sin cambios en los datos el logrado es 0', () => {
+    const p = { ...crearCarcasa(), lineaBase: base(COSTO_BASE) };
+    expect(logradoTotalAnual(p, calc(p))).toBeCloseTo(0, 9);
+    expect(calcResumen(p, COSTO_HORA)).toMatchObject({ tieneLineaBase: true });
   });
-});
-
-describe('dos implementaciones encadenadas', () => {
-  it('los logros suman exactamente (primero − actual) × volumen', () => {
-    const actual = calc(conCorteOp20(0.8)).costoPieza;
-    const p = conCorteOp20(0.8, [impl('i1', 9.357), impl('i2', 9.0)]);
-    const [l1, l2] = logroPorImplementacion(p, calc(p));
-    expect(l1).toBeCloseTo((9.357 - 9.0) * VOL, 6);     // a mano: 0,357 × 25.000 = 8.925
-    expect(l1).toBeCloseTo(8925, 6);
-    expect(l2).toBeCloseTo((9.0 - actual) * VOL, 6);
-    expect(l1 + l2).toBeCloseTo((9.357 - actual) * VOL, 9);
-    expect(logradoTotalAnual(p, calc(p))).toBeCloseTo(l1 + l2, 9);
+  it('datos nuevos de Op20 al 80 % del tiempo de corte: logrado = (9,3570235 − 8,8624736) × 25.000 = 12.363,75 (no 12.000: suma la cascada de scrap)', () => {
+    const p = conCorteOp20(0.8, { lineaBase: base(COSTO_BASE) });
+    expect(calc(p).costoPieza).toBeCloseTo(8.8624736, 6);
+    const logrado = logradoTotalAnual(p, calc(p));
+    expect(AHORRO_20).toBeCloseTo(0.4945499, 7);
+    expect(logrado).toBeCloseTo((9.3570235 - 8.8624736) * VOL, 1);
+    expect(logrado).toBeCloseTo(AHORRO_20 * VOL, 1);
+    expect(Math.round(logrado * 100) / 100).toBe(12363.75);
+    const r = calcResumen(p, COSTO_HORA);
+    expect(r.logradoAnual).toBeCloseTo(logrado, 9);
+    expect(r.tieneLineaBase).toBe(true);
   });
-});
-
-describe('volumen y signo', () => {
-  it('un cambio de volumen sin cambio de costo por pieza NO se cuenta como ahorro: logrado 0 con cualquier volumen', () => {
-    const antes = calc(crearCarcasa()).costoPieza;
-    for (const volumen of [25000, 50000, 10000]) {
-      const p = { ...crearCarcasa(), volumenAnual: volumen, implementaciones: [impl('i1', antes)] };
-      // modo lote: el costo por pieza no depende del volumen, así que (antes − ahora) = 0 y el logro es 0 a cualquier volumen
-      expect(logradoTotalAnual(p, calc(p))).toBeCloseTo(0, 9);
-    }
+  it('una segunda mejora encima: el logrado es (base − costo actual) × volumen, sin sumar por hito', () => {
+    // Op20 al 60 % del corte original (80 % y luego otro 25 % menos). El modelo es lineal en el corte: bajar 40 % ahorra el doble que bajar 20 %,
+    // o sea 2 × 0,4945499 = 0,9890998 por pieza → 2 × 12.363,7475 = 24.727,495 USD/año.
+    const p = conCorteOp20(0.6, {
+      lineaBase: base(COSTO_BASE),
+      // los costoPiezaAntes de los hitos son datos históricos: valores absurdos a propósito para probar que NO entran en el logrado
+      implementaciones: [impl('i1', '2026-10-20T12:00:00.000Z', { costoPiezaAntes: 100 }), impl('i2', '2026-10-25T12:00:00.000Z', { costoPiezaAntes: 50 })],
+    });
+    const logrado = logradoTotalAnual(p, calc(p));
+    expect(logrado).toBeCloseTo((COSTO_BASE - calc(p).costoPieza) * VOL, 6);
+    expect(logrado).toBeCloseTo(2 * AHORRO_20 * VOL, 1);
+    expect(logrado).toBeCloseTo(24727.495, 2); // a mano: 2 × 12.363,7475
+    expect(calcResumen(p, COSTO_HORA).logradoAnual).toBeCloseTo(logrado, 9);
   });
-  it('si el costo por pieza bajó, el logro escala con el volumen ACTUAL: a 50.000 piezas es exactamente el doble que a 25.000', () => {
-    const antes = calc(crearCarcasa()).costoPieza;
-    const a25 = conCorteOp20(0.8, [impl('i1', antes)]);
-    const a50 = { ...conCorteOp20(0.8, [impl('i1', antes)]), volumenAnual: 50000 };
-    const l25 = logradoTotalAnual(a25, calc(a25));
-    const l50 = logradoTotalAnual(a50, calc(a50));
-    expect(calc(a50).costoPieza).toBeCloseTo(calc(a25).costoPieza, 12); // mismo costo por pieza
-    expect(l50).toBeCloseTo(2 * l25, 6);
+  it('cambio de volumen sin cambio de costo por pieza: logrado = (base − actual) × volumen NUEVO (a mano: 0,4945499 × 50.000 = 24.727,50)', () => {
+    // La pieza es de modo "lote": el costo por pieza no depende del volumen, así que (base − actual) sigue siendo 0,4945499 y solo cambia la
+    // cantidad de piezas sobre la que se reparte. El volumen de la línea base (25.000) es informativo y no entra.
+    const p = conCorteOp20(0.8, { lineaBase: base(COSTO_BASE, { volumenAnualBase: 25000 }), volumenAnual: 50000 });
+    expect(calc(p).costoPieza).toBeCloseTo(8.8624736, 6);
+    expect(logradoTotalAnual(p, calc(p))).toBeCloseTo(0.4945499 * 50000, 1);
+    // y si el costo por pieza NO bajó, cambiar el volumen no inventa ahorro
+    const igual = { ...crearCarcasa(), lineaBase: base(COSTO_BASE), volumenAnual: 50000 };
+    expect(logradoTotalAnual(igual, calc(igual))).toBeCloseTo(0, 9);
   });
-  it('si la pieza costó MÁS que antes, el logro es negativo (no se recorta a 0)', () => {
-    const antes = calc(crearCarcasa()).costoPieza;
-    const p = conCorteOp20(1.2, [impl('i1', antes)]);
-    const logro = logroPorImplementacion(p, calc(p))[0];
-    expect(logro).toBeLessThan(0);
-    expect(logro).toBeCloseTo((antes - calc(conCorteOp20(1.2)).costoPieza) * VOL, 6);
-    expect(logradoTotalAnual(p, calc(p))).toBe(logro);
+  it('si la pieza costó MÁS que la línea base, el logrado es negativo (a mano: −0,4945499 × 25.000 = −12.363,75), no se recorta a 0', () => {
+    const p = conCorteOp20(1.2, { lineaBase: base(COSTO_BASE) });
+    const logrado = logradoTotalAnual(p, calc(p));
+    expect(logrado).toBeLessThan(0);
+    expect(logrado).toBeCloseTo(-AHORRO_20 * VOL, 1);
     expect(calcResumen(p, COSTO_HORA).logradoAnual).toBeLessThan(0);
+  });
+});
+
+describe('última mejora', () => {
+  it('ultimaImplementacion: la más reciente por registradaEn, sin importar el orden del arreglo', () => {
+    const p: Pick<Pieza, 'implementaciones'> = {
+      implementaciones: [
+        impl('i2', '2026-10-25T12:00:00.000Z', { porEmail: 'luis@secocut.com' }),
+        impl('i1', '2026-10-20T12:00:00.000Z', { porEmail: 'ana@secocut.com' }),
+        impl('i3', '2026-10-22T12:00:00.000Z', { porEmail: 'eva@secocut.com' }),
+      ],
+    };
+    expect(ultimaImplementacion(p)?.id).toBe('i2');
+    expect(ultimaImplementacion({ implementaciones: [] })).toBeNull();
+    expect(ultimaImplementacion({})).toBeNull();
+  });
+  it('el resumen guarda ultimaMejoraFecha (registradaEn) y ultimaMejoraPor (email) de la más reciente', () => {
+    const p: Pieza = {
+      ...crearCarcasa(),
+      implementaciones: [impl('i1', '2026-10-20T12:00:00.000Z'), impl('i2', '2026-10-25T12:00:00.000Z', { porEmail: 'luis@secocut.com' })],
+    };
+    const r = calcResumen(p, COSTO_HORA);
+    expect(r.ultimaMejoraFecha).toBe('2026-10-25T12:00:00.000Z');
+    expect(r.ultimaMejoraPor).toBe('luis@secocut.com');
+    expect(r.cantImplementadas).toBe(2);
   });
 });

@@ -105,10 +105,15 @@ export interface ResumenPieza {
   maquinaIds: string[];
   ahorroPotencialAnual: number;
   cantMejoras: number;
-  /** USD/año logrado por las mejoras implementadas (ver implementaciones.ts): (costo de la primera "antes" − costo actual) × volumen actual. */
+  /** USD/año logrado desde la línea base (ver implementaciones.ts): (costoPiezaBase − costo actual) × volumen actual. 0 si no hay línea base. */
   logradoAnual: number;
-  /** Cantidad de mejoras registradas como implementadas. */
+  /** ¿La pieza tiene línea base fijada? Sin ella el logrado es 0 y no se mide. */
+  tieneLineaBase: boolean;
+  /** Cantidad de mejoras registradas como implementadas (hitos del historial). */
   cantImplementadas: number;
+  /** registradaEn (ISO) y email de quien registró la implementación más reciente. */
+  ultimaMejoraFecha?: string;
+  ultimaMejoraPor?: string;
   calcVersion: number;
   reglasVersion: number;
 }
@@ -163,12 +168,30 @@ export interface Implementacion {
   porEmail: string;
   /** ISO 8601. */
   registradaEn: string;
-  /** USD/pieza del costo de mecanizado (sin material) de la pieza al registrar. */
+  /** USD/pieza de la pieza al registrar. Dato HISTÓRICO: ya no se usa para el logro (eso lo mide la línea base). */
   costoPiezaAntes: number;
   /** Ahorro anual estimado de la mejora al registrar (solo informativo). */
   ahorroEstimadoAnual: number;
 }
 
+/**
+ * Punto de partida del ahorro logrado: la fija una persona, explícitamente, cuando la carga de la pieza está terminada y validada (el costo al
+ * CREAR la pieza no sirve: mientras se carga se corrigen datos y eso no es mejora).
+ */
+export interface LineaBase {
+  /** USD/pieza de mecanizado SIN material, el mismo del resumen, al fijarla. */
+  costoPiezaBase: number;
+  /** ISO 8601. */
+  fecha: string;
+  por: string;
+  porEmail: string;
+  /** Volumen anual de ese momento (informativo: el logrado usa el volumen ACTUAL). */
+  volumenAnualBase: number;
+  /** Opcional, hasta LINEA_BASE_NOTA_MAX caracteres. */
+  nota?: string;
+}
+
+export const LINEA_BASE_NOTA_MAX = 500;
 export const IMPLEMENTACION_NOTA_MIN = 5;
 export const IMPLEMENTACION_NOTA_MAX = 500;
 
@@ -192,6 +215,10 @@ export interface Pieza {
   mejorasDescartadas?: Record<string, MejoraDescartada>;
   /** Mejoras implementadas, en orden cronológico de registro (se agrega al final). Opcional: las piezas existentes siguen válidas. */
   implementaciones?: Implementacion[];
+  /** Línea base vigente. Opcional: sin ella no se mide el ahorro logrado. */
+  lineaBase?: LineaBase;
+  /** Líneas base anteriores (se agregan al rehacerla): historial de solo lectura para auditar. */
+  lineasBaseAnteriores?: LineaBase[];
   resumen?: ResumenPieza;
 }
 
@@ -336,6 +363,7 @@ export const REGLAS_POR_DEFECTO: ReglasCostos = {
 /**
  * Versión de las fórmulas y del contenido del resumen: sube cuando cambia algún cálculo o se agrega un campo al resumen (los resúmenes
  * guardados quedan desactualizados). 2: se agregó opMayorCostoNombre. 3: ahorroPotencialAnual y cantMejoras cuentan solo las mejoras
- * activas (las descartadas con motivo no suman). 4: el resumen suma logradoAnual y cantImplementadas (mejoras implementadas).
+ * activas (las descartadas con motivo no suman). 4: el resumen suma logradoAnual y cantImplementadas (mejoras implementadas). 5: el logrado se mide desde la línea base (tieneLineaBase,
+ * ultimaMejoraFecha, ultimaMejoraPor).
  */
-export const CALC_VERSION = 4;
+export const CALC_VERSION = 5;
