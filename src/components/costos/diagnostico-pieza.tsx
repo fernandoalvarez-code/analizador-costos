@@ -23,7 +23,20 @@ const CLASE_YA_NO_SE_SUGIERE = 'inline-block rounded bg-amber-100 px-2 py-0.5 te
 const TEXTO_GUARDAR_PRIMERO = 'Guardá la pieza primero';
 const TEXTO_SIN_LINEA_BASE = 'Sin línea base: todavía no se mide el ahorro logrado. Fijala cuando la carga de la pieza esté terminada y validada.';
 const CLASE_LOGRO_NEGATIVO = 'font-bold text-red-700';
+const TEXTO_LOGRADO_SIN_MEJORAS = 'Hay ahorro sin mejoras registradas: registrá qué se cambió. Si fue una corrección de datos, rehacé la línea base.';
+const CLASE_AVISO_INFO = 'rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900';
+const CLASE_BOTONES_MEJORA = 'mt-2 flex flex-wrap items-center gap-2';
+/** "Descartar" va aparte (a la derecha) y con otro estilo: es la salida para lo que no se puede aplicar, no un paso más de implementar. */
+const CLASE_BOTON_DESCARTAR = 'ml-auto border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800';
+const CLASE_ENLACE_SECCION = 'font-bold text-blue-700 underline hover:text-blue-900';
 const CLASE_RECUADRO_LOGRADO = 'rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-900 space-y-2';
+/** Registro previo de la MISMA mejora (misma clave) con el mismo costo por pieza a 4 decimales: registrar de nuevo no aporta nada. */
+function registroRepetido(implementaciones: Implementacion[], clave: string, costoActual: number): { fecha: string } | null {
+  const iguales = implementaciones
+    .filter((im) => im.claveMejora === clave && Number.isFinite(im.costoPiezaAntes) && im.costoPiezaAntes.toFixed(4) === costoActual.toFixed(4))
+    .sort((a, b) => Date.parse(b.registradaEn) - Date.parse(a.registradaEn));
+  return iguales[0] ? { fecha: fechaDeISO(iguales[0].registradaEn) } : null;
+}
 /** ISO -> DD/MM/AAAA en hora local. */
 const fechaDeISO = (iso: string) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? iso : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; };
 /** YYYY-MM-DD -> DD/MM/AAAA (sin pasar por Date: no depende de la zona horaria). */
@@ -62,6 +75,7 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
   const [aAnular, setAAnular] = useState<Implementacion | null>(null);
   const [verRealizadas, setVerRealizadas] = useState(false);
   const [fijandoLineaBase, setFijandoLineaBase] = useState(false);
+  const irASeccion = (id: string, abrir: () => void) => { abrir(); requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView?.({ block: 'start' })); };
 
   const ops = resultado.operaciones;
   const total = resultado.costoPieza;
@@ -91,6 +105,9 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
   const pctHerramientas = total > 0 ? (resultado.porRubroUsdPza.herramientas + resultado.porRubroUsdPza.cambios) / total : 0;
   const m = pieza.material;
   const potencial = mejorasLista.reduce((s, x) => s + x.ahorroAnual, 0);
+  const descartadasVigentes = descartadas.filter((d) => d.vigente);
+  const descartadoAnual = descartadasVigentes.reduce((sum, d) => sum + (Number.isFinite(d.descarte.ahorroAnualAlDescartar) ? d.descarte.ahorroAnualAlDescartar : 0), 0);
+  const todoLoAplicableLogrado = potencial === 0 && descartadasVigentes.length > 0;
   const fraccionLograda = logrado + potencial > 0 ? Math.min(1, Math.max(0, logrado / (logrado + potencial))) : 0;
   const visibles = verTodas ? mejorasLista : mejorasLista.slice(0, MAX_MEJORAS_VISIBLES);
 
@@ -245,20 +262,28 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
             <div className="h-2 rounded bg-white" role="progressbar" aria-label="Logrado sobre potencial total" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(fraccionLograda * 100)}>
               <div className="h-2 rounded bg-emerald-600" data-testid="barra-logrado" style={{ width: `${fraccionLograda * 100}%` }} />
             </div>
+            {todoLoAplicableLogrado && (
+              <p className="text-xs" data-testid="texto-barra">{Math.round(fraccionLograda * 100)} % de lo aplicable: el resto del potencial se descartó por no ser aplicable.</p>
+            )}
             <p className="text-xs" data-testid="linea-base-info">
               Línea base: {usd4(lineaBase.costoPiezaBase)} por pieza, fijada el {fechaDeISO(lineaBase.fecha)} por {lineaBase.porEmail}
               {lineaBase.nota ? <> — <span data-testid="linea-base-nota">{lineaBase.nota}</span></> : null}
             </p>
+            {descartadasVigentes.length > 0 && (
+              <p className="text-xs" data-testid="descartado-anual">Descartado (no aplicable): {usd0(descartadoAnual)}/año</p>
+            )}
             <p className="text-xs" data-testid="ultima-mejora">
               {ultima
                 ? <>Última mejora: {fechaDeISO(ultima.registradaEn)}, {ultima.porEmail} — {ultima.nota || ultima.titulo}</>
                 : 'Todavía no se registraron mejoras'}
             </p>
+            {logrado > 0 && implementaciones.length === 0 && <p className={CLASE_AVISO_INFO} data-testid="aviso-logrado-sin-mejoras">{TEXTO_LOGRADO_SIN_MEJORAS}</p>}
           </div>
         ) : (
           <div className="space-y-2">
             <p className="text-sm text-slate-700" data-testid="sin-linea-base">{TEXTO_SIN_LINEA_BASE}</p>
             <p className="text-sm text-slate-700" data-testid="potencial-sin-linea-base">Potencial ≈ {usd0(potencial)}/año ({mejorasLista.length} {mejorasLista.length === 1 ? 'mejora activa' : 'mejoras activas'})</p>
+            {descartadasVigentes.length > 0 && <p className="text-sm text-slate-700" data-testid="descartado-anual">Descartado (no aplicable): {usd0(descartadoAnual)}/año</p>}
           </div>
         )}
         {onFijarLineaBase && (
@@ -275,7 +300,15 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
       <section className={CLASE_TARJETA} aria-labelledby="titulo-mejoras" data-testid="mejoras">
         <h3 id="titulo-mejoras" className={CLASE_TITULO}>Mejoras priorizadas</h3>
         {mejorasLista.length === 0 ? (
-          <p className="text-sm text-slate-500">Con los datos cargados no hay mejoras que superen los umbrales.</p>
+          descartadas.length + implementaciones.length > 0 ? (
+            <p className="text-sm text-slate-600" data-testid="sin-mejoras-pendientes">
+              Sin mejoras pendientes en esta pieza ({descartadas.length} {descartadas.length === 1 ? 'descartada' : 'descartadas'}, {implementaciones.length} {implementaciones.length === 1 ? 'implementada' : 'implementadas'}).
+              {descartadas.length > 0 && <> <button type="button" className={CLASE_ENLACE_SECCION} onClick={() => irASeccion('seccion-descartadas', () => setVerDescartadas(true))}>Ver mejoras descartadas</button></>}
+              {implementaciones.length > 0 && <> <button type="button" className={CLASE_ENLACE_SECCION} onClick={() => irASeccion('seccion-realizadas', () => setVerRealizadas(true))}>Ver mejoras realizadas</button></>}
+            </p>
+          ) : (
+            <p className="text-sm text-slate-500">Con los datos cargados no hay mejoras que superen los umbrales.</p>
+          )
         ) : (
           <>
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-900" data-testid="potencial">
@@ -294,7 +327,7 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
                     <p className="mt-1 text-sm font-bold">{x.titulo}</p>
                     <p className="mt-0.5 text-sm text-slate-700">{x.explicacion}</p>
                     <p className="mt-1 text-xs text-slate-500">{sinLeyenda(x.supuesto)}</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
+                    <div className={CLASE_BOTONES_MEJORA}>
                       {x.puedeComparar && (
                         <Button type="button" size="sm" variant="outline" onClick={() => onCompararAlternativa(x)}>Comparar alternativa</Button>
                       )}
@@ -304,7 +337,7 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
                         </Button>
                       )}
                       {onDescartar && (
-                        <Button type="button" size="sm" variant="ghost" aria-label={`Descartar mejora: ${x.titulo}`} onClick={() => setADescartar(x)}>Descartar</Button>
+                        <Button type="button" size="sm" variant="outline" className={CLASE_BOTON_DESCARTAR} aria-label={`Descartar mejora: ${x.titulo}`} onClick={() => setADescartar(x)}>Descartar</Button>
                       )}
                     </div>
                   </div>
@@ -329,7 +362,7 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
 
       {/* 6. Registro de mejoras descartadas */}
       {descartadas.length > 0 && (
-        <section className={CLASE_TARJETA} aria-labelledby="titulo-descartadas" data-testid="mejoras-descartadas">
+        <section id="seccion-descartadas" className={CLASE_TARJETA} aria-labelledby="titulo-descartadas" data-testid="mejoras-descartadas">
           <h3 id="titulo-descartadas" className="m-0">
             <button type="button" className={`${CLASE_TITULO} flex w-full items-center justify-between text-left`} aria-expanded={verDescartadas} aria-controls="lista-descartadas" onClick={() => setVerDescartadas((v) => !v)}>
               <span>Mejoras descartadas ({descartadas.length})</span>
@@ -364,7 +397,7 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
 
       {/* 7. Mejoras realizadas: historial de hitos (el logrado se mide a nivel pieza, desde la línea base) */}
       {implementaciones.length > 0 && (
-        <section className={CLASE_TARJETA} aria-labelledby="titulo-realizadas" data-testid="mejoras-realizadas">
+        <section id="seccion-realizadas" className={CLASE_TARJETA} aria-labelledby="titulo-realizadas" data-testid="mejoras-realizadas">
           <h3 id="titulo-realizadas" className="m-0">
             <button type="button" className={`${CLASE_TITULO} flex w-full items-center justify-between text-left`} aria-expanded={verRealizadas} aria-controls="lista-realizadas" onClick={() => setVerRealizadas((v) => !v)}>
               <span>Mejoras realizadas ({implementaciones.length})</span>
@@ -397,6 +430,8 @@ export default function DiagnosticoPieza({ pieza, resultado, mejorasLista, regla
 
       <MarcarImplementadaDialog
         mejora={aImplementar}
+        repetida={aImplementar ? registroRepetido(implementaciones, aImplementar.clave, resultado.costoPieza) : null}
+        onDescartarEsta={onDescartar ? (m) => { setAImplementar(null); setADescartar(m); } : undefined}
         onCancelar={() => setAImplementar(null)}
         onConfirmar={(m, fecha, nota) => { setAImplementar(null); onMarcarImplementada?.(m, fecha, nota); }}
       />

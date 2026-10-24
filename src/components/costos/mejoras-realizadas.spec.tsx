@@ -52,8 +52,8 @@ const botonLineaBase = (c: C) => c.getByTestId('boton-linea-base') as HTMLButton
 const abrirRealizadas = (c: C) => fireEvent.click(within(c.getByTestId('mejoras-realizadas')).getByRole('button', { name: /Mejoras realizadas/ }));
 const fechaLocal = (d: Date) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 const montoLogrado = (c: C) => Number((c.getByTestId('valor-logrado').textContent ?? '').replace(/^USD /, '').replace(/\./g, '').replace('−', '-'));
-function registrar(c: C, nota = NOTA, fecha?: string) {
-  fireEvent.click(botonImplementada(c));
+function registrar(c: C, nota = NOTA, fecha?: string, indiceMejora = 0) {
+  fireEvent.click(botonImplementada(c, indiceMejora));
   if (fecha) fireEvent.change(within(dialogo('dialogo-implementada')).getByLabelText('Fecha en que se implementó'), { target: { value: fecha } });
   fireEvent.change(within(dialogo('dialogo-implementada')).getByLabelText('Qué se cambió (obligatorio)'), { target: { value: nota } });
   fireEvent.click(within(dialogo('dialogo-implementada')).getByTestId('confirmar-implementada'));
@@ -324,7 +324,7 @@ describe('registrar una mejora (hito del historial)', () => {
     const c = montar();
     registrar(c, 'Primer cambio en la fresa');
     await avanzar(DEBOUNCE_GUARDADO_PIEZA_MS);
-    registrar(c, 'Segundo cambio en la broca', '2026-10-21');
+    registrar(c, 'Segundo cambio en la broca', '2026-10-21', 1); // otra mejora: registrar la MISMA sin cambiar el costo pide confirmar (ver mejoras-claridad.spec)
     await avanzar(DEBOUNCE_GUARDADO_PIEZA_MS);
     expect(ultimaGuardada().implementaciones!.map((i) => i.nota)).toEqual(['Primer cambio en la fresa', 'Segundo cambio en la broca']);
   });
