@@ -47,14 +47,14 @@ describe('sin línea base no se mide el ahorro logrado', () => {
     expect(r.logradoAnual).toBe(0);
     expect(r.cantImplementadas).toBe(1);
   });
-  it('el resto del resumen es el de siempre: 9,3570 USD/pza, 233.926 USD/año, 10 mejoras, 44.015, calcVersion 5', () => {
+  it('el resto del resumen es el de siempre: 9,3570 USD/pza, 233.926 USD/año, 10 mejoras, 44.015, calcVersion 6', () => {
     const r = calcResumen(crearCarcasa(), COSTO_HORA);
     expect(r.costoPieza.toFixed(4)).toBe('9.3570');
     expect(Math.round(r.costoAnual)).toBe(233926);
     expect(r.cantMejoras).toBe(10);
     expect(Math.round(r.ahorroPotencialAnual)).toBe(44015);
-    expect(r.calcVersion).toBe(5);
-    expect(CALC_VERSION).toBe(5);
+    expect(r.calcVersion).toBe(6);
+    expect(CALC_VERSION).toBe(6);
     expect(r.tieneLineaBase).toBe(false);
     expect(r.logradoAnual).toBe(0);
     expect(r.cantImplementadas).toBe(0);

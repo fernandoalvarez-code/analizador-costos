@@ -36,12 +36,12 @@ describe('sin ningún descarte todo da igual que antes', () => {
     expect(activas(p)).toHaveLength(10);
     expect(Math.round(total(p))).toBe(44015);
   });
-  it('el resumen: cantMejoras 10, ahorro 44.015 y calcVersion 5', () => {
+  it('el resumen: cantMejoras 10, ahorro 44.015 y calcVersion 6', () => {
     const r = calcResumen(crearCarcasa(), COSTO_HORA);
     expect(r.cantMejoras).toBe(10);
     expect(Math.round(r.ahorroPotencialAnual)).toBe(44015);
-    expect(r.calcVersion).toBe(5);
-    expect(CALC_VERSION).toBe(5);
+    expect(r.calcVersion).toBe(6);
+    expect(CALC_VERSION).toBe(6);
   });
 });
 
@@ -54,11 +54,11 @@ describe('descartar', () => {
     expect(Math.round(total(p))).toBe(32015);
     expect(l[0].clave).toBe('Herramienta|op30|op30-h1'); // la que sigue en el orden por ahorro
   });
-  it('el resumen guardado trae el ahorro SIN las descartadas (9 mejoras, 32.015) y calcVersion 5', () => {
+  it('el resumen guardado trae el ahorro SIN las descartadas (9 mejoras, 32.015) y calcVersion 6', () => {
     const r = calcResumen(conDescartes([CLAVE_OP20]), COSTO_HORA);
     expect(r.cantMejoras).toBe(9);
     expect(Math.round(r.ahorroPotencialAnual)).toBe(32015);
-    expect(r.calcVersion).toBe(5);
+    expect(r.calcVersion).toBe(6);
   });
   it('descartar todas: 0 mejoras y ahorro 0 (también en el resumen)', () => {
     const p = conDescartes(TODAS);
@@ -134,5 +134,38 @@ describe('registro de descartadas', () => {
   it('con las reglas por defecto y sin descartes explícitos no hay registro', () => {
     const p = crearCarcasa();
     expect(mejorasDescartadas(calcPieza(p, COSTO_HORA), p, REGLAS_POR_DEFECTO)).toEqual([]);
+  });
+});
+
+describe('resumen: descartadoAnual (lo descartado vigente, para el tablero de planta)', () => {
+  it('sin descartes es 0', () => {
+    expect(calcResumen(crearCarcasa(), COSTO_HORA).descartadoAnual).toBe(0);
+  });
+  it('con la Productividad de Op20 descartada por 12.000 (vigente) es 12.000, y no cambia el ahorro potencial (32.015)', () => {
+    const p = conDescartes([CLAVE_OP20]); // descarte() trae ahorroAnualAlDescartar 12.000
+    const r = calcResumen(p, COSTO_HORA);
+    expect(r.descartadoAnual).toBe(12000);
+    expect(Math.round(r.ahorroPotencialAnual)).toBe(32015);
+    expect(r.cantMejoras).toBe(9);
+  });
+  it('una descartada que ya no se dispararía (no vigente) no suma', () => {
+    const p = conDescartes(['Calidad|op99|']);
+    expect(calcResumen(p, COSTO_HORA).descartadoAnual).toBe(0);
+    const mixta = conDescartes([CLAVE_OP20, 'Calidad|op99|']);
+    mixta.mejorasDescartadas!['Calidad|op99|'] = descarte({ ahorroAnualAlDescartar: 5000 });
+    expect(calcResumen(mixta, COSTO_HORA).descartadoAnual).toBe(12000);
+  });
+  it('descartar las 10 (1.000 cada una al descartar) suma 10.000 y deja el pendiente en 0; reactivar vuelve a 0', () => {
+    const p = conDescartes(TODAS);
+    for (const k of TODAS) p.mejorasDescartadas![k] = descarte({ ahorroAnualAlDescartar: 1000 });
+    const r = calcResumen(p, COSTO_HORA);
+    expect(r.descartadoAnual).toBe(10000);
+    expect(r.ahorroPotencialAnual).toBe(0);
+    expect(calcResumen({ ...p, mejorasDescartadas: {} }, COSTO_HORA).descartadoAnual).toBe(0);
+  });
+  it('si el descarte guardado no trae un número válido, no rompe la suma (cuenta 0)', () => {
+    const p = conDescartes([CLAVE_OP20]);
+    p.mejorasDescartadas![CLAVE_OP20] = descarte({ ahorroAnualAlDescartar: Number.NaN });
+    expect(calcResumen(p, COSTO_HORA).descartadoAnual).toBe(0);
   });
 });

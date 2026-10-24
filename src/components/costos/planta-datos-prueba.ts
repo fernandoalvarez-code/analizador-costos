@@ -7,7 +7,7 @@ export const RUBROS_VACIOS: Record<Rubro, number> = { corte: 0, tiemposMuertos: 
 export function resumen(parcial: Partial<ResumenPieza> & Pick<ResumenPieza, 'costoPieza' | 'costoAnual'>): ResumenPieza {
   return {
     minutosPieza: 1, opMayorCosto: 'op10', opMayorCostoNombre: 'Planeado', rubroPrincipal: 'corte', porRubroUsdPza: { ...RUBROS_VACIOS }, porMaquinaUsdPza: {}, maquinaIds: [],
-    ahorroPotencialAnual: 0, cantMejoras: 0, logradoAnual: 0, tieneLineaBase: false, cantImplementadas: 0, calcVersion: CALC_VERSION, reglasVersion: 0, ...parcial,
+    ahorroPotencialAnual: 0, cantMejoras: 0, logradoAnual: 0, tieneLineaBase: false, cantImplementadas: 0, descartadoAnual: 0, calcVersion: CALC_VERSION, reglasVersion: 0, ...parcial,
   };
 }
 
