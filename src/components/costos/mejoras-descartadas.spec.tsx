@@ -187,7 +187,7 @@ describe('descartar y reactivar', () => {
     for (let i = 0; i < 10; i++) descartar(c, `Motivo número ${i + 1}`);
     expect(cantidad(c)).toBe(0);
     expect(c.queryByTestId('potencial')).toBeNull();
-    expect(c.getByText('Con los datos cargados no hay mejoras que superen los umbrales.')).toBeTruthy();
+    expect(c.getByTestId('sin-mejoras-pendientes').textContent).toContain('Sin mejoras pendientes en esta pieza (10 descartadas, 0 implementadas).'); // antes: "Con los datos cargados no hay mejoras…"
     expect(within(c.getByTestId('mejoras-descartadas')).getByRole('button', { name: /Mejoras descartadas \(10\)/ })).toBeTruthy();
   });
   it('una descartada que ya no se dispararía con los datos actuales figura igual, con la leyenda', () => {

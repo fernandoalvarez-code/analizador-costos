@@ -287,3 +287,22 @@ describe('Mejoras realizadas vs potencial (tarjeta del tablero)', () => {
     expect(c.queryByTestId('tablero-sin-linea-base')).toBeNull();
   });
 });
+
+describe('Mejoras realizadas vs potencial: aviso de logrado sin mejoras registradas', () => {
+  const con = (f: (typeof TRES_PIEZAS)[number], parcial: Record<string, unknown>) => ({ ...f, resumen: { ...f.resumen, ...parcial } });
+  it('logrado total > 0 y 0 mejoras implementadas: aviso corto debajo de las cifras, sin cambiar ninguna cifra', async () => {
+    repo.listarTodosLosResumenes.mockResolvedValue([con(PIEZA_A, { logradoAnual: 1000, tieneLineaBase: true, ahorroPotencialAnual: 2000, cantImplementadas: 0 })]);
+    const c = await montarYCargar();
+    expect(texto(c, 'tablero-logrado-sin-mejoras')).toBe('Hay ahorro sin mejoras registradas: puede ser una corrección de datos o falta registrar qué se cambió.');
+    expect(texto(c, 'tablero-logrado')).toContain('USD 1.000');
+    expect(texto(c, 'tablero-pendiente')).toContain('USD 2.000');
+    expect(texto(c, 'tablero-potencial-total')).toContain('USD 3.000');
+  });
+  it('con al menos 1 mejora implementada, o con logrado 0, no se muestra', async () => {
+    repo.listarTodosLosResumenes.mockResolvedValue([con(PIEZA_A, { logradoAnual: 1000, tieneLineaBase: true, ahorroPotencialAnual: 2000, cantImplementadas: 1 })]);
+    expect((await montarYCargar()).queryByTestId('tablero-logrado-sin-mejoras')).toBeNull();
+    cleanup();
+    repo.listarTodosLosResumenes.mockResolvedValue([con(PIEZA_A, { logradoAnual: 0, tieneLineaBase: true, ahorroPotencialAnual: 2000, cantImplementadas: 0 })]);
+    expect((await montarYCargar()).queryByTestId('tablero-logrado-sin-mejoras')).toBeNull();
+  });
+});

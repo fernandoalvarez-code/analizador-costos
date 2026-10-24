@@ -28,19 +28,27 @@ export function errorDeFecha(fecha: string, hoy: string = hoyISO()): string | nu
   return fecha > hoy ? MENSAJE_FECHA_FUTURA : null;
 }
 
+export const MENSAJE_NO_SE_PUEDE_APLICAR = '¿No se puede aplicar? Usá Descartar y dejá el motivo.';
+export const MENSAJE_CONFIRMAR_REPETIDA = 'Marcá «Registrar igual» para continuar.';
+
 export interface MarcarImplementadaDialogProps {
   /** La mejora que se registra; null = diálogo cerrado. */
   mejora: MejoraCosto | null;
+  /** Ya hay un registro de esta misma mejora con el mismo costo por pieza: se avisa y se pide confirmar (no se bloquea). */
+  repetida?: { fecha: string } | null;
+  /** Cierra este diálogo y abre el de Descartar con la misma mejora. Sin esto no se ofrece. */
+  onDescartarEsta?: (mejora: MejoraCosto) => void;
   onCancelar: () => void;
   onConfirmar: (mejora: MejoraCosto, fecha: string, nota: string) => void;
 }
 
 /** Diálogo para registrar una mejora como implementada: fecha (por defecto hoy, no futura) y nota obligatoria. No usa window.confirm. */
-export function MarcarImplementadaDialog({ mejora, onCancelar, onConfirmar }: MarcarImplementadaDialogProps) {
+export function MarcarImplementadaDialog({ mejora, repetida = null, onDescartarEsta, onCancelar, onConfirmar }: MarcarImplementadaDialogProps) {
   const [fecha, setFecha] = useState(() => hoyISO());
   const [nota, setNota] = useState('');
   const [intentado, setIntentado] = useState(false);
-  useEffect(() => { setFecha(hoyISO()); setNota(''); setIntentado(false); }, [mejora?.clave]);
+  const [registrarIgual, setRegistrarIgual] = useState(false);
+  useEffect(() => { setFecha(hoyISO()); setNota(''); setIntentado(false); setRegistrarIgual(false); }, [mejora?.clave]);
 
   const largo = nota.trim().length;
   const errorNota = largo < IMPLEMENTACION_NOTA_MIN || largo > IMPLEMENTACION_NOTA_MAX ? MENSAJE_NOTA_OBLIGATORIA : null;
@@ -48,7 +56,7 @@ export function MarcarImplementadaDialog({ mejora, onCancelar, onConfirmar }: Ma
 
   const confirmar = () => {
     if (!mejora) return;
-    if (errorNota || errorFecha) { setIntentado(true); return; }
+    if (errorNota || errorFecha || (repetida && !registrarIgual)) { setIntentado(true); return; }
     onConfirmar(mejora, fecha, nota.trim());
   };
 
@@ -62,6 +70,21 @@ export function MarcarImplementadaDialog({ mejora, onCancelar, onConfirmar }: Ma
           </DialogDescription>
         </DialogHeader>
         <p className={CLASE_AVISO_FIJO} data-testid="aviso-punto-de-partida">{AVISO_PUNTO_DE_PARTIDA}</p>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700" data-testid="orientacion-descartar">
+          <span>{MENSAJE_NO_SE_PUEDE_APLICAR}</span>
+          {mejora && onDescartarEsta && (
+            <Button type="button" size="sm" variant="outline" onClick={() => onDescartarEsta(mejora)} data-testid="descartar-esta-mejora">Descartar esta mejora</Button>
+          )}
+        </div>
+        {repetida && (
+          <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="aviso-repetida">
+            <p>Ya registraste esta mejora el {repetida.fecha} y el costo no cambió desde entonces.</p>
+            <label className="flex items-center gap-2 font-bold">
+              <input type="checkbox" checked={registrarIgual} onChange={(e) => setRegistrarIgual(e.target.checked)} /> Registrar igual
+            </label>
+            {intentado && !registrarIgual && <p role="alert" className="text-xs font-medium text-red-600" data-testid="error-repetida">{MENSAJE_CONFIRMAR_REPETIDA}</p>}
+          </div>
+        )}
         <div className="space-y-4">
           <div>
             <label htmlFor="implementada-fecha" className={CLASE_ETIQUETA}>Fecha en que se implementó</label>

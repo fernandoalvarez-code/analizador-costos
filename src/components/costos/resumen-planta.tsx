@@ -195,6 +195,11 @@ export default function ResumenPlanta({ empresaId, repo, esAdmin }: ResumenPlant
             <div className="mt-1 h-2 rounded bg-slate-100"><div className="h-2 rounded bg-emerald-600" style={{ width: `${tablero.fraccionLograda * 100}%` }} /></div>
           </div>
         </div>
+        {tablero.logrado > 0 && tablero.cantImplementadas === 0 && (
+          <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900" data-testid="tablero-logrado-sin-mejoras">
+            Hay ahorro sin mejoras registradas: puede ser una corrección de datos o falta registrar qué se cambió.
+          </p>
+        )}
         {tablero.ultimaMejora && (
           <p className="text-xs text-slate-600" data-testid="tablero-ultima-mejora">
             Última mejora de la planta: {fechaDeISO(tablero.ultimaMejora.fecha)}, {tablero.ultimaMejora.por}, pieza {tablero.ultimaMejora.codigo}
